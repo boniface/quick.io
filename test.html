@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<head>
+	<title>WebSockets!</title>
+	<script>
+		try {
+			var s = new WebSocket('ws://localhost:5000/');
+		} catch (e) {
+			console.error(e);
+		}
+		
+		s.onerror = function() {
+			console.error('fail');
+			console.error(arguments);
+		};
+		
+		s.onopen = function() {
+			console.log('open!');
+			s.send('hi');
+		};
+		
+		s.onclose = function() {
+			console.log('close');
+		};
+	</script>
+</head>
+
+<body>
+	
+</body>
