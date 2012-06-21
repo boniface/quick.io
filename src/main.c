@@ -1,7 +1,9 @@
-#include <signal.h>
 #include <stdio.h>
 
 #include "accepter.h"
+#include "websocket.h"
+
+#include "debug.h"
 
 int main(int argc, char *argv[]) {
 	if (g_thread_supported()) {

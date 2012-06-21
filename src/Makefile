@@ -1,5 +1,5 @@
 LIBS = glib-2.0 libsoup-2.4
-CFLAGS = -std=gnu99 -Wall -pedantic $(shell pkg-config --cflags $(LIBS))
+CFLAGS = -O2 -std=gnu99 -Wall $(shell pkg-config --cflags $(LIBS))
 LDFLAGS = $(shell pkg-config --libs $(LIBS)) #-static
 CC = gcc
 
@@ -7,7 +7,7 @@ TARGET = server
 OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
 HEADERS = $(wildcard *.h)
 
-.PHONY: default $(TARGET) clean
+.PHONY: default clean
 
 default: $(TARGET)
 
@@ -15,8 +15,8 @@ default: $(TARGET)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o ../$@
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm $(OBJECTS)
-	rm ../$(TARGET)
+	rm $(TARGET)

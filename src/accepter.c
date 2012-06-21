@@ -1,4 +1,11 @@
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+
 #include "accepter.h"
+#include "debug.h"
+#include "websocket.h"
 
 // The number of threads we are going to start
 #define THREADS 1
@@ -16,14 +23,15 @@ void _watch(gpointer data) {
 		int client = accept(sock, (struct sockaddr*)NULL, NULL);
 		
 		if (client > 0) {
-			ERROR("Accept client failed");
 			ws_handle(client);
+		} else {
+			ERROR("Accept client failed");
 		}
 	}
 }
 
 gboolean accepter_init(void) {
-	int sock = 0;
+	int sock;
 	struct sockaddr_in addy;
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -33,7 +41,7 @@ gboolean accepter_init(void) {
 	
 	addy.sin_family = AF_INET;
 	addy.sin_port = htons(5000);
-	addy.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addy.sin_addr.s_addr = inet_addr("0.0.0.0");
 	memset(&addy.sin_zero, 0, sizeof(addy.sin_zero));
 	
 	int on = 1;

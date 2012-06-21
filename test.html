@@ -3,7 +3,7 @@
 	<title>WebSockets!</title>
 	<script>
 		try {
-			var s = new WebSocket('ws://localhost:5000/');
+			var s = new WebSocket('ws://192.168.2.2:5000/');
 		} catch (e) {
 			console.error(e);
 		}
@@ -21,6 +21,10 @@
 		s.onclose = function() {
 			console.log('close');
 		};
+		
+		s.onmessage = function(m) {
+			console.log(m.data);
+		}
 	</script>
 </head>
 

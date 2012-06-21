@@ -1,13 +1,6 @@
-#include <errno.h>
+#pragma once
 #include <glib.h>
 #include <libsoup/soup.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include "debug.h"
 
 /**
  * Function pointer for anything that handles a WebSocket handshake.
