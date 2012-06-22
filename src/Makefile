@@ -11,7 +11,7 @@ HEADERS = $(wildcard *.h)
 
 default: $(TARGET)
 
-%.o: %.c
+%.o: %.c %.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(TARGET): $(OBJECTS)

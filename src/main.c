@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "accepter.h"
+#include "pubsub.h"
 #include "websocket.h"
 
 #include "debug.h"
@@ -24,6 +25,13 @@ int main(int argc, char *argv[]) {
 		DEBUG("Websocket inited");
 	} else {
 		ERROR("Could not init websocket.");
+		return 1;
+	}
+	
+	if (pubsub_init()) {
+		DEBUG("Pubsub inited");
+	} else {
+		ERROR("Could not init pubsub.");
 		return 1;
 	}
 	

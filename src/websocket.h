@@ -3,9 +3,19 @@
 #include <libsoup/soup.h>
 
 /**
- * Function pointer for anything that handles a WebSocket handshake.
+ * The websocket handlers
  */
-typedef gboolean (*handshake_handler)(const int, SoupMessageHeaders*);
+enum Handlers {
+	rfc6455,
+};
+
+/**
+ * Basic information about a connected client.
+ */
+typedef struct {
+	int sock;
+	enum Handlers handler;
+} Client;
 
 /**
  * Setup internal structures for handling incoming handshakes
@@ -16,3 +26,13 @@ gboolean ws_init();
  * Handle a websocket connection, or drop it if it's not.
  */
 void ws_handle(int);
+
+/**
+ * Write the specified data to the client.
+ */
+void ws_client_write(Client*, char*);
+
+/**
+ * Closes and cleans up the client.
+ */
+void ws_client_close(Client*);
