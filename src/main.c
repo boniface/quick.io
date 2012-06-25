@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-#include "accepter.h"
 #include "pubsub.h"
-#include "websocket.h"
+#include "socket.h"
 
 #include "debug.h"
 
@@ -14,15 +13,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (accepter_init()) {
-		DEBUG("Accepter inited");
-	} else {
-		ERROR("Could not init accepter.");
-		return 1;
-	}
-	
-	if (ws_init()) {
-		DEBUG("Websocket inited");
+	if (socket_init()) {
+		DEBUG("External socket inited");
 	} else {
 		ERROR("Could not init websocket.");
 		return 1;
@@ -35,7 +27,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	accepter_finish();
+	socket_finish();
 	
 	return 0;
 }

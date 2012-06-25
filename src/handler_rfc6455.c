@@ -1,5 +1,4 @@
 #include <glib.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -17,7 +16,7 @@ gboolean rfc6455_handles(SoupMessageHeaders *req_headers) {
 	return id != NULL && strncmp(id, "13", 2) == 0;
 }
 
-gboolean rfc6455_handshake(const int sock, SoupMessageHeaders *req_headers) {
+gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	const char *key = soup_message_headers_get_one(req_headers, CHALLENGE_KEY);
 	
 	if (key == NULL) {
@@ -44,7 +43,7 @@ gboolean rfc6455_handshake(const int sock, SoupMessageHeaders *req_headers) {
 	
 	snprintf(headers, size, HEADERS, b64);
 	DEBUG(headers);
-	write(sock, headers, strlen(headers));
+	write(client->sock, headers, strlen(headers));
 	
 	g_free(b64);
 	
@@ -66,7 +65,8 @@ char* rfc6455_prepare_frame(char *msg, int *frame_len) {
 		// to represent the data
 		*frame_len = (payload_len + 2);
 		
-		frame = malloc(*frame_len * sizeof(char));
+		frame = malloc(*frame_len * sizeof(*frame));
+		printf("%d\n", sizeof(*frame));
 		
 		// The first frame of text is ALWAYS the same
 		*frame = FIRST_BYTE_TEXT;

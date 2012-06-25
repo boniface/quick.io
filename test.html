@@ -2,8 +2,11 @@
 <head>
 	<title>WebSockets!</title>
 	<script>
+		var start = new Date().getTime();
+		
 		try {
-			var s = new WebSocket('ws://192.168.2.2:5000/');
+			var s = new WebSocket('ws://127.0.0.1:5000/');
+			
 		} catch (e) {
 			console.error(e);
 		}
@@ -24,6 +27,10 @@
 		
 		s.onmessage = function(m) {
 			console.log(m.data);
+			
+			s.send("Test");
+			
+			console.log((new Date().getTime()) - start);
 		}
 	</script>
 </head>
