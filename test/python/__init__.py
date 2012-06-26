@@ -1,15 +1,21 @@
 import fcntl
 import os
 import random
+import socket
 from subprocess import Popen, PIPE
 import sys
 import time
 
-port = None
+# The setup() and teardown() to be executed in every process
+_multiprocess_can_split_ = True
+
 server = None
 
+# A socket connected to the running server
+sock = None
+
 def setup():
-	global port, server
+	global server, sock
 	
 	port = str(random.randint(5000, 15000))
 	
@@ -30,8 +36,11 @@ def setup():
 			pass
 		
 		time.sleep(.1)
+	
+	sock = socket.create_connection(('127.0.0.1', port))
 
 def teardown():
-	global server
+	global server, sock
+	sock.close()
 	server.kill()
 	server = None
