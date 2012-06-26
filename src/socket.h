@@ -10,10 +10,7 @@
 // Since messages coming from the client are masked, there is some additional
 // overhead in the protocol that must be allowed for
 // Externally, clients MUST not send more than 1000 characters per message.
-#define MAX_BUFFER_SIZE 1200
-
-// How long to wait on a stupid client before killing it
-#define CLIENT_WAIT 5
+#define MAX_SOCKET_BUFFER_SIZE 1200
 
 // Events epoll should wait for
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
@@ -47,6 +44,9 @@ struct client_s {
 	enum handlers handler;
 	
 	// The data buffer of what has been read but not processed for the client
+	GString* socket_buffer;
+	
+	// Buffer of data procesed from socket_buffer (defragmented)
 	GString* buffer;
 } __attribute__((__packed__));
 

@@ -15,5 +15,12 @@
 	"Sec-WebSocket-Protocol: chat\r\n\r\n"
 #define HEADERS_LEN sizeof(HEADERS)
 
-#define FIRST_BYTE 0b10000000
-#define FIRST_BYTE_TEXT FIRST_BYTE | 0b00000001
+// Opcodes that can be used
+#define OP_CONTINUATION 0b00000000
+#define OP_TEXT 0b00000001
+#define OP_BINARY 0b00000010
+#define OP_PING 0b00001001
+#define OP_PONG 0b00001010
+
+#define MASK_BYTE 0b10000000
+#define FIRST_BYTE_TEXT MASK_BYTE | OP_TEXT

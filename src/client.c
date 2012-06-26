@@ -6,14 +6,15 @@
 #include "handler_rfc6455.h"
 #include "pubsub.h"
 
-void client_handshake(client_t *client) {
+short client_handshake(client_t *client) {
 	gboolean all_good = TRUE;
 	enum handlers handler = none;
+	GString *buffer = client->socket_buffer;
 
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
 	
 	// Parse the headers and see if we can handle them
-	if (client->buffer->len && soup_headers_parse(client->buffer->str, client->buffer->len, req_headers)) {
+	if (buffer->len && soup_headers_parse(buffer->str, buffer->len, req_headers)) {
 		if (rfc6455_handles(req_headers)) {
 			handler = rfc6455;
 			all_good = rfc6455_handshake(client, req_headers);
@@ -27,26 +28,50 @@ void client_handshake(client_t *client) {
 			// Everything went well, but we don't have a handler yet
 			// Maybe the client hasn't finished sending headers? Let's
 			// wait for another read
-			DEBUG("Timer set on client");
-			socket_set_timer(client);
+			return CLIENT_WAIT;
 		} else {
 			// The handshake is complete, and there is a handler.
 			// We're done here.
 			client->initing = 0;
 			client->handler = handler;
-			
-			socket_clear_timer(client);
-			socket_clear_buffer(client);
 			sub_client_ready(client);
+			
+			return CLIENT_GOOD;
 		}
 	} else {
 		DEBUG("Client handler not found");
 		socket_close(client);
+		return CLIENT_ABORTED;
 	}
 }
 
-void client_message(client_t* client) {
+short client_message(client_t* client) {
+	short status;
 	
+	switch (client->handler) {
+		case rfc6455:
+			status = rfc6455_incoming(client);
+			break;
+		
+		case none:
+		default:
+			// This should NEVER happen
+			ERROR("Client went into message processing without a handler");
+			status = CLIENT_ABORTED;
+			break;
+	}
+	
+	switch (status) {
+		case CLIENT_GOOD:
+			// route the message stored in client->buffer
+			break;
+		
+		case CLIENT_ABORTED:
+			socket_close(client);
+			break;
+	}
+	
+	return status;
 }
 
 /**

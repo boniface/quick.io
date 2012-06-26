@@ -2,13 +2,21 @@
 #include <glib.h>
 #include "socket.h"
 
+#define CLIENT_GOOD 1
+#define CLIENT_WAIT 2
+#define CLIENT_ABORTED 3
+
+#define CLIENT_PING "ping"
+#define CLIENT_PONG "pong"
+
 /**
  * Handle a connection from a client. Once it's handled, update the client
  * to be inited.
  */
-void client_handshake(client_t*);
+short client_handshake(client_t*);
 
 /**
- * Get 1 message from the client socket.  If the message is multi-part, will return NULL.
+ * Process a message from the client.  If the message isn't complete return false
+ * and hope it completes itself.
  */
-void client_message(client_t*);
+short client_message(client_t*);

@@ -10,6 +10,7 @@
 
 #include "client.h"
 #include "debug.h"
+#include "option.h"
 #include "socket.h"
 
 // The number of threads to keep in the pool
@@ -35,7 +36,7 @@ static void _socket_epoll_add(int fd, client_t *client) {
 	
 	// Start listening on the socket for anything the client has to offer
 	if (epoll_ctl(_epoll[client->thread], EPOLL_CTL_ADD, fd, &ev) == -1) {
-		ERROR("Could not listen on client socket")
+		ERROR("Could not listen on client socket");
 		socket_close(client);
 		return;
 	}
@@ -68,6 +69,10 @@ static void _socket_accept_client(short thread) {
 	client->initing = 1;
 	client->thread = thread;
 	
+	// Make the client finish the handshake quickly, or drop him
+	socket_set_timer(client);
+	
+	// Add the client to this thread's epoll
 	_socket_epoll_add(sock, client);
 }
 
@@ -79,10 +84,9 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		socket_close(client);
 	} else if (evs & EPOLLIN) {
 		// Check the timer to see if it has expired
-		// A read operation on a non-blocking timer always returns EAGAIN
-		// if the timer has not yet expired, so if it's anything but
-		// EAGAIN, then we're done with this client.
-		if (client->timer && read(client->timer, buffer, 8) != EAGAIN) {
+		// A read operation on a timerfd will return > -1 if the 
+		// timer has expired.
+		if (client->timer && read(client->timer, buffer, 8) > -1) {
 			// If the client has been caught misbehaving...
 			DEBUG("Misbehaving client closed because of timeout");
 			socket_close(client);
@@ -90,6 +94,10 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		}
 	
 		// The buffer typically won't exist for clients
+		if (client->socket_buffer == NULL) {
+			client->socket_buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+		}
+		
 		if (client->buffer == NULL) {
 			client->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
 		}
@@ -99,22 +107,34 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		int len;
 		while ((len = read(client->sock, buffer, sizeof(buffer))) > 0) {
 			// Put the buffer into our string
-			g_string_append_len(client->buffer, buffer, len);
+			g_string_append_len(client->socket_buffer, buffer, len);
 			
 			// If the client needs to ehance his calm, kill the connection.
-			if (client->buffer->len > MAX_BUFFER_SIZE) {
+			if (client->socket_buffer->len > MAX_SOCKET_BUFFER_SIZE) {
 				DEBUG("Client needs to ehance his calm");
 				socket_close(client);
 				return;
 			}
 		}
 		
+		short status;
 		if (client->initing) {
 			DEBUG("Client handshake");
-			client_handshake(client);
+			status = client_handshake(client);
 		} else {
 			DEBUG("Message from client");
-			client_message(client);
+			status = client_message(client);
+		}
+		
+		// If the client becomes good, then clear the timer and let him live
+		if (status == CLIENT_GOOD) {
+			socket_clear_timer(client);
+			socket_clear_buffer(client);
+		
+		// The client gets 1 timer to make itself behave. If it doesn't in this
+		// time, then we summarily kill it.
+		} else if (status == CLIENT_WAIT && !client->timer) {
+			socket_set_timer(client);
 		}
 	}
 }
@@ -182,8 +202,8 @@ static gboolean _socket_setup_listener() {
 	}
 	
 	addy.sin_family = AF_INET;
-	addy.sin_port = htons(5000);
-	addy.sin_addr.s_addr = inet_addr("0.0.0.0");
+	addy.sin_port = htons(option_port());
+	addy.sin_addr.s_addr = inet_addr(option_address());
 	memset(&addy.sin_zero, 0, sizeof(addy.sin_zero));
 	
 	int on = 1;
@@ -241,12 +261,17 @@ void socket_close(client_t *client) {
 }
 
 void socket_clear_buffer(client_t *client) {
+	// Free the string buffers and their underlying strings
+	
+	if (client->socket_buffer != NULL) {
+		g_string_free(client->socket_buffer, TRUE);
+		client->socket_buffer = NULL;
+	}
+	
 	if (client->buffer != NULL) {
-		// Free the string buffer and its underlying string
 		g_string_free(client->buffer, TRUE);
-		
 		client->buffer = NULL;
-	}	
+	}
 }
 
 void socket_set_timer(client_t *client) {
@@ -265,13 +290,18 @@ void socket_set_timer(client_t *client) {
 	spec.it_interval.tv_nsec = 0;
 	
 	// Specify the number of seconds to wait
-	spec.it_value.tv_sec = CLIENT_WAIT;
+	spec.it_value.tv_sec = option_timeout();
 	spec.it_value.tv_nsec = 0;
 	
 	timerfd_settime(timer, 0, &spec, NULL);
 	
+	// Store the timer on the client for cancelling
 	client->timer = timer;
+	
+	// Add the timer to this epoll
 	_socket_epoll_add(timer, client);
+	
+	DEBUG("Timer set on client");
 }
 
 void socket_clear_timer(client_t *client) {

@@ -2,10 +2,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "client.h"
+#include "debug.h"
 #include "handler_rfc6455.h"
 #include "handler_rfc6455_const.h"
-
-#include "debug.h"
 
 /**
  * The corresponding RFC: http://tools.ietf.org/html/rfc6455
@@ -84,4 +84,25 @@ char* rfc6455_prepare_frame(char *msg, int *frame_len) {
 	}
 	
 	return frame;
+}
+
+short rfc6455_incoming(client_t *client) {
+	char *buff = client->socket_buffer->str;
+	
+	// If data came from the client unmasked, then that's wrong. Abort.
+	if ((*(buff + 1) & MASK_BYTE) == 0) {
+		return CLIENT_ABORTED;
+	}
+	
+	if (*buff & OP_CONTINUATION) {
+		// append more to the buffer
+	} else if (*buff & OP_TEXT) {
+		//cool, we know what to do with this guy
+	} else if (*buff & OP_BINARY) {
+		//stupid client, abort the connection
+	} else if (*buff & OP_PING) {
+		g_string_append(client->buffer, CLIENT_PONG);
+	}
+	
+	return TRUE;
 }
