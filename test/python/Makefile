@@ -1,5 +1,11 @@
-.PHONY: test
+.PHONY: clean test
 
 test:
-	#Must use multiprocessing module - for pacakge fixtures
-	ve/bin/nosetests --with-xunit --xunit-file=../../unit_py.xml --processes=8 --process-restartworker
+	ve/bin/nosetests --processes=8 --process-restartworker
+
+test-xunit:
+	ve/bin/nosetests --with-xunit --xunit-file=../../unit_py.xml
+
+clean:
+	rm ../../unit_py.xml
+	rm *.pyc

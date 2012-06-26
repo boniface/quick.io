@@ -1,5 +1,7 @@
 from nose.tools import *
 
+from . import get_socket
+
 HANDSHAKE = """GET /chat HTTP/1.1
 Host: server.example.com
 Upgrade: websocket
@@ -24,19 +26,28 @@ READY = "\x81\05ready"
 
 def test_handshake():
 	"""Tests the rfc6455 handshake"""
-	from . import sock
+	s = get_socket()
 	
-	sock.send(HANDSHAKE)
+	s.send(HANDSHAKE)
 	
-	assert sock.recv(4096).startswith(HANDSHAKE_RESPONSE)
+	assert s.recv(4096).startswith(HANDSHAKE_RESPONSE)
 
 def test_ready():
-	"""Tests the "ready" message from the server"""
-	from . import sock
+	"""Verify the "ready" message from the server"""
+	s = get_socket()
 	
-	sock.send(HANDSHAKE)
+	s.send(HANDSHAKE)
 	
-	data = sock.recv(4096)
-	data += sock.recv(4096)
+	data = ""
+	for i in range(2):
+		data += s.recv(4096)
+		
+		if READY in data:
+			assert READY in data
+			return
 	
-	assert READY in data
+	assert False
+
+def test_continuation():
+	"""A continuation frame"""
+	assert True

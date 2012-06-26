@@ -5,7 +5,7 @@ all:
 
 clean:
 	$(MAKE) -C src clean
-	rm unit*.xml
+	$(MAKE) -C test clean
 
 test: all
 	$(MAKE) -C test test
