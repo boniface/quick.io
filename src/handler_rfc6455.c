@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "client.h"
+#include "commands.h"
 #include "debug.h"
 #include "handler_rfc6455.h"
 #include "handler_rfc6455_const.h"

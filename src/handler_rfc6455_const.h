@@ -1,3 +1,5 @@
+#include "client.h"
+
 // From: http://tools.ietf.org/html/rfc6455#section-1.3
 #define HASH_KEY "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 #define HASH_KEY_LEN sizeof(HASH_KEY) - 1 //-1 to kill the null terminator
@@ -38,6 +40,3 @@
 
 // Extended-length header contains an extra 16 bits for payload len
 #define EXTENDED_HEADER_LEN HEADER_LEN + (16 / 8)
-
-// Protocol commands that need to be interpreted as regular commands
-#define COMMAND_PING "ping:"

@@ -18,7 +18,7 @@
 		
 		s.onopen = function() {
 			console.log('open!');
-			s.send('hi');
+			s.send('ping:');
 		};
 		
 		s.onclose = function() {
@@ -27,8 +27,6 @@
 		
 		s.onmessage = function(m) {
 			console.log(m.data);
-			
-			s.send("Test");
 			
 			console.log((new Date().getTime()) - start);
 		}

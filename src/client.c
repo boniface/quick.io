@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "client.h"
+#include "commands.h"
 #include "debug.h"
 #include "handler_rfc6455.h"
 #include "pubsub.h"
@@ -61,14 +62,9 @@ short client_message(client_t* client) {
 			break;
 	}
 	
-	switch (status) {
-		case CLIENT_GOOD:
-			// printf("%s\n", client->command->buffer->str);
-			break;
-		
-		case CLIENT_ABORTED:
-			socket_close(client);
-			break;
+	// If everything went well with the handler, process the message
+	if (status == CLIENT_GOOD) {
+		status = command_handle(client->command);
 	}
 	
 	return status;

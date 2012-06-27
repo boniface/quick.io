@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "commands.h"
 #include "debug.h"
 #include "option.h"
 #include "pubsub.h"
@@ -32,6 +33,13 @@ int main(int argc, char *argv[]) {
 		DEBUG("Pubsub inited");
 	} else {
 		ERROR("Could not init pubsub.");
+		return 1;
+	}
+	
+	if (commands_init()) {
+		DEBUG("Commands inited");
+	} else {
+		ERROR("Could not init commands.");
 		return 1;
 	}
 	

@@ -17,6 +17,6 @@ def test_bad_client():
 	time.sleep(1.1)
 	
 	with assert_raises(socket.error):
-		#TODO - send a PING to see if there's a response
+		#see if the socket still exists
 		s.send('t')
 		s.send('t')
