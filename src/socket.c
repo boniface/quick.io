@@ -196,7 +196,6 @@ static void _socket_loop(gpointer data) {
 		
 		// Since we're polling at an interval, it's possible no events
 		// will have happened
-		printf("Num events: %d\n", num_evs);
 		if (num_evs < 1) {
 			continue;
 		}

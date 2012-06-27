@@ -171,11 +171,14 @@ short rfc6455_incoming(client_t *client) {
 		return CLIENT_NEED_MASK;
 	}
 	
-	if (*buff & OP_CONTINUATION || *buff & OP_TEXT) {
+	// Remove everything but the OPCODE from the byte
+	char opcode = *buff & OPCODE;
+	
+	if (opcode == OP_CONTINUATION || opcode == OP_TEXT) {
 		return _rfc6455_read_text(client);
-	} else if (*buff & OP_BINARY) {
+	} else if (opcode == OP_BINARY) {
 		return CLIENT_UNSUPPORTED_OPCODE;
-	} else if (*buff & OP_PING) {
+	} else if (opcode == OP_PING) {
 		g_string_append(client->command->buffer, COMMAND_PING);
 		return _rfc6455_read_text(client);
 	}

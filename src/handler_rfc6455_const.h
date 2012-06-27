@@ -17,6 +17,7 @@
 #define HEADERS_LEN sizeof(HEADERS)
 
 // Opcodes that can be used
+#define OPCODE 0b00001111
 #define OP_CONTINUATION 0b00000000
 #define OP_TEXT 0b00000001
 #define OP_BINARY 0b00000010

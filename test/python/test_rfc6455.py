@@ -8,7 +8,6 @@ Upgrade: websocket
 Connection: Upgrade
 Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
 Origin: http://example.com
-Sec-WebSocket-Protocol: chat
 Sec-WebSocket-Version: 13
 
 """
@@ -20,8 +19,31 @@ Access-Control-Allow-Origin: *\r
 Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r
 """
 
+# A 32bit mask
+MASK = 'abcd'
+TEST = 'test'
+
+XORD = "".join([chr(ord(c) ^ ord(MASK[i % 4])) for c, i in zip(TEST, range(4))])
+
 # A perfectly-formatted ready message from the server
-READY = "\x81\05ready"
+READY = '\x81\05ready'
+
+# A ping message to be sent to the server
+PING = '\x89\x84%s%s' % (XORD, MASK)
+
+PING_RESPONSE = '\x81\x8a%s' % TEST
+
+def _binary_socket():
+	s = get_socket()
+	s.send(HANDSHAKE)
+	data = ""
+	for i in range(2):
+		data += s.recv(4096)
+		
+		if READY in data:
+			return s
+	
+	return None
 
 def test_handshake():
 	"""Tests the rfc6455 handshake"""
@@ -53,5 +75,9 @@ def test_continuation():
 
 def test_ping():
 	"""Tests the ping control packet"""
-	ws = get_ws()
-	ws.send('test')
+	s = _binary_socket()
+	
+	print PING
+	s.send(PING)
+	
+	assert_equals(s.recv(64), PING_RESPONSE)
