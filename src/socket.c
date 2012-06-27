@@ -192,10 +192,11 @@ static void _socket_loop(gpointer data) {
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
 	while (1) {
-		int num_evs = epoll_wait(poll, events, EPOLL_MAX_EVENTS, 100);
+		int num_evs = epoll_wait(poll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 		
 		// Since we're polling at an interval, it's possible no events
 		// will have happened
+		printf("Num events: %d\n", num_evs);
 		if (num_evs < 1) {
 			continue;
 		}

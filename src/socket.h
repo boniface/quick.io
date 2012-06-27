@@ -17,6 +17,7 @@
 // Events epoll should wait for
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
 #define EPOLL_MAX_EVENTS 100
+#define EPOLL_WAIT -1
 
 /**
  * Setup internal structures for handling all the connections

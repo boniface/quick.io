@@ -65,6 +65,10 @@ short client_message(client_t* client) {
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
 		status = command_handle(client->command);
+		
+		if (status == CLIENT_GOOD && client->command->buffer->len > 0 && !client_write(client, client->command->buffer->str)) {
+			status = CLIENT_ABORTED;
+		}
 	}
 	
 	return status;
@@ -73,7 +77,7 @@ short client_message(client_t* client) {
 /**
  * Write the message out to the socket.
  */
-void ws_client_write(client_t *client, char* msg) {
+gboolean client_write(client_t *client, char* msg) {
 	int frame_len;
 	char *frame = rfc6455_prepare_frame(msg, &frame_len);
 	

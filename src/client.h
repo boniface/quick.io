@@ -73,3 +73,8 @@ short client_handshake(client_t*);
  * and hope it completes itself.
  */
 short client_message(client_t*);
+
+/**
+ * Write 1 single message to 1 single client. THIS SHOULD NOT BE USED FOR BULK WRITES.
+ */
+gboolean client_write(client_t*, char*);
