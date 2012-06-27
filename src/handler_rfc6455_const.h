@@ -11,8 +11,7 @@
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
-	"Sec-WebSocket-Accept: %s\r\n" \
-	"Sec-WebSocket-Protocol: chat\r\n\r\n"
+	"Sec-WebSocket-Accept: %s\r\n\r\n"
 #define HEADERS_LEN sizeof(HEADERS)
 
 // Opcodes that can be used
@@ -24,3 +23,21 @@
 
 #define MASK_BYTE 0b10000000
 #define FIRST_BYTE_TEXT MASK_BYTE | OP_TEXT
+#define SECOND_BYTE 0b01111111
+
+// The different payload lengths that change the header
+#define PAYLOAD_SHORT 125
+#define PAYLOAD_LONG 126
+#define PAYLOAD_DEADLY 127
+
+// Mask is 32 bits
+#define MASK_LEN 32 / 8
+
+// Header is 16 bits
+#define HEADER_LEN 16 / 8
+
+// Extended-length header contains an extra 16 bits for payload len
+#define EXTENDED_HEADER_LEN HEADER_LEN + (16 / 8)
+
+// Protocol commands that need to be interpreted as regular commands
+#define COMMAND_PING "ping:"

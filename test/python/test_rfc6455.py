@@ -1,6 +1,6 @@
 from nose.tools import *
 
-from . import get_socket
+from . import get_socket, get_ws
 
 HANDSHAKE = """GET /chat HTTP/1.1
 Host: server.example.com
@@ -18,7 +18,6 @@ Upgrade: websocket\r
 Connection: Upgrade\r
 Access-Control-Allow-Origin: *\r
 Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r
-Sec-WebSocket-Protocol: chat\r
 """
 
 # A perfectly-formatted ready message from the server
@@ -49,5 +48,10 @@ def test_ready():
 	assert False
 
 def test_continuation():
-	"""A continuation frame"""
+	"""Test continuation frames"""
 	assert True
+
+def test_ping():
+	"""Tests the ping control packet"""
+	ws = get_ws()
+	ws.send('test')

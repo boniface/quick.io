@@ -1,56 +1,22 @@
 #pragma once
 #include <glib.h>
 
+#include "client.h"
+
 #define LISTEN_BACKLOG 1000
 
 // Most messages won't exceed this: the initial headers are typically
 // around 150 characters
-#define STRING_BUFFER_SIZE 200
+#define STRING_BUFFER_SIZE 100
+#define STRING_HEADER_BUFFER_SIZE 200
 
-// Since messages coming from the client are masked, there is some additional
-// overhead in the protocol that must be allowed for
 // Externally, clients MUST not send more than 1000 characters per message.
-#define MAX_SOCKET_BUFFER_SIZE 1200
+#define MAX_BUFFER_SIZE 1008 // Allow for the masking key and headers
+#define MAX_MESSAGE_SIZE 1000
 
 // Events epoll should wait for
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
 #define EPOLL_MAX_EVENTS 100
-
-/**
- * The websocket handlers
- */
-enum handlers {
-	none,
-	rfc6455,
-};
-
-/**
- * Basic information about a connected client.
- */
-struct client_s {
-	// The underlying socket for this client
-	int sock;
-	
-	// A timer for killing stupid clients
-	int timer;
-	
-	// If the client is still in the initing (handshake) process
-	char initing;
-	
-	// The thread this client runs in
-	short thread;
-	
-	// The handler for this client
-	enum handlers handler;
-	
-	// The data buffer of what has been read but not processed for the client
-	GString* socket_buffer;
-	
-	// Buffer of data procesed from socket_buffer (defragmented)
-	GString* buffer;
-} __attribute__((__packed__));
-
-typedef struct client_s client_t;
 
 /**
  * Setup internal structures for handling all the connections
@@ -68,9 +34,9 @@ void socket_finish(void);
 void socket_close(client_t*);
 
 /**
- * Clear the buffer on the client.  We're done reading it.
+ * Clear the command on the client.  We're done with it.
  */
-void socket_clear_buffer(client_t*);
+void socket_command_free(client_t*);
 
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will

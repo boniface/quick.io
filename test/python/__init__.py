@@ -7,6 +7,8 @@ from subprocess import Popen, PIPE
 import sys
 import time
 
+import websocket
+
 # The setup() and teardown() to be executed in every process
 _multiprocess_can_split_ = True
 
@@ -15,6 +17,7 @@ server = None
 
 # A socket connected to the running server
 sock = None
+ws = None
 
 def get_socket():
 	global sock
@@ -25,6 +28,16 @@ def get_socket():
 	sock = socket.create_connection(('127.0.0.1', port))
 	
 	return sock
+
+def get_ws():
+	global ws
+	
+	if ws:
+		ws.close()
+	
+	ws = websocket.create_connection('ws://127.0.0.1:%s/' % port)
+	
+	return ws
 
 def setup():
 	global port, server
@@ -50,11 +63,15 @@ def setup():
 		time.sleep(.1)
 
 def teardown():
-	global server, sock
+	global server, sock, ws
 	
 	if sock:
 		sock.close()
 		sock = None
+	
+	if ws:
+		ws.close()
+		ws = None
 	
 	server.kill()
 	server = None

@@ -9,7 +9,7 @@
 short client_handshake(client_t *client) {
 	gboolean all_good = TRUE;
 	enum handlers handler = none;
-	GString *buffer = client->socket_buffer;
+	GString *buffer = client->command->socket_buffer;
 
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
 	
@@ -63,7 +63,7 @@ short client_message(client_t* client) {
 	
 	switch (status) {
 		case CLIENT_GOOD:
-			// route the message stored in client->buffer
+			// printf("%s\n", client->command->buffer->str);
 			break;
 		
 		case CLIENT_ABORTED:
