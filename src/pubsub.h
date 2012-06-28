@@ -11,6 +11,6 @@
 gboolean pubsub_init(void);
 
 /**
- * Accepts a new client and asks it for information about what it wants.
+ * Puts the client into the UNSUBSCRIBED room, waiting for any futher commands.
  */
 void sub_client_ready(client_t*);

@@ -16,7 +16,10 @@
  */
 static GHashTable* rooms;
 
-static GPtrArray* get_room(int room_num) {
+/** 
+ * Shortcut for getting a room, or creating it if it doesn't exist
+ */
+static GPtrArray* _get_room(int room_num) {
 	GPtrArray *room = g_hash_table_lookup(rooms, &room_num);
 	
 	if (room == NULL) {
@@ -28,11 +31,8 @@ static GPtrArray* get_room(int room_num) {
 }
 
 void sub_client_ready(client_t *client) {
-	// Ask the client what he wants from us
-	client_write(client, op_text, QUERY_READY);
-	
 	// // Put the user into the UNSUBSCRIBED room until we get a response
-	GPtrArray *room = get_room(UNSUBSCRIBED);
+	GPtrArray *room = _get_room(UNSUBSCRIBED);
 	g_ptr_array_add(room, client);
 }
 

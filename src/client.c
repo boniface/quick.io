@@ -7,6 +7,14 @@
 #include "handler_rfc6455.h"
 #include "pubsub.h"
 
+/**
+ * Anything that needs to happen once a client is ready for talking.
+ */
+static void _client_ready(client_t *client) {
+	// Set the user into a room
+	sub_client_ready(client);
+}
+
 status_t client_handshake(client_t *client) {
 	gboolean all_good = TRUE;
 	enum handlers handler = none;
@@ -35,7 +43,7 @@ status_t client_handshake(client_t *client) {
 			// We're done here.
 			client->initing = 0;
 			client->handler = handler;
-			sub_client_ready(client);
+			_client_ready(client);
 			
 			return CLIENT_GOOD;
 		}
@@ -64,8 +72,7 @@ status_t client_message(client_t* client) {
 	
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
-		message_t *message = client->message;
-		status = command_handle(message);
+		status = command_handle(client);
 		
 		if (status == CLIENT_GOOD && !client_write_response(client)) {
 			status = CLIENT_ABORTED;
@@ -100,5 +107,10 @@ status_t client_write(client_t *client, opcode_t type, char *msg) {
 
 status_t client_write_response(client_t *client) {
 	message_t *message = client->message;
-	return client_write(client, message->type, message->buffer->str);
+	
+	if (message->buffer->len > 0) {
+		return client_write(client, message->type, message->buffer->str);
+	}
+	
+	return CLIENT_GOOD;
 }

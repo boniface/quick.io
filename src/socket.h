@@ -20,14 +20,19 @@
 #define EPOLL_WAIT -1
 
 /**
- * Setup internal structures for handling all the connections
+ * Open up the listening socket in preparation for forking.
  */
 gboolean socket_init(void);
 
 /**
- * Close down all the threads.
+ * Start running.
  */
-void socket_finish(void);
+void socket_loop(void);
+
+/**
+ * Setup the necessary control structures.
+ */
+gboolean socket_init_epoll(void);
 
 /**
  * Closes and cleans up the client.

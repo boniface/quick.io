@@ -7,9 +7,10 @@
 #define CLIENT_NEED_MASK 1 << 3
 #define CLIENT_MESSAGE_TOO_LONG 1 << 4
 #define CLIENT_UNKNOWN_COMMAND 1 << 5
-#define CLIENT_UNSUPPORTED_OPCODE 1 << 6
+#define CLIENT_BAD_COMMAND 1 << 6
+#define CLIENT_UNSUPPORTED_OPCODE 1 << 7
 
-#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE)
+#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_COMMAND | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE)
 
 /**
  * The client status type.
@@ -67,9 +68,6 @@ struct client_s {
 	
 	// If the client is still in the initing (handshake) process
 	char initing;
-	
-	// The thread this client runs in
-	short thread;
 	
 	// The handler for this client
 	enum handlers handler;

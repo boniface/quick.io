@@ -18,7 +18,7 @@
 		
 		s.onopen = function() {
 			console.log('open!');
-			s.send('ping:THIS SHOULD BE RETURNED');
+			s.send('sub:1477');
 		};
 		
 		s.onclose = function() {
@@ -27,7 +27,6 @@
 		
 		s.onmessage = function(m) {
 			console.log(m.data);
-			
 			console.log((new Date().getTime()) - start);
 		}
 	</script>

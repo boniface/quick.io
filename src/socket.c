@@ -13,17 +13,11 @@
 #include "option.h"
 #include "socket.h"
 
-// The number of threads to keep in the pool
-#define THREADS 4
-
-// Our threads for managing the clients
-static GThread **threads;
-
 // The socket we accept connections on
 static int _listen_sock;
 
-// All our epoll instances across the threads
-static int _epoll[THREADS];
+// Our epoll instance
+static int _epoll;
 
 /**
  * Adds an epoll listener on the specified fd.
@@ -35,7 +29,7 @@ static void _socket_epoll_add(int fd, client_t *client) {
 	ev.data.ptr = client;
 	
 	// Start listening on the socket for anything the client has to offer
-	if (epoll_ctl(_epoll[client->thread], EPOLL_CTL_ADD, fd, &ev) == -1) {
+	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, fd, &ev) == -1) {
 		ERROR("Could not listen on client socket");
 		socket_close(client);
 		return;
@@ -45,7 +39,7 @@ static void _socket_epoll_add(int fd, client_t *client) {
 /**
  * Accepts a new client into our midst
  */
-static void _socket_accept_client(short thread) {
+static void _socket_accept_client() {
 	int sock = accept(_listen_sock, (struct sockaddr*)NULL, NULL);
 	
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
@@ -67,12 +61,11 @@ static void _socket_accept_client(short thread) {
 	// Basic information about this client
 	client->sock = sock;
 	client->initing = 1;
-	client->thread = thread;
 	
 	// Make the client finish the handshake quickly, or drop him
 	socket_set_timer(client);
 	
-	// Add the client to this thread's epoll
+	// Add the client to our epoll
 	_socket_epoll_add(sock, client);
 }
 
@@ -164,35 +157,13 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 /**
  * Reads data from the client sockets until it can construct a full message.
  * Once a message is constructed, it passes it off to pubsub for routing.
- *
- * `data` is always null.
  */
-static void _socket_loop(gpointer data) {
-	// Our current thread number
-	short thread = *((short*)data);
-	free(data);
-	
-	// 1 -> a positive, int size must be given; ignored by new kernels
-	int poll = _epoll[thread] = epoll_create(1);
-	if (poll < 1) {
-		ERROR("Could not init epoll");
-		return;
-	}
-	
-	// Listen on our accept socket for incoming connections
-	struct epoll_event ev;
-	ev.events = EPOLL_READ_EVENTS;
-	ev.data.fd = _listen_sock;
-	if (epoll_ctl(poll, EPOLL_CTL_ADD, _listen_sock, &ev) == -1) {
-		ERROR("Could not add epoll listener for socket accept");
-		return;
-	}
-
+void socket_loop() {
 	// Where the OS will put events for us
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
 	while (1) {
-		int num_evs = epoll_wait(poll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
+		int num_evs = epoll_wait(_epoll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 		
 		// Since we're polling at an interval, it's possible no events
 		// will have happened
@@ -206,7 +177,7 @@ static void _socket_loop(gpointer data) {
 			
 			if (ev.data.fd == _listen_sock) {
 				// If we have an incoming connection waiting
-				_socket_accept_client(thread);
+				_socket_accept_client();
 			} else {
 				// Pass off the necessary data to the handler
 				_socket_handle_client((client_t*)ev.data.ptr, ev.events);
@@ -215,10 +186,10 @@ static void _socket_loop(gpointer data) {
 	}
 }
 
-static gboolean _socket_setup_listener() {
+gboolean socket_init() {
 	struct sockaddr_in addy;
 	
-	if ((_listen_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((_listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		ERROR("Could not create socket");
 		return FALSE;
 	}
@@ -235,43 +206,37 @@ static gboolean _socket_setup_listener() {
 	}
 	
 	if (bind(_listen_sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
-		ERROR("Could not bind");
+		ERRORF("Could not bind: %s", strerror(errno));
 		return FALSE;
 	}
 	
 	if (listen(_listen_sock, LISTEN_BACKLOG) == -1) {
-		ERROR("Could not listen");
+		ERRORF("Could not listen: %s", strerror(errno));
 		return FALSE;
 	}
 	
 	return TRUE;
 }
 
-/**
- * Setup the thread pools
- */
-gboolean socket_init() {
-	// Setup the listener socket
-	if (!_socket_setup_listener()) {
-		ERROR("Could not setup listener");
+gboolean socket_init_epoll() {
+	// 1 -> a positive, int size must be given; ignored by new kernels
+	_epoll = epoll_create(1);
+	
+	if (_epoll < 1) {
+		ERRORF("Could not init epoll: %s", strerror(errno));
 		return FALSE;
 	}
 	
-	threads = malloc(THREADS * sizeof(*threads));
-	for (int i = 0; i < THREADS; i++) {
-		gpointer thread = malloc(sizeof(short));
-		*((short*)thread) = i;
-		
-		*(threads + i) = g_thread_create((GThreadFunc)_socket_loop, thread, TRUE, NULL);
+	// Listen on our accept socket for incoming connections
+	struct epoll_event ev;
+	ev.events = EPOLL_READ_EVENTS;
+	ev.data.fd = _listen_sock;
+	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _listen_sock, &ev) == -1) {
+		ERROR("Could not add epoll listener for socket accept");
+		return FALSE;
 	}
-	
-	return TRUE;
-}
 
-void socket_finish() {
-	for (int i = 0; i < THREADS; i++) {
-		g_thread_join(*(threads + i));
-	}
+	return TRUE;
 }
 
 void socket_close(client_t *client) {

@@ -12,6 +12,21 @@ gchar* option_address(void);
 gint option_port(void);
 
 /**
+ * Gets the gossip bind address.
+ */
+gint option_gossip_address(void);
+
+/**
+ * Gets the gossip bind port.
+ */
+gint option_gossip_port(void);
+
+/**
+ * Gets the number of processes that should be spawned.
+ */
+gint option_processes(void);
+
+/**
  * Gets the client timeout.
  */
 gint option_timeout(void);

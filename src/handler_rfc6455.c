@@ -150,14 +150,12 @@ char* rfc6455_prepare_frame(opcode_t type, char *msg, int *frame_len) {
 			return NULL;
 		}
 		
-		DEBUGF("%d\n", sizeof(*frame));
-		
 		// The first frame of text is ALWAYS the same
 		*frame = FIRST_BYTE;
 		
+		// The opcode that we should sent back to the client
 		switch (type) {
 			case op_pong:
-				DEBUG("PONG");
 				*frame |= OP_PONG;
 				break;
 			
