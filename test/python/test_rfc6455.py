@@ -31,7 +31,8 @@ READY = '\x81\05ready'
 # A ping message to be sent to the server
 PING = '\x89\x84%s%s' % (XORD, MASK)
 
-PING_RESPONSE = '\x81\x8a%s' % TEST
+# The expected response to a PING
+PONG = '\x8a\x04%s' % TEST
 
 def _binary_socket():
 	s = get_socket()
@@ -80,4 +81,4 @@ def test_ping():
 	print PING
 	s.send(PING)
 	
-	assert_equals(s.recv(64), PING_RESPONSE)
+	assert_equals(s.recv(64), PONG)

@@ -16,8 +16,8 @@
 /**
  * Read masked text from the socket buffer.
  */
-static short _rfc6455_read_text(client_t *client) {
-	GString *sb = client->command->socket_buffer;
+static status_t _rfc6455_read_text(client_t *client) {
+	GString *sb = client->message->socket_buffer;
 	char *buff = sb->str;
 	
 	// If we haven't even finished reading the header from the socket
@@ -68,14 +68,14 @@ static short _rfc6455_read_text(client_t *client) {
 	}
 	
 	// Update the current command's mask and length for any future reads
-	client->command->remaining_length = len;
-	client->command->mask = (guint32)(*mask);
+	client->message->remaining_length = len;
+	client->message->mask = (guint32)(*mask);
 	
 	// The number of bytes we have in our buffer for reading
 	int available = sb->len - header_len;
 	
 	// Go through the available message and add it to the output buffer
-	GString *ob = client->command->buffer;
+	GString *ob = client->message->buffer;
 	for (int i = 0; i < available; i++) {
 		g_string_append_c(ob, (char)(*(buff + i) ^ mask[i % 4]));
 	}
@@ -127,7 +127,7 @@ gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	return TRUE;
 }
 
-char* rfc6455_prepare_frame(char *msg, int *frame_len) {
+char* rfc6455_prepare_frame(opcode_t type, char *msg, int *frame_len) {
 	char *frame;
 	
 	// If 125 chars or less, then only use 7 bits to represent
@@ -143,10 +143,29 @@ char* rfc6455_prepare_frame(char *msg, int *frame_len) {
 		*frame_len = (payload_len + 2);
 		
 		frame = malloc(*frame_len * sizeof(*frame));
-		printf("%d\n", sizeof(*frame));
+		
+		// If can't malloc...that's bad.
+		if (frame == NULL) {
+			*frame_len = -1;
+			return NULL;
+		}
+		
+		DEBUGF("%d\n", sizeof(*frame));
 		
 		// The first frame of text is ALWAYS the same
-		*frame = FIRST_BYTE_TEXT;
+		*frame = FIRST_BYTE;
+		
+		switch (type) {
+			case op_pong:
+				DEBUG("PONG");
+				*frame |= OP_PONG;
+				break;
+			
+			default:
+			case op_text:
+				*frame |= OP_TEXT;
+				break;
+		}
 		
 		// The second frame: the first bit is always 0 (data going
 		// to the client is never masked), and since the length is
@@ -163,11 +182,11 @@ char* rfc6455_prepare_frame(char *msg, int *frame_len) {
 	return frame;
 }
 
-short rfc6455_incoming(client_t *client) {
-	char *buff = client->command->socket_buffer->str;
+status_t rfc6455_incoming(client_t *client) {
+	char *buff = client->message->socket_buffer->str;
 	
 	// If data came from the client unmasked, then that's wrong. Abort.
-	if ((*(buff + 1) & MASK_BYTE) == 0) {
+	if ((*(buff + 1) & MASK_BIT) == 0) {
 		return CLIENT_NEED_MASK;
 	}
 	
@@ -175,11 +194,13 @@ short rfc6455_incoming(client_t *client) {
 	char opcode = *buff & OPCODE;
 	
 	if (opcode == OP_CONTINUATION || opcode == OP_TEXT) {
+		client->message->type = op_text;
 		return _rfc6455_read_text(client);
 	} else if (opcode == OP_BINARY) {
 		return CLIENT_UNSUPPORTED_OPCODE;
 	} else if (opcode == OP_PING) {
-		g_string_append(client->command->buffer, COMMAND_PING);
+		client->message->type = op_pong;
+		g_string_append(client->message->buffer, COMMAND_PING);
 		return _rfc6455_read_text(client);
 	}
 	

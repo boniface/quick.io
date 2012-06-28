@@ -77,27 +77,27 @@ static void _socket_accept_client(short thread) {
 }
 
 /**
- * Create a new command struct in the client
+ * Create a new message struct in the client
  */
-static void _socket_command_new(client_t *client) {
-	// Don't overwrite any command that currently exists
-	if (client->command != NULL) {
+static void _socket_message_new(client_t *client) {
+	// Don't overwrite any message that currently exists
+	if (client->message != NULL) {
 		return;
 	}
 
-	command_t *command = malloc(sizeof(*command));
-	memset(command, 0, sizeof(*command));
+	message_t *message = malloc(sizeof(*message));
+	memset(message, 0, sizeof(*message));
 	
 	// Initing clients get larger buffers because they'll typically send more
 	if (client->initing) {
-		command->socket_buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
-		command->buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
+		message->socket_buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
+		message->buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
 	} else {
-		command->socket_buffer = g_string_sized_new(STRING_BUFFER_SIZE);
-		command->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+		message->socket_buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+		message->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
 	}
 	
-	client->command = command;
+	client->message = message;
 }
 
 static void _socket_handle_client(client_t *client, uint32_t evs) {
@@ -117,25 +117,25 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 			return;
 		}
 	
-		// Clients typically aren't sending commands
-		_socket_command_new(client);
+		// Clients typically aren't sending messages
+		_socket_message_new(client);
 		
 		// Read the message the client sent, unless it's too large,
 		// then kill the client
 		int len;
 		while ((len = read(client->sock, buffer, sizeof(buffer))) > 0) {
 			// Put the buffer into our string
-			g_string_append_len(client->command->socket_buffer, buffer, len);
+			g_string_append_len(client->message->socket_buffer, buffer, len);
 			
 			// If the client needs to ehance his calm, kill the connection.
-			if (client->command->socket_buffer->len > MAX_BUFFER_SIZE) {
+			if (client->message->socket_buffer->len > MAX_BUFFER_SIZE) {
 				DEBUG("Client needs to ehance his calm");
 				socket_close(client);
 				return;
 			}
 		}
 		
-		short status;
+		status_t status;
 		if (client->initing) {
 			DEBUG("Client handshake");
 			status = client_handshake(client);
@@ -147,7 +147,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// If the client becomes good, then clear the timer and let him live
 		if (status == CLIENT_GOOD) {
 			socket_clear_timer(client);
-			socket_command_free(client);
+			socket_message_free(client);
 		
 		// The client is misbehaving. Close him.
 		} else if (status & CLIENT_BAD) {
@@ -278,23 +278,23 @@ void socket_close(client_t *client) {
 	// Closing the socket also causes the OS to remove it from epoll
 	close(client->sock);
 	socket_clear_timer(client);
-	socket_command_free(client);
+	socket_message_free(client);
 	free(client);
 }
 
 /**
- * Free everything inside of the client command.
+ * Free everything inside of the client message.
  */
-void socket_command_free(client_t *client) {
-	if (client->command == NULL) {
+void socket_message_free(client_t *client) {
+	if (client->message == NULL) {
 		// Nothing to free
 		return;
 	}
 	
-	g_string_free(client->command->socket_buffer, TRUE);
-	g_string_free(client->command->buffer, TRUE);
-	free(client->command);
-	client->command = NULL;
+	g_string_free(client->message->socket_buffer, TRUE);
+	g_string_free(client->message->buffer, TRUE);
+	free(client->message);
+	client->message = NULL;
 }
 
 void socket_set_timer(client_t *client) {

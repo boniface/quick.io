@@ -1,5 +1,7 @@
 .PHONY: clean test
 
+all: test
+
 test:
 	ve/bin/nosetests --processes=8 --process-restartworker
 

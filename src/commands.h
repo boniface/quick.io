@@ -15,7 +15,7 @@
  * Returns CLIENT_* status messages.  command->buffer will be set to what should
  * be sent back to the client, or will be empty (command->buffer->len == 0).
  */
-short command_handle(command_t*);
+status_t command_handle(message_t*);
 
 /**
  * Init the command interface

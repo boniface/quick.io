@@ -1,6 +1,7 @@
 #pragma once
 #include <libsoup/soup.h>
 
+#include "client.h"
 #include "socket.h"
 
 /**
@@ -18,7 +19,7 @@ gboolean rfc6455_handshake(client_t*, SoupMessageHeaders*);
  *
  * The return of the function must be free()'d
  */
-char* rfc6455_prepare_frame(char*, int*);
+char* rfc6455_prepare_frame(opcode_t, char*, int*);
 
 /**
  * Read an incoming from from the client.
@@ -28,4 +29,4 @@ char* rfc6455_prepare_frame(char*, int*);
  *
  * If returns false, more data from the client is necessary to construct the message.
  */
-short rfc6455_incoming(client_t*);
+status_t rfc6455_incoming(client_t*);

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "client.h"
 #include "debug.h"
 #include "pubsub.h"
 #include "pubsub_const.h"
@@ -28,7 +29,7 @@ static GPtrArray* get_room(int room_num) {
 
 void sub_client_ready(client_t *client) {
 	// Ask the client what he wants from us
-	client_write(client, QUERY_READY);
+	client_write(client, op_text, QUERY_READY);
 	
 	// // Put the user into the UNSUBSCRIBED room until we get a response
 	GPtrArray *room = get_room(UNSUBSCRIBED);

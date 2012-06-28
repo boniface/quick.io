@@ -35,9 +35,9 @@ void socket_finish(void);
 void socket_close(client_t*);
 
 /**
- * Clear the command on the client.  We're done with it.
+ * Clear the message from the client.  We're done with it.
  */
-void socket_command_free(client_t*);
+void socket_message_free(client_t*);
 
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will

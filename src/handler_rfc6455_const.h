@@ -24,8 +24,13 @@
 #define OP_PING 0b00001001
 #define OP_PONG 0b00001010
 
-#define MASK_BYTE 0b10000000
-#define FIRST_BYTE_TEXT MASK_BYTE | OP_TEXT
+// The location of the mask bit in the second byte
+#define MASK_BIT 0b10000000
+
+// First bit = this is the final frame
+#define FIRST_BYTE 0b10000000
+
+// Ignore the first bit of the second byte, it's the masking bit
 #define SECOND_BYTE 0b01111111
 
 // The different payload lengths that change the header

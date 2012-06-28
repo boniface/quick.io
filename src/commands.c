@@ -6,7 +6,7 @@
 /**
  * The command function type.
  */
-typedef short(*commandfn_t)(command_t*);
+typedef status_t(*commandfn_t)(message_t*);
 
 /**
  * A table of all of the commands that a client can send.
@@ -16,15 +16,15 @@ static GHashTable* commands;
 /**
  * The "ping:" command
  */
-static short command_ping(command_t *command) {
+static status_t command_ping(message_t *message) {
 	//This command just needs to return whatever text we were given
 	//-1 -> get rid of the null pointer from sizeof()
-	g_string_erase(command->buffer, 0, sizeof(COMMAND_PING)-1);
+	g_string_erase(message->buffer, 0, sizeof(COMMAND_PING)-1);
 	return CLIENT_GOOD;
 }
 
-short command_handle(command_t *command) {
-	GString *buff = command->buffer;
+status_t command_handle(message_t *message) {
+	GString *buff = message->buffer;
 	int delim = strcspn(buff->str, COMMAND_DELIMITER);
 	
 	// If no command was found (ie. no delimiter, nothing before the delimeter)
@@ -42,7 +42,7 @@ short command_handle(command_t *command) {
 		return CLIENT_UNKNOWN_COMMAND;
 	}
 	
-	return (*fn)(command);
+	return (*fn)(message);
 }
 
 gboolean commands_init() {
