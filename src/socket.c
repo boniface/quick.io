@@ -240,6 +240,9 @@ gboolean socket_init_epoll() {
 }
 
 void socket_close(client_t *client) {
+	// Remove the client from all his rooms
+	sub_client_free(client);
+	
 	// Closing the socket also causes the OS to remove it from epoll
 	close(client->sock);
 	socket_clear_timer(client);

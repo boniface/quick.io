@@ -17,7 +17,7 @@ static void _client_ready(client_t *client) {
 
 status_t client_handshake(client_t *client) {
 	gboolean all_good = TRUE;
-	enum handlers handler = none;
+	enum handlers handler = h_none;
 	GString *buffer = client->message->socket_buffer;
 
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
@@ -25,7 +25,7 @@ status_t client_handshake(client_t *client) {
 	// Parse the headers and see if we can handle them
 	if (buffer->len && soup_headers_parse(buffer->str, buffer->len, req_headers)) {
 		if (rfc6455_handles(req_headers)) {
-			handler = rfc6455;
+			handler = h_rfc6455;
 			all_good = rfc6455_handshake(client, req_headers);
 		}
 	}
@@ -33,7 +33,7 @@ status_t client_handshake(client_t *client) {
 	soup_message_headers_free(req_headers);
 	
 	if (all_good) {
-		if (handler == none) {
+		if (handler == h_none) {
 			// Everything went well, but we don't have a handler yet
 			// Maybe the client hasn't finished sending headers? Let's
 			// wait for another read
@@ -58,11 +58,11 @@ status_t client_message(client_t* client) {
 	status_t status;
 	
 	switch (client->handler) {
-		case rfc6455:
+		case h_rfc6455:
 			status = rfc6455_incoming(client);
 			break;
 		
-		case none:
+		case h_none:
 		default:
 			// This should NEVER happen
 			ERROR("Client went into message processing without a handler");
@@ -74,7 +74,9 @@ status_t client_message(client_t* client) {
 	if (status == CLIENT_GOOD) {
 		status = command_handle(client);
 		
-		if (status == CLIENT_GOOD && !client_write_response(client)) {
+		#warning Need to handle different client status messages from handlers appropriately
+		
+		if (status == CLIENT_GOOD && client_write_response(client) != CLIENT_GOOD) {
 			status = CLIENT_ABORTED;
 		}
 	}
@@ -87,7 +89,7 @@ status_t client_write(client_t *client, opcode_t type, char *msg) {
 	char *frame;
 	
 	switch (client->handler) {
-		case rfc6455:
+		case h_rfc6455:
 			frame = rfc6455_prepare_frame(type, msg, &frame_len);
 			break;
 		

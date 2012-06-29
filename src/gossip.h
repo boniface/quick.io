@@ -1,8 +1,6 @@
 #pragma once
 #include <glib.h>
 
-#define LISTEN_BACKLOG 100
-
 /**
  * The file descriptor for doing gossip as a client.
  */

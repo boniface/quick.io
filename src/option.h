@@ -14,12 +14,17 @@ gint option_port(void);
 /**
  * Gets the gossip bind address.
  */
-gint option_gossip_address(void);
+gchar* option_gossip_address(void);
 
 /**
  * Gets the gossip bind port.
  */
 gint option_gossip_port(void);
+
+/**
+ * The number of rooms a client may be subscribed to.
+ */
+gint option_max_rooms(void);
 
 /**
  * Gets the number of processes that should be spawned.

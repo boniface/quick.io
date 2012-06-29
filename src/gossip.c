@@ -37,7 +37,7 @@ gboolean gossip_server(int* pipes) {
 	}
 	
 	while (1) {
-		int buff[1001];
+		char buff[1001];
 		int bytes = recvfrom(sock, buff, sizeof(buff)-1, 0, NULL, NULL);
 		
 		// If there's nothing there...w/e

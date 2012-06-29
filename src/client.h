@@ -1,5 +1,6 @@
 #pragma once
 #include <glib.h>
+#include "option.h"
 
 #define CLIENT_GOOD 1 << 0
 #define CLIENT_WAIT 1 << 1
@@ -9,6 +10,8 @@
 #define CLIENT_UNKNOWN_COMMAND 1 << 5
 #define CLIENT_BAD_COMMAND 1 << 6
 #define CLIENT_UNSUPPORTED_OPCODE 1 << 7
+#define CLIENT_TOO_MANY_ROOMS 1 << 8
+#define CLIENT_INVALID_ROOM 1 << 9
 
 #define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_COMMAND | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE)
 
@@ -52,8 +55,9 @@ typedef struct message_s message_t;
  * The websocket handlers
  */
 enum handlers {
-	none,
-	rfc6455,
+	h_none,
+	h_rfc6455,
+	h_len
 };
 
 /**
@@ -71,6 +75,9 @@ struct client_s {
 	
 	// The handler for this client
 	enum handlers handler;
+	
+	// The number of rooms the client is currently in
+	int room_count;
 	
 	// The current message the client is sending
 	message_t *message;

@@ -4,6 +4,7 @@ static gchar* _address = "127.0.0.1";
 static gint _port = 5000;
 static gchar* _gossip_address = "127.0.0.1";
 static gint _gossip_port = 43172;
+static gint _max_rooms = 5;
 static gint _processes = 8;
 static gint _timeout = 5;
 
@@ -13,6 +14,7 @@ static GOptionEntry options[] = {
 	{"gossip-port", 'l', 0, G_OPTION_ARG_INT, &_gossip_port, "Port for gossip to bind to", "43172"},
 	{"port", 'p', 0, G_OPTION_ARG_INT, &_port, "Port to run the server on", "5000"},
 	{"processes", 'c', 0, G_OPTION_ARG_INT, &_processes, "The number of processes to run", "8"},
+	{"max-rooms", 'm', 0, G_OPTION_ARG_INT, &_max_rooms, "The maximum number of rooms a client is allowed to be in", "5"},
 	{"timeout", 't', 0, G_OPTION_ARG_INT, &_timeout, "Bad client timeout", "5"},
 	{NULL}
 };
@@ -25,12 +27,16 @@ gint option_port() {
 	return _port;
 }
 
-gint option_gossip_address() {
+gchar* option_gossip_address() {
 	return _gossip_address;
 }
 
 gint option_gossip_port() {
 	return _gossip_port;
+}
+
+gint option_max_rooms() {
+	return _max_rooms;
 }
 
 gint option_timeout() {

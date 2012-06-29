@@ -19,6 +19,7 @@
 		s.onopen = function() {
 			console.log('open!');
 			s.send('sub:1477');
+			s.send('send:1477:testsadfasdf');
 		};
 		
 		s.onclose = function() {
