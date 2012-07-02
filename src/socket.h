@@ -8,10 +8,14 @@
 // Most messages won't exceed this: the initial headers are typically
 // around 150 characters
 #define STRING_BUFFER_SIZE 100
+
+// Headers are typically longer than messages, so minimized reallocs
 #define STRING_HEADER_BUFFER_SIZE 200
 
+#define STRING_BUFFER(client) client->initing == 1 ? STRING_HEADER_BUFFER_SIZE : STRING_BUFFER_SIZE
+
 // Externally, clients MUST not send more than 1000 characters per message.
-#define MAX_BUFFER_SIZE 1008 // Allow for the masking key and headers
+#define MAX_BUFFER_SIZE 1008*2 // Allow for the masking key and headers, two queued messages
 #define MAX_MESSAGE_SIZE 1000
 
 // Events epoll should wait for
@@ -40,9 +44,13 @@ gboolean socket_init_epoll(void);
 void socket_close(client_t*);
 
 /**
- * Clear the message from the client.  We're done with it.
+ * Free the client message, but not necessarily the underlying socket buffer.
+ *
+ * If purge_socket_buffer is TRUE, then the socket buffer will be forcibly
+ * dumped even if it is not empty.  Otherwise, the socket buffer is left 
+ * intact for futher reading / appending.
  */
-void socket_message_free(client_t*);
+void socket_message_free(client_t*, gboolean);
 
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will

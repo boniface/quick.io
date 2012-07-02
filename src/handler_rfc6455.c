@@ -97,6 +97,8 @@ gboolean rfc6455_handles(SoupMessageHeaders *req_headers) {
 gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	const char *key = soup_message_headers_get_one(req_headers, CHALLENGE_KEY);
 	
+	#error Rewrite the handshake to work with the new buffering scheme
+	
 	if (key == NULL) {
 		return FALSE;
 	}
@@ -194,12 +196,12 @@ status_t rfc6455_incoming(client_t *client) {
 	if (opcode == OP_CONTINUATION || opcode == OP_TEXT) {
 		client->message->type = op_text;
 		return _rfc6455_read_text(client);
-	} else if (opcode == OP_BINARY) {
-		return CLIENT_UNSUPPORTED_OPCODE;
 	} else if (opcode == OP_PING) {
 		client->message->type = op_pong;
 		g_string_append(client->message->buffer, COMMAND_PING);
 		return _rfc6455_read_text(client);
+	} else if (opcode == OP_BINARY) {
+		return CLIENT_UNSUPPORTED_OPCODE;
 	}
 	
 	// If the client wasn't handled above, that was bad

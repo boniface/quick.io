@@ -17,6 +17,9 @@
 // The socket we accept connections on
 static int _listen_sock;
 
+// The fake client for varying new socket connections from existing clients_fake_client
+static client_t *_fake_client;
+
 // Our epoll instance
 static int _epoll;
 
@@ -74,21 +77,20 @@ static void _socket_accept_client() {
  * Create a new message struct in the client
  */
 static void _socket_message_new(client_t *client) {
-	// Don't overwrite any message that currently exists
-	if (client->message != NULL) {
-		return;
-	}
-
-	message_t *message = malloc(sizeof(*message));
-	memset(message, 0, sizeof(*message));
+	message_t *message = client->message;
 	
-	// Initing clients get larger buffers because they'll typically send more
-	if (client->initing == 1) {
-		message->socket_buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
-		message->buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
-	} else {
-		message->socket_buffer = g_string_sized_new(STRING_BUFFER_SIZE);
-		message->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+	// Replace any slots in the message that might have been freed
+	if (message == NULL) {
+		message = malloc(sizeof(*message));
+		memset(message, 0, sizeof(*message));
+	}
+	
+	if (message->socket_buffer == NULL) {
+		message->socket_buffer = g_string_sized_new(STRING_BUFFER(client));
+	}
+	
+	if (message->buffer == NULL) {
+		message->buffer = g_string_sized_new(STRING_BUFFER(client));
 	}
 	
 	client->message = message;
@@ -110,7 +112,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 			socket_close(client);
 			return;
 		}
-	
+		
 		// Clients typically aren't sending messages
 		_socket_message_new(client);
 		
@@ -123,7 +125,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 			
 			// If the client needs to ehance his calm, kill the connection.
 			if (client->message->socket_buffer->len > MAX_BUFFER_SIZE) {
-				DEBUG("Client needs to ehance his calm");
+				DEBUG("Client needs to enhance his calm");
 				socket_close(client);
 				return;
 			}
@@ -141,10 +143,11 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// If the client becomes good, then clear the timer and let him live
 		if (status == CLIENT_GOOD) {
 			socket_clear_timer(client);
-			socket_message_free(client);
+			socket_message_free(client, FALSE);
 		
 		// The client is misbehaving. Close him.
 		} else if (status & CLIENT_BAD) {
+			DEBUGF("Bad client, closing: %d", status);
 			socket_close(client);
 		
 		// The client gets 1 timer to make itself behave. If it doesn't in this
@@ -175,13 +178,18 @@ void socket_loop() {
 		// Some events actually did happen; go through them all!
 		for (int i = 0; i < num_evs; i++) {
 			struct epoll_event ev = events[i];
+			client_t *client = ev.data.ptr;
 			
-			if (ev.data.ptr == &_listen_sock) {
+			if (client == _fake_client) {
+				DEBUG("ACCEPTING");
+				
 				// If we have an incoming connection waiting
 				_socket_accept_client();
 			} else {
+				DEBUG("HANDLING");
+				
 				// Pass off the necessary data to the handler
-				_socket_handle_client((client_t*)ev.data.ptr, ev.events);
+				_socket_handle_client(client, ev.events);
 			}
 		}
 		
@@ -230,15 +238,25 @@ gboolean socket_init_epoll() {
 		return FALSE;
 	}
 	
+	// A fake client for accepting new connections on the epoll
+	// Everything coming from an event has a ptr type, so fake a 
+	// client to make sure we can vary on a new client and an existing
+	// client.
+	_fake_client = malloc(sizeof(*_fake_client));
+	if (_fake_client == NULL) {
+		ERROR("Could not malloc fake client for socket accept");
+		return FALSE;
+	}
+	
 	// Listen on our accept socket for incoming connections
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
-	ev.data.ptr = &_listen_sock;
+	ev.data.ptr = _fake_client;
 	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _listen_sock, &ev) == -1) {
 		ERROR("Could not add epoll listener for socket accept");
 		return FALSE;
 	}
-
+	
 	return TRUE;
 }
 
@@ -249,23 +267,36 @@ void socket_close(client_t *client) {
 	// Closing the socket also causes the OS to remove it from epoll
 	close(client->sock);
 	socket_clear_timer(client);
-	socket_message_free(client);
+	socket_message_free(client, TRUE);
 	free(client);
 }
 
 /**
  * Free everything inside of the client message.
  */
-void socket_message_free(client_t *client) {
-	if (client->message == NULL) {
+void socket_message_free(client_t *client, gboolean purge_socket) {
+	message_t *message = client->message;
+	
+	if (message == NULL) {
 		// Nothing to free
 		return;
 	}
 	
-	g_string_free(client->message->socket_buffer, TRUE);
-	g_string_free(client->message->buffer, TRUE);
-	free(client->message);
-	client->message = NULL;
+	// Get rid of the message buffer, the message has been handled
+	if (message->buffer != NULL) {
+		g_string_free(message->buffer, TRUE);
+		message->buffer = NULL;
+	}
+	
+	message->remaining_length = 0;
+	message->type = 0;
+	message->mask = 0;
+	
+	if (purge_socket || message->socket_buffer->len == 0) {
+		g_string_free(message->socket_buffer, TRUE);
+		free(message);
+		client->message = NULL;
+	}
 }
 
 void socket_set_timer(client_t *client) {

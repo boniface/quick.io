@@ -45,7 +45,7 @@ def setup():
 	port = str(random.randint(5000, 15000))
 	
 	cmd = [
-		'../../src/server',
+		'../../app/server',
 		'--port=' + port,
 		'--timeout=1'
 	]

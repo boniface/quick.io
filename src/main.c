@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "app.h"
 #include "commands.h"
 #include "debug.h"
 #include "gossip.h"
@@ -59,6 +60,9 @@ static gboolean _main_fork(int **pipes, pid_t **pids) {
 			
 			// Setup our gossip stuff
 			gossip_client(pipefd[0]);
+			
+			// Setup the app inside this thread
+			app_init();
 			
 			// Run the socket loop
 			socket_loop();

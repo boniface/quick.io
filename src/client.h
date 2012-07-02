@@ -40,7 +40,7 @@ struct message_s {
 	// The opcode from the message
 	opcode_t type;
 	
-	// The mask used for all the data in this message
+	// The mask used for all the data in this message; all messages are 32 bits
 	guint32 mask;
 	
 	// The data buffer of what has been read but not processed for the client

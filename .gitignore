@@ -1,8 +1,9 @@
+*.a
 *.o
 *.so
 *.pyc
 unit*.xml
-/src/server
+/app/server
 /test/python/ve/
 
 /*.sublime*
