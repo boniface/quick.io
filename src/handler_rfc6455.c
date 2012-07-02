@@ -127,7 +127,7 @@ gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	return TRUE;
 }
 
-char* rfc6455_prepare_frame(opcode_t type, char *msg, int *frame_len) {
+char* rfc6455_prepare_frame(message_t *message, int *frame_len) {
 	char *frame;
 	
 	// If 125 chars or less, then only use 7 bits to represent
@@ -136,7 +136,7 @@ char* rfc6455_prepare_frame(opcode_t type, char *msg, int *frame_len) {
 	// If greater than 125, then the first 7 bits should be 126,
 	// and the following two bytes will be interpreted as a
 	// 16-bit unsigned int
-	int payload_len = strlen(msg);
+	int payload_len = message->buffer->len;
 	if (payload_len <= PAYLOAD_SHORT) {
 		// Since this is a small message, we only need 2 extra bytes
 		// to represent the data
@@ -154,7 +154,7 @@ char* rfc6455_prepare_frame(opcode_t type, char *msg, int *frame_len) {
 		*frame = FIRST_BYTE;
 		
 		// The opcode that we should sent back to the client
-		switch (type) {
+		switch (message->type) {
 			case op_pong:
 				*frame |= OP_PONG;
 				break;
@@ -170,7 +170,7 @@ char* rfc6455_prepare_frame(opcode_t type, char *msg, int *frame_len) {
 		// less than 125, that bit will ALWAYS be set to 0, as it should
 		*(frame + 1) = payload_len;
 		
-		memcpy((frame + 2), msg, payload_len);
+		memcpy((frame + 2), message->buffer->str, payload_len);
 	} else {
 		ERROR("Msg len > 125, not implemented");
 		*frame_len = -1;

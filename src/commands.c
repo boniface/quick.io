@@ -67,12 +67,12 @@ static status_t command_subscribe(client_t *client, message_t *message) {
 	
 	status_t status = sub_client(message->buffer->str, client);
 	// Attempt to subscribe the client to the room
-	if (status == CLIENT_INVALID_ROOM) {
+	if (status == CLIENT_INVALID_SUBSCRIPTION) {
 		// The room was invalid, inform the client
-		g_string_prepend(message->buffer, COMMAND_RESPONSE_INVALID_ROOM);
-	} else if (status == CLIENT_TOO_MANY_ROOMS) {
+		g_string_prepend(message->buffer, COMMAND_RESPONSE_INVALID_SUBSCRIPTION);
+	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
 		// The client is subscribed to the maximum number of rooms already, may not add any more
-		g_string_prepend(message->buffer, COMMAND_RESPONSE_MAX_ROOMS);
+		g_string_prepend(message->buffer, COMMAND_RESPONSE_MAX_SUBSCRIPTIONS);
 	} else {
 		// The room was valid, so the client doesn't get anything back
 		g_string_truncate(message->buffer, 0);
@@ -97,6 +97,10 @@ static status_t command_send(client_t *client, message_t *message) {
 	
 	status_t status = pub_message(room, message);
 	free(room);
+	
+	// We don't send anything back for a send...that's handled transparently for us
+	g_string_truncate(message->buffer, 0);
+	
 	return status;
 }
 

@@ -19,7 +19,7 @@ gboolean rfc6455_handshake(client_t*, SoupMessageHeaders*);
  *
  * The return of the function must be free()'d
  */
-char* rfc6455_prepare_frame(opcode_t, char*, int*);
+char* rfc6455_prepare_frame(message_t*, int*);
 
 /**
  * Read an incoming from from the client.

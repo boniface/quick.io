@@ -88,7 +88,7 @@ static void _main_cull_children(int *pids) {
 
 int main(int argc, char *argv[]) {
 	GError *error = NULL;
-	if (option_parse_args(argc, argv, error)) {
+	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
 	} else {
 		ERROR(error->message);
@@ -106,6 +106,13 @@ int main(int argc, char *argv[]) {
 		DEBUG("Commands inited");
 	} else {
 		ERROR("Could not init commands.");
+		return 1;
+	}
+	
+	if (client_init()) {
+		DEBUG("Client inited");
+	} else {
+		ERROR("Could not init client.");
 		return 1;
 	}
 	

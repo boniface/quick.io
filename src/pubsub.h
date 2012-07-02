@@ -6,23 +6,34 @@
 #define UNSUBSCRIBED "0"
 
 /**
+ * The initial number of subscriptions a client should have.
+ *
+ * This is a power of 2 because that is GPtrArray always expands
+ * itself to the nearest power of 2.
+ */
+#define PUBSUB_CLIENT_INTIAL_COUNT 4
+
+/**
  * Setup everything the pubsub needs to run.
  */
 gboolean pubsub_init(void);
 
 /**
- * Puts the client into the UNSUBSCRIBED room, waiting for any futher commands.
+ * Add the client to UNSUBSCRIBED, waiting for any futher commands.
  */
 void sub_client_ready(client_t*);
 
 /**
- * Subscribes a client to a room.  This will unsubscribe a client from his
- * other rooms if the single-subscribe flag was given.
+ * Subscribes a client to an event.
  */
 status_t sub_client(gchar*, client_t*);
 
 /**
- * The client has been closed. Remove him from all the rooms.
+ * The client has been closed. Remove him from all his subscriptions and free
+ * any relevant memory.
+ *
+ * THIS SHOULD NEVER BE CALLED FROM ANYTHING BUT THE MAIN THREAD. IT IS NOT
+ * THREAD SAFE.
  */
 void sub_client_free(client_t*);
 

@@ -24,7 +24,7 @@ gint option_gossip_port(void);
 /**
  * The number of rooms a client may be subscribed to.
  */
-gint option_max_rooms(void);
+gint option_max_subscriptions(void);
 
 /**
  * Gets the number of processes that should be spawned.
@@ -39,4 +39,4 @@ gint option_timeout(void);
 /**
  * Parses all the command line options.
  */
-gboolean option_parse_args(int, char*[], GError*);
+gboolean option_parse_args(int, char*[], GError**);

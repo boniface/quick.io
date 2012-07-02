@@ -10,10 +10,11 @@
 #define CLIENT_UNKNOWN_COMMAND 1 << 5
 #define CLIENT_BAD_COMMAND 1 << 6
 #define CLIENT_UNSUPPORTED_OPCODE 1 << 7
-#define CLIENT_TOO_MANY_ROOMS 1 << 8
-#define CLIENT_INVALID_ROOM 1 << 9
+#define CLIENT_TOO_MANY_SUBSCRIPTIONS 1 << 8
+#define CLIENT_INVALID_SUBSCRIPTION 1 << 9
+#define CLIENT_BAD_MESSAGE 1 << 10
 
-#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_COMMAND | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE)
+#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_COMMAND | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE)
 
 /**
  * The client status type.
@@ -55,9 +56,20 @@ typedef struct message_s message_t;
  * The websocket handlers
  */
 enum handlers {
-	h_none,
 	h_rfc6455,
-	h_len
+	h_len,
+	
+	// Not included in the length because we don't use it for arrays
+	h_none,
+};
+
+/**
+ * The status of the client.
+ */
+enum client_status {
+	s_initing,
+	s_ready,
+	s_dead,
 };
 
 /**
@@ -76,8 +88,12 @@ struct client_s {
 	// The handler for this client
 	enum handlers handler;
 	
-	// The number of rooms the client is currently in
-	int room_count;
+	// The number of subscriptions the client has
+	int sub_count;
+	
+	// Which events the client is currently subscribed to.
+	// THIS MUST ONLY BE MODIFIED FROM THE CHILD'S MAIN THREAD.
+	GPtrArray *subs;
 	
 	// The current message the client is sending
 	message_t *message;
@@ -99,14 +115,30 @@ status_t client_message(client_t*);
 
 /**
  * Write a specific message to a client.
+ *
+ * If message is null, it will attempt to extract the message from the client.
  */
-status_t client_write(client_t*, opcode_t, char*);
+status_t client_write(client_t*, message_t*);
 
 /**
- * Write 1 single message to 1 single client. THIS SHOULD NOT BE USED FOR BULK WRITES.
+ * Write the given message to the underlying client socket.
  *
- * Takes the message object attached to the client and sends back the buffer, formatted
- * based on the given command and the text.  This also checks that the buffer has
- * something to write back (if a TEXT message), or anything with a PING/PONG message.
+ * This is a separate function for bulk writing: it merely demands a pre-formatted
+ * frame and frame length, and then it writes to the client, giving a status in return.
  */
-status_t client_write_response(client_t*);
+status_t client_write_frame(client_t*, char*, int);
+
+/**
+ * Marks a client as dead and gets it ready for cleanup.
+ */
+void client_kill(client_t*);
+
+/**
+ * Cleans up the dead clients.
+ */
+void client_cleanup(void);
+
+/**
+ * Setup the necessary internal structures for clients.
+ */
+gboolean client_init(void);

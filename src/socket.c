@@ -11,6 +11,7 @@
 #include "client.h"
 #include "debug.h"
 #include "option.h"
+#include "pubsub.h"
 #include "socket.h"
 
 // The socket we accept connections on
@@ -82,7 +83,7 @@ static void _socket_message_new(client_t *client) {
 	memset(message, 0, sizeof(*message));
 	
 	// Initing clients get larger buffers because they'll typically send more
-	if (client->initing) {
+	if (client->initing == 1) {
 		message->socket_buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
 		message->buffer = g_string_sized_new(STRING_HEADER_BUFFER_SIZE);
 	} else {
@@ -129,7 +130,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		}
 		
 		status_t status;
-		if (client->initing) {
+		if (client->initing == 1) {
 			DEBUG("Client handshake");
 			status = client_handshake(client);
 		} else {
@@ -175,7 +176,7 @@ void socket_loop() {
 		for (int i = 0; i < num_evs; i++) {
 			struct epoll_event ev = events[i];
 			
-			if (ev.data.fd == _listen_sock) {
+			if (ev.data.ptr == &_listen_sock) {
 				// If we have an incoming connection waiting
 				_socket_accept_client();
 			} else {
@@ -183,6 +184,8 @@ void socket_loop() {
 				_socket_handle_client((client_t*)ev.data.ptr, ev.events);
 			}
 		}
+		
+		client_cleanup();
 	}
 }
 
@@ -230,7 +233,7 @@ gboolean socket_init_epoll() {
 	// Listen on our accept socket for incoming connections
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
-	ev.data.fd = _listen_sock;
+	ev.data.ptr = &_listen_sock;
 	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _listen_sock, &ev) == -1) {
 		ERROR("Could not add epoll listener for socket accept");
 		return FALSE;
@@ -240,7 +243,7 @@ gboolean socket_init_epoll() {
 }
 
 void socket_close(client_t *client) {
-	// Remove the client from all his rooms
+	// Remove the client from all his subscriptions
 	sub_client_free(client);
 	
 	// Closing the socket also causes the OS to remove it from epoll

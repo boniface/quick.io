@@ -4,4 +4,4 @@
 /**
  * Determines if a room name is valid.
  */
-gboolean validate_room(gchar*);
+gboolean validate_subscription(gchar*);
