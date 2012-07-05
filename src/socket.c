@@ -8,6 +8,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "client.h"
 #include "debug.h"
 #include "option.h"
@@ -17,8 +21,8 @@
 // The socket we accept connections on
 static int _listen_sock;
 
-// The fake client for varying new socket connections from existing clients_fake_client
-static client_t *_fake_client;
+// The thread that accepts connections
+static GThread *_thread;
 
 // Our epoll instance
 static int _epoll;
@@ -26,7 +30,7 @@ static int _epoll;
 /**
  * Adds an epoll listener on the specified fd.
  */
-static void _socket_epoll_add(int fd, client_t *client) {
+static gboolean _socket_epoll_add(int fd, client_t *client) {
 	// Events that we listen for on the new client socket
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
@@ -34,43 +38,55 @@ static void _socket_epoll_add(int fd, client_t *client) {
 	
 	// Start listening on the socket for anything the client has to offer
 	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, fd, &ev) == -1) {
-		ERROR("Could not listen on client socket");
+		ERROR("Could not add socket to epoll");
 		socket_close(client);
-		return;
+		return FALSE;
 	}
+	
+	return TRUE;
 }
 
 /**
  * Accepts a new client into our midst
  */
-static void _socket_accept_client() {
-	int sock = accept(_listen_sock, (struct sockaddr*)NULL, NULL);
-	
-	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
-		ERROR("Could not set client non-blocking");
-		close(sock);
-		return;
+static gpointer _socket_accept_client(gpointer unused) {
+	while (1) {
+		int sock = accept(_listen_sock, (struct sockaddr*)NULL, NULL);
+		
+		// Couldn't accept...move on
+		if (sock == -1) {
+			continue;
+		}
+		
+		if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
+			ERROR("Could not set client non-blocking");
+			close(sock);
+			continue;
+		}
+		
+		client_t *client = malloc(sizeof(*client));
+		if (client == NULL) {
+			ERROR("Client could not be malloc()'d");
+			close(sock);
+			continue;
+		}
+		
+		// Make sure our memory is nice and spiffy-clean
+		memset(client, 0, sizeof(*client));
+		
+		// Basic information about this client
+		client->sock = sock;
+		client->initing = 1;
+		
+		// Make the client finish the handshake quickly, or drop him
+		// If we can't setup the timer, then move on
+		if (socket_set_timer(client)) {
+			// Add the client to our epoll
+			_socket_epoll_add(sock, client);
+		}
 	}
 	
-	client_t *client = malloc(sizeof(*client));
-	if (client == NULL) {
-		ERROR("Client could not be malloc()'d");
-		close(sock);
-		return;
-	}
-	
-	// Make sure our memory is nice and spiffy-clean
-	memset(client, 0, sizeof(*client));
-	
-	// Basic information about this client
-	client->sock = sock;
-	client->initing = 1;
-	
-	// Make the client finish the handshake quickly, or drop him
-	socket_set_timer(client);
-	
-	// Add the client to our epoll
-	_socket_epoll_add(sock, client);
+	return NULL;
 }
 
 /**
@@ -97,7 +113,7 @@ static void _socket_message_new(client_t *client) {
 }
 
 static void _socket_handle_client(client_t *client, uint32_t evs) {
-	gchar buffer[1000];
+	gchar buffer[MAX_MESSAGE_SIZE];
 	
 	if (evs & EPOLLRDHUP) {
 		DEBUG("A client closed");
@@ -143,11 +159,12 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// If the client becomes good, then clear the timer and let him live
 		if (status == CLIENT_GOOD) {
 			socket_clear_timer(client);
-			socket_message_free(client, FALSE);
+			socket_message_free(client, client->message->socket_buffer->len == 0);
 		
 		// The client is misbehaving. Close him.
 		} else if (status & CLIENT_BAD) {
 			DEBUGF("Bad client, closing: %d", status);
+			DEBUGF("Bad client: %s", status == CLIENT_NEED_MASK ? "yep" : "nope");
 			socket_close(client);
 		
 		// The client gets 1 timer to make itself behave. If it doesn't in this
@@ -159,14 +176,15 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 }
 
 /**
- * Reads data from the client sockets until it can construct a full message.
- * Once a message is constructed, it passes it off to pubsub for routing.
  */
 void socket_loop() {
 	// Where the OS will put events for us
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
 	while (1) {
+		// Send out messages at the end of a loop (this will always be hit on event loop)
+		pub_messages();
+		
 		int num_evs = epoll_wait(_epoll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 		
 		// Since we're polling at an interval, it's possible no events
@@ -175,25 +193,16 @@ void socket_loop() {
 			continue;
 		}
 		
+		DEBUGF("Num events: %d in %d", num_evs, getpid());
+		
 		// Some events actually did happen; go through them all!
 		for (int i = 0; i < num_evs; i++) {
 			struct epoll_event ev = events[i];
 			client_t *client = ev.data.ptr;
 			
-			if (client == _fake_client) {
-				DEBUG("ACCEPTING");
-				
-				// If we have an incoming connection waiting
-				_socket_accept_client();
-			} else {
-				DEBUG("HANDLING");
-				
-				// Pass off the necessary data to the handler
-				_socket_handle_client(client, ev.events);
-			}
+			// Pass off the necessary data to the handler
+			_socket_handle_client(client, ev.events);
 		}
-		
-		client_cleanup();
 	}
 }
 
@@ -229,7 +238,7 @@ gboolean socket_init() {
 	return TRUE;
 }
 
-gboolean socket_init_epoll() {
+gboolean socket_init_process() {
 	// 1 -> a positive, int size must be given; ignored by new kernels
 	_epoll = epoll_create(1);
 	
@@ -238,22 +247,9 @@ gboolean socket_init_epoll() {
 		return FALSE;
 	}
 	
-	// A fake client for accepting new connections on the epoll
-	// Everything coming from an event has a ptr type, so fake a 
-	// client to make sure we can vary on a new client and an existing
-	// client.
-	_fake_client = malloc(sizeof(*_fake_client));
-	if (_fake_client == NULL) {
-		ERROR("Could not malloc fake client for socket accept");
-		return FALSE;
-	}
-	
-	// Listen on our accept socket for incoming connections
-	struct epoll_event ev;
-	ev.events = EPOLL_READ_EVENTS;
-	ev.data.ptr = _fake_client;
-	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _listen_sock, &ev) == -1) {
-		ERROR("Could not add epoll listener for socket accept");
+	_thread = g_thread_try_new(__FILE__, _socket_accept_client, NULL, NULL);
+	if (_thread == NULL) {
+		ERROR("Could not init socket accept in thread.");
 		return FALSE;
 	}
 	
@@ -299,13 +295,13 @@ void socket_message_free(client_t *client, gboolean purge_socket) {
 	}
 }
 
-void socket_set_timer(client_t *client) {
+gboolean socket_set_timer(client_t *client) {
 	int timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 	
 	// If something goes wrong with the timer, just kill the stupid client
 	if (timer == -1) {
 		socket_close(client);
-		return;
+		return FALSE;
 	}
 	
 	struct itimerspec spec;
@@ -323,10 +319,10 @@ void socket_set_timer(client_t *client) {
 	// Store the timer on the client for cancelling
 	client->timer = timer;
 	
-	// Add the timer to this epoll
-	_socket_epoll_add(timer, client);
+	DEBUG("Setting timer on client");
 	
-	DEBUG("Timer set on client");
+	// Add the timer to this epoll
+	return _socket_epoll_add(timer, client);
 }
 
 void socket_clear_timer(client_t *client) {

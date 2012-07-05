@@ -8,19 +8,6 @@
 #include "pubsub.h"
 
 /**
- * The list of dead clients that need to be removed.
- */
-static GPtrArray *_dead_clients;
-
-/**
- * Dead clients lock.
- *
- * From the GLib docs: "It is not necessary to initialize a mutex that has been
- * created that has been statically allocated."
- */
-static GMutex _dead_clients_lock;
-
-/**
  * Anything that needs to happen once a client is ready for talking.
  */
 static void _client_ready(client_t *client) {
@@ -58,6 +45,9 @@ status_t client_handshake(client_t *client) {
 			client->handler = handler;
 			_client_ready(client);
 			
+			// We read the header successfully, clean up after ourselves
+			g_string_truncate(client->message->socket_buffer, 0);
+			
 			return CLIENT_GOOD;
 		}
 	} else {
@@ -67,56 +57,31 @@ status_t client_handshake(client_t *client) {
 	}
 }
 
-void client_cleanup() {
-	// Lock the dead clients stuff to make sure we're ready for a swap
-	g_mutex_lock(&_dead_clients_lock);
-	
-	// Only do cleanup if there are clients to cleanup
-	if (_dead_clients->len == 0) {
-		g_mutex_unlock(&_dead_clients_lock);
-		return;
-	}
-	
-	// The new array to hold the dead clients
-	GPtrArray *clients = _dead_clients;
-	
-	// Create a new array for the new dead clients since it can't add to the old
-	_dead_clients = g_ptr_array_new();
-	
-	g_mutex_unlock(&_dead_clients_lock);
-	
-	// Kill the client...muahahaha!
-	for (int i = 0; i < clients->len; i++) {
-		socket_close(g_ptr_array_index(clients, i));
-	}
-	
-	// Clean up the now-freed array
-	g_ptr_array_free(clients, TRUE);
-}
-
-void client_kill(client_t *client) {
-	// Make sure we're not interefering with a swap on the dead clients
-	g_mutex_lock(&_dead_clients_lock);
-	
-	g_ptr_array_add(_dead_clients, client);
-	
-	g_mutex_unlock(&_dead_clients_lock);
-}
-
 status_t client_message(client_t* client) {
 	status_t status;
 	
-	switch (client->handler) {
-		case h_rfc6455:
-			status = rfc6455_incoming(client);
-			break;
-		
-		case h_none:
-		default:
-			// This should NEVER happen
-			ERROR("Client went into message processing without a handler");
-			status = CLIENT_ABORTED;
-			break;
+	if (client->message->remaining_length) {
+		switch (client->handler) {
+			case h_rfc6455:
+				status = rfc6455_continue(client);
+				break;
+			
+			default:
+			case h_none:
+				ERROR("Client went into message processing without a handler");
+				return CLIENT_ABORTED;
+		}
+	} else {
+		switch (client->handler) {
+			case h_rfc6455:
+				status = rfc6455_incoming(client);
+				break;
+			
+			default:
+			case h_none:
+				ERROR("Client went into message processing without a handler");
+				return CLIENT_ABORTED;
+		}
 	}
 	
 	// If everything went well with the handler, process the message
@@ -124,10 +89,10 @@ status_t client_message(client_t* client) {
 		status = command_handle(client);
 		
 		#warning Need to handle different client status messages from handlers appropriately
-		
-		if (status == CLIENT_GOOD && client_write(client, NULL) != CLIENT_GOOD) {
-			status = CLIENT_ABORTED;
-		}
+	}
+	
+	if (status == CLIENT_WRITE && client_write(client, NULL) != CLIENT_GOOD) {
+		status = CLIENT_ABORTED;
 	}
 	
 	return status;
@@ -151,7 +116,7 @@ status_t client_write(client_t *client, message_t *message) {
 	
 	switch (client->handler) {
 		case h_rfc6455:
-			frame = rfc6455_prepare_frame(message, &frame_len);
+			frame = rfc6455_prepare_frame_from_message(message, &frame_len);
 			break;
 		
 		default:
@@ -171,9 +136,4 @@ status_t client_write_frame(client_t *client, char *frame, int frame_len) {
 		ERROR("Something went wrong with frame creation...");
 		return CLIENT_ABORTED;
 	}
-}
-
-gboolean client_init() {
-	_dead_clients = g_ptr_array_new();
-	return TRUE;
 }

@@ -12,7 +12,15 @@
 gpointer app_run(gpointer);
 
 /**
+ * Command setup for the app thread.  This function is called in the main thread,
+ * so be fast about it.
+ *
+ * Triggered from commands.c
+ */
+void app_register_commands(void);
+
+/**
  * The following is implemented for you.  It spawns a new thread for
  * your app to run in.
  */
-void app_init(void);
+gboolean app_init(void);

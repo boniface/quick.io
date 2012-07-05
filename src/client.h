@@ -3,16 +3,21 @@
 #include "option.h"
 
 #define CLIENT_GOOD 1 << 0
-#define CLIENT_WAIT 1 << 1
-#define CLIENT_ABORTED 1 << 2
-#define CLIENT_NEED_MASK 1 << 3
-#define CLIENT_MESSAGE_TOO_LONG 1 << 4
-#define CLIENT_UNKNOWN_COMMAND 1 << 5
-#define CLIENT_BAD_COMMAND 1 << 6
-#define CLIENT_UNSUPPORTED_OPCODE 1 << 7
-#define CLIENT_TOO_MANY_SUBSCRIPTIONS 1 << 8
-#define CLIENT_INVALID_SUBSCRIPTION 1 << 9
-#define CLIENT_BAD_MESSAGE 1 << 10
+
+// Anything in the message->buffer should be written back to the client
+#define CLIENT_WRITE 1 << 1
+
+#define CLIENT_WAIT 1 << 2
+#define CLIENT_ABORTED 1 << 3
+#define CLIENT_NEED_MASK 1 << 4
+#define CLIENT_MESSAGE_TOO_LONG 1 << 5
+#define CLIENT_UNKNOWN_COMMAND 1 << 6
+#define CLIENT_BAD_COMMAND 1 << 7
+#define CLIENT_UNSUPPORTED_OPCODE 1 << 8
+#define CLIENT_TOO_MANY_SUBSCRIPTIONS 1 << 9
+#define CLIENT_INVALID_SUBSCRIPTION 1 << 10
+#define CLIENT_BAD_MESSAGE 1 << 11
+#define CLIENT_OVERLOADED 1 << 12
 
 #define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_COMMAND | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE)
 
@@ -35,7 +40,7 @@ typedef enum opcode {
  */
 struct message_s {
 	// The remaining length of the incoming message to read
-	int remaining_length;
+	guint16 remaining_length;
 	
 	// The opcode from the message
 	opcode_t type;
@@ -44,6 +49,7 @@ struct message_s {
 	guint32 mask;
 	
 	// The data buffer of what has been read but not processed for the client
+	// Once data has been processed, it MUST be removed from the socket_buffer
 	GString *socket_buffer;
 	
 	// Buffer of data procesed from socket_buffer (defragmented)
@@ -137,8 +143,3 @@ void client_kill(client_t*);
  * Cleans up the dead clients.
  */
 void client_cleanup(void);
-
-/**
- * Setup the necessary internal structures for clients.
- */
-gboolean client_init(void);

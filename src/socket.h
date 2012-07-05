@@ -15,8 +15,12 @@
 #define STRING_BUFFER(client) client->initing == 1 ? STRING_HEADER_BUFFER_SIZE : STRING_BUFFER_SIZE
 
 // Externally, clients MUST not send more than 1000 characters per message.
-#define MAX_BUFFER_SIZE 1008*2 // Allow for the masking key and headers, two queued messages
-#define MAX_MESSAGE_SIZE 1000
+#define MAX_MESSAGE_SIZE 1024 // g_string only uses powers of 2 for length
+#define MAX_BUFFER_SIZE MAX_MESSAGE_SIZE*2 // Allow for two queued messages
+
+// Even though the buffers are larger, we don't accept anything past this
+// length to make room for headers and such in the buffers
+#define MAX_MESSAGE_LENGTH MAX_MESSAGE_SIZE - 4
 
 // Events epoll should wait for
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
@@ -34,9 +38,9 @@ gboolean socket_init(void);
 void socket_loop(void);
 
 /**
- * Setup the necessary control structures.
+ * Setup the necessary control structures on a process-level.
  */
-gboolean socket_init_epoll(void);
+gboolean socket_init_process(void);
 
 /**
  * Closes and cleans up the client.
@@ -56,7 +60,7 @@ void socket_message_free(client_t*, gboolean);
  * Sets a timer on a socket; when the timer expires, the corresponding client will
  * be killed.
  */
-void socket_set_timer(client_t*);
+gboolean socket_set_timer(client_t*);
 
 /**
  * The client is behaving again.  Removing his timer.

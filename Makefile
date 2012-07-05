@@ -1,6 +1,11 @@
-.PHONY: all clean test
+.PHONY: all build clean debug test
 
-all:
+all: debug
+
+debug:
+	$(MAKE) build DEBUG=1
+
+build:
 	$(MAKE) -C src $(ARSOCKLIB)
 	$(MAKE) -C app
 

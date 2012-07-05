@@ -1,7 +1,13 @@
 LIBS = glib-2.0 libsoup-2.4
-CFLAGS = -c -O2 -std=gnu99 -Wall $(shell pkg-config --cflags $(LIBS))
+CFLAGS = -c -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized  $(shell pkg-config --cflags $(LIBS))
+DEBUG_FLAGS = 
 LDFLAGS = $(shell pkg-config --libs $(LIBS))
 CC = gcc
+
+ifneq ($(DEBUG),)
+	DEBUG_FLAGS = -g -rdynamic
+	CFLAGS += $(DEBUG_FLAGS) -DCOMPILE_DEBUG=1
+endif
 
 CSOCKLIB = csocketio
 ARSOCKLIB = lib$(CSOCKLIB).a

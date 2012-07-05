@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "app.h"
 #include "client.h"
 #include "commands.h"
 #include "pubsub.h"
@@ -24,7 +25,7 @@ static GHashTable* commands;
  */
 static gchar* _slice(message_t *message) {
 	GString *buff = message->buffer;
-	int delim = strcspn(buff->str, COMMAND_DELIMITER);
+	gsize delim = strcspn(buff->str, COMMAND_DELIMITER);
 	
 	// If no command was found (ie. no delimiter, nothing before the delimeter)
 	if (delim == buff->len) {
@@ -55,7 +56,7 @@ static gchar* _slice(message_t *message) {
  */
 static status_t command_ping(client_t *client, message_t *message) {
 	// This command just needs to send back whatever text we recieved
-	return CLIENT_GOOD;
+	return CLIENT_WRITE;
 }
 
 /**
@@ -108,6 +109,11 @@ status_t command_handle(client_t *client) {
 	message_t *message = client->message;
 	gchar *cmd = _slice(message);
 	
+	// Was there a command in the string?
+	if (cmd == NULL) {
+		return CLIENT_UNKNOWN_COMMAND;
+	}
+	
 	// Get the command from the hash table of commands
 	commandfn_t fn = g_hash_table_lookup(commands, cmd);
 	if (fn == NULL) {
@@ -126,6 +132,9 @@ gboolean commands_init() {
 	g_hash_table_insert(commands, "ping", command_ping);
 	g_hash_table_insert(commands, "sub", command_subscribe);
 	g_hash_table_insert(commands, "send", command_send);
+	
+	// Internal commands are ready, let the app register its commands.
+	app_register_commands();
 	
 	return TRUE;
 }

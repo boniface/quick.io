@@ -19,7 +19,12 @@ gboolean rfc6455_handshake(client_t*, SoupMessageHeaders*);
  *
  * The return of the function must be free()'d
  */
-char* rfc6455_prepare_frame(message_t*, int*);
+char* rfc6455_prepare_frame(opcode_t, gchar*, int, int*);
+
+/**
+ * Prepare a frame from a client message.
+ */
+char* rfc6455_prepare_frame_from_message(message_t*, int*);
 
 /**
  * Read an incoming from from the client.
@@ -30,3 +35,9 @@ char* rfc6455_prepare_frame(message_t*, int*);
  * If returns false, more data from the client is necessary to construct the message.
  */
 status_t rfc6455_incoming(client_t*);
+
+/**
+ * After a CLIENT_WAIT and remaining_length are set, this will be called to continue/finish
+ * reading a broken message.
+ */
+status_t rfc6455_continue(client_t*);

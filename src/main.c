@@ -53,7 +53,7 @@ static gboolean _main_fork(int **pipes, pid_t **pids) {
 			close(pipefd[1]);
 			
 			// Get epoll going.  If this fails...shit.
-			if (!socket_init_epoll()) {
+			if (!socket_init_process()) {
 				ERRORF("Epoll init failed in #%d", processes);
 				exit(1);
 			}
@@ -62,7 +62,10 @@ static gboolean _main_fork(int **pipes, pid_t **pids) {
 			gossip_client(pipefd[0]);
 			
 			// Setup the app inside this thread
-			app_init();
+			if (!app_init()) {
+				ERRORF("Could not init app in #%d", processes);
+				exit(1);
+			}
 			
 			// Run the socket loop
 			socket_loop();
@@ -91,6 +94,8 @@ static void _main_cull_children(int *pids) {
 }
 
 int main(int argc, char *argv[]) {
+	debug_handle_signals();
+	
 	GError *error = NULL;
 	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
@@ -110,13 +115,6 @@ int main(int argc, char *argv[]) {
 		DEBUG("Commands inited");
 	} else {
 		ERROR("Could not init commands.");
-		return 1;
-	}
-	
-	if (client_init()) {
-		DEBUG("Client inited");
-	} else {
-		ERROR("Could not init client.");
 		return 1;
 	}
 	
