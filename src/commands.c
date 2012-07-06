@@ -49,32 +49,9 @@ static gchar* _slice(message_t *message) {
 /**
  * The "ping:" command
  */
-static status_t command_ping(client_t *client, message_t *message) {
+static status_t _command_ping(client_t *client, message_t *message) {
 	// This command just needs to send back whatever text we recieved
 	return CLIENT_WRITE;
-}
-
-/**
- * The "sub:1477" command
- */
-static status_t command_subscribe(client_t *client, message_t *message) {
-	#warning create test case for empty responses when they should be empty
-	DEBUGF("command_subscribe: %s", message->buffer->str);
-	
-	status_t status = sub_client(message->buffer->str, client);
-	// Attempt to subscribe the client to the room
-	if (status == CLIENT_INVALID_SUBSCRIPTION) {
-		// The room was invalid, inform the client
-		g_string_prepend(message->buffer, COMMAND_RESPONSE_INVALID_SUBSCRIPTION);
-	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
-		// The client is subscribed to the maximum number of rooms already, may not add any more
-		g_string_prepend(message->buffer, COMMAND_RESPONSE_MAX_SUBSCRIPTIONS);
-	} else {
-		// The room was valid, so the client doesn't get anything back
-		g_string_truncate(message->buffer, 0);
-	}
-	
-	return CLIENT_GOOD;
 }
 
 /**
@@ -82,7 +59,7 @@ static status_t command_subscribe(client_t *client, message_t *message) {
  *
  * Syntax: "send:1477:some random message string"
  */
-static status_t command_send(client_t *client, message_t *message) {
+static status_t _command_send(client_t *client, message_t *message) {
 	gchar *room = _slice(message);
 	
 	if (room == NULL) {
@@ -98,6 +75,44 @@ static status_t command_send(client_t *client, message_t *message) {
 	g_string_truncate(message->buffer, 0);
 	
 	return status;
+}
+
+status_t command_subscribe(client_t *client, message_t *message) {
+	#warning create test case for empty responses when they should be empty
+	DEBUGF("command_subscribe: %s", message->buffer->str);
+	
+	status_t status = sub_client(message->buffer->str, client);
+	// Attempt to subscribe the client to the event
+	if (status == CLIENT_INVALID_SUBSCRIPTION) {
+		// The event was invalid, inform the client
+		g_string_prepend(message->buffer, COMMAND_RESPONSE_INVALID_SUBSCRIPTION);
+		return CLIENT_WRITE;
+	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
+		// The client is subscribed to the maximum number of rooms already, may not add any more
+		g_string_prepend(message->buffer, COMMAND_RESPONSE_MAX_SUBSCRIPTIONS);
+		return CLIENT_WRITE;
+	} else if (status == CLIENT_ALREADY_SUBSCRIBED) {
+		// Why is he subscribing again?
+		g_string_prepend(message->buffer, COMMAND_RESPONSE_ALREADY_SUBSCRIBED);
+		return CLIENT_WRITE;
+	}
+	
+	// The event was valid, so there's nothing more to do
+	return CLIENT_GOOD;
+}
+
+status_t command_unsubscribe(client_t *client, message_t *message) {
+	#warning create test case for empty responses when they should be empty
+	DEBUGF("command_unsubscribe: %s", message->buffer->str);
+	
+	status_t status = sub_unsub_client(message->buffer->str, client);
+	
+	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
+		g_string_prepend(message->buffer, COMMAND_RESPONSE_CANNOT_UNSUBSRIBE);
+		return CLIENT_WRITE;
+	}
+	
+	return CLIENT_GOOD;
 }
 
 status_t command_handle(client_t *client) {
@@ -121,16 +136,17 @@ status_t command_handle(client_t *client) {
 	return (*fn)(client, message);
 }
 
-extern void command_add(gchar *command_name, commandfn_t fn) {
+void command_add(gchar *command_name, commandfn_t fn) {
 	g_hash_table_insert(commands, command_name, fn);
 }
 
 gboolean commands_init() {
 	commands = g_hash_table_new(g_str_hash, g_str_equal);
 	
-	command_add("ping", command_ping);
+	command_add("ping", _command_ping);
 	command_add("sub", command_subscribe);
-	command_add("send", command_send);
+	command_add("send", _command_send);
+	command_add("unsub", command_unsubscribe);
 	
 	// Internal commands are ready, let the app register its commands.
 	apps_register_commands();

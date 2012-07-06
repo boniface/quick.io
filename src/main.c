@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (option_parse_config_file(NULL, &error)) {
+	if (option_parse_config_file(NULL, NULL, 0, &error)) {
 		DEBUG("Config file parsed");
 	} else {
 		ERROR(error->message);

@@ -68,9 +68,9 @@ gboolean apps_run() {
 		
 		#warning Only export specific functions to modules
 		#warning See: LDFLAGS (-Wl,-E (use libtool?) to dynamic-list)
-		#warning See: http://linux.die.net/man/1/ld
-		#warning See: http://www.gnu.org/software/libtool/manual/html_node/Building-modules.html
-		#warning See: http://www.gnu.org/software/libtool/manual/html_node/Link-mode.html
+		#warning See: linux.die.net/man/1/ld
+		#warning See: www.gnu.org/software/libtool/manual/html_node/Building-modules.html
+		#warning See: www.gnu.org/software/libtool/manual/html_node/Link-mode.html
 		
 		// Get a pointer to 
 		gpointer (*app_run)(gpointer);

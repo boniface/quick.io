@@ -91,7 +91,7 @@ status_t client_message(client_t* client) {
 		#warning Need to handle different client status messages from handlers appropriately
 	}
 	
-	if (status == CLIENT_WRITE && client_write(client, NULL) != CLIENT_GOOD) {
+	if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
 		status = CLIENT_ABORTED;
 	}
 	

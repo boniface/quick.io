@@ -1,7 +1,7 @@
 #pragma once
 #include <glib.h>
 
-#define GROUP_NAME "csocketio"
+#define DEFAULT_GROUP_NAME "csocketio"
 
 typedef struct ConfigFileEntry {
 	gchar *name;
@@ -58,7 +58,7 @@ gint option_timeout(void);
 /**
  * Loads the config file and populates all the options
  */
-gboolean option_parse_config_file(gchar*, GError**);
+gboolean option_parse_config_file(gchar*, ConfigFileEntry[], size_t, GError**);
 
 /**
  * Parses all the command line options.

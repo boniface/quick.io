@@ -25,7 +25,10 @@
 // Events epoll should wait for
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
 #define EPOLL_MAX_EVENTS 100
-#define EPOLL_WAIT -1
+
+// If this is ever set to -1, then the messages will not publish if no
+// one sending stuff / connecting
+#define EPOLL_WAIT 100
 
 /**
  * Open up the listening socket in preparation for forking.

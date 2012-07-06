@@ -10,18 +10,18 @@ static GOptionEntry command_options[] = {
 };
 
 // Config file options
-static gchar** _apps = NULL;
-static int _apps_count;
-static gchar* _bind_address = "127.0.0.1";
+static gchar **_apps = NULL;
+static gint _apps_count = 0;
+static gchar *_bind_address = "127.0.0.1";
 static gint _port = 5000;
-static gchar* _gossip_address = "127.0.0.1";
+static gchar *_gossip_address = "127.0.0.1";
 static gint _gossip_port = 43172;
 static gint _max_subs = 4;
 static gint _processes = 8;
 static gint _timeout = 5;
 
-static ConfigFileEntry config_options[] = {
-	{"app", G_OPTION_ARG_STRING_ARRAY, &_apps, &_apps_count},
+static ConfigFileEntry _config_options[] = {
+	{"apps", G_OPTION_ARG_STRING_ARRAY, &_apps, &_apps_count},
 	{"bind-address", G_OPTION_ARG_STRING, &_bind_address},
 	{"gossip-address", G_OPTION_ARG_STRING, &_gossip_address},
 	{"gossip-port", G_OPTION_ARG_INT, &_gossip_port},
@@ -67,11 +67,13 @@ gint option_processes() {
 	return _processes;
 }
 
-gboolean option_parse_config_file(gchar *group_name, GError **error) {
+gboolean option_parse_config_file(gchar *group_name, ConfigFileEntry opts[], size_t opts_len, GError **error) {
 	GKeyFile *conf = g_key_file_new();
 	
 	if (group_name == NULL) {
-		group_name = GROUP_NAME;
+		group_name = DEFAULT_GROUP_NAME;
+		opts = _config_options;
+		opts_len = G_N_ELEMENTS(_config_options);
 	}
 	
 	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
@@ -80,13 +82,13 @@ gboolean option_parse_config_file(gchar *group_name, GError **error) {
 		return FALSE;
 	}
 	
-	for (size_t i = 0; i < G_N_ELEMENTS(config_options); i++) {
-		ConfigFileEntry e = config_options[i];
+	for (size_t i = 0; i < opts_len; i++) {
+		ConfigFileEntry e = opts[i];
 		
 		if (e.arg == G_OPTION_ARG_STRING) {
 			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);
 			if (opt != NULL) {
-				e.arg_data = opt;
+				*((gchar**)e.arg_data) = opt;
 			}
 		} else if (e.arg == G_OPTION_ARG_STRING_ARRAY) {
 			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, error);

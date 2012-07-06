@@ -5,7 +5,7 @@
 		var start = new Date().getTime();
 		
 		try {
-			var s = new WebSocket('ws://192.168.2.2:5000/');
+			var s = new WebSocket('ws://127.0.0.1:5000/');
 			
 		} catch (e) {
 			console.error(e);
@@ -18,7 +18,7 @@
 		
 		s.onopen = function() {
 			console.log('open!');
-			s.send('sub:1477');
+			s.send('ihrsub:1477');
 			// s.send('send:1477:testsadfasdf');
 		};
 		

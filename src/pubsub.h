@@ -61,7 +61,7 @@ void sub_client_free(client_t*);
 /**
  * Removes the client from the room.
  */
-void sub_unsub_client(gchar*, client_t*);
+status_t sub_unsub_client(gchar*, client_t*);
 
 /**
  * Publish the entire message queue immediately.

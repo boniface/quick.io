@@ -86,11 +86,37 @@ status_t sub_client(gchar *event, client_t *client) {
 		return CLIENT_TOO_MANY_SUBSCRIPTIONS;
 	}
 	
+	// Don't add the client if he's already subscribed
+	if (g_hash_table_contains(subs, client)) {
+		return CLIENT_ALREADY_SUBSCRIBED;
+	}
+	
 	DEBUGF("Adding subscription list: %s", event);
 	
 	// Subscribe the client inc his count
 	g_hash_table_insert(subs, client, client);
 	client->sub_count++;
+	
+	return CLIENT_GOOD;
+}
+
+status_t sub_unsub_client(gchar *event, client_t *client) {
+	// Attempt to get the subscription to check if it exists
+	GHashTable *subs = _get_subscriptions(event, FALSE);
+	
+	if (subs == NULL) {
+		return CLIENT_CANNOT_UNSUBSCRIBE;
+	}
+	
+	// Don't add the client if he's already subscribed
+	if (!g_hash_table_contains(subs, client)) {
+		return CLIENT_CANNOT_UNSUBSCRIBE;
+	}
+	
+	// If the user is subscribed
+	if (g_hash_table_remove(subs, client)) {
+		client->sub_count--;
+	}
 	
 	return CLIENT_GOOD;
 }
@@ -114,25 +140,13 @@ void sub_client_free(client_t *client) {
 	g_ptr_array_free(client->subs, TRUE);
 }
 
-void sub_unsub_client(gchar *event, client_t *client) {
-	// Attempt to get the subscription to check if it exists
-	GHashTable *subs = _get_subscriptions(event, TRUE);
-	
-	if (subs == NULL) {
-		return;
-	}
-	
-	// If the user is subscribed
-	if (g_hash_table_remove(subs, client)) {
-		client->sub_count--;
-	}
-}
-
 void pub_messages() {
 	// If there are no messages to publish, then skip this
 	if (_messages->len == 0) {
 		return;
 	}
+	
+	#warning TODO: Attempt to clean pub_messages() up?
 	
 	// Swap the message queue out for a new one so that we can be thread-safe
 	// in our message processing

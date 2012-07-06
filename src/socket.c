@@ -193,8 +193,6 @@ void socket_loop() {
 			continue;
 		}
 		
-		DEBUGF("Num events: %d in %d", num_evs, getpid());
-		
 		// Some events actually did happen; go through them all!
 		for (int i = 0; i < num_evs; i++) {
 			struct epoll_event ev = events[i];

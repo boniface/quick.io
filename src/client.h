@@ -16,8 +16,10 @@
 #define CLIENT_UNSUPPORTED_OPCODE 1 << 8
 #define CLIENT_TOO_MANY_SUBSCRIPTIONS 1 << 9
 #define CLIENT_INVALID_SUBSCRIPTION 1 << 10
-#define CLIENT_BAD_MESSAGE 1 << 11
-#define CLIENT_OVERLOADED 1 << 12
+#define CLIENT_ALREADY_SUBSCRIBED 1 << 11
+#define CLIENT_CANNOT_UNSUBSCRIBE 1 << 12
+#define CLIENT_BAD_MESSAGE 1 << 13
+#define CLIENT_OVERLOADED 1 << 14
 
 #define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_COMMAND | CLIENT_UNKNOWN_COMMAND | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE)
 
@@ -114,7 +116,7 @@ typedef struct client_s client_t;
 status_t client_handshake(client_t*);
 
 /**
- * Process a message from the client.  If the message isn't complete return false
+ * Process a message from the client.  If the message isn't complete return STATUS_WAIT
  * and hope it completes itself.
  */
 status_t client_message(client_t*);
