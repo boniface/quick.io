@@ -14,12 +14,22 @@
 #define COMMAND_RESPONSE_MAX_SUBSCRIPTIONS "too_many_subscriptions" COMMAND_DELIMITER
 
 /**
- * Handle a a command.
+ * The command function type.
+ */
+typedef status_t(*commandfn_t)(client_t*, message_t*);
+
+/**
+ * Handle a command.
  *
  * Returns CLIENT_* status messages.  command->buffer will be set to what should
  * be sent back to the client, or will be empty (command->buffer->len == 0).
  */
 status_t command_handle(client_t*);
+
+/**
+ * Add a command handler.
+ */
+extern void command_add(gchar*, commandfn_t);
 
 /**
  * Init the command interface

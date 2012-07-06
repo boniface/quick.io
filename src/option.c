@@ -1,7 +1,18 @@
 #include "debug.h"
 #include "option.h"
 
-static gchar* _address = "127.0.0.1";
+// Command line options
+static gchar* _config_file = "csocket.ini";
+
+static GOptionEntry command_options[] = {
+	{"config-file", 'f', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load", "./csocket.ini"},
+	{NULL}
+};
+
+// Config file options
+static gchar** _apps = NULL;
+static int _apps_count;
+static gchar* _bind_address = "127.0.0.1";
 static gint _port = 5000;
 static gchar* _gossip_address = "127.0.0.1";
 static gint _gossip_port = 43172;
@@ -9,19 +20,27 @@ static gint _max_subs = 4;
 static gint _processes = 8;
 static gint _timeout = 5;
 
-static GOptionEntry options[] = {
-	{"address", 'a', 0, G_OPTION_ARG_STRING, &_address, "Address to bind to", "127.0.0.1"},
-	{"gossip-address", 'g', 0, G_OPTION_ARG_STRING, &_gossip_address, "Address for gossip to bind to", "127.0.0.1"},
-	{"gossip-port", 'l', 0, G_OPTION_ARG_INT, &_gossip_port, "Port for gossip to bind to", "43172"},
-	{"port", 'p', 0, G_OPTION_ARG_INT, &_port, "Port to run the server on", "5000"},
-	{"processes", 'c', 0, G_OPTION_ARG_INT, &_processes, "The number of processes to run", "8"},
-	{"max-subs", 'm', 0, G_OPTION_ARG_INT, &_max_subs, "The maximum number of subscriptions a client is allowed (must be a power of 2)", "4"},
-	{"timeout", 't', 0, G_OPTION_ARG_INT, &_timeout, "Bad client timeout", "5"},
-	{NULL}
+static ConfigFileEntry config_options[] = {
+	{"app", G_OPTION_ARG_STRING_ARRAY, &_apps, &_apps_count},
+	{"bind-address", G_OPTION_ARG_STRING, &_bind_address},
+	{"gossip-address", G_OPTION_ARG_STRING, &_gossip_address},
+	{"gossip-port", G_OPTION_ARG_INT, &_gossip_port},
+	{"port", G_OPTION_ARG_INT, &_port},
+	{"processes", G_OPTION_ARG_INT, &_processes},
+	{"max-subs", G_OPTION_ARG_INT, &_max_subs},
+	{"timeout", G_OPTION_ARG_INT, &_timeout},
 };
 
-gchar* option_address() {
-	return _address;
+gchar** option_apps() {
+	return _apps;
+}
+
+int option_apps_count() {
+	return _apps_count;
+}
+
+gchar* option_bind_address() {
+	return _bind_address;
 }
 
 gint option_port() {
@@ -48,14 +67,38 @@ gint option_processes() {
 	return _processes;
 }
 
-gboolean option_parse_args(int argc, char *argv[], GError **error) {
-	gboolean success = TRUE;
+gboolean option_parse_config_file(gchar *group_name, GError **error) {
+	GKeyFile *conf = g_key_file_new();
 	
-	GOptionContext *context = g_option_context_new("");
-	g_option_context_add_main_entries(context, options, NULL);
+	if (group_name == NULL) {
+		group_name = GROUP_NAME;
+	}
 	
-	if (!g_option_context_parse(context, &argc, &argv, error)) {
-		success = FALSE;
+	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
+		ERRORF("Could not load config file: %s", _config_file);
+		g_key_file_free(conf);
+		return FALSE;
+	}
+	
+	for (size_t i = 0; i < G_N_ELEMENTS(config_options); i++) {
+		ConfigFileEntry e = config_options[i];
+		
+		if (e.arg == G_OPTION_ARG_STRING) {
+			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);
+			if (opt != NULL) {
+				e.arg_data = opt;
+			}
+		} else if (e.arg == G_OPTION_ARG_STRING_ARRAY) {
+			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, error);
+			if (opt != NULL) {
+				*((gchar***)e.arg_data) = opt;
+			}
+		} else if (e.arg == G_OPTION_ARG_INT) {
+			gint opt = g_key_file_get_integer(conf, group_name, e.name, NULL);
+			if (opt != 0) {
+				*((gint*)e.arg_data) = opt;
+			}
+		}
 	}
 	
 	// Determine if the number is a power of 2
@@ -64,12 +107,22 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	// Conversely: 01100000 - 1 = 1011111; 01100000 & 1011111 = 1000000
 	// This is the same check used in malloc.c
 	if ((_max_subs & (_max_subs - 1)) != 0) {
-		*error = g_error_new(
-			10000001, // Why not?
-			G_OPTION_ERROR_BAD_VALUE,
-			"Option `max-subs` must be a power of 2."
-		);
-		
+		ERROR("Option `max-subs` must be a power of 2.");
+		g_key_file_free(conf);
+		return FALSE;
+	}
+	
+	g_key_file_free(conf);
+	return TRUE;
+}
+
+gboolean option_parse_args(int argc, char *argv[], GError **error) {
+	gboolean success = TRUE;
+	
+	GOptionContext *context = g_option_context_new("");
+	g_option_context_add_main_entries(context, command_options, NULL);
+	
+	if (!g_option_context_parse(context, &argc, &argv, error)) {
 		success = FALSE;
 	}
 	

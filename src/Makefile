@@ -1,17 +1,21 @@
 include ../Makefile.inc
 
-TARGET = server
-OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
-HEADERS = $(wildcard *.h)
+CFLAGS += -c
+LDFLAGS = -Wl,-E $(shell pkg-config --libs $(LIBS))
+TARGET = $(CURDIR)/../$(BUILDDIR)/server
+OBJECTS = $(patsubst %.c, $(OBJPATH)%.o, $(wildcard *.c))
 
 .PHONY: default clean
 
-default: $(ARSOCKLIB)
+default: $(TARGET)
 
-$(ARSOCKLIB): $(OBJECTS)
-	$(AR) rcs $(ARSOCKLIB) $^
+$(TARGET): $(OBJECTS)
+	@echo "\n\n"-------- Compiling $< --------
+	@$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
-	-rm $(ARSOCKLIB)
-	-rm $(OBJECTS)
-	-rm $(TARGET)
+	rm -f $(OBJECTS)
+
+%.o: %.c %.h
+	@echo "\n\n"-------- Compiling $< --------
+	@$(CC) $(CFLAGS) $< -o $@

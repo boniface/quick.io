@@ -9,5 +9,5 @@ test-xunit:
 	ve/bin/nosetests --with-xunit --xunit-file=../../unit_py.xml
 
 clean:
-	rm ../../unit_py.xml
-	rm *.pyc
+	rm -f ../../unit_py.xml
+	rm -f *.pyc

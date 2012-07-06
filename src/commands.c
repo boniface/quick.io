@@ -1,15 +1,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "app.h"
+#include "apps.h"
 #include "client.h"
 #include "commands.h"
 #include "pubsub.h"
-
-/**
- * The command function type.
- */
-typedef status_t(*commandfn_t)(client_t*, message_t*);
 
 /**
  * A table of all of the commands that a client can send.
@@ -126,15 +121,19 @@ status_t command_handle(client_t *client) {
 	return (*fn)(client, message);
 }
 
+extern void command_add(gchar *command_name, commandfn_t fn) {
+	g_hash_table_insert(commands, command_name, fn);
+}
+
 gboolean commands_init() {
 	commands = g_hash_table_new(g_str_hash, g_str_equal);
 	
-	g_hash_table_insert(commands, "ping", command_ping);
-	g_hash_table_insert(commands, "sub", command_subscribe);
-	g_hash_table_insert(commands, "send", command_send);
+	command_add("ping", command_ping);
+	command_add("sub", command_subscribe);
+	command_add("send", command_send);
 	
 	// Internal commands are ready, let the app register its commands.
-	app_register_commands();
+	apps_register_commands();
 	
 	return TRUE;
 }

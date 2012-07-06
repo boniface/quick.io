@@ -1,11 +1,12 @@
 #include <glib.h>
+#include <libgen.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "app.h"
+#include "apps.h"
 #include "commands.h"
 #include "debug.h"
 #include "gossip.h"
@@ -58,14 +59,13 @@ static gboolean _main_fork(int **pipes, pid_t **pids) {
 				exit(1);
 			}
 			
-			// Setup our gossip stuff
-			gossip_client(pipefd[0]);
-			
-			// Setup the app inside this thread
-			if (!app_init()) {
-				ERRORF("Could not init app in #%d", processes);
+			if (!apps_run()) {
+				ERRORF("Could not init apps in #%d.", processes);
 				exit(1);
 			}
+			
+			// Setup our gossip stuff
+			gossip_client(pipefd[0]);
 			
 			// Run the socket loop
 			socket_loop();
@@ -96,11 +96,28 @@ static void _main_cull_children(int *pids) {
 int main(int argc, char *argv[]) {
 	debug_handle_signals();
 	
+	// Move into the directory holding this binary
+	chdir(dirname(argv[0]));
+	
 	GError *error = NULL;
 	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
 	} else {
 		ERROR(error->message);
+		return 1;
+	}
+	
+	if (option_parse_config_file(NULL, &error)) {
+		DEBUG("Config file parsed");
+	} else {
+		ERROR(error->message);
+		return 1;
+	}
+	
+	if (apps_init()) {
+		DEBUG("Apps inited");
+	} else {
+		ERROR("Could not init apps.");
 		return 1;
 	}
 	

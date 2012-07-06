@@ -216,7 +216,7 @@ gboolean socket_init() {
 	
 	addy.sin_family = AF_INET;
 	addy.sin_port = htons(option_port());
-	addy.sin_addr.s_addr = inet_addr(option_address());
+	addy.sin_addr.s_addr = inet_addr(option_bind_address());
 	memset(&addy.sin_zero, 0, sizeof(addy.sin_zero));
 	
 	int on = 1;

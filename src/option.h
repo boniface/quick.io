@@ -1,10 +1,29 @@
 #pragma once
 #include <glib.h>
 
+#define GROUP_NAME "csocketio"
+
+typedef struct ConfigFileEntry {
+	gchar *name;
+	GOptionArg arg;
+	gpointer arg_data;
+	gpointer len;
+} ConfigFileEntry;
+
+/**
+ * Gets the apps that should run.
+ */
+gchar** option_apps(void);
+
+/**
+ * The number of apps specififed.
+ */
+int option_apps_count(void);
+
 /**
  * Gets the address we're supposed to bind to.
  */
-gchar* option_address(void);
+gchar* option_bind_address(void);
 
 /**
  * Gets the port that we're supposed to run on.
@@ -35,6 +54,11 @@ gint option_processes(void);
  * Gets the client timeout.
  */
 gint option_timeout(void);
+
+/**
+ * Loads the config file and populates all the options
+ */
+gboolean option_parse_config_file(gchar*, GError**);
 
 /**
  * Parses all the command line options.
