@@ -10,12 +10,12 @@ OBJECTS = $(patsubst %.c, $(OBJPATH)%.o, $(wildcard *.c))
 default: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	@echo "\n\n"-------- Compiling $< --------
+	@echo -e "\n\n"-------- Compiling $< --------
 	@$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f $(OBJECTS)
 
 %.o: %.c %.h
-	@echo "\n\n"-------- Compiling $< --------
+	@echo -e "\n\n"-------- Compiling $< --------
 	@$(CC) $(CFLAGS) $< -o $@
