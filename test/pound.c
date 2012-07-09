@@ -8,6 +8,8 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
+#define CLIENTS 10
+
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
 	"Host: server.example.com\n" \
 	"Upgrade: websocket\n" \
@@ -30,20 +32,18 @@
 
 #define EPOLL_MAX_EVENTS 100
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
-#define CLIENTS 10
 
-int main(int argc, char *argv[]) {
-	int epoll = epoll_create(1);
-	
-	GHashTable *clients = g_hash_table_new(g_int_hash, g_int_equal);
-	
+int epoll;
+GHashTable *clients;
+
+gpointer hitserver(gpointer none) {
 	for (uint i = 0; i < CLIENTS; i++) {
 		DEBUG(".");
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
 		if (sock < 0) {
 			ERRORF("Could not create socket: %s", strerror(errno));
-			return 1;
+			return NULL;
 		}
 		
 		struct sockaddr_in serv_addr;
@@ -80,9 +80,14 @@ int main(int argc, char *argv[]) {
 		g_hash_table_insert(clients, ptr, inited);
 	}
 	
+	return NULL;
+}
+
+void watch() {
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	char buff[1024];
 	char sub[] = SUBSCRIBE;
+	uint closed = 0;
 	while (1) {
 		int num_evs = epoll_wait(epoll, events, EPOLL_MAX_EVENTS, 1000);
 		
@@ -95,7 +100,7 @@ int main(int argc, char *argv[]) {
 			int sock = ev.data.fd;
 			
 			if (ev.events & EPOLLRDHUP) {
-				DEBUG("Socket closed");
+				DEBUGF("Socket closed: %d", ++closed);
 				close(sock);
 			} else {
 				DEBUG("In");
@@ -112,6 +117,14 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
+}
+
+int main(int argc, char *argv[]) {
+	epoll = epoll_create(1);
+	clients = g_hash_table_new(g_int_hash, g_int_equal);
+	
+	g_thread_new("connect", hitserver, NULL);
+	watch();
 	
 	return 0;
 }

@@ -23,6 +23,7 @@ static GThread *_thread;
 // Our epoll instance
 static int _epoll;
 
+// The client used to do maintenance tasks
 static client_t *_fake_client;
 
 /**
