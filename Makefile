@@ -8,6 +8,7 @@ debug:
 	$(MAKE) build DEBUG=1
 
 build:
+	pkg-config --exists '$(LIBS_VERSIONS)'
 	mkdir -p $(BUILDDIR)
 	cp csocket.ini $(BUILDDIR)
 	$(MAKE) -C src
