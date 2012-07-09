@@ -96,9 +96,6 @@ struct client_s {
 	// The handler for this client
 	enum handlers handler;
 	
-	// The number of subscriptions the client has
-	int sub_count;
-	
 	// Which events the client is currently subscribed to.
 	// THIS MUST ONLY BE MODIFIED FROM THE CHILD'S MAIN THREAD.
 	GPtrArray *subs;

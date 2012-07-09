@@ -3,9 +3,16 @@
 
 #define DEFAULT_GROUP_NAME "csocketio"
 
+typedef enum entry_t {
+	e_int,
+	e_string,
+	e_string_array,
+	e_uint64,
+} entry_t;
+
 typedef struct ConfigFileEntry {
 	gchar *name;
-	GOptionArg arg;
+	entry_t arg;
 	gpointer arg_data;
 	gpointer len;
 } ConfigFileEntry;

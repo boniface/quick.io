@@ -82,7 +82,7 @@ status_t sub_client(gchar *event, client_t *client) {
 	// unsubscribed sub
 	sub_unsub_client(UNSUBSCRIBED, client);
 	
-	if (client->sub_count > option_max_subscriptions()) {
+	if (client->subs->len > option_max_subscriptions()) {
 		return CLIENT_TOO_MANY_SUBSCRIPTIONS;
 	}
 	
@@ -95,7 +95,9 @@ status_t sub_client(gchar *event, client_t *client) {
 	
 	// Subscribe the client inc his count
 	g_hash_table_insert(subs, client, client);
-	client->sub_count++;
+	
+	// Give the client a reference to the subscription
+	g_ptr_array_add(client->subs, subs);
 	
 	return CLIENT_GOOD;
 }
@@ -113,10 +115,8 @@ status_t sub_unsub_client(gchar *event, client_t *client) {
 		return CLIENT_CANNOT_UNSUBSCRIBE;
 	}
 	
-	// If the user is subscribed
-	if (g_hash_table_remove(subs, client)) {
-		client->sub_count--;
-	}
+	// The client isn't subscribed anymore, remove from his list
+	g_ptr_array_remove_fast(client->subs, subs);
 	
 	return CLIENT_GOOD;
 }
@@ -133,6 +133,7 @@ void sub_client_free(client_t *client) {
 	}
 	
 	for (gsize i = 0; i < client->subs->len; i++) {
+		#warning Fire unsubscribe event to apps from here
 		GHashTable *event = g_ptr_array_index(client->subs, i);
 		g_hash_table_remove(event, client);
 	}
@@ -249,4 +250,22 @@ gboolean pubsub_init() {
 	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 	_new_messages();
 	return TRUE;
+}
+
+/**
+ * This function IS NOT threadsafe.
+ */
+void pubsub_cleanup() {
+	// Go through the rooms and clean up any that have 0 subscribers
+	GHashTableIter iter;
+	gchar *key;
+	GHashTable *value;
+	
+	g_hash_table_iter_init(&iter, _events);
+	while (g_hash_table_iter_next (&iter, (void*)&key, (void*)&value)) {
+		if (g_hash_table_size(value) == 0) {
+			g_hash_table_unref(value);
+			g_hash_table_iter_remove(&iter);
+		}
+	}
 }

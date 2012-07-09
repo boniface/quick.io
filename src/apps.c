@@ -15,12 +15,16 @@ static GThread **_threads;
 // The apps that are running
 static GModule **_apps;
 
+// The client_close functions
+static GPtrArray *_client_close;
+
 gboolean apps_init() {
 	gchar **app_names = option_apps();
 	_app_count = option_apps_count();
 	
 	_apps = malloc(_app_count * sizeof(*_apps));
 	_threads = malloc(_app_count * sizeof(*_threads));
+	_client_close = g_ptr_array_new();
 	
 	if (_apps == NULL || _threads == NULL) {
 		ERROR("Could not allocate space for the apps.");
@@ -57,6 +61,12 @@ gboolean apps_init() {
 		
 		// Save a reference to the app for later use
 		*(_apps + i) = app;
+		
+		// Get the _client_close function for faster referencing later
+		client_close_fn client_close;
+		if (g_module_symbol(app, "app_client_close", (gpointer*)&client_close)) {
+			g_ptr_array_add(_client_close, client_close);
+		}
 	}
 
 	return TRUE;
@@ -100,5 +110,12 @@ void apps_register_commands() {
 		if (g_module_symbol(app, "app_register_commands", (gpointer*)&app_register_commands)) {
 			app_register_commands();
 		}
+	}
+}
+
+void apps_client_close(client_t *client) {
+	#warning REWRITE this to be: apps_client_unsub, apps_client_sub (just events fired back into apps)
+	for (gsize i = 0; i < _client_close->len; i++) {
+		((client_close_fn)g_ptr_array_index(_client_close, i))(client);
 	}
 }

@@ -25,10 +25,10 @@
 // Events epoll should wait for
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
 #define EPOLL_MAX_EVENTS 100
+#define EPOLL_WAIT -1
 
-// If this is ever set to -1, then the messages will not publish if no
-// one sending stuff / connecting
-#define EPOLL_WAIT 100
+// For the maintenance tasks - in nanoseconds (*1,000,000)
+#define SOCKET_MAINTENANCE_WAIT (200 * 1000000)
 
 /**
  * Open up the listening socket in preparation for forking.
@@ -62,8 +62,10 @@ void socket_message_free(client_t*, gboolean);
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will
  * be killed.
+ *
+ * If the timer parameters are both 0, then the defaults from the config file are used.
  */
-gboolean socket_set_timer(client_t*);
+gboolean socket_set_timer(client_t*, int, int);
 
 /**
  * The client is behaving again.  Removing his timer.

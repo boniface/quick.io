@@ -16,19 +16,19 @@ static gchar *_bind_address = "127.0.0.1";
 static gint _port = 5000;
 static gchar *_gossip_address = "127.0.0.1";
 static gint _gossip_port = 43172;
-static gint _max_subs = 4;
+static guint64 _max_subs = 4;
 static gint _processes = 8;
 static gint _timeout = 5;
 
 static ConfigFileEntry _config_options[] = {
-	{"apps", G_OPTION_ARG_STRING_ARRAY, &_apps, &_apps_count},
-	{"bind-address", G_OPTION_ARG_STRING, &_bind_address},
-	{"gossip-address", G_OPTION_ARG_STRING, &_gossip_address},
-	{"gossip-port", G_OPTION_ARG_INT, &_gossip_port},
-	{"port", G_OPTION_ARG_INT, &_port},
-	{"processes", G_OPTION_ARG_INT, &_processes},
-	{"max-subs", G_OPTION_ARG_INT, &_max_subs},
-	{"timeout", G_OPTION_ARG_INT, &_timeout},
+	{"apps", e_string_array, &_apps, &_apps_count},
+	{"bind-address", e_string, &_bind_address},
+	{"gossip-address", e_string, &_gossip_address},
+	{"gossip-port", e_int, &_gossip_port},
+	{"port", e_int, &_port},
+	{"processes", e_int, &_processes},
+	{"max-subs", e_uint64, &_max_subs},
+	{"timeout", e_int, &_timeout},
 };
 
 gchar** option_apps() {
@@ -85,20 +85,25 @@ gboolean option_parse_config_file(gchar *group_name, ConfigFileEntry opts[], siz
 	for (size_t i = 0; i < opts_len; i++) {
 		ConfigFileEntry e = opts[i];
 		
-		if (e.arg == G_OPTION_ARG_STRING) {
+		if (e.arg == e_string) {
 			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);
 			if (opt != NULL) {
 				*((gchar**)e.arg_data) = opt;
 			}
-		} else if (e.arg == G_OPTION_ARG_STRING_ARRAY) {
+		} else if (e.arg == e_string_array) {
 			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, error);
 			if (opt != NULL) {
 				*((gchar***)e.arg_data) = opt;
 			}
-		} else if (e.arg == G_OPTION_ARG_INT) {
+		} else if (e.arg == e_int) {
 			gint opt = g_key_file_get_integer(conf, group_name, e.name, NULL);
 			if (opt != 0) {
 				*((gint*)e.arg_data) = opt;
+			}
+		} else if (e.arg == e_uint64) {
+			gint opt = g_key_file_get_uint64(conf, group_name, e.name, NULL);
+			if (opt != 0) {
+				*((guint64*)e.arg_data) = opt;
 			}
 		}
 	}

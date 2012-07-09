@@ -27,6 +27,8 @@ static GThread *_thread;
 // Our epoll instance
 static int _epoll;
 
+static client_t *_fake_client;
+
 /**
  * Adds an epoll listener on the specified fd.
  */
@@ -80,7 +82,7 @@ static gpointer _socket_accept_client(gpointer unused) {
 		
 		// Make the client finish the handshake quickly, or drop him
 		// If we can't setup the timer, then move on
-		if (socket_set_timer(client)) {
+		if (socket_set_timer(client, 0, 0)) {
 			// Add the client to our epoll
 			_socket_epoll_add(sock, client);
 		}
@@ -170,9 +172,31 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// The client gets 1 timer to make itself behave. If it doesn't in this
 		// time, then we summarily kill it.
 		} else if (status == CLIENT_WAIT && !client->timer) {
-			socket_set_timer(client);
+			socket_set_timer(client, 0, 0);
 		}
 	}
+}
+
+/**
+ * Tick on the socket to run maintenance operations.  This function also resets itself to
+ * run again later.
+ */
+static void _socket_tick() {
+	static int tick = 0;
+	
+	// Send out messages at the end of a loop (this will always be hit on event loop)
+	pub_messages();
+	
+	if (tick++ % 4 == 0) {
+		pubsub_cleanup();
+		// Clean up the empty subscription...later!
+		// if (g_hash_table_size(event) == 0) {
+		// }
+	}
+	
+	// Reset the timer
+	socket_clear_timer(_fake_client);
+	socket_set_timer(_fake_client, 0, SOCKET_MAINTENANCE_WAIT);
 }
 
 /**
@@ -182,9 +206,6 @@ void socket_loop() {
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
 	while (1) {
-		// Send out messages at the end of a loop (this will always be hit on event loop)
-		pub_messages();
-		
 		int num_evs = epoll_wait(_epoll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 		
 		// Since we're polling at an interval, it's possible no events
@@ -198,8 +219,12 @@ void socket_loop() {
 			struct epoll_event ev = events[i];
 			client_t *client = ev.data.ptr;
 			
-			// Pass off the necessary data to the handler
-			_socket_handle_client(client, ev.events);
+			if (client == _fake_client) {
+				_socket_tick();
+			} else {
+				// Pass off the necessary data to the handler
+				_socket_handle_client(client, ev.events);
+			}
 		}
 	}
 }
@@ -251,10 +276,30 @@ gboolean socket_init_process() {
 		return FALSE;
 	}
 	
+	_fake_client = malloc(sizeof(*_fake_client));
+	if (_fake_client == NULL) {
+		ERROR("_fake_client could not be malloc()'d");
+		return FALSE;
+	}
+	
+	// Make sure our memory is nice and spiffy-clean
+	memset(_fake_client, 0, sizeof(*_fake_client));
+	
+	// Setup the maintenance job
+	_socket_tick();
+	
 	return TRUE;
 }
 
 void socket_close(client_t *client) {
+	// It's possible that we're working with _fake_client
+	if (client == NULL) {
+		return;
+	}
+	
+	// Inform any apps that are tracking clients that a client has died
+	apps_client_close(client);
+	
 	// Remove the client from all his subscriptions
 	sub_client_free(client);
 	
@@ -293,7 +338,7 @@ void socket_message_free(client_t *client, gboolean purge_socket) {
 	}
 }
 
-gboolean socket_set_timer(client_t *client) {
+gboolean socket_set_timer(client_t *client, int timeout_sec, int timeout_nano) {
 	int timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 	
 	// If something goes wrong with the timer, just kill the stupid client
@@ -308,16 +353,24 @@ gboolean socket_set_timer(client_t *client) {
 	spec.it_interval.tv_sec = 0;
 	spec.it_interval.tv_nsec = 0;
 	
-	// Specify the number of seconds to wait
-	spec.it_value.tv_sec = option_timeout();
-	spec.it_value.tv_nsec = 0;
+	// Only use the default value if both are set to 0
+	if (timeout_sec == 0 && timeout_nano == 0) {
+		// Specify the number of seconds to wait
+		spec.it_value.tv_sec = option_timeout();
+		spec.it_value.tv_nsec = 0;
+	} else {
+		spec.it_value.tv_sec = timeout_sec;
+		spec.it_value.tv_nsec = timeout_nano;
+	}
 	
 	timerfd_settime(timer, 0, &spec, NULL);
 	
 	// Store the timer on the client for cancelling
 	client->timer = timer;
 	
-	DEBUG("Setting timer on client");
+	if (client != _fake_client) {
+		DEBUG("Setting timer on client");
+	}
 	
 	// Add the timer to this epoll
 	return _socket_epoll_add(timer, client);

@@ -78,3 +78,10 @@ void pub_messages(void);
  * This function IS thread safe.
  */
 status_t pub_message(gchar*, message_t*);
+
+/**
+ * A cleanup routine for dead rooms and the like.
+ *
+ * This function IS NOT threadsafe.
+ */
+void pubsub_cleanup(void);
