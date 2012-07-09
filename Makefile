@@ -7,6 +7,9 @@ all: debug
 debug:
 	$(MAKE) build DEBUG=1
 
+run: debug
+	./build/server
+
 build:
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	mkdir -p $(BUILDDIR)
