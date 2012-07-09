@@ -8,10 +8,6 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-
-#include <sys/types.h>
-#include <unistd.h>
-
 #include "client.h"
 #include "debug.h"
 #include "option.h"

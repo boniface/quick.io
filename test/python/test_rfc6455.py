@@ -23,7 +23,7 @@ Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r
 MASK = 'abcd'
 TEST = 'test'
 
-XORD = "".join([chr(ord(c) ^ ord(MASK[i % 4])) for c, i in zip(TEST, range(4))])
+XORD = "".join([chr(ord(c) ^ ord(MASK[i % 4])) for c, i in zip(TEST, range(len(TEST)))])
 
 # A ping message to be sent to the server
 PING = '\x89\x84%s%s' % (MASK, XORD)

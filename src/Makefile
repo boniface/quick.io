@@ -1,7 +1,6 @@
 include ../Makefile.inc
 
 CFLAGS += -c
-LDFLAGS = -Wl,-E $(shell pkg-config --libs $(LIBS))
 TARGET = $(CURDIR)/../$(BUILDDIR)/server
 OBJECTS = $(patsubst %.c, $(OBJPATH)%.o, $(wildcard *.c))
 

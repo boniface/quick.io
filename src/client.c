@@ -130,7 +130,7 @@ status_t client_write(client_t *client, message_t *message) {
 
 status_t client_write_frame(client_t *client, char *frame, int frame_len) {
 	if (frame_len > -1) {
-		write(client->sock, frame, frame_len);
+		send(client->sock, frame, frame_len, MSG_NOSIGNAL);
 		return CLIENT_GOOD;
 	} else {
 		ERROR("Something went wrong with frame creation...");
