@@ -39,13 +39,13 @@ uint which = 0;
 int *epoll;
 GHashTable *clients;
 
-gpointer hitserver(gpointer none) {
+void hitserver() {
 	for (uint i = 0; i < CLIENTS; i++) {
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
 		if (sock < 0) {
 			ERRORF("Could not create socket: %s", strerror(errno));
-			return NULL;
+			return;
 		}
 		
 		struct sockaddr_in serv_addr;
@@ -57,11 +57,13 @@ gpointer hitserver(gpointer none) {
 		int on = 1;
 		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
 			ERROR("Could not set socket option");
-			return FALSE;
+			close(sock);
+			continue;
 		}
 		
 		if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
 			ERRORF("Could not connect: %s", strerror(errno));
+			close(sock);
 			continue;
 		}
 		
@@ -89,8 +91,6 @@ gpointer hitserver(gpointer none) {
 			continue;
 		}
 	}
-	
-	return NULL;
 }
 
 gpointer watch(gpointer thread) {
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
 		*(epoll + i) = epoll_create(1);
 	}
 	
-	g_thread_new("connect", hitserver, NULL);
+	hitserver();
 	
 	for (int i = 0; i < THREADS-1; i++) {
 		size_t *num = malloc(sizeof(*num));
