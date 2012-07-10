@@ -66,21 +66,23 @@ gpointer hitserver(gpointer none) {
 		ev.events = EPOLL_READ_EVENTS;
 		ev.data.fd = sock;
 		
-		if (epoll_ctl(*(epoll + (which++ % THREADS)), EPOLL_CTL_ADD, sock, &ev) == -1) {
-			ERRORF("Could not add sock to epoll: %s", strerror(errno));
-			continue;
-		}
-		
-		if (send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL) < 0) {
-			ERRORF("Could not send handshake: %s", strerror(errno));
-			continue;
-		}
-		
 		int *ptr = malloc(sizeof(*ptr));
 		*ptr = sock;
 		int *inited = malloc(sizeof(*inited));
 		*inited = 0;
 		g_hash_table_insert(clients, ptr, inited);
+		
+		if (epoll_ctl(*(epoll + (which++ % THREADS)), EPOLL_CTL_ADD, sock, &ev) == -1) {
+			ERRORF("Could not add sock to epoll: %s", strerror(errno));
+			g_hash_table_remove(clients, ptr);
+			continue;
+		}
+		
+		if (send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL) < 0) {
+			ERRORF("Could not send handshake: %s", strerror(errno));
+			g_hash_table_remove(clients, ptr);
+			continue;
+		}
 	}
 	
 	return NULL;
@@ -128,7 +130,7 @@ gpointer watch(gpointer thread) {
 
 int main(int argc, char *argv[]) {
 	epoll = malloc(THREADS * sizeof(*epoll));
-	clients = g_hash_table_new(g_int_hash, g_int_equal);
+	clients = g_hash_table_new_full(g_int_hash, g_int_equal, free, free);
 	
 	for (int i = 0; i < THREADS; i++) {
 		*(epoll + i) = epoll_create(1);
