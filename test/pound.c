@@ -40,7 +40,7 @@ int *epoll;
 GHashTable *clients;
 
 gpointer hitserver(gpointer none) {
-	for (uint i = 0; i < CLIENTS/THREADS; i++) {
+	for (uint i = 0; i < CLIENTS; i++) {
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
 		if (sock < 0) {
