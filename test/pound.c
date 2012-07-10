@@ -140,7 +140,8 @@ gpointer watch(gpointer thread) {
 			int sock = ev.data.fd;
 			
 			if (ev.events & EPOLLRDHUP) {
-				DEBUGF("Socket closed: %d", ++closed);
+				closed++;
+				DEBUGF("Socket closed: %d", closed);
 				close(sock);
 			} else {
 				int *inited = g_hash_table_lookup(clients, &sock);
@@ -154,7 +155,7 @@ gpointer watch(gpointer thread) {
 				}
 				
 				if (tick++ % 10000 == 0) {
-					DEBUG("+10K messages");
+					DEBUGF("+10K messages; Closed: %d", closed);
 				}
 			}
 		}
