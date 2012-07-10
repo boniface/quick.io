@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #define CLIENTS 10
+#define THREADS 4
 
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
 	"Host: server.example.com\n" \
@@ -33,11 +34,12 @@
 #define EPOLL_MAX_EVENTS 100
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
 
-int epoll;
+uint which = 0;
+int *epoll;
 GHashTable *clients;
 
 gpointer hitserver(gpointer none) {
-	for (uint i = 0; i < CLIENTS; i++) {
+	for (uint i = 0; i < CLIENTS/THREADS; i++) {
 		DEBUG(".");
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
@@ -63,7 +65,7 @@ gpointer hitserver(gpointer none) {
 		ev.events = EPOLL_READ_EVENTS;
 		ev.data.fd = sock;
 		
-		if (epoll_ctl(epoll, EPOLL_CTL_ADD, sock, &ev) == -1) {
+		if (epoll_ctl(*(epoll + (which++ % THREADS)), EPOLL_CTL_ADD, sock, &ev) == -1) {
 			ERRORF("Could not add sock to epoll: %s", strerror(errno));
 			continue;
 		}
@@ -83,13 +85,17 @@ gpointer hitserver(gpointer none) {
 	return NULL;
 }
 
-void watch() {
+gpointer watch(gpointer thread) {
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	char buff[1024];
 	char sub[] = SUBSCRIBE;
 	uint closed = 0;
+	
+	size_t num = *((int*)thread);
+	int poll = *(epoll + num);
+	
 	while (1) {
-		int num_evs = epoll_wait(epoll, events, EPOLL_MAX_EVENTS, 1000);
+		int num_evs = epoll_wait(poll, events, EPOLL_MAX_EVENTS, 1000);
 		
 		if (num_evs < 1) {
 			continue;
@@ -120,11 +126,26 @@ void watch() {
 }
 
 int main(int argc, char *argv[]) {
-	epoll = epoll_create(1);
+	epoll = malloc(THREADS * sizeof(*epoll));
 	clients = g_hash_table_new(g_int_hash, g_int_equal);
 	
-	g_thread_new("connect", hitserver, NULL);
-	watch();
+	for (int i = 0; i < THREADS; i++) {
+		*(epoll + i) = epoll_create(1);
+	}
+	
+	for (int i = 0; i < THREADS; i++) {
+		g_thread_new("connect", hitserver, NULL);
+	}
+	
+	for (int i = 0; i < THREADS-1; i++) {
+		size_t *num = malloc(sizeof(*num));
+		*num = i;
+		g_thread_new("watch", watch, num);
+	}
+	
+	size_t *num = malloc(sizeof(*num));
+	*num = THREADS-1;
+	watch(num);
 	
 	return 0;
 }
