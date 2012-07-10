@@ -54,6 +54,12 @@ gpointer hitserver(gpointer none) {
 		serv_addr.sin_port = htons(5000);
 		inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
 		
+		int on = 1;
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
+			ERROR("Could not set socket option");
+			return FALSE;
+		}
+		
 		if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
 			ERRORF("Could not connect: %s", strerror(errno));
 			continue;
