@@ -139,9 +139,7 @@ int main(int argc, char *argv[]) {
 		*(epoll + i) = epoll_create(1);
 	}
 	
-	for (int i = 0; i < THREADS; i++) {
-		g_thread_new("connect", hitserver, NULL);
-	}
+	g_thread_new("connect", hitserver, NULL);
 	
 	for (int i = 0; i < THREADS-1; i++) {
 		size_t *num = malloc(sizeof(*num));
