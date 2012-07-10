@@ -41,7 +41,6 @@ GHashTable *clients;
 
 gpointer hitserver(gpointer none) {
 	for (uint i = 0; i < CLIENTS/THREADS; i++) {
-		DEBUG(".");
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
 		if (sock < 0) {
@@ -112,8 +111,6 @@ gpointer watch(gpointer thread) {
 				DEBUGF("Socket closed: %d", ++closed);
 				close(sock);
 			} else {
-				DEBUG("In");
-				
 				int *inited = g_hash_table_lookup(clients, &sock);
 				if (!(*inited)) {
 					send(sock, sub, sizeof(sub), MSG_NOSIGNAL);
