@@ -12,6 +12,9 @@
 #define THREADS 4
 #define ADDRESS "127.0.0.1"
 
+// A list of addresses you can bind to (if opening tons of connections)
+char *addresses[] = {"0.0.0.0"};
+
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
 	"Host: server.example.com\n" \
 	"Upgrade: websocket\n" \
@@ -40,11 +43,13 @@ int *epoll;
 GHashTable *clients;
 
 void hitserver() {
-	guint64 cnt = 0;
+	guint64 cnt = 1;
+	
+	int which_address = 0;
 	
 	for (uint i = 0; i < CLIENTS; i++) {
-		if (cnt++ % 10000 == 0) {
-			DEBUG("10K Created");
+		if (cnt++ % 1000 == 0) {
+			DEBUG("1K Created");	
 		}
 	
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -52,6 +57,19 @@ void hitserver() {
 		if (sock < 0) {
 			ERRORF("Could not create socket: %s", strerror(errno));
 			return;
+		}
+		
+		struct sockaddr_in client_addr;
+		memset(&client_addr, 0, sizeof(client_addr));
+		client_addr.sin_family = AF_INET;
+		client_addr.sin_port = htons(0);
+		char *address = *(addresses + (which_address++ % G_N_ELEMENTS(addresses)));
+		inet_pton(AF_INET, address, &client_addr.sin_addr);
+		
+		if (bind(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == -1) {
+			ERRORF("Could not bind: %s", strerror(errno));
+			close(sock);
+			continue;
 		}
 		
 		struct sockaddr_in serv_addr;
@@ -67,7 +85,7 @@ void hitserver() {
 			continue;
 		}
 		
-		if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+		if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1) {
 			ERRORF("Could not connect: %s", strerror(errno));
 			close(sock);
 			continue;
