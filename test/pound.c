@@ -96,6 +96,8 @@ gpointer watch(gpointer thread) {
 	size_t num = *((int*)thread);
 	int poll = *(epoll + num);
 	
+	guint64 tick = 0;
+	
 	while (1) {
 		int num_evs = epoll_wait(poll, events, EPOLL_MAX_EVENTS, 1000);
 		
@@ -119,6 +121,10 @@ gpointer watch(gpointer thread) {
 				
 				while (read(sock, buff, sizeof(buff)) > 0) {
 					;
+				}
+				
+				if (tick++ % 10000 == 0) {
+					DEBUG("+10K messages");
 				}
 			}
 		}
