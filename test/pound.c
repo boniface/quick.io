@@ -10,6 +10,7 @@
 
 #define CLIENTS 10
 #define THREADS 4
+#define ADDRESS "127.0.0.1"
 
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
 	"Host: server.example.com\n" \
@@ -52,7 +53,7 @@ gpointer hitserver(gpointer none) {
 		memset(&serv_addr, 0, sizeof(serv_addr));
 		serv_addr.sin_family = AF_INET;
 		serv_addr.sin_port = htons(5000);
-		inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+		inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
 		
 		if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
 			ERRORF("Could not connect: %s", strerror(errno));
