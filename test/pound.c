@@ -40,7 +40,13 @@ int *epoll;
 GHashTable *clients;
 
 void hitserver() {
+	guint64 cnt = 0;
+	
 	for (uint i = 0; i < CLIENTS; i++) {
+		if (cnt++ % 10000 == 0) {
+			DEBUG("10K Created");
+		}
+	
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
 		if (sock < 0) {
