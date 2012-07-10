@@ -256,13 +256,18 @@ gboolean pubsub_init() {
  * This function IS NOT threadsafe.
  */
 void pubsub_cleanup() {
+	// Don't bother cleaning up if nothing's there
+	if (g_hash_table_size(_events) == 0) {
+		return;
+	}
+
 	// Go through the rooms and clean up any that have 0 subscribers
 	GHashTableIter iter;
 	gchar *key;
 	GHashTable *value;
 	
 	g_hash_table_iter_init(&iter, _events);
-	while (g_hash_table_iter_next (&iter, (void*)&key, (void*)&value)) {
+	while (g_hash_table_iter_next(&iter, (void*)&key, (void*)&value)) {
 		if (g_hash_table_size(value) == 0) {
 			g_hash_table_unref(value);
 			g_hash_table_iter_remove(&iter);

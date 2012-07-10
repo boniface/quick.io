@@ -186,9 +186,6 @@ static void _socket_tick() {
 	
 	if (tick++ % 4 == 0) {
 		pubsub_cleanup();
-		// Clean up the empty subscription...later!
-		// if (g_hash_table_size(event) == 0) {
-		// }
 	}
 	
 	// Reset the timer
