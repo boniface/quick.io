@@ -55,7 +55,7 @@ gint option_gossip_port() {
 	return _gossip_port;
 }
 
-gint option_max_subscriptions() {
+guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 

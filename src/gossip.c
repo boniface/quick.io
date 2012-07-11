@@ -7,11 +7,11 @@
 #include "gossip.h"
 #include "option.h"
 
-void gossip_client(int pipe) {
+void gossip_client(int read, int write) {
 
 }
 
-gboolean gossip_server(int* pipes) {
+gboolean gossip_server(int *read_pipes, int *write_pipes) {
 	int sock;
 	struct sockaddr_in addy;
 	

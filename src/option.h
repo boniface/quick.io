@@ -50,7 +50,7 @@ gint option_gossip_port(void);
 /**
  * The number of rooms a client may be subscribed to.
  */
-gint option_max_subscriptions(void);
+guint64 option_max_subscriptions(void);
 
 /**
  * Gets the number of processes that should be spawned.

@@ -8,6 +8,7 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+#include "apps.h"
 #include "client.h"
 #include "debug.h"
 #include "option.h"
@@ -264,9 +265,10 @@ gboolean socket_init_process() {
 		return FALSE;
 	}
 	
-	_thread = g_thread_try_new(__FILE__, _socket_accept_client, NULL, NULL);
+	GError *error = NULL;
+	_thread = g_thread_try_new(__FILE__, _socket_accept_client, NULL, &error);
 	if (_thread == NULL) {
-		ERROR("Could not init socket accept in thread.");
+		ERRORF("Could not init socket accept in thread: %s", error->message);
 		return FALSE;
 	}
 	

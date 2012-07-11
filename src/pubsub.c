@@ -217,7 +217,8 @@ void pub_messages() {
 }
 
 status_t pub_message(gchar *event, message_t *message) {
-	GHashTable *subs = _get_subscriptions(event, FALSE);
+	// DO NOT create a subscription form here, this MUST be thread safe.
+	GHashTable *subs = _get_subscriptions(event, FALSE /* DONT TOUCH */);
 	
 	if (subs == NULL) {
 		return CLIENT_INVALID_SUBSCRIPTION;
@@ -256,11 +257,6 @@ gboolean pubsub_init() {
  * This function IS NOT threadsafe.
  */
 void pubsub_cleanup() {
-	// Don't bother cleaning up if nothing's there
-	if (g_hash_table_size(_events) == 0) {
-		return;
-	}
-
 	// Go through the rooms and clean up any that have 0 subscribers
 	GHashTableIter iter;
 	gchar *key;
