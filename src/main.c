@@ -19,15 +19,12 @@
  *
  * *pipes will be set to the write pipes into the children.
  */
-static gboolean _main_fork(int **read_pipes, int **write_pipes, pid_t **pids) {
+static gboolean _main_fork(pid_t **pids) {
 	gint processes = option_processes();
 	
-	*read_pipes = malloc(processes * sizeof(**read_pipes));
-	*write_pipes = malloc(processes * sizeof(**write_pipes));
-	*pids = malloc(processes * sizeof(**pids));
-	
 	// If this malloc fails, shit is fucked
-	if (*read_pipes == NULL || *write_pipes == NULL || *pids == NULL) {
+	*pids = malloc(processes * sizeof(**pids));
+	if (*pids == NULL) {
 		ERROR("Processes malloc() failed. Lol.");
 		return FALSE;
 	}
@@ -52,8 +49,6 @@ static gboolean _main_fork(int **read_pipes, int **write_pipes, pid_t **pids) {
 		// The child is pid == 0
 		if (pid == 0) {
 			// Done with these guys
-			free(*read_pipes);
-			free(*write_pipes);
 			free(*pids);
 			
 			// Get epoll and listening going.  If this fails...shit.
@@ -69,15 +64,14 @@ static gboolean _main_fork(int **read_pipes, int **write_pipes, pid_t **pids) {
 			}
 			
 			// Setup our gossip stuff
-			gossip_client(pipefd[0], pipefd[1]);
+			if (!gossip_client()) {
+				ERRORF("Could not init gossip in #%d.", processes);
+				exit(1);
+			}
 			
 			// Run the socket loop
 			socket_loop();
 		} else {
-			// Save the pipes for later gossip communication
-			*(*read_pipes + processes) = pipefd[0];
-			*(*write_pipes + processes) = pipefd[1];
-			
 			// Save the process id for later culling
 			*(*pids + processes) = pid;
 		}
@@ -144,10 +138,15 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	int *read_pipes;
-	int *write_pipes;
+	if (gossip_init()) {
+		DEBUG("Gossip memory setup");
+	} else {
+		ERROR("Could not setup gossip.");
+		return 1;
+	}
+	
 	pid_t *pids;
-	if (_main_fork(&read_pipes, &write_pipes, &pids)) {
+	if (_main_fork(&pids)) {
 		DEBUG("Children forked.");
 	} else {
 		ERROR("Could not fork children.");
@@ -158,7 +157,7 @@ int main(int argc, char *argv[]) {
 	fflush(stdout);
 	
 	// If the gossip listener fails to start, kill the children and leave
-	if (!gossip_server(read_pipes, write_pipes)) {
+	if (!gossip_server()) {
 		_main_cull_children(pids);
 		ERROR("Gossip server failed to listen.");
 		return 1;
