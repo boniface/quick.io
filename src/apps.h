@@ -1,5 +1,6 @@
 #pragma once
 #include <glib.h>
+#include <gmodule.h>
 #include <stddef.h>
 
 #include "client.h"
@@ -24,6 +25,9 @@ typedef struct app_s {
 	// The thread the app is running in
 	GThread *thread;
 	
+	// The module reference
+	GModule *module;
+	
 	// All of the app callback functions, struct app_callbacks for more
 	GThreadFunc run;
 	app_bool_cb prefork;
@@ -43,6 +47,11 @@ gboolean apps_init(void);
  * to ensure that all sockets and files are process-specific and not shared.
  */
 gboolean apps_run(void);
+
+/**
+ * Gets the app named.
+ */
+app_t* apps_get_app(gchar*);
 
 /**
  * Tell the apps it's their turns to register commands.  This runs in the main

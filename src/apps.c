@@ -6,10 +6,16 @@
 #include "debug.h"
 #include "option.h"
 
+#define APP_FOREACH(body) \
+	for (gsize i = 0; i < _apps->len; i++) {\
+		app_t *app = g_ptr_array_index(_apps, i); \
+		body \
+	}
+
 /**
  * The callbacks that we're going to be using
  */
-static struct app_callbacks {
+struct app_callbacks {
 	// The offset of the callback position in the app_t struct
 	int offset;
 	
@@ -48,22 +54,22 @@ gboolean apps_init() {
 		// Check to see if an absolute path to a module was given
 		// If it was not, assuming looking in ./, so add that to the
 		// name, and open that module
-		gchar *name;
+		gchar *path;
 		if (strspn(app_path, PATH_STARTERS) == 0) {
 			size_t len = strlen(app_path) + sizeof(PATH_CURR_DIR);
-			name = malloc(len * sizeof(*name));
-			snprintf(name, len, "%s%s", PATH_CURR_DIR, app_path);
+			path = malloc(len * sizeof(*path));
+			snprintf(path, len, "%s%s", PATH_CURR_DIR, app_path);
 		} else {
-			name = g_strdup(app_path);
+			path = g_strdup(app_path);
 		}
 		
 		// G_MODULE_BIND_MASK: Be module-lazy and make sure the module keeps
 		// all his functions to himself
-		GModule *module = g_module_open(name, G_MODULE_BIND_MASK);
+		GModule *module = g_module_open(path, G_MODULE_BIND_MASK);
 		
 		// If we can't open the app, just quit
 		if (module == NULL) {
-			ERRORF("Could not open app (%s): %s", name, g_module_error());
+			ERRORF("Could not open app (%s): %s", path, g_module_error());
 			return FALSE;
 		}
 		
@@ -71,7 +77,7 @@ gboolean apps_init() {
 		app_t *app = malloc(sizeof(*app));
 		
 		if (app == NULL) {
-			ERRORF("Could not allocate memory for app: %s", name);
+			ERRORF("Could not allocate memory for app: %s", path);
 			return FALSE;
 		}
 		
@@ -82,7 +88,19 @@ gboolean apps_init() {
 		memset(app, 0, sizeof(*app));
 		
 		// Save the name of the app
-		app->name = name;
+		gchar* (*app_name)(void);
+		if (g_module_symbol(module, "app_name", (void**)&app_name)) {
+			app->name = app_name();
+		} else {
+			ERRORF("App doesn't have a name: %s", path);
+			return FALSE;
+		}
+		
+		// We might need this elsewhere
+		app->module = module;
+		
+		// Done looking at the path
+		free(path);
 		
 		// Register all the callbacks the app has
 		for (gsize i = 0; i < G_N_ELEMENTS(callbacks); i++) {
@@ -91,12 +109,24 @@ gboolean apps_init() {
 			
 			// Get the _client_close function for faster referencing later
 			if (g_module_symbol(module, callbacks[i].name, &curr_cb)) {
+				// Just side-step type check altogether. They're all function
+				// pointers
 				*((app_cb*)(((char*)app) + callbacks[i].offset)) = curr_cb;
 			}
 		}
 	}
 
 	return TRUE;
+}
+
+app_t* apps_get_app(gchar *app_name) {
+	APP_FOREACH(
+		if (strcmp(app_name, app->name) == 0) {
+			return app;
+		}
+	)
+	
+	return NULL;
 }
 
 gboolean apps_run() {
@@ -107,11 +137,12 @@ gboolean apps_run() {
 		#warning See: www.gnu.org/software/libtool/manual/html_node/Building-modules.html
 		#warning See: www.gnu.org/software/libtool/manual/html_node/Link-mode.html
 		
-		// Get a pointer to 
+		// Get the app
 		app_t *app = g_ptr_array_index(_apps, i);
+		
+		// If there isn't a run function, then just move on
 		if (app->run == NULL) {
-			ERRORF("App init error: no app_run function in %s", app->name);
-			return FALSE;
+			continue;
 		}
 		
 		GThread *thread = g_thread_try_new(__FILE__, app->run, NULL, NULL);
@@ -129,9 +160,7 @@ gboolean apps_run() {
 
 void apps_register_commands() {
 	// Go through all the apps and call their register_commands function
-	for (gsize i = 0; i < _apps->len; i++) {
-		app_t *app = g_ptr_array_index(_apps, i);
-		
+	APP_FOREACH (
 		if (app->prefork != NULL) {
 			app->prefork();
 		}
@@ -139,12 +168,11 @@ void apps_register_commands() {
 		if (app->register_commands != NULL) {
 			app->register_commands();
 		}
-	}
+	)
 }
 
 gboolean apps_postfork() {
-	for (gsize i = 0; i < _apps->len; i++) {
-		app_t *app = g_ptr_array_index(_apps, i);
+	APP_FOREACH(
 		app_bool_cb cb = app->postfork;
 		
 		// If the postfork callback isn't happy
@@ -152,27 +180,27 @@ gboolean apps_postfork() {
 			ERRORF("Application failed in postfork: %s", app->name);
 			return FALSE;
 		}
-	}
+	)
 	
 	return TRUE;
 }
 
 void apps_client_close(client_t *client) {
-	for (gsize i = 0; i < _apps->len; i++) {
-		app_client_cb cb = ((app_t*)g_ptr_array_index(_apps, i))->client_close;
+	APP_FOREACH(
+		app_client_cb cb = app->client_close;
 		
 		if (cb != NULL) {
 			cb(client);
 		}
-	}
+	)
 }
 
 void apps_client_connect(client_t *client) {
-	for (gsize i = 0; i < _apps->len; i++) {
-		app_client_cb cb = ((app_t*)g_ptr_array_index(_apps, i))->client_connect;
+	APP_FOREACH(
+		app_client_cb cb = app->client_connect;
 		
 		if (cb != NULL) {
 			cb(client);
 		}
-	}
+	)
 }
