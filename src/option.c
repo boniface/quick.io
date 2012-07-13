@@ -14,8 +14,6 @@ static gchar **_apps = NULL;
 static gint _apps_count = 0;
 static gchar *_bind_address = "127.0.0.1";
 static gint _port = 5000;
-static gchar *_gossip_address = "127.0.0.1";
-static gint _gossip_port = 43172;
 static guint64 _max_subs = 4;
 static gint _processes = 8;
 static gint _timeout = 5;
@@ -23,8 +21,6 @@ static gint _timeout = 5;
 static ConfigFileEntry _config_options[] = {
 	{"apps", e_string_array, &_apps, &_apps_count},
 	{"bind-address", e_string, &_bind_address},
-	{"gossip-address", e_string, &_gossip_address},
-	{"gossip-port", e_int, &_gossip_port},
 	{"port", e_int, &_port},
 	{"processes", e_int, &_processes},
 	{"max-subs", e_uint64, &_max_subs},
@@ -45,14 +41,6 @@ gchar* option_bind_address() {
 
 gint option_port() {
 	return _port;
-}
-
-gchar* option_gossip_address() {
-	return _gossip_address;
-}
-
-gint option_gossip_port() {
-	return _gossip_port;
 }
 
 guint64 option_max_subscriptions() {
