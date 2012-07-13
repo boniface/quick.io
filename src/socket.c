@@ -11,7 +11,6 @@
 #include "apps.h"
 #include "client.h"
 #include "debug.h"
-#include "gossip.h"
 #include "option.h"
 #include "pubsub.h"
 #include "socket.h"
@@ -80,9 +79,9 @@ static gpointer _socket_accept_client(gpointer unused) {
 		client->initing = 1;
 		
 		// This must happen before creating a timer and adding on epoll,
-		// otherwise, the client count will be innaccurate as they close
-		// connections on errors, decrementing the count
-		gossip_client_connect();
+		// otherwise, the close callback could be fired with a client that
+		// was never app_client_new()'d
+		apps_client_connect(client);
 		
 		// Make the client finish the handshake quickly, or drop him
 		// If we can't setup the timer, then move on
@@ -310,8 +309,6 @@ void socket_close(client_t *client) {
 	socket_clear_timer(client);
 	socket_message_free(client, TRUE);
 	free(client);
-	
-	gossip_client_disconnect();
 }
 
 /**

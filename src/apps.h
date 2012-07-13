@@ -1,5 +1,6 @@
 #pragma once
 #include <glib.h>
+#include <stddef.h>
 
 #include "client.h"
 
@@ -9,7 +10,28 @@
 /**
  * The message reciever implemented in apps for recieving info that a client has closed.
  */
-typedef void (*client_close_fn)(client_t*);
+typedef void (*app_cb)(void);
+typedef gboolean (*app_bool_cb)(void);
+typedef void (*app_client_cb)(client_t*);
+
+/**
+ * The callbacks that the apps will recieve for different events.
+ */
+typedef struct app_s {
+	// The name of the app
+	gchar *name;
+	
+	// The thread the app is running in
+	GThread *thread;
+	
+	// All of the app callback functions, struct app_callbacks for more
+	GThreadFunc run;
+	app_bool_cb prefork;
+	app_bool_cb postfork;
+	app_client_cb client_connect;
+	app_client_cb client_close;
+	app_cb register_commands;
+} app_t;
 
 /**
  * Init the list of apps and load their modules.
@@ -27,6 +49,16 @@ gboolean apps_run(void);
  * thread before forking.
  */
 void apps_register_commands(void);
+
+/**
+ * Callback for the apps, post-fork.
+ */
+gboolean apps_postfork(void);
+
+/**
+ * Inform all the apps that a new client has been accepted.
+ */
+void apps_client_connect(client_t*);
 
 /**
  * Inform all the apps that a client has closed so that he can be removed from 

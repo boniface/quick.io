@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "apps.h"
 #include "commands.h"
 #include "debug.h"
-#include "gossip.h"
 #include "option.h"
 #include "pubsub.h"
 #include "socket.h"
@@ -63,14 +63,10 @@ static gboolean _main_fork(pid_t **pids) {
 				exit(1);
 			}
 			
-			// Setup our gossip stuff
-			if (!gossip_client()) {
-				ERRORF("Could not init gossip in #%d.", processes);
-				exit(1);
-			}
-			
 			// Run the socket loop
 			socket_loop();
+			ERRORF("A CHILD EXITED THE SOCKET LOOP: #%d", processes);
+			exit(1);
 		} else {
 			// Save the process id for later culling
 			*(*pids + processes) = pid;
@@ -82,10 +78,11 @@ static gboolean _main_fork(pid_t **pids) {
 
 static void _main_cull_children(int *pids) {
 	DEBUG("All children are being culled...");
-	
+
 	int count = option_processes();
 	while (count-- > 0) {
-		kill(*(pids + count - 1), SIGINT);
+		DEBUGF("Killing: %d", count);
+		kill(*(pids + count), SIGINT);
 	}
 }
 
@@ -138,34 +135,41 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (gossip_init()) {
-		DEBUG("Gossip memory setup");
+	pid_t *pids;
+	if (_main_fork(&pids)) {
+		DEBUG("Children forked");
 	} else {
-		ERROR("Could not setup gossip.");
+		ERROR("Could not fork children.");
 		return 1;
 	}
 	
-	pid_t *pids;
-	if (_main_fork(&pids)) {
-		DEBUG("Children forked.");
+	if (apps_postfork()) {
+		DEBUG("Postfork apps done");
 	} else {
-		ERROR("Could not fork children.");
+		ERROR("Error with apps postfork");
+		_main_cull_children(pids);
 		return 1;
 	}
 	
 	printf("READY\n");
 	fflush(stdout);
 	
-	// If the gossip listener fails to start, kill the children and leave
-	if (!gossip_server()) {
-		_main_cull_children(pids);
-		ERROR("Gossip server failed to listen.");
-		return 1;
+	// The main thread just sits here, waiting
+	// The children processes will never get here
+	int count = option_processes();
+	while (count-- > 0) {
+		int status = 0;
+		pid_t pid = wait(&status);
+		
+		if (WIFEXITED(status)) {
+			ERRORF("Child pid=%d died with status=%d", pid, WEXITSTATUS(status));
+		} else if (WIFSIGNALED(status)) {
+			ERRORF("Child pid=%d was killed by signal %d", pid, WTERMSIG(status));
+		} else {
+			// The process didn't exit, so keep counting
+			count++;
+		}
 	}
 	
-	// If we ever get here...we're not a forking server
-	// Make sure all the children are dead
-	_main_cull_children(pids);
-	
-	return 0;
+	return 1;
 }

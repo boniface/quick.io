@@ -6,66 +6,93 @@
 #include "debug.h"
 #include "option.h"
 
-// The number of apps that are loaded
-static int _app_count = 0;
+/**
+ * The callbacks that we're going to be using
+ */
+static struct app_callbacks {
+	// The offset of the callback position in the app_t struct
+	int offset;
+	
+	// The name of the function in the module
+	char *name;
+};
 
-// The threads that the apps are running in.
-static GThread **_threads;
+static struct app_callbacks callbacks[] = {
+	{offsetof(app_t, prefork), "app_prefork"},
+	{offsetof(app_t, postfork), "app_postfork"},
+	{offsetof(app_t, run), "app_run"},
+	{offsetof(app_t, client_connect), "app_client_connect"},
+	{offsetof(app_t, client_close), "app_client_close"},
+	{offsetof(app_t, register_commands), "app_register_commands"},
+};
 
-// The apps that are running
-static GModule **_apps;
-
-// The client_close functions
-static GPtrArray *_client_close;
+/**
+ * The information about the apps that are currently running.
+ */
+static GPtrArray *_apps;
 
 gboolean apps_init() {
 	gchar **app_names = option_apps();
-	_app_count = option_apps_count();
 	
-	_apps = malloc(_app_count * sizeof(*_apps));
-	_threads = malloc(_app_count * sizeof(*_threads));
-	_client_close = g_ptr_array_new();
+	_apps = g_ptr_array_new();
 	
-	if (_apps == NULL || _threads == NULL) {
+	if (_apps == NULL) {
 		ERROR("Could not allocate space for the apps.");
 		return FALSE;
 	}
 	
-	for (int i = 0; i < _app_count; i++) {
+	int app_count = option_apps_count();
+	for (int i = 0; i < app_count; i++) {
 		gchar *app_path = *(app_names + i);
 		
 		// Check to see if an absolute path to a module was given
 		// If it was not, assuming looking in ./, so add that to the
 		// name, and open that module
-		gchar *module;
+		gchar *name;
 		if (strspn(app_path, PATH_STARTERS) == 0) {
 			size_t len = strlen(app_path) + sizeof(PATH_CURR_DIR);
-			module = malloc(len * sizeof(*module));
-			snprintf(module, len, "%s%s", PATH_CURR_DIR, app_path);
+			name = malloc(len * sizeof(*name));
+			snprintf(name, len, "%s%s", PATH_CURR_DIR, app_path);
 		} else {
-			module = g_strdup(app_path);
+			name = g_strdup(app_path);
 		}
 		
-		// G_MODULE_BIND_MASK: Be lazy and make sure the module keeps
+		// G_MODULE_BIND_MASK: Be module-lazy and make sure the module keeps
 		// all his functions to himself
-		GModule *app = g_module_open(module, G_MODULE_BIND_MASK);
-		
-		// Done with the name of the module
-		free(module);
+		GModule *module = g_module_open(name, G_MODULE_BIND_MASK);
 		
 		// If we can't open the app, just quit
-		if (app == NULL) {
-			ERRORF("Could not open app: %s", g_module_error());
+		if (module == NULL) {
+			ERRORF("Could not open app (%s): %s", name, g_module_error());
 			return FALSE;
 		}
 		
-		// Save a reference to the app for later use
-		*(_apps + i) = app;
+		// For storing the app information
+		app_t *app = malloc(sizeof(*app));
 		
-		// Get the _client_close function for faster referencing later
-		client_close_fn client_close;
-		if (g_module_symbol(app, "app_client_close", (gpointer*)&client_close)) {
-			g_ptr_array_add(_client_close, client_close);
+		if (app == NULL) {
+			ERRORF("Could not allocate memory for app: %s", name);
+			return FALSE;
+		}
+		
+		// We allocated, so save it
+		g_ptr_array_add(_apps, app);
+		
+		// Make sure the app is all blank
+		memset(app, 0, sizeof(*app));
+		
+		// Save the name of the app
+		app->name = name;
+		
+		// Register all the callbacks the app has
+		for (gsize i = 0; i < G_N_ELEMENTS(callbacks); i++) {
+			// For use with the current callback being registered
+			gpointer curr_cb;
+			
+			// Get the _client_close function for faster referencing later
+			if (g_module_symbol(module, callbacks[i].name, &curr_cb)) {
+				*((app_cb*)(((char*)app) + callbacks[i].offset)) = curr_cb;
+			}
 		}
 	}
 
@@ -73,9 +100,7 @@ gboolean apps_init() {
 }
 
 gboolean apps_run() {
-	for (int i = 0; i < _app_count; i++) {
-		GModule *app = *(_apps + i);
-		
+	for (gsize i = 0; i < _apps->len; i++) {
 		#warning Only export specific functions to modules
 		#warning See: LDFLAGS (-Wl,-E (use libtool?) to dynamic-list)
 		#warning See: linux.die.net/man/1/ld
@@ -83,19 +108,20 @@ gboolean apps_run() {
 		#warning See: www.gnu.org/software/libtool/manual/html_node/Link-mode.html
 		
 		// Get a pointer to 
-		gpointer (*app_run)(gpointer);
-		if (!g_module_symbol(app, "app_run", (gpointer*)&app_run)) {
-			ERRORF("App init error: %s", g_module_error());
-			g_module_close(app);
+		app_t *app = g_ptr_array_index(_apps, i);
+		if (app->run == NULL) {
+			ERRORF("App init error: no app_run function in %s", app->name);
 			return FALSE;
 		}
 		
-		GThread *thread = g_thread_try_new(__FILE__, app_run, NULL, NULL);
+		GThread *thread = g_thread_try_new(__FILE__, app->run, NULL, NULL);
 		
 		if (thread == NULL) {
-			ERROR("Could not init thread for app.");
+			ERRORF("Could not init thread for app %s", app->name);
 			return FALSE;
 		}
+		
+		app->thread = thread;
 	}
 	
 	return TRUE;
@@ -103,19 +129,50 @@ gboolean apps_run() {
 
 void apps_register_commands() {
 	// Go through all the apps and call their register_commands function
-	for (int i = 0; i < _app_count; i++) {
-		GModule *app = *(_apps + i);
+	for (gsize i = 0; i < _apps->len; i++) {
+		app_t *app = g_ptr_array_index(_apps, i);
 		
-		void (*app_register_commands)(void);
-		if (g_module_symbol(app, "app_register_commands", (gpointer*)&app_register_commands)) {
-			app_register_commands();
+		if (app->prefork != NULL) {
+			app->prefork();
+		}
+		
+		if (app->register_commands != NULL) {
+			app->register_commands();
 		}
 	}
 }
 
+gboolean apps_postfork() {
+	for (gsize i = 0; i < _apps->len; i++) {
+		app_t *app = g_ptr_array_index(_apps, i);
+		app_bool_cb cb = app->postfork;
+		
+		// If the postfork callback isn't happy
+		if (cb != NULL && cb() == FALSE) {
+			ERRORF("Application failed in postfork: %s", app->name);
+			return FALSE;
+		}
+	}
+	
+	return TRUE;
+}
+
 void apps_client_close(client_t *client) {
-	#warning REWRITE this to be: apps_client_unsub, apps_client_sub (just events fired back into apps)
-	for (gsize i = 0; i < _client_close->len; i++) {
-		((client_close_fn)g_ptr_array_index(_client_close, i))(client);
+	for (gsize i = 0; i < _apps->len; i++) {
+		app_client_cb cb = ((app_t*)g_ptr_array_index(_apps, i))->client_close;
+		
+		if (cb != NULL) {
+			cb(client);
+		}
+	}
+}
+
+void apps_client_connect(client_t *client) {
+	for (gsize i = 0; i < _apps->len; i++) {
+		app_client_cb cb = ((app_t*)g_ptr_array_index(_apps, i))->client_connect;
+		
+		if (cb != NULL) {
+			cb(client);
+		}
 	}
 }

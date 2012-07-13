@@ -34,8 +34,7 @@ static GMutex _messages_lock;
  * Shortcut for getting a subscription, or creating it if it doesn't exist.
  *
  * This function IS NOT thread safe.  Only the main thread that is listening
- * on clients should ever call it with and_create == TRUE. It is ALWAYS wrong
- * for the gossip thread to use and_create == TRUE.
+ * on clients should ever call it with and_create == TRUE.
  */
 static GHashTable* _get_subscriptions(gchar* event, gboolean and_create) {
 	GHashTable *subs = g_hash_table_lookup(_events, event);
