@@ -158,13 +158,19 @@ gboolean apps_run() {
 	return TRUE;
 }
 
+gboolean apps_prefork() {
+	APP_FOREACH(
+		if (app->prefork != NULL && app->prefork() == FALSE) {
+			return FALSE;
+		}
+	)
+	
+	return TRUE;
+}
+
 void apps_register_commands() {
 	// Go through all the apps and call their register_commands function
-	APP_FOREACH (
-		if (app->prefork != NULL) {
-			app->prefork();
-		}
-		
+	APP_FOREACH(
 		if (app->register_commands != NULL) {
 			app->register_commands();
 		}

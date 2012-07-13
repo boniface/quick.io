@@ -135,6 +135,13 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
+	if (apps_prefork()) {
+		DEBUG("Apps preforked");
+	} else {
+		ERROR("Error with preforking apps.");
+		return 1;
+	}
+	
 	pid_t *pids;
 	if (_main_fork(&pids)) {
 		DEBUG("Children forked");

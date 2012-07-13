@@ -43,6 +43,11 @@ typedef struct app_s {
 gboolean apps_init(void);
 
 /**
+ * Run through the apps preforking procedures.
+ */
+gboolean apps_prefork(void);
+
+/**
  * Run the apps in their own, separate threads. This should be run after forking
  * to ensure that all sockets and files are process-specific and not shared.
  */
