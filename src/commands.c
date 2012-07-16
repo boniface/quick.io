@@ -81,6 +81,11 @@ status_t command_subscribe(client_t *client, message_t *message) {
 	#warning create test case for empty responses when they should be empty
 	DEBUGF("command_subscribe: %s", message->buffer->str);
 	
+	// External clients aren't allowed to know about UNSUBSCRIBED
+	if (strcmp(message->buffer->str, UNSUBSCRIBED) == 0) {
+		return CLIENT_INVALID_SUBSCRIPTION;
+	}
+	
 	status_t status = sub_client(message->buffer->str, client);
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
@@ -104,6 +109,11 @@ status_t command_subscribe(client_t *client, message_t *message) {
 status_t command_unsubscribe(client_t *client, message_t *message) {
 	#warning create test case for empty responses when they should be empty
 	DEBUGF("command_unsubscribe: %s", message->buffer->str);
+	
+	// External clients aren't allowed to know about UNSUBSCRIBED
+	if (strcmp(message->buffer->str, UNSUBSCRIBED) == 0) {
+		return CLIENT_INVALID_SUBSCRIPTION;
+	}
 	
 	status_t status = sub_unsub_client(message->buffer->str, client);
 	

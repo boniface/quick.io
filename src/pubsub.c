@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "apps.h"
 #include "client.h"
 #include "debug.h"
 #include "handler_rfc6455.h"
@@ -98,6 +99,9 @@ status_t sub_client(gchar *event, client_t *client) {
 	// Give the client a reference to the subscription
 	g_ptr_array_add(client->subs, subs);
 	
+	// Send the apps callback
+	apps_pubsub_subscribe(event, client);
+	
 	return CLIENT_GOOD;
 }
 
@@ -109,13 +113,22 @@ status_t sub_unsub_client(gchar *event, client_t *client) {
 		return CLIENT_CANNOT_UNSUBSCRIBE;
 	}
 	
-	// Don't add the client if he's already subscribed
-	if (!g_hash_table_contains(subs, client)) {
+	// If the client isn't a member of the subscription, that's an error
+	if (!g_hash_table_remove(subs, client)) {
 		return CLIENT_CANNOT_UNSUBSCRIBE;
 	}
 	
 	// The client isn't subscribed anymore, remove from his list
 	g_ptr_array_remove_fast(client->subs, subs);
+	
+	// Send the apps callback
+	apps_pubsub_unsubscribe(event, client);
+	
+	// If the client has removed all subscriptions, add him back to UNSUBSCRIBED
+	// This shouldn't cause an infinite loop because of the remove statement above
+	if (client->subs->len == 0) {
+		sub_client(UNSUBSCRIBED, client);
+	}
 	
 	return CLIENT_GOOD;
 }

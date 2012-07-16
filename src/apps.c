@@ -29,6 +29,8 @@ static struct app_callbacks callbacks[] = {
 	{offsetof(app_t, run), "app_run"},
 	{offsetof(app_t, client_connect), "app_client_connect"},
 	{offsetof(app_t, client_close), "app_client_close"},
+	{offsetof(app_t, subscribe), "app_pubsub_subscribe"},
+	{offsetof(app_t, unsubscribe), "app_pubsub_unsubscribe"},
 	{offsetof(app_t, register_commands), "app_register_commands"},
 };
 
@@ -207,6 +209,26 @@ void apps_client_connect(client_t *client) {
 		
 		if (cb != NULL) {
 			cb(client);
+		}
+	)
+}
+
+void apps_pubsub_subscribe(gchar *event, client_t *client) {
+	APP_FOREACH(
+		app_pubsub_cb cb = app->subscribe;
+		
+		if (cb != NULL) {
+			cb(event, client);
+		}
+	)
+}
+
+void apps_pubsub_unsubscribe(gchar *event, client_t *client) {
+	APP_FOREACH(
+		app_pubsub_cb cb = app->unsubscribe;
+		
+		if (cb != NULL) {
+			cb(event, client);
 		}
 	)
 }

@@ -14,6 +14,7 @@
 typedef void (*app_cb)(void);
 typedef gboolean (*app_bool_cb)(void);
 typedef void (*app_client_cb)(client_t*);
+typedef void (*app_pubsub_cb)(gchar*, client_t*);
 
 /**
  * The callbacks that the apps will recieve for different events.
@@ -34,6 +35,8 @@ typedef struct app_s {
 	app_bool_cb postfork;
 	app_client_cb client_connect;
 	app_client_cb client_close;
+	app_pubsub_cb subscribe;
+	app_pubsub_cb unsubscribe;
 	app_cb register_commands;
 } app_t;
 
@@ -79,3 +82,13 @@ void apps_client_connect(client_t*);
  * any internal tracking.
  */
 void apps_client_close(client_t*);
+
+/**
+ * Inform all the apps when a client has subscribed to something.
+ */
+void apps_pubsub_subscribe(gchar*, client_t*);
+
+/**
+ * Inform all the apps when a client has unsubscribed to something.
+ */
+void apps_pubsub_unsubscribe(gchar*, client_t*);
