@@ -1,6 +1,7 @@
 #pragma once
 #include <glib.h>
 #include <gmodule.h>
+#include <libsoup/soup.h>
 #include <stddef.h>
 
 #include "client.h"
@@ -37,7 +38,7 @@ typedef struct app_s {
 	app_client_cb client_close;
 	app_pubsub_cb subscribe;
 	app_pubsub_cb unsubscribe;
-	app_cb register_commands;
+	app_cb register_events;
 } app_t;
 
 /**

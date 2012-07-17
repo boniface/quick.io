@@ -2,10 +2,10 @@
 #include "option.h"
 
 // Command line options
-static gchar* _config_file = "csocket.ini";
+static gchar* _config_file = "quickio.ini";
 
 static GOptionEntry command_options[] = {
-	{"config-file", 'f', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load", "./csocket.ini"},
+	{"config-file", 'f', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load", "./quickio.ini"},
 	{NULL}
 };
 
@@ -47,12 +47,12 @@ guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 
-gint option_timeout() {
-	return _timeout;
-}
-
 gint option_processes() {
 	return _processes;
+}
+
+gint option_timeout() {
+	return _timeout;
 }
 
 gboolean option_parse_config_file(gchar *group_name, ConfigFileEntry opts[], size_t opts_len, GError **error) {

@@ -7,7 +7,7 @@
 /**
  * If, given the headers, we support this client.
  */
-gboolean rfc6455_handles(SoupMessageHeaders*);
+gboolean rfc6455_handles(gchar*, SoupMessageHeaders*);
 
 /**
  * Handshake with the client.

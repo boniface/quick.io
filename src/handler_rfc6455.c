@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include "client.h"
-#include "commands.h"
 #include "debug.h"
 #include "handler_rfc6455.h"
 #include "handler_rfc6455_const.h"
@@ -122,7 +121,7 @@ static status_t _rfc6455_start(client_t *client) {
 	return _rfc6455_read(client, header_len);
 }
 
-gboolean rfc6455_handles(SoupMessageHeaders *req_headers) {
+gboolean rfc6455_handles(gchar *path, SoupMessageHeaders *req_headers) {
 	const char *id = soup_message_headers_get_one(req_headers, VERSION_KEY);
 	return id != NULL && strncmp(id, "13", 2) == 0;
 }
@@ -257,6 +256,8 @@ status_t rfc6455_incoming(client_t *client) {
 		return _rfc6455_start(client);
 	} else if (opcode == OP_CONTINUATION) {
 		return _rfc6455_start(client);
+	} else if (opcode == OP_CLOSE) {
+		return CLIENT_ABORTED;
 	} else if (opcode == OP_PING) {
 		client->message->type = op_pong;
 		

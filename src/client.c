@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "client.h"
-#include "commands.h"
+#include "events.h"
 #include "debug.h"
 #include "handler_rfc6455.h"
 #include "pubsub.h"
@@ -21,15 +21,17 @@ status_t client_handshake(client_t *client) {
 	GString *buffer = client->message->socket_buffer;
 
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
+	gchar *path;
 	
 	// Parse the headers and see if we can handle them
-	if (buffer->len && soup_headers_parse(buffer->str, buffer->len, req_headers)) {
-		if (rfc6455_handles(req_headers)) {
+	if (buffer->len && soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL)) {
+		if (rfc6455_handles(path, req_headers)) {
 			handler = h_rfc6455;
 			all_good = rfc6455_handshake(client, req_headers);
-		}
+		} 
 	}
 	
+	g_free(path);
 	soup_message_headers_free(req_headers);
 	
 	if (all_good) {
@@ -86,7 +88,7 @@ status_t client_message(client_t* client) {
 	
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
-		status = command_handle(client);
+		status = events_handle(client);
 		
 		#warning Need to handle different client status messages from handlers appropriately
 	}

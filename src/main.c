@@ -8,8 +8,8 @@
 #include <unistd.h>
 
 #include "apps.h"
-#include "commands.h"
 #include "debug.h"
+#include "events.h"
 #include "option.h"
 #include "pubsub.h"
 #include "socket.h"
@@ -121,10 +121,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (commands_init()) {
-		DEBUG("Commands inited");
+	if (events_init()) {
+		DEBUG("Events inited");
 	} else {
-		ERROR("Could not init commands.");
+		ERROR("Could not init events.");
 		return 1;
 	}
 	

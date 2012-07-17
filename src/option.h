@@ -1,7 +1,7 @@
 #pragma once
 #include <glib.h>
 
-#define DEFAULT_GROUP_NAME "csocketio"
+#define DEFAULT_GROUP_NAME "quick.io"
 
 typedef enum entry_t {
 	e_int,

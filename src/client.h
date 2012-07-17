@@ -6,7 +6,6 @@
 
 // Anything in the message->buffer should be written back to the client
 #define CLIENT_WRITE 1 << 1
-
 #define CLIENT_WAIT 1 << 2
 #define CLIENT_ABORTED 1 << 3
 #define CLIENT_NEED_MASK 1 << 4

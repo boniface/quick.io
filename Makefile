@@ -13,7 +13,7 @@ run: debug
 build:
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	mkdir -p $(BUILDDIR)
-	cp csocket.ini $(BUILDDIR)
+	cp quickio.ini $(BUILDDIR)
 	$(MAKE) -C src
 	$(MAKE) -C app
 

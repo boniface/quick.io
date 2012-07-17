@@ -88,6 +88,8 @@ static gpointer _socket_accept_client(gpointer unused) {
 		if (socket_set_timer(client, 0, 0)) {
 			// Add the client to our epoll
 			_socket_epoll_add(sock, client);
+			
+			DEBUGF("A new client connected: %d", client->sock);
 		}
 	}
 	
@@ -120,8 +122,11 @@ static void _socket_message_new(client_t *client) {
 static void _socket_handle_client(client_t *client, uint32_t evs) {
 	gchar buffer[MAX_MESSAGE_SIZE];
 	
+	DEBUGF("Event: %d", client->sock);
+	
 	if (evs & EPOLLRDHUP) {
-		DEBUG("A client closed");
+		DEBUGF("Client HUP: %d", client->sock);
+		// The underlying socket was closed
 		socket_close(client);
 	} else if (evs & EPOLLIN) {
 		// Check the timer to see if it has expired
@@ -168,8 +173,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		
 		// The client is misbehaving. Close him.
 		} else if (status & CLIENT_BAD) {
-			DEBUGF("Bad client, closing: %d", status);
-			DEBUGF("Bad client: %s", status == CLIENT_NEED_MASK ? "yep" : "nope");
+			DEBUGF("Bad client, closing: status=%d", status);
 			socket_close(client);
 		
 		// The client gets 1 timer to make itself behave. If it doesn't in this
@@ -297,6 +301,8 @@ void socket_close(client_t *client) {
 	if (client == NULL) {
 		return;
 	}
+	
+	DEBUGF("A client closed: %d", client->sock);
 	
 	// Inform any apps that are tracking clients that a client has died
 	apps_client_close(client);

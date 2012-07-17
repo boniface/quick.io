@@ -31,7 +31,7 @@ static struct app_callbacks callbacks[] = {
 	{offsetof(app_t, client_close), "app_client_close"},
 	{offsetof(app_t, subscribe), "app_pubsub_subscribe"},
 	{offsetof(app_t, unsubscribe), "app_pubsub_unsubscribe"},
-	{offsetof(app_t, register_commands), "app_register_commands"},
+	{offsetof(app_t, register_events), "app_register_events"},
 };
 
 /**
@@ -173,8 +173,8 @@ gboolean apps_prefork() {
 void apps_register_commands() {
 	// Go through all the apps and call their register_commands function
 	APP_FOREACH(
-		if (app->register_commands != NULL) {
-			app->register_commands();
+		if (app->register_events != NULL) {
+			app->register_events();
 		}
 	)
 }
