@@ -12,7 +12,7 @@ LIBS += glib-2.0 libsoup-2.4
 LIBS_VERSIONS = glib-2.0 >= 2.32 libsoup-2.4 >= 2.38
 
 # The flags
-CFLAGS = -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS))
+CFLAGS = -O2 -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS))
 LDFLAGS = -Wl,-E $(shell pkg-config --libs $(LIBS))
 
 # If we should include debug everything

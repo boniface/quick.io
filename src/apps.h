@@ -63,10 +63,10 @@ gboolean apps_run(void);
 app_t* apps_get_app(gchar*);
 
 /**
- * Tell the apps it's their turns to register commands.  This runs in the main
- * thread before forking.
+ * Tell the apps it's their turns to register the evnets they listen for.  This runs in
+ * the main thread before forking.
  */
-void apps_register_commands(void);
+void apps_register_events(void);
 
 /**
  * Callback for the apps, post-fork.

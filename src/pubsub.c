@@ -249,9 +249,7 @@ status_t pub_message(gchar *event, message_t *message) {
 	
 	// We need to add a message in a thread-safe way
 	g_mutex_lock(&_messages_lock);
-	
 	g_ptr_array_add(_messages, emsg);
-	
 	g_mutex_unlock(&_messages_lock);
 	
 	return CLIENT_GOOD;

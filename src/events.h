@@ -1,4 +1,7 @@
 #pragma once
+
+#include <glib.h>
+
 #include "client.h"
 #include "debug.h"
 
@@ -21,10 +24,37 @@
 typedef status_t(*commandfn_t)(client_t*, message_t*);
 
 /**
- * Handle a command.
- *
- * Returns CLIENT_* status messages.  command->buffer will be set to what should
- * be sent back to the client, or will be empty (command->buffer->len == 0).
+ * The different types of data that an event can contain.
+ */
+enum data_t {
+	d_plain,
+	d_json,
+};
+
+/**
+ * All the information an event needs.
+ */
+typedef struct event_s {
+	// The underlying buffer that the event is constructed from
+	// This MUST be freed
+	gchar *buffer;
+	
+	// The event segments: /test/event => ['test', 'event']
+	// The items are all pointers into *buffer
+	GPtrArray *segments;
+	
+	// The callback number the client sent
+	guint callback;
+	
+	// The type of data sitting in the data buffer
+	enum data_t type;
+	
+	// The data string sent from the client (this is part of *buffer)
+	gchar *data;
+} event_t;
+
+/**
+ * Handle an event from a client.
  */
 status_t events_handle(client_t*);
 
@@ -43,9 +73,11 @@ status_t events_subscribe(client_t*, message_t*);
 status_t events_unsubscribe(client_t*, message_t*);
 
 /**
- * Add a command handler.
+ * Listen for an event from clients.
+ *
+ * The ":" character is not allowed in event names.
  */
-void events_add(gchar*, commandfn_t);
+void events_on(gchar*, commandfn_t);
 
 /**
  * Init the command interface

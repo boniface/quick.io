@@ -170,7 +170,7 @@ gboolean apps_prefork() {
 	return TRUE;
 }
 
-void apps_register_commands() {
+void apps_register_events() {
 	// Go through all the apps and call their register_commands function
 	APP_FOREACH(
 		if (app->register_events != NULL) {

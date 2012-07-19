@@ -15,6 +15,7 @@ static gint _apps_count = 0;
 static gchar *_bind_address = "127.0.0.1";
 static gint _port = 5000;
 static guint64 _max_subs = 4;
+static guint64 _max_event_depth = 25;
 static gint _processes = 8;
 static gint _timeout = 5;
 
@@ -45,6 +46,10 @@ gint option_port() {
 
 guint64 option_max_subscriptions() {
 	return _max_subs;
+}
+
+guint64 option_max_event_depth() {
+	return _max_event_depth;
 }
 
 gint option_processes() {
