@@ -53,11 +53,6 @@ gint option_gossip_port(void);
 guint64 option_max_subscriptions(void);
 
 /**
- * The max depth for nesting events
- */
-guint64 option_max_event_depth(void);
-
-/**
  * Gets the number of processes that should be spawned.
  */
 gint option_processes(void);

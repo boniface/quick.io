@@ -15,98 +15,132 @@ static GHashTable* _events;
  * Given a message, it parses out all the different aspects of the event
  * and populates the *event
  */
-static gboolean _event_new(message_t *message, event_t *event) {
+static status_t _event_new(message_t *message, handler_fn *handler, event_t *event) {
 	// Clear out the event we're setting
-	memset(event, 0, sizeof(event));
+	memset(event, 0, sizeof(*event));
 	
-	// A pointer to the part of the event we are currently processing, and some end segment
-	gchar *curr, *end;
+	// Pointers to:
+	// 1) The place we are currently in the buffer
+	// 2) The end of the current buffer segment
+	// 3) An end pointer that can be trashed and moved without affecting other parsing
+	gchar *curr, *end, *tmp_end;
 	
 	// Steal the string from the buffer and replace it with a new, empty buffer
-	event->buffer = message->buffer->str;
+	event->name = message->buffer->str;
+	
+	// Pointer to the end of the buffer, for error checking
+	gchar *buffer_end = event->name + message->buffer->len - 1;
+	
+	// Replace what we just took in the message, for responses
 	g_string_free(message->buffer, FALSE);
 	message->buffer = g_string_sized_new(0);
 	
 	// Make sure the event was given in the correct format:
 	// event:msgId:type=data
 	
-	// Begin by chopping off the data, the processing of the data is left
-	// to the individual handlers
-	curr = g_strstr_len(event->buffer, -1, "=");
-	if (curr == NULL) {
-		DEBUG("Bad data");
-		return FALSE;
+	// Start by reading out the event specifier
+	curr = event->name;
+	end = tmp_end = g_strstr_len(event->name, -1, ":");
+	
+	// If the first : in the string was the first character....
+	if (end == NULL || curr == end) {
+		DEBUG("Bad event specifier.");
+		return CLIENT_BAD_MESSAGE;
 	}
 	
-	// Set the pointer to the beginning of the data
-	// The worst that can happen is that data is NULL
-	event->data = curr + 1;
+	// Loop through the event specifier to find the event handler
 	
-	// Null-terminate the end of the event spec string
-	*curr = '\0';
-	
-	// Get the event path -- events start at the beginning of the string and go to the first ":"
-	curr = g_strstr_len(event->buffer, -1, ":");
-	if (curr == NULL) {
-		DEBUG("Bad event path");
-		return FALSE;
-	}
-	
-	// Null-terminate the event path before splitting it
-	*curr = '\0';
-	
-	// Break up the events into their paths
-	event->segments = g_ptr_array_new();
-	gchar *seg;
-	
-	// Prime the tokenizer
-	seg = strtok(event->buffer, "/");
-	while (seg != NULL) {
-		g_ptr_array_add(event->segments, seg);
+	// Move from the end of the string to the front, looking for less-specific
+	// event specifiers as we move on
+	while (tmp_end > curr) {
+		// Make the end pointer NULL terminate the string so that we can use
+		// the buffer as a series of strings without allocating anything new
+		//
+		// As a side-effect, this allows us to store the full path to the event
+		// since it null-terminates the original buffer, which is stored in *event
+		*tmp_end = '\0';
 		
-		if (event->segments->len > option_max_event_depth()) {
-			DEBUGF("Too many segments: %d > %d", event->segments->len, option_max_event_depth());
-			return FALSE;
+		// If we found the most-specific command
+		if ((*handler = g_hash_table_lookup(_events, curr)) != NULL) {
+			break;
 		}
 		
-		// Any subsequent calls to strtok should take a NULL to finish the previous string
-		seg = strtok(NULL, "/");
+		// Rewind the end pointer to the next '/'
+		while (*(--tmp_end) != '/' && tmp_end > curr);
+		
+		// If the event is in the form "/some/event/" (trailing slash), this
+		// could be null, so ignore
+		if (*(tmp_end + 1) == '\0') {
+			continue;
+		}
+		
+		// If it falls through here, then no command was found, so plop the current
+		// segment onto the extra segments list
+		// +1 -> the iterator moves onto the '/', and we don't want that in the segment
+		event->extra_segments = g_list_prepend(event->extra_segments, tmp_end + 1);
+		event->extra_segments_len++;
 	}
 	
-	// Parse out the messageId for callbacks -- the second parameter
-	curr++; // Advance past the NULL terminator
+	// If we made it to the beginning of the string, we couldn't find the event
+	if (tmp_end <= curr) {
+		return CLIENT_UNKNOWN_EVENT;
+	}
+	
+	// Time to parse out the message Id
+	curr = end + 1;
 	end = g_strstr_len(curr, -1, ":");
 	
-	// NULL terminate the msgId string before converting to a number
-	*end = '\0';
-	
-	// Advance past the NULL terminator after the msgId
-	end++;
-	
-	event->callback = g_ascii_strtoull(curr, NULL, 10);
-	
-	// Find the type of the data, this substring will be NULL terminated (from
-	// cutting off the data)
-	
-	if (g_strcmp0(end, "plain") == 0) {
-		event->type = d_plain;
-	} else if (g_strcmp0(end, "json") == 0) {
-		event->type = d_json;
-	} else {
-		return FALSE;
+	if (end == NULL) {
+		DEBUG("Bad messageId");
+		return CLIENT_BAD_MESSAGE;
 	}
 	
-	return TRUE;
+	// Make the sub-string NULL terminated so this works
+	*end = '\0';
+	event->callback = g_ascii_strtoull(curr, NULL, 10);
+	
+	// And the data type
+	curr = end + 1;
+	end = g_strstr_len(curr, -1, "=");
+	
+	// There has to be something found for this to work
+	if (end == NULL) {
+		DEBUG("Bad message format: data type");
+		return CLIENT_BAD_MESSAGE;
+	}
+	
+	// To allow the string compares to work
+	*end = '\0';
+	
+	if (g_strcmp0(curr, "plain") == 0) {
+		event->type = d_plain;
+	} else if (g_strcmp0(curr, "json") == 0) {
+		event->type = d_json;
+	} else {
+		DEBUG("No matching data type found");
+		return CLIENT_BAD_MESSAGE;
+	}
+	
+	// Don't allow memory to go rampant
+	if (++end > buffer_end) {
+		DEBUG("Memory overrun");
+		return CLIENT_BAD_MESSAGE;
+	}
+	
+	// Finally, set the pointer to the data, everything following the "="
+	event->data = end;
+	
+	return CLIENT_GOOD;
 }
 
 /**
  * Free up all the allocated memory for an event.
  */
 static void _event_free(event_t *event) {
-	free(event->buffer);
+	free(event->name);
 	
-	if (event->segments != NULL) {
-		g_ptr_array_free(event->segments, TRUE);
+	if (event->extra_segments != NULL) {
+		g_list_free(event->extra_segments);
 	}
 }
 
@@ -194,16 +228,19 @@ status_t events_unsubscribe(client_t *client, message_t *message) {
 status_t events_handle(client_t *client) {
 	message_t *message = client->message;
 	
-	// #error Namespace events: /ihr/thumbs/1477, allow forcing apps to namespaces
+	#warning allow forcing apps to namespaces
 	
 	event_t event;
-	if (!_event_new(message, &event)) {
+	handler_fn handler = NULL;
+	if (!_event_new(message, &handler, &event)) {
 		_event_free(&event);
 		return CLIENT_BAD_MESSAGE;
 	}
 	
-	DEBUGF("Event: %s", event.buffer);
+	// Go through all the event segments and attempt 
+	DEBUGF("Event: %s", event.name);
 	
+	_event_free(&event);
 	return CLIENT_GOOD;
 	
 	// // Get the command from the hash table of commands
@@ -215,7 +252,7 @@ status_t events_handle(client_t *client) {
 	// return (*fn)(client, message);
 }
 
-void events_on(gchar *event_name, commandfn_t fn) {
+void events_on(gchar *event_name, handler_fn fn) {
 	// Don't allow events with ":" in the name
 	if (g_strstr_len(event_name, -1, ":") != NULL) {
 		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_name);

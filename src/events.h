@@ -21,7 +21,7 @@
 /**
  * The command function type.
  */
-typedef status_t(*commandfn_t)(client_t*, message_t*);
+typedef status_t(*handler_fn)(client_t*, message_t*);
 
 /**
  * The different types of data that an event can contain.
@@ -37,11 +37,20 @@ enum data_t {
 typedef struct event_s {
 	// The underlying buffer that the event is constructed from
 	// This MUST be freed
-	gchar *buffer;
+	// Being able to access the full event name is a side-effect of
+	// processing the event string, and it's rather useful
+	gchar *name;
 	
-	// The event segments: /test/event => ['test', 'event']
-	// The items are all pointers into *buffer
-	GPtrArray *segments;
+	// The extra event segments to be passed to the event handler,
+	// not including the event itself.
+	//
+	// So, if the event is: /some/test/event, and the handler is /some,
+	// then this will be ["test", "event"]
+	GList *extra_segments;
+	
+	// The number of extra segments, so that clients don't have to iterate
+	// to find the length
+	guint extra_segments_len;
 	
 	// The callback number the client sent
 	guint callback;
@@ -77,7 +86,7 @@ status_t events_unsubscribe(client_t*, message_t*);
  *
  * The ":" character is not allowed in event names.
  */
-void events_on(gchar*, commandfn_t);
+void events_on(gchar*, handler_fn);
 
 /**
  * Init the command interface
