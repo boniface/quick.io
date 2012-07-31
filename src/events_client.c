@@ -34,8 +34,8 @@ static GHashTable* _get_subscriptions_with_key(gchar **event, gboolean and_creat
 		// (*client->*client is what is being stored)
 		sub = malloc(sizeof(*sub));
 		
-		// Give the caller a permanent reference to the key going into
-		// the hash table, so that it can store it where it needs
+		// Keep around a reference to the key for passing around for easier
+		// persistence when the event names are freed from a message
 		sub->event = g_strdup(*event);
 		
 		// The hash table we use
@@ -226,7 +226,6 @@ void evs_client_pub_messages() {
 		}
 		
 		// Clean up the message
-		g_free(message->event);
 		g_free(message->message);
 		free(message);
 	}
@@ -237,7 +236,7 @@ void evs_client_pub_messages() {
 
 status_t evs_client_pub_message(gchar *event, message_t *message) {
 	// DO NOT create a subscription form here, this MUST be thread safe.
-	GHashTable *subs = _get_subscriptions(event, FALSE /* DONT TOUCH */);
+	GHashTable *subs = _get_subscriptions_with_key(&event, FALSE /* DONT TOUCH */);
 	
 	if (subs == NULL) {
 		return CLIENT_INVALID_SUBSCRIPTION;
@@ -249,7 +248,7 @@ status_t evs_client_pub_message(gchar *event, message_t *message) {
 		return CLIENT_OVERLOADED;
 	}
 	
-	emsg->event = g_strdup(event);
+	emsg->event = event;
 	emsg->type = message->type;
 	emsg->message = g_strdup(message->buffer->str);
 	emsg->message_len = message->buffer->len;
