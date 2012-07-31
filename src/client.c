@@ -1,18 +1,11 @@
-#include <stdlib.h>
-#include <string.h>
-
-#include "client.h"
-#include "events.h"
-#include "debug.h"
-#include "handler_rfc6455.h"
-#include "pubsub.h"
+#include "qio.h"
 
 /**
  * Anything that needs to happen once a client is ready for talking.
  */
 static void _client_ready(client_t *client) {
 	// Set the user into a room
-	sub_client_ready(client);
+	evs_client_client_ready(client);
 }
 
 status_t client_handshake(client_t *client) {
@@ -88,7 +81,7 @@ status_t client_message(client_t* client) {
 	
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
-		status = events_handle(client);
+		status = evs_server_handle(client);
 		
 		#warning Need to handle different client status messages from handlers appropriately
 	}

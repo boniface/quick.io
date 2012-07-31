@@ -1,9 +1,5 @@
 #pragma once
-
-#include <glib.h>
-
-#include "client.h"
-#include "debug.h"
+#include "qio.h"
 
 // What is used to offset a command from arguments
 #define EVENT_DELIMITER ":"
@@ -17,11 +13,6 @@
 #define EVENT_RESPONSE_MAX_SUBSCRIPTIONS "too_many_subscriptions" EVENT_DELIMITER
 #define EVENT_RESPONSE_ALREADY_SUBSCRIBED "already_subscribed" EVENT_DELIMITER
 #define EVENT_RESPONSE_CANNOT_UNSUBSRIBE "cannot_unsubscribe" EVENT_DELIMITER
-
-/**
- * The command function type.
- */
-typedef status_t(*handler_fn)(client_t*, message_t*);
 
 /**
  * The different types of data that an event can contain.
@@ -63,32 +54,37 @@ typedef struct event_s {
 } event_t;
 
 /**
+ * The command function type.
+ */
+typedef status_t(*handler_fn)(client_t*, message_t*, event_t*);
+
+/**
  * Handle an event from a client.
  */
-status_t events_handle(client_t*);
+status_t evs_server_handle(client_t*);
 
 /**
  * The "sub:1477" command.
  *
  * This is made public so that the command can be wrapped by other commands.
  */
-status_t events_subscribe(client_t*, message_t*);
+status_t evs_server_subscribe(client_t*, message_t*, event_t*);
 
 /**
  * The "unsub:1477" command.
  *
  * This is made public so that the command can be wrapped by other commands.
  */
-status_t events_unsubscribe(client_t*, message_t*);
+status_t evs_server_unsubscribe(client_t*, message_t*, event_t*);
 
 /**
  * Listen for an event from clients.
  *
  * The ":" character is not allowed in event names.
  */
-void events_on(gchar*, handler_fn);
+void evs_server_on(gchar*, handler_fn);
 
 /**
  * Init the command interface
  */
-gboolean events_init();
+gboolean evs_server_init();

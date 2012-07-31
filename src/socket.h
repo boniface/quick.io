@@ -1,7 +1,5 @@
 #pragma once
-#include <glib.h>
-
-#include "client.h"
+#include "qio.h"
 
 #define LISTEN_BACKLOG 1000
 
@@ -27,8 +25,8 @@
 #define EPOLL_MAX_EVENTS 100
 #define EPOLL_WAIT -1
 
-// For the maintenance tasks - in nanoseconds (*1,000,000)
-#define SOCKET_MAINTENANCE_WAIT (200 * 1000000)
+// For the maintenance tasks - in seconds
+#define SOCKET_MAINTENANCE_WAIT 5
 
 /**
  * Open up the listening socket in preparation for forking.
@@ -65,7 +63,7 @@ void socket_message_free(client_t*, gboolean);
  *
  * If the timer parameters are both 0, then the defaults from the config file are used.
  */
-gboolean socket_set_timer(client_t*, int, int);
+gboolean socket_set_timer(client_t*, int, long);
 
 /**
  * The client is behaving again.  Removing his timer.

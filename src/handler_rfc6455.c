@@ -1,13 +1,5 @@
-#include <glib.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "client.h"
-#include "debug.h"
-#include "handler_rfc6455.h"
+#include "qio.h"
 #include "handler_rfc6455_const.h"
-#include "socket.h"
 
 /**
  * The corresponding RFC: http://tools.ietf.org/html/rfc6455

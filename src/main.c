@@ -1,18 +1,10 @@
-#include <glib.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
-#include "apps.h"
-#include "debug.h"
-#include "events.h"
-#include "option.h"
-#include "pubsub.h"
-#include "socket.h"
+#include "qio.h"
 
 /**
  * Fork all of the children processes.
@@ -114,17 +106,17 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (pubsub_init()) {
-		DEBUG("Pubsub inited");
+	if (evs_client_init()) {
+		DEBUG("Client events inited");
 	} else {
-		ERROR("Could not init pubsub.");
+		ERROR("Could not init client events.");
 		return 1;
 	}
 	
-	if (events_init()) {
-		DEBUG("Events inited");
+	if (evs_server_init()) {
+		DEBUG("Server events inited");
 	} else {
-		ERROR("Could not init events.");
+		ERROR("Could not init server events.");
 		return 1;
 	}
 	

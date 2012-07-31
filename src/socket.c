@@ -1,19 +1,10 @@
 #include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/timerfd.h>
-#include <unistd.h>
 
-#include "apps.h"
-#include "client.h"
-#include "debug.h"
-#include "option.h"
-#include "pubsub.h"
-#include "socket.h"
+#include "qio.h"
 
 // The socket we accept connections on
 static int _listen_sock;
@@ -189,18 +180,15 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
  * run again later.
  */
 static void _socket_tick() {
-	static int tick = 0;
-	
 	// Send out messages at the end of a loop (this will always be hit on event loop)
-	pub_messages();
+	evs_client_pub_messages();
 	
-	if (tick++ % 4 == 0) {
-		pubsub_cleanup();
-	}
+	// Clean up any client subscriptions
+	evs_client_cleanup();
 	
 	// Reset the timer
 	socket_clear_timer(_fake_client);
-	socket_set_timer(_fake_client, 0, SOCKET_MAINTENANCE_WAIT);
+	socket_set_timer(_fake_client, SOCKET_MAINTENANCE_WAIT, 0);
 }
 
 /**
@@ -308,7 +296,7 @@ void socket_close(client_t *client) {
 	apps_client_close(client);
 	
 	// Remove the client from all his subscriptions
-	sub_client_free(client);
+	evs_client_client_free(client);
 	
 	// Closing the socket also causes the OS to remove it from epoll
 	close(client->sock);
@@ -345,7 +333,7 @@ void socket_message_free(client_t *client, gboolean purge_socket) {
 	}
 }
 
-gboolean socket_set_timer(client_t *client, int timeout_sec, int timeout_nano) {
+gboolean socket_set_timer(client_t *client, int timeout_sec, long timeout_nano) {
 	int timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 	
 	// If something goes wrong with the timer, just kill the stupid client

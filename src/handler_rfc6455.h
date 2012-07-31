@@ -1,8 +1,5 @@
 #pragma once
-#include <libsoup/soup.h>
-
-#include "client.h"
-#include "socket.h"
+#include "qio.h"
 
 /**
  * If, given the headers, we support this client.

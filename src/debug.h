@@ -1,5 +1,6 @@
 #pragma once
 #include <stdio.h>
+#include "qio.h"
 
 #define _LOG(level, out) fprintf(stderr, level " : %s:%d : %s\n", __FILE__, __LINE__, out)
 #define _LOGF(level, format, ...) fprintf(stderr, level " : %s:%d : " format "\n", __FILE__, __LINE__, __VA_ARGS__)

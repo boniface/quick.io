@@ -1,5 +1,5 @@
 #pragma once
-#include <glib.h>
+#include "qio.h"
 
 #define DEFAULT_GROUP_NAME "quick.io"
 

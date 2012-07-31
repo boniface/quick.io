@@ -1,6 +1,5 @@
 #pragma once
-#include <glib.h>
-#include "option.h"
+#include "qio.h"
 
 #define CLIENT_GOOD 1 << 0
 
@@ -95,6 +94,7 @@ struct client_s {
 	enum handlers handler;
 	
 	// Which events the client is currently subscribed to.
+	// This is an array of strings (pointers to the keys in the events hash table)
 	// THIS MUST ONLY BE MODIFIED FROM THE CHILD'S MAIN THREAD.
 	GPtrArray *subs;
 	

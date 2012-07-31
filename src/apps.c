@@ -1,10 +1,4 @@
-#include <gmodule.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "apps.h"
-#include "debug.h"
-#include "option.h"
+#include "qio.h"
 
 #define APP_FOREACH(body) \
 	for (gsize i = 0; i < _apps->len; i++) {\
@@ -213,9 +207,9 @@ void apps_client_connect(client_t *client) {
 	)
 }
 
-void apps_pubsub_subscribe(gchar *event, client_t *client) {
+void apps_evs_client_subscribe(gchar *event, client_t *client) {
 	APP_FOREACH(
-		app_pubsub_cb cb = app->subscribe;
+		app_evs_client_cb cb = app->subscribe;
 		
 		if (cb != NULL) {
 			cb(event, client);
@@ -223,9 +217,9 @@ void apps_pubsub_subscribe(gchar *event, client_t *client) {
 	)
 }
 
-void apps_pubsub_unsubscribe(gchar *event, client_t *client) {
+void apps_evs_client_unsubscribe(gchar *event, client_t *client) {
 	APP_FOREACH(
-		app_pubsub_cb cb = app->unsubscribe;
+		app_evs_client_cb cb = app->unsubscribe;
 		
 		if (cb != NULL) {
 			cb(event, client);

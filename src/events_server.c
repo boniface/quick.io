@@ -1,10 +1,4 @@
-#include <string.h>
-#include <stdlib.h>
-
-#include "apps.h"
-#include "client.h"
-#include "events.h"
-#include "pubsub.h"
+#include "qio.h"
 
 /**
  * A table of all of the commands that a client can send.
@@ -82,6 +76,7 @@ static status_t _event_new(message_t *message, handler_fn *handler, event_t *eve
 	}
 	
 	// If we made it to the beginning of the string, we couldn't find the event
+	// (also implies that *handler == NULL)
 	if (tmp_end <= curr) {
 		return CLIENT_UNKNOWN_EVENT;
 	}
@@ -137,6 +132,8 @@ static status_t _event_new(message_t *message, handler_fn *handler, event_t *eve
  * Free up all the allocated memory for an event.
  */
 static void _event_free(event_t *event) {
+	// Since all the pointers in the event struct are just into the original buffer,
+	// we don't need to free anything but this one string, and everything else is done
 	free(event->name);
 	
 	if (event->extra_segments != NULL) {
@@ -147,7 +144,7 @@ static void _event_free(event_t *event) {
 /**
  * The "ping:" command
  */
-static status_t _events_ping(client_t *client, message_t *message) {
+static status_t _evs_server_ping(client_t *client, message_t *message, event_t *event) {
 	// This command just needs to send back whatever text we recieved
 	return CLIENT_WRITE;
 }
@@ -157,7 +154,7 @@ static status_t _events_ping(client_t *client, message_t *message) {
  *
  * Syntax: "send:1477:some random message string"
  */
-static status_t _events_send(client_t *client, message_t *message) {
+static status_t _evs_server_send(client_t *client, message_t *message, event_t *event) {
 	// gchar *room = _slice(message);
 	
 	// if (room == NULL) {
@@ -177,16 +174,16 @@ static status_t _events_send(client_t *client, message_t *message) {
 	return CLIENT_GOOD;
 }
 
-status_t events_subscribe(client_t *client, message_t *message) {
+status_t evs_server_subscribe(client_t *client, message_t *message, event_t *event) {
 	#warning create test case for empty responses when they should be empty
-	DEBUGF("event_subscribe: %s", message->buffer->str);
+	DEBUGF("event_subscribe: %s", event->data);
 	
 	// External clients aren't allowed to know about UNSUBSCRIBED
 	if (strcmp(message->buffer->str, UNSUBSCRIBED) == 0) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
-	status_t status = sub_client(message->buffer->str, client);
+	status_t status = evs_client_sub_client(event->data, client);
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
 		// The event was invalid, inform the client
@@ -206,7 +203,7 @@ status_t events_subscribe(client_t *client, message_t *message) {
 	return CLIENT_GOOD;
 }
 
-status_t events_unsubscribe(client_t *client, message_t *message) {
+status_t evs_server_unsubscribe(client_t *client, message_t *message, event_t *event) {
 	#warning create test case for empty responses when they should be empty
 	DEBUGF("event_unsubscribe: %s", message->buffer->str);
 	
@@ -215,7 +212,7 @@ status_t events_unsubscribe(client_t *client, message_t *message) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
-	status_t status = sub_unsub_client(message->buffer->str, client);
+	status_t status = evs_client_unsub_client(message->buffer->str, client);
 	
 	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
 		g_string_prepend(message->buffer, EVENT_RESPONSE_CANNOT_UNSUBSRIBE);
@@ -225,34 +222,26 @@ status_t events_unsubscribe(client_t *client, message_t *message) {
 	return CLIENT_GOOD;
 }
 
-status_t events_handle(client_t *client) {
-	message_t *message = client->message;
-	
+status_t evs_server_handle(client_t *client) {
 	#warning allow forcing apps to namespaces
 	
 	event_t event;
 	handler_fn handler = NULL;
-	if (!_event_new(message, &handler, &event)) {
-		_event_free(&event);
-		return CLIENT_BAD_MESSAGE;
-	}
+	status_t status = _event_new(client->message, &handler, &event);
 	
-	// Go through all the event segments and attempt 
 	DEBUGF("Event: %s", event.name);
 	
+	// If everything went according to plan, then there's a handler and it's safe to
+	// send the handler everything
+	if (status == CLIENT_GOOD) {
+		status = handler(client, client->message, &event);
+	}
+	
 	_event_free(&event);
-	return CLIENT_GOOD;
-	
-	// // Get the command from the hash table of commands
-	// commandfn_t fn = g_hash_table_lookup(commands, cmd);
-	// if (fn == NULL) {
-	// 	return CLIENT_UNKNOWN_COMMAND;
-	// }
-	
-	// return (*fn)(client, message);
+	return status;
 }
 
-void events_on(gchar *event_name, handler_fn fn) {
+void evs_server_on(gchar *event_name, handler_fn fn) {
 	// Don't allow events with ":" in the name
 	if (g_strstr_len(event_name, -1, ":") != NULL) {
 		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_name);
@@ -267,13 +256,13 @@ void events_on(gchar *event_name, handler_fn fn) {
 	g_hash_table_insert(_events, event_name, fn);
 }
 
-gboolean events_init() {
+gboolean evs_server_init() {
 	_events = g_hash_table_new(g_str_hash, g_str_equal);
 	
-	events_on("/ping", _events_ping);
-	events_on("/sub", events_subscribe);
-	events_on("/ssend", _events_send);
-	events_on("/unsub", events_unsubscribe);
+	evs_server_on("/ping", _evs_server_ping);
+	evs_server_on("/sub", evs_server_subscribe);
+	evs_server_on("/send", _evs_server_send);
+	evs_server_on("/unsub", evs_server_unsubscribe);
 	
 	// Internal commands are ready, let the app register its commands.
 	apps_register_events();

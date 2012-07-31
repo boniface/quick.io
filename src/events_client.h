@@ -1,7 +1,5 @@
 #pragma once
-#include <glib.h>
-
-#include "socket.h"
+#include "qio.h"
 
 #define UNSUBSCRIBED "0"
 
@@ -11,14 +9,14 @@
  * This is a power of 2 because that is GPtrArray always expands
  * itself to the nearest power of 2.
  */
-#define PUBSUB_CLIENT_INTIAL_COUNT 4
+#define EVS_CLIENT_CLIENT_INTIAL_COUNT 4
 
 /**
  * A publishable message. It contains all the data it needs to send a message,
  * regardless of any other memory references.  All of this should be free()'d
  * when done.
  */
-struct pub_message_s {
+struct evs_client_message_s {
 	// The name of the event
 	gchar *event;
 	
@@ -32,22 +30,34 @@ struct pub_message_s {
 	guint16 message_len;
 } __attribute__((__packed__));
 
-typedef struct pub_message_s pub_message_t;
+typedef struct evs_client_message_s evs_client_message_t;
+
+/**
+ * The value that is stored in the hash table so that we can access
+ * the pointer to the key for passing around to events.
+ */
+typedef struct evs_client_sub_s {
+	// The name of the event
+	gchar *event;
+	
+	// The hash table (used as a set) of clients
+	GHashTable *clients;
+} evs_client_sub_t;
 
 /**
  * Setup everything the pubsub needs to run.
  */
-gboolean pubsub_init(void);
+gboolean evs_client_init(void);
 
 /**
  * Add the client to UNSUBSCRIBED, waiting for any futher commands.
  */
-void sub_client_ready(client_t*);
+void evs_client_client_ready(client_t*);
 
 /**
  * Subscribes a client to an event.
  */
-status_t sub_client(gchar*, client_t*);
+status_t evs_client_sub_client(gchar*, client_t*);
 
 /**
  * The client has been closed. Remove him from all his subscriptions and free
@@ -56,19 +66,19 @@ status_t sub_client(gchar*, client_t*);
  * THIS SHOULD NEVER BE CALLED FROM ANYTHING BUT THE MAIN THREAD. IT IS NOT
  * THREAD SAFE.
  */
-void sub_client_free(client_t*);
+void evs_client_client_free(client_t*);
 
 /**
  * Removes the client from the room.
  */
-status_t sub_unsub_client(gchar*, client_t*);
+status_t evs_client_unsub_client(gchar*, client_t*);
 
 /**
  * Publish the entire message queue immediately.
  *
  * This MUST NEVER be called from anything but the main thread.
  */
-void pub_messages(void);
+void evs_client_pub_messages(void);
 
 /**
  * Send a message to everyone subscribed to the event. This just adds to the list of
@@ -77,11 +87,11 @@ void pub_messages(void);
  *
  * This function IS thread safe.
  */
-status_t pub_message(gchar*, message_t*);
+status_t evs_client_pub_message(gchar*, message_t*);
 
 /**
  * A cleanup routine for dead rooms and the like.
  *
  * This function IS NOT threadsafe.
  */
-void pubsub_cleanup(void);
+void evs_client_cleanup(void);

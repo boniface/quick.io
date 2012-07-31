@@ -1,5 +1,4 @@
-#include "debug.h"
-#include "option.h"
+#include "qio.h"
 
 // Command line options
 static gchar* _config_file = "quickio.ini";
