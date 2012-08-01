@@ -111,7 +111,7 @@ static void _socket_message_new(client_t *client) {
 }
 
 static void _socket_handle_client(client_t *client, uint32_t evs) {
-	gchar buffer[MAX_MESSAGE_SIZE];
+	gchar buffer[option_max_message_size()];
 	
 	DEBUGF("Event: %d", client->sock);
 	
@@ -141,7 +141,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 			g_string_append_len(client->message->socket_buffer, buffer, len);
 			
 			// If the client needs to ehance his calm, kill the connection.
-			if (client->message->socket_buffer->len > MAX_BUFFER_SIZE) {
+			if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
 				DEBUG("Client needs to enhance his calm");
 				socket_close(client);
 				return;
@@ -308,7 +308,7 @@ void socket_close(client_t *client) {
 /**
  * Free everything inside of the client message.
  */
-void socket_message_free(client_t *client, gboolean purge_socket) {
+void socket_message_free(client_t *client, gboolean purge_socket_buffer) {
 	message_t *message = client->message;
 	
 	if (message == NULL) {
@@ -326,7 +326,7 @@ void socket_message_free(client_t *client, gboolean purge_socket) {
 	message->type = 0;
 	message->mask = 0;
 	
-	if (purge_socket || message->socket_buffer->len == 0) {
+	if (purge_socket_buffer || message->socket_buffer->len == 0) {
 		g_string_free(message->socket_buffer, TRUE);
 		free(message);
 		client->message = NULL;

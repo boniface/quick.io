@@ -10,18 +10,20 @@ static GOptionEntry command_options[] = {
 
 // Config file options
 static gchar **_apps = NULL;
-static gint _apps_count = 0;
+static gint32 _apps_count = 0;
 static gchar *_bind_address = "127.0.0.1";
-static gint _port = 5000;
+static gint32 _port = 5000;
+static gint32 _max_mess_size = 1024;
 static guint64 _max_subs = 4;
-static gint _processes = 8;
-static gint _timeout = 5;
+static gint32 _processes = 8;
+static gint32 _timeout = 5;
 
-static ConfigFileEntry _config_options[] = {
+static config_file_entry_t _config_options[] = {
 	{"apps", e_string_array, &_apps, &_apps_count},
 	{"bind-address", e_string, &_bind_address},
 	{"port", e_int, &_port},
 	{"processes", e_int, &_processes},
+	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
 	{"timeout", e_int, &_timeout},
 };
@@ -30,7 +32,7 @@ gchar** option_apps() {
 	return _apps;
 }
 
-int option_apps_count() {
+gint32 option_apps_count() {
 	return _apps_count;
 }
 
@@ -38,23 +40,27 @@ gchar* option_bind_address() {
 	return _bind_address;
 }
 
-gint option_port() {
+gint32 option_port() {
 	return _port;
+}
+
+guint64 option_max_message_size() {
+	return _max_mess_size;
 }
 
 guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 
-gint option_processes() {
+gint32 option_processes() {
 	return _processes;
 }
 
-gint option_timeout() {
+gint32 option_timeout() {
 	return _timeout;
 }
 
-gboolean option_parse_config_file(gchar *group_name, ConfigFileEntry opts[], size_t opts_len, GError **error) {
+gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error) {
 	GKeyFile *conf = g_key_file_new();
 	
 	if (group_name == NULL) {
@@ -70,7 +76,7 @@ gboolean option_parse_config_file(gchar *group_name, ConfigFileEntry opts[], siz
 	}
 	
 	for (size_t i = 0; i < opts_len; i++) {
-		ConfigFileEntry e = opts[i];
+		config_file_entry_t e = opts[i];
 		
 		if (e.arg == e_string) {
 			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);

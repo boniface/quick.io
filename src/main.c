@@ -12,7 +12,7 @@
  * *pipes will be set to the write pipes into the children.
  */
 static gboolean _main_fork(pid_t **pids) {
-	gint processes = option_processes();
+	gint32 processes = option_processes();
 	
 	// If this malloc fails, shit is fucked
 	*pids = malloc(processes * sizeof(**pids));
@@ -71,7 +71,7 @@ static gboolean _main_fork(pid_t **pids) {
 static void _main_cull_children(int *pids) {
 	DEBUG("All children are being culled...");
 
-	int count = option_processes();
+	gint32 count = option_processes();
 	while (count-- > 0) {
 		DEBUGF("Killing: %d", count);
 		kill(*(pids + count), SIGINT);
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 	
 	// The main thread just sits here, waiting
 	// The children processes will never get here
-	int count = option_processes();
+	gint32 count = option_processes();
 	while (count-- > 0) {
 		int status = 0;
 		pid_t pid = wait(&status);

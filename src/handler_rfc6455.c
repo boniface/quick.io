@@ -64,13 +64,13 @@ static status_t _rfc6455_start(client_t *client) {
 	
 	// The first 7 bits of the second byte tell us the length
 	// You can't make this stuff up :(
-	int len = *(buff + 1) & SECOND_BYTE;
+	guint64 len = *(buff + 1) & SECOND_BYTE;
 	
 	// The 32bit mask data: position dependent based on the payload len
-	char *mask;
+	char *mask = NULL;
 	
 	// The length of the header for this message
-	short header_len;
+	short header_len = 0;
 	
 	if (len <= PAYLOAD_SHORT) {
 		// Length is good, now all we need is the mask (right after the headers)
@@ -93,14 +93,14 @@ static status_t _rfc6455_start(client_t *client) {
 		// Skip the headers, the extended length, and the mask
 		header_len = EXTENDED_HEADER_LEN + MASK_LEN;
 	} else {
-		len = MAX_MESSAGE_LENGTH + 1;
+		len = option_max_message_size() + 1;
 	}
 	
 	// Advance the buffer to the beginning of the message
 	buff += header_len;
 	
 	// Don't accept the incoming data if it's too long
-	if (len > MAX_MESSAGE_LENGTH) {
+	if (len > option_max_message_size()) {
 		return CLIENT_MESSAGE_TOO_LONG;
 	}
 	

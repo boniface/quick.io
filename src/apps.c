@@ -23,8 +23,8 @@ static struct app_callbacks callbacks[] = {
 	{offsetof(app_t, run), "app_run"},
 	{offsetof(app_t, client_connect), "app_client_connect"},
 	{offsetof(app_t, client_close), "app_client_close"},
-	{offsetof(app_t, subscribe), "app_pubsub_subscribe"},
-	{offsetof(app_t, unsubscribe), "app_pubsub_unsubscribe"},
+	{offsetof(app_t, subscribe), "app_evs_client_subscribe"},
+	{offsetof(app_t, unsubscribe), "app_evs_client_unsubscribe"},
 	{offsetof(app_t, register_events), "app_register_events"},
 };
 
@@ -43,7 +43,7 @@ gboolean apps_init() {
 		return FALSE;
 	}
 	
-	int app_count = option_apps_count();
+	gint32 app_count = option_apps_count();
 	for (int i = 0; i < app_count; i++) {
 		gchar *app_path = *(app_names + i);
 		
@@ -127,12 +127,6 @@ app_t* apps_get_app(gchar *app_name) {
 
 gboolean apps_run() {
 	for (gsize i = 0; i < _apps->len; i++) {
-		#warning Only export specific functions to modules
-		#warning See: LDFLAGS (-Wl,-E (use libtool?) to dynamic-list)
-		#warning See: linux.die.net/man/1/ld
-		#warning See: www.gnu.org/software/libtool/manual/html_node/Building-modules.html
-		#warning See: www.gnu.org/software/libtool/manual/html_node/Link-mode.html
-		
 		// Get the app
 		app_t *app = g_ptr_array_index(_apps, i);
 		

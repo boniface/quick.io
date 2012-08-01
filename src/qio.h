@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define STRUCT_PACKED __attribute__((__packed__))
+
 #include "module.h"
 
 #include "client.h"

@@ -34,7 +34,7 @@ static status_t _event_new(message_t *message, handler_fn *handler, event_t *eve
 	
 	// Start by reading out the event specifier
 	curr = event->name;
-	end = tmp_end = g_strstr_len(event->name, -1, ":");
+	end = tmp_end = g_strstr_len(event->name, -1, EVENT_DELIMITER);
 	
 	// If the first : in the string was the first character....
 	if (end == NULL || curr == end) {
@@ -83,7 +83,7 @@ static status_t _event_new(message_t *message, handler_fn *handler, event_t *eve
 	
 	// Time to parse out the message Id
 	curr = end + 1;
-	end = g_strstr_len(curr, -1, ":");
+	end = g_strstr_len(curr, -1, EVENT_DELIMITER);
 	
 	if (end == NULL) {
 		DEBUG("Bad messageId");
@@ -144,7 +144,7 @@ static void _event_free(event_t *event) {
 /**
  * The "ping:" command
  */
-static status_t _evs_server_ping(client_t *client, message_t *message, event_t *event) {
+static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
 	return CLIENT_WRITE;
 }
@@ -154,7 +154,7 @@ static status_t _evs_server_ping(client_t *client, message_t *message, event_t *
  *
  * Syntax: "send:1477:some random message string"
  */
-static status_t _evs_server_send(client_t *client, message_t *message, event_t *event) {
+static status_t _evs_server_send(client_t *client, event_t *event, GString *response) {
 	// gchar *room = _slice(message);
 	
 	// if (room == NULL) {
@@ -174,12 +174,12 @@ static status_t _evs_server_send(client_t *client, message_t *message, event_t *
 	return CLIENT_GOOD;
 }
 
-status_t evs_server_subscribe(client_t *client, message_t *message, event_t *event) {
+status_t evs_server_subscribe(client_t *client, event_t *event, GString *response) {
 	#warning create test case for empty responses when they should be empty
 	DEBUGF("event_subscribe: %s", event->data);
 	
 	// External clients aren't allowed to know about UNSUBSCRIBED
-	if (strcmp(message->buffer->str, UNSUBSCRIBED) == 0) {
+	if (strcmp(event->data, UNSUBSCRIBED) == 0) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
@@ -187,15 +187,15 @@ status_t evs_server_subscribe(client_t *client, message_t *message, event_t *eve
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
 		// The event was invalid, inform the client
-		g_string_prepend(message->buffer, EVENT_RESPONSE_INVALID_SUBSCRIPTION);
+		g_string_prepend(response, EVENT_RESPONSE_INVALID_SUBSCRIPTION);
 		return CLIENT_WRITE;
 	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
 		// The client is subscribed to the maximum number of rooms already, may not add any more
-		g_string_prepend(message->buffer, EVENT_RESPONSE_MAX_SUBSCRIPTIONS);
+		g_string_prepend(response, EVENT_RESPONSE_MAX_SUBSCRIPTIONS);
 		return CLIENT_WRITE;
 	} else if (status == CLIENT_ALREADY_SUBSCRIBED) {
 		// Why is he subscribing again?
-		g_string_prepend(message->buffer, EVENT_RESPONSE_ALREADY_SUBSCRIBED);
+		g_string_prepend(response, EVENT_RESPONSE_ALREADY_SUBSCRIBED);
 		return CLIENT_WRITE;
 	}
 	
@@ -203,19 +203,19 @@ status_t evs_server_subscribe(client_t *client, message_t *message, event_t *eve
 	return CLIENT_GOOD;
 }
 
-status_t evs_server_unsubscribe(client_t *client, message_t *message, event_t *event) {
+status_t evs_server_unsubscribe(client_t *client, event_t *event, GString *response) {
 	#warning create test case for empty responses when they should be empty
-	DEBUGF("event_unsubscribe: %s", message->buffer->str);
+	DEBUGF("event_unsubscribe: %s", event->data);
 	
 	// External clients aren't allowed to know about UNSUBSCRIBED
-	if (strcmp(message->buffer->str, UNSUBSCRIBED) == 0) {
+	if (strcmp(event->data, UNSUBSCRIBED) == 0) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
-	status_t status = evs_client_unsub_client(message->buffer->str, client);
+	status_t status = evs_client_unsub_client(event->data, client);
 	
 	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
-		g_string_prepend(message->buffer, EVENT_RESPONSE_CANNOT_UNSUBSRIBE);
+		g_string_prepend(response, EVENT_RESPONSE_CANNOT_UNSUBSRIBE);
 		return CLIENT_WRITE;
 	}
 	
@@ -234,7 +234,9 @@ status_t evs_server_handle(client_t *client) {
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
 	if (status == CLIENT_GOOD) {
-		status = handler(client, client->message, &event);
+		// The client->message->buffer is now empty, as free'd by _event_new
+		#warning Create test case to verify buffer is empty after _event_new
+		status = handler(client, &event, client->message->buffer);
 	}
 	
 	_event_free(&event);
@@ -242,8 +244,8 @@ status_t evs_server_handle(client_t *client) {
 }
 
 void evs_server_on(gchar *event_name, handler_fn fn) {
-	// Don't allow events with ":" in the name
-	if (g_strstr_len(event_name, -1, ":") != NULL) {
+	// Don't allow events with EVENT_DELIMITER in the name
+	if (g_strstr_len(event_name, -1, EVENT_DELIMITER) != NULL) {
 		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_name);
 		return;
 	}

@@ -29,7 +29,7 @@ static GMutex _messages_lock;
 static GHashTable* _get_subscriptions_with_key(gchar **event, gboolean and_create) {
 	evs_client_sub_t *sub = g_hash_table_lookup(_events, *event);
 	
-	if (sub == NULL && and_create && validate_subscription(*event)) {
+	if (sub == NULL && and_create && validate_event(*event)) {
 		// Use the default hashing functions, only using memory locations anyway
 		// (*client->*client is what is being stored)
 		sub = malloc(sizeof(*sub));
@@ -138,10 +138,6 @@ status_t evs_client_unsub_client(gchar *event, client_t *client) {
 	return CLIENT_GOOD;
 }
 
-/**
- * THIS FUNCTION IS NOT THREAD SAFE. IT SHOULD NEVER BE CALLED FROM ANYTHING
- * BUT THE MAIN THREAD OF A CHILD PROCESS.
- */
 void evs_client_client_free(client_t *client) {
 	// It's possible the client never behaved and was killed before
 	// its subscriptions were setup
@@ -245,7 +241,7 @@ status_t evs_client_pub_message(gchar *event, message_t *message) {
 	// Attempt to create a new publishable message
 	evs_client_message_t *emsg = malloc(sizeof(*emsg));
 	if (emsg == NULL) {
-		return CLIENT_OVERLOADED;
+		return CLIENT_SERVER_OVERLOADED;
 	}
 	
 	emsg->event = event;
@@ -269,9 +265,6 @@ gboolean evs_client_init() {
 	return TRUE;
 }
 
-/**
- * This function IS NOT threadsafe.
- */
 void evs_client_cleanup() {
 	// Go through the rooms and clean up any that have 0 subscribers
 	GHashTableIter iter;

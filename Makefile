@@ -7,6 +7,10 @@ all: debug
 debug:
 	$(MAKE) build DEBUG=1
 
+docs:
+	mkdir -p build/docs
+	doxygen
+
 run: debug
 	./build/server
 
