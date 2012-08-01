@@ -87,7 +87,7 @@ void evs_client_pub_messages(void);
  *
  * This function IS thread safe.
  */
-status_t evs_client_pub_message(gchar*, message_t*);
+MODULE_EXPORT status_t evs_client_pub_message(gchar*, message_t*);
 
 /**
  * A cleanup routine for dead rooms and the like.

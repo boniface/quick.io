@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "module.h"
+
 #include "client.h"
 #include "apps.h"
 #include "debug.h"

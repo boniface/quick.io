@@ -65,7 +65,7 @@ gint option_timeout(void);
 /**
  * Loads the config file and populates all the options
  */
-gboolean option_parse_config_file(gchar*, ConfigFileEntry[], size_t, GError**);
+MODULE_EXPORT gboolean option_parse_config_file(gchar*, ConfigFileEntry[], size_t, GError**);
 
 /**
  * Parses all the command line options.

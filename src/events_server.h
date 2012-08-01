@@ -82,7 +82,7 @@ status_t evs_server_unsubscribe(client_t*, message_t*, event_t*);
  *
  * The ":" character is not allowed in event names.
  */
-void evs_server_on(gchar*, handler_fn);
+MODULE_EXPORT void evs_server_on(gchar*, handler_fn);
 
 /**
  * Init the command interface

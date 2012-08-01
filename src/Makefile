@@ -1,6 +1,9 @@
 include ../Makefile.inc
 
-CFLAGS += -c
+# Hide everything by default, unless annotated with MODULE_EXPORT
+CFLAGS += -c -fvisibility=hidden
+LDFLAGS += -Wl,-E
+
 TARGET = $(CURDIR)/../$(BUILDDIR)/server
 OBJECTS = $(patsubst %.c, $(OBJPATH)%.o, $(wildcard *.c))
 
