@@ -9,15 +9,15 @@
 /**
  * The callbacks that we're going to be using
  */
-struct app_callbacks {
+typedef struct app_callbacks_s {
 	// The offset of the callback position in the app_t struct
 	int offset;
 	
 	// The name of the function in the module
 	char *name;
-};
+} app_callbacks_t;
 
-static struct app_callbacks callbacks[] = {
+static app_callbacks_t callbacks[] = {
 	{offsetof(app_t, prefork), "app_prefork"},
 	{offsetof(app_t, postfork), "app_postfork"},
 	{offsetof(app_t, run), "app_run"},
