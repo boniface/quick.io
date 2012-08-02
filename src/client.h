@@ -15,6 +15,9 @@
 
 /**
  * There is data in the response buffer that should be sent to the client callback.
+ * This is only useful if there is a response in the buffer to send back to the client,
+ * and the client has set a callback number.  Otherwise, you need to fire an event
+ * to the client, not write a response to the client.
  */
 #define CLIENT_WRITE 1 << 1
 

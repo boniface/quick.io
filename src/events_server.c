@@ -174,6 +174,24 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 	return CLIENT_GOOD;
 }
 
+void evs_server_add_prefix(gchar **event, gchar *prefix) {
+	// If there is no prefix, we're done
+	if (*prefix == '\0') {
+		*event = g_strdup(*event);
+		return;
+	}
+	
+	// Use GString for easier movement
+	GString *e = g_string_new(prefix);
+	
+	// Plop the event on after the prefix
+	g_string_append(e, *event);
+	
+	// Set reference here, things can possibly be re-referenced
+	*event = e->str;
+	g_string_free(e, FALSE);
+}
+
 status_t evs_server_subscribe(client_t *client, event_t *event, GString *response) {
 	#warning create test case for empty responses when they should be empty
 	DEBUGF("event_subscribe: %s", event->data);
@@ -243,23 +261,40 @@ status_t evs_server_handle(client_t *client) {
 	return status;
 }
 
-void evs_server_on(gchar *event_name, handler_fn fn) {
+void evs_server_on(const gchar *event_name, handler_fn fn) {
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_name, -1, EVENT_DELIMITER) != NULL) {
 		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_name);
 		return;
 	}
 	
-	if (*event_name != '/') {
-		ERRORF("Could not add event \"%s\", event must start with \"/\"", event_name);
+	// Remove any duplicated slashes
+	GString *event = g_string_new(event_name);
+	gchar prev = event->str[0];
+	gsize i = 1;
+	while (i < event->len) {
+		if (event->str[i] == '/' && prev == '/') {
+			// Remove the single slash
+			g_string_erase(event, i, 1);
+		} else {
+			prev = event->str[i];
+			i++;
+		}
+	}
+	
+	if (*(event->str) != '/') {
+		ERRORF("Could not add event \"%s\", event must start with \"/\"", event->str);
 		return;
 	}
 	
-	g_hash_table_insert(_events, event_name, fn);
+	g_hash_table_insert(_events, event->str, fn);
+	
+	// Don't free the string we just inserted into the hash table
+	g_string_free(event, FALSE);
 }
 
 gboolean evs_server_init() {
-	_events = g_hash_table_new(g_str_hash, g_str_equal);
+	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 	
 	evs_server_on("/ping", _evs_server_ping);
 	evs_server_on("/sub", evs_server_subscribe);

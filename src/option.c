@@ -11,6 +11,8 @@ static GOptionEntry command_options[] = {
 // Config file options
 static gchar **_apps = NULL;
 static gint32 _apps_count = 0;
+static gchar **_apps_prefixes = NULL;
+static gint32 _apps_prefixes_count = 0;
 static gchar *_bind_address = "127.0.0.1";
 static gint32 _port = 5000;
 static gint32 _max_mess_size = 1024;
@@ -20,6 +22,7 @@ static gint32 _timeout = 5;
 
 static config_file_entry_t _config_options[] = {
 	{"apps", e_string_array, &_apps, &_apps_count},
+	{"apps-prefixes", e_string_array, &_apps_prefixes, &_apps_prefixes_count},
 	{"bind-address", e_string, &_bind_address},
 	{"port", e_int, &_port},
 	{"processes", e_int, &_processes},
@@ -34,6 +37,14 @@ gchar** option_apps() {
 
 gint32 option_apps_count() {
 	return _apps_count;
+}
+
+gchar** option_apps_prefixes() {
+	return _apps_prefixes;
+}
+
+gint32 option_apps_prefixes_count() {
+	return _apps_prefixes_count;
 }
 
 gchar* option_bind_address() {
@@ -110,6 +121,16 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		ERROR("Option `max-subs` must be a power of 2.");
 		g_key_file_free(conf);
 		return FALSE;
+	}
+	
+	// Make sure that the number of prefixes given matches the number of apps
+	if (_apps_prefixes_count != _apps_count) {
+		ERROR("The number of app prefixes and apps do not match. Ignoring prefixes.");
+		
+		// Remove all prefixes, they're not reliable
+		_apps_prefixes_count = 0;
+		g_strfreev(_apps_prefixes);
+		_apps_prefixes = NULL;
 	}
 	
 	g_key_file_free(conf);

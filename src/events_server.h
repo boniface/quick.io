@@ -108,7 +108,7 @@ typedef struct event_s {
  * @param event The event that the client sent to the server.
  * @param response The buffer that the handler should write his response to. If the handler is going to write something to this buffer, it MUST return CLIENT_WRITE.
  */
-typedef status_t(*handler_fn)(client_t *client, event_t *event, GString *response);
+typedef status_t (*handler_fn)(client_t *client, event_t *event, GString *response);
 
 /**
  * Handle an event from a client.
@@ -130,12 +130,10 @@ status_t evs_server_unsubscribe(client_t*, event_t*, GString *response);
 /**
  * Listen for an event from clients.
  *
- * @ingroup ModuleFunctions
- *
  * @param event The name of the event to be notified for.
  * @param handler The function that should be called when the event comes in.
  */
-MODULE_EXPORT void evs_server_on(gchar *event, handler_fn handler);
+void evs_server_on(const gchar *event, handler_fn handler);
 
 /**
  * Init the event listening interface.

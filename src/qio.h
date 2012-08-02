@@ -12,11 +12,13 @@
 
 #include "module.h"
 
+// Some out-of-order guys for dependencies
 #include "client.h"
+#include "events_server.h"
+
 #include "apps.h"
 #include "debug.h"
 #include "events_client.h"
-#include "events_server.h"
 #include "handler_rfc6455.h"
 #include "main.h"
 #include "option.h"

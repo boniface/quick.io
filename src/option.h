@@ -76,6 +76,19 @@ gchar** option_apps();
 gint32 option_apps_count();
 
 /**
+ * Gets the apps that should run.
+ *
+ * @return
+ * An array of null-terminated strings, containing the event prefixes the apps should have (returned in the same order as option_apps()).
+ */
+gchar** option_apps_prefixes();
+
+/**
+ * The number of apps specififed.
+ */
+gint32 option_apps_prefixes_count();
+
+/**
  * Gets the address we're supposed to bind to.
  */
 gchar* option_bind_address();

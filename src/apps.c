@@ -35,6 +35,7 @@ static GPtrArray *_apps;
 
 gboolean apps_init() {
 	gchar **app_names = option_apps();
+	gchar **app_prefixes = option_apps_prefixes();
 	
 	_apps = g_ptr_array_new();
 	
@@ -94,6 +95,10 @@ gboolean apps_init() {
 		
 		// We might need this elsewhere
 		app->module = module;
+		
+		if (option_apps_prefixes_count() > 0) {
+			app->event_prefix = *(app_prefixes + i);
+		}
 		
 		// Done looking at the path
 		free(path);
@@ -161,8 +166,18 @@ gboolean apps_prefork() {
 void apps_register_events() {
 	// Go through all the apps and call their register_commands function
 	APP_FOREACH(
-		if (app->register_events != NULL) {
-			app->register_events();
+		app_on_cb cb = app->register_events;
+		if (cb != NULL) {
+			void on(gchar *event, handler_fn handler) {
+				if (app->event_prefix != NULL) {
+					GString *e = g_string_new(app->event_prefix);
+					g_string_append(e, event);
+				}
+				
+				evs_server_on(event, handler);
+			}
+			
+			cb(on);
 		}
 	)
 }
