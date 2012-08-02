@@ -268,6 +268,12 @@ void evs_server_on(const gchar *event_name, handler_fn fn) {
 		return;
 	}
 	
+	// Make sure the event starts with a "/"
+	if (*event_name != '/') {
+		ERRORF("Could not add event \"%s\", event must start with \"/\"", event_name);
+		return;
+	}
+	
 	// Remove any duplicated slashes
 	GString *event = g_string_new(event_name);
 	gchar prev = event->str[0];
@@ -282,11 +288,12 @@ void evs_server_on(const gchar *event_name, handler_fn fn) {
 		}
 	}
 	
-	if (*(event->str) != '/') {
-		ERRORF("Could not add event \"%s\", event must start with \"/\"", event->str);
-		return;
+	// Remove any trailing slashes
+	if (event->str[--i] == '/') {
+		g_string_erase(event, i, 1);
 	}
 	
+	// Store the handler for the event
 	g_hash_table_insert(_events, event->str, fn);
 	
 	// Don't free the string we just inserted into the hash table

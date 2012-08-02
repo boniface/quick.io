@@ -172,9 +172,11 @@ void apps_register_events() {
 				if (app->event_prefix != NULL) {
 					GString *e = g_string_new(app->event_prefix);
 					g_string_append(e, event);
+					evs_server_on(e->str, handler);
+					g_string_free(e, TRUE);
+				} else {
+					evs_server_on(event, handler);
 				}
-				
-				evs_server_on(event, handler);
 			}
 			
 			cb(on);
