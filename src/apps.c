@@ -10,10 +10,14 @@
  * The callbacks that we're going to be using
  */
 typedef struct app_callbacks_s {
-	// The offset of the callback position in the app_t struct
+	/**
+	 * The offset of the callback position in the app_t struct
+	 */
 	int offset;
 	
-	// The name of the function in the module
+	/**
+	 * The name of the function in the module
+	 */
 	char *name;
 } app_callbacks_t;
 

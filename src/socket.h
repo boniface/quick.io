@@ -92,11 +92,11 @@ void socket_close(client_t *client);
  * purge_socket_buffer.
  * 
  * @param client The client to free up and close.
- * @param purge_socket
+ * @param purge_socket_buffer
  * If TRUE, then the socket buffer will be forcibly dumped even if it is not empty.
  * Otherwise, the socket buffer is left intact for futher reading / appending.
  */
-void socket_message_free(client_t *client, gboolean purge_socket);
+void socket_message_free(client_t *client, gboolean purge_socket_buffer);
 
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will

@@ -194,6 +194,8 @@ status_t evs_server_unsubscribe(client_t*, event_t*, GString *response);
  *
  * @param event The name of the event to be notified for.
  * @param handler The function that should be called when the event comes in.
+ * @param on_subscribe The function to be called when a client subscribes to this event.
+ * @param on_unsubscribe The function to be called when a client unsubscribes from this event.
  * @param handle_children If this handler handles children events with handlers.
  *
  * @see event_handler_s
