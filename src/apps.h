@@ -59,8 +59,12 @@ typedef void (*app_evs_client_cb)(gchar *event, client_t *client);
  *
  * @param event The name of the event to be notified for.
  * @param handler The function that should be called when the event comes in.
+ * @param on_subscribe The function that should be notified when a client subscribes to this event.
+ * @param handle_children If this handler handles children events with handlers.
+ *
+ * @see event_handler_s
  */
-typedef void (*app_on)(gchar *event, handler_fn handler);
+typedef void (*app_on)(gchar *event, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * A module callback that takes an "on" function.

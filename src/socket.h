@@ -50,9 +50,14 @@
 #define EPOLL_WAIT -1
 
 /**
- * The time between maintenance tasks - in seconds
+ * The time between maintenance tasks - in nanoseconds
  */
-#define SOCKET_MAINTENANCE_WAIT 5
+#define SOCKET_MAINTENANCE_WAIT 100 * 1000000
+
+/**
+ * The number of loops to run before cleaning up
+ */
+#define SOCKET_MAINTENANCE_CLEANUP 10
 
 /**
  * Open up the listening socket in preparation for forking.

@@ -148,8 +148,20 @@ void evs_client_client_free(client_t *client) {
 	// Remove all the subscriptions from the client, firing
 	// off all the remove events
 	for (gsize i = 0; i < client->subs->len; i++) {
+		gchar *event = g_ptr_array_index(client->subs, i);
+		// Remove the client from the subscription
+		GHashTable *subs = _get_subscriptions(event, FALSE);
+		
+		// Attempt to remove the client, not a big deal if the event doesn't exist
+		// because the client is already gone
+		if (subs != NULL) {
+			// If we can't remove the client, then he wasn't there to begin with,
+			// so just move on
+			g_hash_table_remove(subs, client);
+		}
+		
 		// Send the apps callback
-		apps_evs_client_unsubscribe(g_ptr_array_index(client->subs, i), client);
+		apps_evs_client_unsubscribe(event, client);
 	}
 	
 	// Clean up the excess memory (and the underlying array used to hold it)
@@ -161,8 +173,6 @@ void evs_client_pub_messages() {
 	if (_messages->len == 0) {
 		return;
 	}
-	
-	#warning TODO: Attempt to clean pub_messages() up?
 	
 	// Swap the message queue out for a new one so that we can be thread-safe
 	// in our message processing
@@ -190,10 +200,9 @@ void evs_client_pub_messages() {
 			
 			// Go through all the clients and give them their messages
 			GHashTableIter iter;
-			gpointer key, val;
+			client_t *client, *client2;
 			g_hash_table_iter_init(&iter, subs);
-			while (g_hash_table_iter_next(&iter, &key, &val)) {
-				client_t *client = val;
+			while (g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client2)) {
 				enum handlers handler = client->handler;
 				
 				// This is very bad...
@@ -230,9 +239,13 @@ void evs_client_pub_messages() {
 	g_ptr_array_free(messages, TRUE);
 }
 
-status_t evs_client_pub_message(gchar *event, message_t *message) {
-	// DO NOT create a subscription form here, this MUST be thread safe.
-	GHashTable *subs = _get_subscriptions_with_key(&event, FALSE /* DONT TOUCH */);
+status_t evs_client_pub_event(const gchar *event, const enum data_t type, const gchar *data) {
+	// We're not actually going to modify *event, we're just going to use it as a temporary
+	// pointer until we get a pointer to our persistent
+	gchar *subs_event = (gchar*)event;
+	
+	// DO NOT create a subscription from here, this MUST be thread safe.
+	GHashTable *subs = _get_subscriptions_with_key(&subs_event, FALSE /* DONT TOUCH */);
 	
 	if (subs == NULL) {
 		return CLIENT_INVALID_SUBSCRIPTION;
@@ -244,15 +257,21 @@ status_t evs_client_pub_message(gchar *event, message_t *message) {
 		return CLIENT_SERVER_OVERLOADED;
 	}
 	
-	emsg->event = event;
-	emsg->type = message->type;
-	emsg->message = g_strdup(message->buffer->str);
-	emsg->message_len = message->buffer->len;
+	// Format the message that will be sent to the clients
+	GString *message = g_string_sized_new(100);
+	g_string_printf(message, F_EVENT, subs_event, 0, DATA_TYPE(type), data);
+	
+	emsg->event = subs_event;
+	emsg->message = message->str;
+	emsg->message_len = message->len;
+	emsg->type = op_text;
 	
 	// We need to add a message in a thread-safe way
 	g_mutex_lock(&_messages_lock);
 	g_ptr_array_add(_messages, emsg);
 	g_mutex_unlock(&_messages_lock);
+	
+	g_string_free(message, FALSE);
 	
 	return CLIENT_GOOD;
 }

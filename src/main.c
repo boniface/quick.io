@@ -79,6 +79,8 @@ static void _main_cull_children(int *pids) {
 }
 
 int main(int argc, char *argv[]) {
+	#warning Standardize names!  Seriously, naming conventions matter
+	
 	debug_handle_signals();
 	
 	// Move into the directory holding this binary

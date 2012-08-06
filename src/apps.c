@@ -168,14 +168,14 @@ void apps_register_events() {
 	APP_FOREACH(
 		app_on_cb cb = app->register_events;
 		if (cb != NULL) {
-			void on(gchar *event, handler_fn handler) {
+			void on(gchar *event, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children) {
 				if (app->event_prefix != NULL) {
 					GString *e = g_string_new(app->event_prefix);
 					g_string_append(e, event);
-					evs_server_on(e->str, handler);
+					evs_server_on(e->str, handler, on_subscribe, on_unsubscribe, handle_children);
 					g_string_free(e, TRUE);
 				} else {
-					evs_server_on(event, handler);
+					evs_server_on(event, handler, on_subscribe, on_unsubscribe, handle_children);
 				}
 			}
 			
@@ -219,6 +219,18 @@ void apps_client_connect(client_t *client) {
 }
 
 void apps_evs_client_subscribe(gchar *event, client_t *client) {
+	// Notify the individual event that it recieved a subscription
+	gchar *e = g_strdup(event);
+	GList *extra = NULL;
+	guint extra_len = 0;
+	event_info_t *einfo = evs_server_get_einfo(e, &extra, &extra_len);
+	g_free(e);
+	
+	if (einfo != NULL && einfo->on_subscribe != NULL) {
+		einfo->on_subscribe(client, extra, extra_len);
+	}
+	
+	// Notify all the general listeners that a subscription happened.
 	APP_FOREACH(
 		app_evs_client_cb cb = app->subscribe;
 		
@@ -229,6 +241,18 @@ void apps_evs_client_subscribe(gchar *event, client_t *client) {
 }
 
 void apps_evs_client_unsubscribe(gchar *event, client_t *client) {
+	// Notify the individual event that it lost a subscription
+	gchar *e = g_strdup(event);
+	GList *extra = NULL;
+	guint extra_len = 0;
+	event_info_t *einfo = evs_server_get_einfo(e, &extra, &extra_len);
+	g_free(e);
+	
+	if (einfo != NULL && einfo->on_unsubscribe != NULL) {
+		einfo->on_unsubscribe(client, extra, extra_len);
+	}
+	
+	// Notify all the general listeners that an unsubscription happened.
 	APP_FOREACH(
 		app_evs_client_cb cb = app->unsubscribe;
 		

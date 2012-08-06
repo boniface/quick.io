@@ -9,6 +9,16 @@
 #include "qio.h"
 
 /**
+ * The message format for events being sent to a client.
+ */
+#define F_EVENT "%s" EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
+
+/**
+ * Gets a string for the event type.
+ */
+#define DATA_TYPE(t) (t == d_plain ? "plain" : "json")
+
+/**
  * The subscription that a user without any subscriptions will always have.
  * This is removed as soon as the user subscribes to an event, and added back
  * when the user no longer has any subscriptions.
@@ -30,7 +40,7 @@
 typedef struct evs_client_message_s {
 	/**
 	 * The name of the event.
-	 * \attention MUST NOT be free()'d
+	 * @attention MUST NOT be free()'d
 	 */
 	gchar *event;
 	
@@ -43,7 +53,7 @@ typedef struct evs_client_message_s {
 	
 	/**
 	 * The un-prepared data to send to the client.
-	 * \attention MUST be free()'d when done.
+	 * @attention MUST be free()'d when done.
 	 */
 	gchar *message;
 	
@@ -61,7 +71,7 @@ typedef struct evs_client_sub_s {
 	/**
 	 * The name of the event.
 	 * This is a duplicated string that is referenced all over the place.
-	 * \attention MUST be free()'d when done.
+	 * @attention MUST be free()'d when done.
 	 */
 	gchar *event;
 	
@@ -132,12 +142,13 @@ void evs_client_pub_messages();
  *
  * @ingroup ModuleFunctions
  *
- * @param event The event name to publish the message to.
- * @param message The complete message that should be sent to everyone.
+ * @param event The event name to publish to.
+ * @param type The type of the data (json, plain, etc).
+ * @param data The actual data to be sent.
  *
  * @attention IS thread safe.
  */
-MODULE_EXPORT status_t evs_client_pub_message(gchar *event, message_t *message);
+MODULE_EXPORT status_t evs_client_pub_event(const gchar *event, const enum data_t type, const gchar *data);
 
 /**
  * A cleanup routine for empty events.

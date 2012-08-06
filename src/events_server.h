@@ -84,7 +84,7 @@ typedef struct event_s {
 	/**
 	 * The callback number the client sent.
 	 */
-	guint callback;
+	guint32 callback;
 	
 	/** 
 	 * The type of data sitting in the data buffer.
@@ -106,9 +106,71 @@ typedef struct event_s {
  *
  * @param client The client that triggered the event.
  * @param event The event that the client sent to the server.
- * @param response The buffer that the handler should write his response to. If the handler is going to write something to this buffer, it MUST return CLIENT_WRITE.
+ * @param response The buffer that the handler should write his response to. If the handler
+ * is going to write something to this buffer, it MUST return CLIENT_WRITE.
  */
 typedef status_t (*handler_fn)(client_t *client, event_t *event, GString *response);
+
+/**
+ * A callback for when a client subscribes to a specific event.
+ * This is supplied to evs_server_on() and is called when a client subscribes
+ * to the event
+ *
+ * @param client The client that subscribed to the event.
+ * @param extra Any extra parameters that came in with the subscription
+ * @param extra_len The count of extra.
+ */
+typedef void (*on_subscribe_cb)(client_t *client, GList *extra, guint extra_len);
+
+/**
+ * Necessary data for storing events in the hash table.
+ */
+typedef struct event_info_s {
+	/**
+	 * The handler function for the event.
+	 * @note If this is NULL, then there will be no handler.
+	 */
+	handler_fn handler;
+	
+	/**
+	 * The alert function for when a client subscribes to the event.
+	 * @note If this is NULL, then no notifications will be sent.
+	 */
+	on_subscribe_cb on_subscribe;
+	
+	/**
+	 * The alert function for when a client unsubscribes from the event.
+	 * @note If this is NULL, then no notifications will be sent.
+	 */
+	on_subscribe_cb on_unsubscribe;
+	
+	/**
+	 * If this event handler handles child events without handlers.
+	 *
+	 * For example, if the event is: /some/event/with/children,
+	 * and the handler is /some/event, if this is TRUE, and there is
+	 * no more specific specifier (ie. /some/event/with), then this
+	 * will be the handler.  Otherwise, it will not.
+	 */
+	gboolean handle_children;
+} event_info_t;
+
+/**
+ * Get all of the event info for the event.
+ *
+ * Here's an idea of how to call this function:<br />
+ * `gchar *event = g_strdup("/some/event");`<br />
+ * `GList *extra = NULL;`<br />
+ * `guint extra_len = 0;`<br />
+ * `evs_server_get_einfo(event, &extra, &extra_len);`<br />
+ * `g_free(event)`
+ *
+ * @param[out] curr The event name. This WILL be modified to contain the 
+ * path of the handler found.
+ * @param[out] extra Where any extra path segments are put. This is REQUIRED.
+ * @param[out] extra_len The number of extra path segments. This is REQUIRED.
+ */
+event_info_t* evs_server_get_einfo(gchar *curr, GList **extra, guint *extra_len);
 
 /**
  * Handle an event from a client.
@@ -132,8 +194,11 @@ status_t evs_server_unsubscribe(client_t*, event_t*, GString *response);
  *
  * @param event The name of the event to be notified for.
  * @param handler The function that should be called when the event comes in.
+ * @param handle_children If this handler handles children events with handlers.
+ *
+ * @see event_handler_s
  */
-void evs_server_on(const gchar *event, handler_fn handler);
+void evs_server_on(const gchar *event, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * Init the event listening interface.

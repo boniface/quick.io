@@ -180,15 +180,19 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
  * run again later.
  */
 static void _socket_tick() {
+	static guint ticks = 0;
+	
 	// Send out messages at the end of a loop (this will always be hit on event loop)
 	evs_client_pub_messages();
 	
-	// Clean up any client subscriptions
-	evs_client_cleanup();
+	if (ticks++ % SOCKET_MAINTENANCE_CLEANUP == 0) {
+		// Clean up any client subscriptions
+		evs_client_cleanup();
+	}
 	
 	// Reset the timer
 	socket_clear_timer(_fake_client);
-	socket_set_timer(_fake_client, SOCKET_MAINTENANCE_WAIT, 0);
+	socket_set_timer(_fake_client, 0, SOCKET_MAINTENANCE_WAIT);
 }
 
 /**
