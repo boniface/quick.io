@@ -152,14 +152,32 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		if (client->initing == 1) {
 			DEBUG("Client handshake");
 			status = client_handshake(client);
+			
+			// Headers are sent without encoding, don't use the client wrapper
+			if (status & CLIENT_WRITE) {
+				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
+				
+				// The handshake is complete, we're done here.
+				client->initing = 0;
+				
+				// Set the user into a room
+				evs_client_client_ready(client);
+			}
 		} else {
 			DEBUG("Message from client");
 			status = client_message(client);
+			
+			// Send back a framed response for the websocket
+			if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
+				status = CLIENT_ABORTED;
+			}
 		}
 		
 		// If the client becomes good, then clear the timer and let him live
 		if (status == CLIENT_GOOD) {
 			socket_clear_timer(client);
+			
+			// Clean up the message buffer, since we just finished processing him
 			socket_message_free(client, client->message->socket_buffer->len == 0);
 		
 		// The client is misbehaving. Close him.

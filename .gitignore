@@ -1,9 +1,13 @@
 *.a
+*.gcda
+*.gcno
 *.o
 *.so
 *.pyc
-unit*.xml
+xunit.xml
+coverage.xml
 /build/
 /test/python/ve/
+/test/test
 
 /*.sublime*

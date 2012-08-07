@@ -85,6 +85,11 @@
 #define CLIENT_SERVER_OVERLOADED 1 << 13
 
 /**
+ * The client is not supported by this handler.
+ */
+#define CLIENT_UNSUPPORTED 1 << 14
+
+/**
  * Any event that means the client is just being stupid.
  */
 #define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNKNOWN_EVENT | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE)

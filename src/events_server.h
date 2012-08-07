@@ -29,7 +29,7 @@
 #define EVENT_RESPONSE_ALREADY_SUBSCRIBED "already_subscribed"
 
 /**
- * Response that the client canno tbe unsubscribed from the event.  Either way,
+ * Response that the client cannot be unsubscribed from the event.  Either way,
  * the client will not recieve this event.
  */
 #define EVENT_RESPONSE_CANNOT_UNSUBSRIBE "cannot_unsubscribe"

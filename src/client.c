@@ -1,15 +1,7 @@
 #include "qio.h"
 
-/**
- * Anything that needs to happen once a client is ready for talking.
- */
-static void _client_ready(client_t *client) {
-	// Set the user into a room
-	evs_client_client_ready(client);
-}
-
 status_t client_handshake(client_t *client) {
-	gboolean all_good = TRUE;
+	status_t status = CLIENT_GOOD;
 	enum handlers handler = h_none;
 	GString *buffer = client->message->socket_buffer;
 
@@ -20,34 +12,28 @@ status_t client_handshake(client_t *client) {
 	if (buffer->len && soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL)) {
 		if (rfc6455_handles(path, req_headers)) {
 			handler = h_rfc6455;
-			all_good = rfc6455_handshake(client, req_headers);
-		} 
+			status = rfc6455_handshake(client, req_headers);
+		}
 	}
 	
 	g_free(path);
 	soup_message_headers_free(req_headers);
 	
-	if (all_good) {
-		if (handler == h_none) {
-			// Everything went well, but we don't have a handler yet
-			// Maybe the client hasn't finished sending headers? Let's
-			// wait for another read
-			return CLIENT_WAIT;
-		} else {
-			// The handshake is complete, and there is a handler.
-			// We're done here.
-			client->initing = 0;
-			client->handler = handler;
-			_client_ready(client);
-			
-			// We read the header successfully, clean up after ourselves
-			g_string_truncate(client->message->socket_buffer, 0);
-			
-			return CLIENT_GOOD;
-		}
+	if (status & CLIENT_GOOD && handler == h_none) {
+		// Everything went well, but we don't have a handler yet
+		// Maybe the client hasn't finished sending headers? Let's
+		// wait for another read
+		return CLIENT_WAIT;
+	} else if (status & CLIENT_WRITE) {
+		// Set the client's handler for future reference
+		client->handler = handler;
+		
+		// We read the header successfully, clean up after ourselves
+		g_string_truncate(client->message->socket_buffer, 0);
+		
+		return CLIENT_WRITE;
 	} else {
 		DEBUG("Client handler not found");
-		socket_close(client);
 		return CLIENT_ABORTED;
 	}
 }
@@ -84,10 +70,6 @@ status_t client_message(client_t* client) {
 		status = evs_server_handle(client);
 		
 		#warning Need to handle different client status messages from handlers appropriately
-	}
-	
-	if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
-		status = CLIENT_ABORTED;
 	}
 	
 	return status;

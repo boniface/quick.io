@@ -78,7 +78,11 @@ static void _main_cull_children(int *pids) {
 	}
 }
 
+#if TESTING
+int init_main(int argc, char *argv[]) {
+#else
 int main(int argc, char *argv[]) {
+#endif
 	#warning Standardize names!  Seriously, naming conventions matter
 	
 	debug_handle_signals();
@@ -137,12 +141,14 @@ int main(int argc, char *argv[]) {
 	}
 	
 	pid_t *pids;
+#if !TESTING
 	if (_main_fork(&pids)) {
 		DEBUG("Children forked");
 	} else {
 		ERROR("Could not fork children.");
 		return 1;
 	}
+#endif
 	
 	if (apps_postfork()) {
 		DEBUG("Postfork apps done");
@@ -155,6 +161,7 @@ int main(int argc, char *argv[]) {
 	printf("READY\n");
 	fflush(stdout);
 	
+#if !TESTING
 	// The main thread just sits here, waiting
 	// The children processes will never get here
 	gint32 count = option_processes();
@@ -171,6 +178,7 @@ int main(int argc, char *argv[]) {
 			count++;
 		}
 	}
+#endif
 	
 	return 1;
 }

@@ -23,9 +23,15 @@ build:
 
 clean:
 	rm -rf $(BUILDDIR)
+	rm -f test*.xml
 	$(MAKE) -C app clean
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
 
-test: all
-	$(MAKE) -C test test
+test: clean
+	$(MAKE) -C src test DEBUG=1
+	$(MAKE) -C test test DEBUG=1
+	
+test-jenkins:
+	$(MAKE) test TEST_OUTPUT_XML=1
+	./ext/gcovr -x -o test_coverage.xml

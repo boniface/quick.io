@@ -24,7 +24,7 @@ gboolean rfc6455_handles(gchar *path, SoupMessageHeaders *headers);
  *
  * @return If the handshake succeeded.
  */
-gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
+status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
 
 /**
  * Prepare a frame to be sent to the client.

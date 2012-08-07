@@ -118,11 +118,11 @@ gboolean rfc6455_handles(gchar *path, SoupMessageHeaders *req_headers) {
 	return id != NULL && strncmp(id, "13", 2) == 0;
 }
 
-gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
+status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	const char *key = soup_message_headers_get_one(req_headers, CHALLENGE_KEY);
 	
 	if (key == NULL) {
-		return FALSE;
+		return CLIENT_UNSUPPORTED;
 	}
 	
 	//build up the concated key, ready for hashing for the return header
@@ -139,17 +139,10 @@ gboolean rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	gchar *b64 = g_base64_encode(out, size);
 	g_checksum_free(sum);
 	
-	size = HEADERS_LEN + strlen(b64);
-	char headers[size];
-	
-	snprintf(headers, size, HEADERS, b64);
+	g_string_printf(client->message->buffer, HEADERS, b64);
 	g_free(b64);
 	
-	if (client_write_frame(client, headers, strlen(headers)) != CLIENT_GOOD) {
-		return FALSE;
-	}
-	
-	return TRUE;
+	return CLIENT_WRITE;
 }
 
 char* rfc6455_prepare_frame(opcode_t type, gchar *payload, int payload_len, int *frame_len) {
