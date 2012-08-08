@@ -1,5 +1,12 @@
 #include "test.h"
 
+char* test_status_to_str(status_t status) {
+	switch (status) {
+		#include "client_statuses.inc"
+	}
+	return "UNKNOWN";
+}
+
 client_t* u_client_create() {
 	client_t *client = malloc(sizeof(*client));
 	memset(client, 0, sizeof(*client));

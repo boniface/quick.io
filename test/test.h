@@ -9,15 +9,6 @@
 #include "test_utils.h"
 
 /**
- * Convert a status_t to a string, for printing.
- *
- * @param status The status to look for.
- *
- * @return A printable string that names the status, or NULL if not found / multiple statuses.
- */
-char* test_status_to_str(status_t status);
-
-/**
  * Test that the assertion is true.
  * This is a basic wrapper around fail_unless().
  */
@@ -56,14 +47,14 @@ char* test_status_to_str(status_t status);
  * @param description The description of the test, to be printed with failure information
  */
 #define _msg(format, actual, expect, description) \
-	size_t desclen = 0, seplen = 0; \
-	if (description != NULL) { \
-		desclen = strlen(description); \
+	size_t desc_len = 0, sep_len = 0; \
+	if (*description != '\0') { \
+		desc_len = strlen(description); \
 		strncpy(msg, description, sizeof(msg)); \
-		seplen = sizeof(SEPARATOR)-1; \
-		strncat(msg + desclen, SEPARATOR, sizeof(msg) - desclen); \
+		sep_len = sizeof(SEPARATOR)-1; \
+		strncat(msg + desc_len, SEPARATOR, sizeof(msg) - desc_len); \
 	} \
-	snprintf(msg + desclen + seplen, sizeof(msg) - desclen - seplen, format, actual, expect);
+	snprintf(msg + desc_len + sep_len, sizeof(msg) - desc_len - sep_len, format, actual, expect);
 
 /**
  * Tests if the two strings are equal, with a message if something goes wrong.
@@ -84,7 +75,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_str_eq_(test, should_be) \
-	test_str_eq(test, should_be, NULL)
+	test_str_eq(test, should_be, "")
 
 /**
  * Tests if the two chars are equal.
@@ -105,7 +96,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_char_eq_(test, should_be) \
-	test_char_eq(test, should_be, NULL)
+	test_char_eq(test, should_be, "")
 
 /**
  * Tests if the two int16s are equal.
@@ -126,7 +117,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_int16_eq_(test, should_be) \
-	test_int16_eq(test, should_be, NULL)
+	test_int16_eq(test, should_be, "")
 
 /**
  * Tests if the two uint16s are equal.
@@ -147,7 +138,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_uint16_eq_(test, should_be) \
-	test_uint16_eq(test, should_be, NULL)
+	test_uint16_eq(test, should_be, "")
 
 /**
  * Tests if the two int32s are equal.
@@ -168,7 +159,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_int32_eq_(test, should_be) \
-	test_int32_eq(test, should_be, NULL)
+	test_int32_eq(test, should_be, "")
 
 /**
  * Tests if the two uint32s are equal.
@@ -189,7 +180,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_uint32_eq_(test, should_be) \
-	test_int32_eq(test, should_be, NULL)
+	test_int32_eq(test, should_be, "")
 
 /**
  * Tests if the two size_t's are equal.
@@ -210,7 +201,7 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_size_eq_(test, should_be) \
-	test_size_eq(test, should_be, NULL)
+	test_size_eq(test, should_be, "")
 
 /**
  * Tests if the two status_t's match.
@@ -231,4 +222,4 @@ char* test_status_to_str(status_t status);
  * @param should_be What the thing is expected to be.
  */
 #define test_status_eq_(test, should_be) \
-	test_int32_eq(test, should_be, NULL)
+	test_int32_eq(test, should_be, "")

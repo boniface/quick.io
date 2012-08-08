@@ -20,7 +20,7 @@ static status_t _rfc6455_read(client_t *client, int header_len) {
 	// message yet, so only go for the smallest of what we can use.
 	gsize remaining = MIN(message->socket_buffer->len - header_len, message->remaining_length);
 	
-	// Transform the 32bit int to a char array for simpler use
+	// Transform the 32bit int to a char array for simpler use (read: offsets)
 	char *mask = (char*)(&message->mask);
 	
 	// For quicker access
@@ -70,7 +70,7 @@ static status_t _rfc6455_start(client_t *client) {
 	char *mask = NULL;
 	
 	// The length of the header for this message
-	short header_len = 0;
+	guint16 header_len = 0;
 	
 	if (len <= PAYLOAD_SHORT) {
 		// Length is good, now all we need is the mask (right after the headers)
@@ -85,7 +85,7 @@ static status_t _rfc6455_start(client_t *client) {
 		}
 		
 		// The third and fourth bytes contain the length
-		len += (guint16)(*(buff + HEADER_LEN));
+		len = GUINT16_FROM_BE(*((guint16*)(buff + HEADER_LEN)));
 		
 		// The mask starts after the header and extended length
 		mask = buff + EXTENDED_HEADER_LEN;
@@ -113,7 +113,7 @@ static status_t _rfc6455_start(client_t *client) {
 	client->message->remaining_length = len;
 	
 	// Pass on the mask as an int to make it easier for memory management
-	client->message->mask = (*((guint32*)mask));
+	client->message->mask = *((guint32*)mask);
 	
 	return _rfc6455_read(client, header_len);
 }

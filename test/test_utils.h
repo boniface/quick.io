@@ -7,6 +7,15 @@
 #include "test.h"
 
 /**
+ * Convert a status_t to a string, for printing.
+ *
+ * @param status The status to look for.
+ *
+ * @return A printable string that names the status, or NULL if not found / multiple statuses.
+ */
+char* test_status_to_str(status_t status);
+
+/**
  * Create a new client for tests.
  *
  * @return A client that can be used.

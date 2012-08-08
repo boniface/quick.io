@@ -33,7 +33,7 @@ test:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
 	@$(MAKE) debug TESTING=1
 	@$(MAKE) -C test test DEBUG=1
-	# @./ext/gcovr
+	@./ext/gcovr
 	
 test-jenkins:
 	$(MAKE) test TEST_OUTPUT_XML=1
