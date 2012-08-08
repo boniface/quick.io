@@ -104,6 +104,11 @@ static status_t _rfc6455_start(client_t *client) {
 		return CLIENT_MESSAGE_TOO_LONG;
 	}
 	
+	// Wait on more information if we didn't completely read the header
+	if (sb->len < header_len) {
+		return CLIENT_WAIT;
+	}
+	
 	// Pass on the length that is left to read to the reader
 	client->message->remaining_length = len;
 	

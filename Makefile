@@ -22,15 +22,18 @@ build:
 	$(MAKE) -C app
 
 clean:
-	rm -rf $(BUILDDIR)
+	rm -rf $(DIR_BUILD)
+	rm -rf $(DIR_BUILD_TEST)
 	rm -f test*.xml
 	$(MAKE) -C app clean
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
 
-test: clean
-	$(MAKE) -C src test DEBUG=1
-	$(MAKE) -C test test DEBUG=1
+test:
+	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
+	@$(MAKE) debug TESTING=1
+	@$(MAKE) -C test test DEBUG=1
+	# @./ext/gcovr
 	
 test-jenkins:
 	$(MAKE) test TEST_OUTPUT_XML=1

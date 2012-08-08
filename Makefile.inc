@@ -4,8 +4,11 @@
 # Not directory-specific
 HEADERS = $(wildcard *.h)
 
+DIR_BUILD = build
+DIR_BUILD_TEST = build_test
+
 # The output directory
-BUILDDIR = build/
+export BUILDDIR ?= $(shell pwd)/$(DIR_BUILD)
 
 CC = gcc
 LIBS += glib-2.0 libsoup-2.4

@@ -78,7 +78,7 @@ static void _main_cull_children(int *pids) {
 	}
 }
 
-#if TESTING
+#ifdef TESTING
 int init_main(int argc, char *argv[]) {
 #else
 int main(int argc, char *argv[]) {
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	pid_t *pids;
-#if !TESTING
+#ifndef TESTING
 	if (_main_fork(&pids)) {
 		DEBUG("Children forked");
 	} else {
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 	printf("READY\n");
 	fflush(stdout);
 	
-#if !TESTING
+#ifndef TESTING
 	// The main thread just sits here, waiting
 	// The children processes will never get here
 	gint32 count = option_processes();
