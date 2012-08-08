@@ -8,5 +8,6 @@ xunit.xml
 coverage.xml
 /build*/
 /test/python/ve/
+/test/client_statuses.inc
 
 /*.sublime*

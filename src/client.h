@@ -97,7 +97,7 @@
 /**
  * The client status type.
  */
-typedef short status_t;
+typedef guint16 status_t;
 
 /**
  * The opcodes that we support.

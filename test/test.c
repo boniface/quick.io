@@ -1,6 +1,13 @@
 #include "test.h"
 #include "test_rfc6455.h"
 
+char* test_status_to_str(status_t status) {
+	switch (status) {
+		#include "client_statuses.inc"
+	}
+	return "UNKNOWN";
+}
+
 int main(int argc, char *argv[]) {
 	int number_failed = 0;
 	

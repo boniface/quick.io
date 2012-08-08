@@ -8,10 +8,10 @@ TEST_OUTPUT_XML = 0
 
 .PHONY: clean test
 
-pound: pound.c
-	gcc -g $(CFLAGS) $(LDFLAGS) pound.c -o pound
+client_statuses.inc:
+	$(CC) $(CFLAGS) -E -Wp,-dM ../src/client.h | grep 'define CLIENT_' | grep -v CLIENT_BAD | awk '{ printf "case %d: return \"%s\";", lshift(1,$$5), $$2 }' > client_statuses.inc
 
-test: $(OBJECTS)
+test: client_statuses.inc $(OBJECTS)
 	@echo "\n\n"-------- Compiling test suite --------
 	@$(CC) $(LDFLAGS) $(OBJECTS) $(LIBCHECK) $(QIO_OBJECTS) --coverage -o $(BUILDDIR)/test
 	
@@ -20,8 +20,9 @@ test: $(OBJECTS)
 	@# $(MAKE) -C python test
 
 clean:
+	rm -f client_statuses.inc
 	$(MAKE) -C python clean
 
-$(BUILDDIR)/%.o: %.c
+$(BUILDDIR)/%.o: %.c test.h
 	@echo "\n\n"-------- Compiling $< --------
 	@$(CC) $(CFLAGS) -DTEST_OUTPUT_XML=$(TEST_OUTPUT_XML) $< -o $@
