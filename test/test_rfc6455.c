@@ -51,11 +51,11 @@ START_TEST(test_rfc6455_message) {
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT);
 	
 	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
-	test(client->message->socket_buffer->len == 0, "Socket buffer cleared after read");
-	test(client->message->remaining_length == 0, "Message length==0 as buffer cleared");
-	test(client->message->type == op_text, "Opcode set to text");
-	test(client->message->mask == *((guint32*)MASK), "Correct mask in message");
-	test(strcmp(client->message->buffer->str, MESSAGE) == 0, "Message decoded correctly");
+	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer cleared after read");
+	test_uint16_eq(client->message->remaining_length, 0, "Message length==0 as buffer cleared");
+	test_char_eq(client->message->type, op_text, "Opcode set to text");
+	test_uint32_eq(client->message->mask, *((guint32*)MASK), "Correct mask in message");
+	test_str_eq(client->message->buffer->str, MESSAGE, "Message decoded correctly");
 	
 	u_client_free(client);
 }
@@ -68,17 +68,17 @@ START_TEST(test_rfc6455_partial_message) {
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT_P1);
 	
 	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
-	test(client->message->socket_buffer->len == 0, "Socket buffer cleared after read");
-	test(client->message->remaining_length == 4, "Waiting for 4 more characters");
-	test(client->message->type == op_text, "Opcode set to text");
-	test(client->message->mask == *((guint32*)MASK), "Correct mask in message");
-	test(client->message->buffer->len == 0, "Nothing in the message buffer");
+	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer cleared after read");
+	test_uint16_eq(client->message->remaining_length, 4, "Waiting for 4 more characters");
+	test_char_eq(client->message->type, op_text, "Opcode set to text");
+	test_uint32_eq(client->message->mask, *((guint32*)MASK), "Correct mask in message");
+	test_size_eq(client->message->buffer->len, 0, "Nothing in the message buffer");
 	
 	// Send the second part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT_P2);
-	test(rfc6455_continue(client) == CLIENT_GOOD, "Short message response: CLIENT_GOOD");
-	test(client->message->buffer->len == 4, "Message read completely");
-	test(strcmp(client->message->buffer->str, MESSAGE) == 0, "Message decoded correctly");
+	test_status_eq(rfc6455_continue(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
+	test_size_eq(client->message->buffer->len, 4, "Message read completely");
+	test_str_eq(client->message->buffer->str, MESSAGE, "Message decoded correctly");
 	
 	u_client_free(client);
 }
@@ -95,16 +95,16 @@ START_TEST(test_rfc6455_multi_partial_messages) {
 	// Send the second part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_P2);
 	test_status_eq(rfc6455_continue(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
-	test(client->message->remaining_length == 2, "Waiting for 2 more characters");
-	test(client->message->buffer->len == 2, "Partially decoded");
+	test_uint16_eq(client->message->remaining_length, 2, "Waiting for 2 more characters");
+	test_size_eq(client->message->buffer->len, 2, "Partially decoded");
 	
 	// Send the third part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_P3);
 	test_status_eq(rfc6455_continue(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
-	test(client->message->remaining_length == 0, "Waiting for 0 more characters");
-	test(client->message->buffer->len == 4, "Completely decoded");
+	test_uint16_eq(client->message->remaining_length, 0, "Waiting for 0 more characters");
+	test_size_eq(client->message->buffer->len, 4, "Completely decoded");
 	
-	test(strcmp(client->message->buffer->str, MESSAGE) == 0, "Message decoded correctly");
+	test_str_eq(client->message->buffer->str, MESSAGE, "Message decoded correctly");
 	
 	u_client_free(client);
 }

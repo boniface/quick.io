@@ -108,7 +108,49 @@ char* test_status_to_str(status_t status);
 	test_char_eq(test, should_be, NULL)
 
 /**
- * Tests if the two ints are equal.
+ * Tests if the two int16s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_int16_eq(test, should_be, description) { \
+	_test_setup(gint16, test, should_be); \
+	_msg("Assertion %"G_GINT16_FORMAT"==%"G_GINT16_FORMAT" failed", actual, expect, description); \
+	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two int16s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ */
+#define test_int16_eq_(test, should_be) \
+	test_int16_eq(test, should_be, NULL)
+
+/**
+ * Tests if the two uint16s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_uint16_eq(test, should_be, description) { \
+	_test_setup(guint16, test, should_be); \
+	_msg("Assertion %"G_GUINT16_FORMAT"==%"G_GUINT16_FORMAT" failed", actual, expect, description); \
+	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two uint16s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ */
+#define test_uint16_eq_(test, should_be) \
+	test_uint16_eq(test, should_be, NULL)
+
+/**
+ * Tests if the two int32s are equal.
  *
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
@@ -120,12 +162,33 @@ char* test_status_to_str(status_t status);
 	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
 
 /**
- * Tests if the two ints are equal.
+ * Tests if the two int32s are equal.
  *
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
 #define test_int32_eq_(test, should_be) \
+	test_int32_eq(test, should_be, NULL)
+
+/**
+ * Tests if the two uint32s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_uint32_eq(test, should_be, description) { \
+	_test_setup(guint32, test, should_be); \
+	_msg("Assertion %d==%d failed", actual, expect, description); \
+	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two uint32s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ */
+#define test_uint32_eq_(test, should_be) \
 	test_int32_eq(test, should_be, NULL)
 
 /**
@@ -148,27 +211,6 @@ char* test_status_to_str(status_t status);
  */
 #define test_size_eq_(test, should_be) \
 	test_size_eq(test, should_be, NULL)
-
-/**
- * Tests if the two uint16s are equal.
- *
- * @param test The thing to test.
- * @param should_be What the thing is expected to be.
- * @param description The description of the test, to be printed with failure information
- */
-#define test_uint16_eq(test, should_be, description) { \
-	_test_setup(guint16, test, should_be); \
-	_msg("Assertion %"G_GUINT16_FORMAT"==%"G_GUINT16_FORMAT" failed", actual, expect, description); \
-	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
-
-/**
- * Tests if the two uint16s are equal.
- *
- * @param test The thing to test.
- * @param should_be What the thing is expected to be.
- */
-#define test_uint16_eq_(test, should_be) \
-	test_uint16_eq(test, should_be, NULL)
 
 /**
  * Tests if the two status_t's match.
