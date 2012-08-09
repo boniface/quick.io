@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
 	// srunner_add_suite(sr, rfc6455_suite());
 
 #if TEST_OUTPUT_XML
-	srunner_set_xml(sr, "../test_xunit.xml");
+	srunner_set_xml(sr, "../test_unit.xml");
 #endif
 
 	srunner_run_all(sr, CK_NORMAL);
