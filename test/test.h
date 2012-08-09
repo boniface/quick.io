@@ -87,7 +87,7 @@
  */
 #define test_bin_eq(test, should_be, length, description) { \
 	_test_setup(char*, test, should_be); \
-	_msg("The binary blobs do not match: '%s'!='%s'", actual, expect, description); \
+	_msg("The binary blobs do not match: '%X'!='%X'", *actual, *expect, description); \
 	_fail_unless(memcmp(actual, expect, length) == 0, __FILE__, __LINE__, msg, NULL);}
 
 /**
