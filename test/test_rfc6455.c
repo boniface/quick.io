@@ -176,7 +176,7 @@ START_TEST(test_rfc6455_frame_short) {
 	char *frame = rfc6455_prepare_frame(op_text, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame length correct");
-	test_str_eq(frame, RFC6455_FRAMED_SHORT, "Frame contains header");
+	test_bin_eq(frame, RFC6455_FRAMED_SHORT, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame contains header");
 	
 	free(frame);
 }
@@ -209,7 +209,7 @@ START_TEST(test_rfc6455_pong) {
 	char *frame = rfc6455_prepare_frame(op_pong, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_PONG)-1, "Frame length correct");
-	test_str_eq(frame, RFC6455_FRAMED_PONG, "Pong frame contains pong");
+	test_bin_eq(frame, RFC6455_FRAMED_PONG, sizeof(RFC6455_FRAMED_PONG)-1, "Pong frame contains pong");
 	
 	free(frame);
 }
@@ -224,7 +224,7 @@ START_TEST(test_rfc6455_frame_from_message) {
 	char *frame = rfc6455_prepare_frame_from_message(&message, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Correct short frame length");
-	test_str_eq(frame, RFC6455_FRAMED_SHORT, "Short frame correct");
+	test_bin_eq(frame, RFC6455_FRAMED_SHORT, sizeof(RFC6455_FRAMED_SHORT)-1, "Short frame correct");
 	
 	g_string_free(message.buffer, TRUE);
 	free(frame);
