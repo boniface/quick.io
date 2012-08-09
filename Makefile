@@ -35,6 +35,6 @@ test:
 	@$(MAKE) -C test test DEBUG=1
 	@./ext/gcovr
 	
-test-jenkins:
+test-jenkins: clean
 	$(MAKE) test TEST_OUTPUT_XML=1
 	./ext/gcovr -x -o test_coverage.xml
