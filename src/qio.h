@@ -21,6 +21,7 @@
 #include "events_client.h"
 #include "handler_rfc6455.h"
 #include "main.h"
+#include "monkey.h"
 #include "option.h"
 #include "socket.h"
 #include "validate.h"

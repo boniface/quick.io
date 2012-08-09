@@ -9,6 +9,16 @@
 #include "qio.h"
 
 /**
+ * The HTTP header terminator
+ */
+#define HTTP_HEADER_TERMINATOR "\n\n"
+
+/**
+ * The WebSocket header terminator
+ */
+#define WEB_SOCKET_HEADER_TERMINATOR "\r\n\r\n"
+
+/**
  * Everything went as expected. Carry on.
  */
 #define CLIENT_GOOD 1 << 0
@@ -85,7 +95,7 @@
 #define CLIENT_SERVER_OVERLOADED 1 << 13
 
 /**
- * The client is not supported by this handler.
+ * The client is not supported by this handler / server.
  */
 #define CLIENT_UNSUPPORTED 1 << 14
 

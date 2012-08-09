@@ -6,6 +6,8 @@
 #pragma once
 #include <check.h>
 #include "qio.h"
+#include "test_client.h"
+#include "test_rfc6455.h"
 #include "test_utils.h"
 
 /**

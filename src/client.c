@@ -2,40 +2,48 @@
 
 status_t client_handshake(client_t *client) {
 	status_t status = CLIENT_GOOD;
-	enum handlers handler = h_none;
 	GString *buffer = client->message->socket_buffer;
-
+	
+	// If the client hasn't yet sent the terminating \n\n or \r\n\r\n, then just
+	// don't parse anything, because it's not complete
+	if (!g_string_ends_with(buffer, HTTP_HEADER_TERMINATOR) && !g_string_ends_with(buffer, WEB_SOCKET_HEADER_TERMINATOR)) {
+		return CLIENT_WAIT;
+	}
+	
+	// Used by soup for header parsing
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
-	gchar *path;
+	gchar *path = NULL;
 	
 	// Parse the headers and see if we can handle them
-	if (buffer->len && soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL)) {
+	if (soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL) == SOUP_STATUS_OK) {
 		if (rfc6455_handles(path, req_headers)) {
-			handler = h_rfc6455;
+			client->handler = h_rfc6455;
 			status = rfc6455_handshake(client, req_headers);
+		} else {
+			// No handler was found, and the headers were parsed OK, so
+			// we just can't support this client
+			status = CLIENT_UNSUPPORTED;
 		}
+	} else {
+		// If we can't parse the headers, then the client is being an idiot
+		// So screw him, close the connection
+		status = CLIENT_ABORTED;
 	}
 	
-	g_free(path);
+	// If the path couldn't even be read from the headers...yikes
+	if (path != NULL) {
+		g_free(path);
+	}
+	
+	// Done reading headers
 	soup_message_headers_free(req_headers);
 	
-	if (status & CLIENT_GOOD && handler == h_none) {
-		// Everything went well, but we don't have a handler yet
-		// Maybe the client hasn't finished sending headers? Let's
-		// wait for another read
-		return CLIENT_WAIT;
-	} else if (status & CLIENT_WRITE) {
-		// Set the client's handler for future reference
-		client->handler = handler;
-		
+	if (status == CLIENT_WRITE) {
 		// We read the header successfully, clean up after ourselves
 		g_string_truncate(client->message->socket_buffer, 0);
-		
-		return CLIENT_WRITE;
-	} else {
-		DEBUG("Client handler not found");
-		return CLIENT_ABORTED;
 	}
+	
+	return status;
 }
 
 status_t client_message(client_t* client) {
@@ -110,7 +118,8 @@ status_t client_write(client_t *client, message_t *message) {
 }
 
 status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
-	if (frame_len > -1) {
+	// Frames will ALWAYS be larger than 0, there MUST be a header
+	if (frame_len > 0) {
 		send(client->sock, frame, frame_len, MSG_NOSIGNAL);
 		return CLIENT_GOOD;
 	} else {

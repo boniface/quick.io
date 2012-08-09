@@ -23,6 +23,6 @@ clean:
 	rm -f client_statuses.inc
 	$(MAKE) -C python clean
 
-$(BUILDDIR)/%.o: %.c test.h
+$(BUILDDIR)/%.o: %.c test.h $(QIO_OBJECTS)
 	@echo "\n\n"-------- Compiling $< --------
 	@$(CC) $(CFLAGS) -DTEST_OUTPUT_XML=$(TEST_OUTPUT_XML) $< -o $@
