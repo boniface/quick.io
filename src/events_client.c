@@ -189,7 +189,7 @@ void evs_client_pub_messages() {
 		if (subs != NULL) {
 			GPtrArray *dead_clients = g_ptr_array_new();
 			gchar *msgs[h_len];
-			int msglen[h_len];
+			gsize msglen[h_len];
 			
 			msgs[h_rfc6455] = rfc6455_prepare_frame(
 				message->type,

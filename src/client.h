@@ -243,7 +243,7 @@ status_t client_write(client_t *client, message_t *message);
  * @param frame The string that should be sent.
  * @param frame_len The length of the string.
  */
-status_t client_write_frame(client_t *client, char *frame, int frame_len);
+status_t client_write_frame(client_t *client, char *frame, gsize frame_len);
 
 /**
  * Marks a client as dead and gets it ready for cleanup.

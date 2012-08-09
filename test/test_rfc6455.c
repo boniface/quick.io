@@ -34,7 +34,11 @@
 
 #define RFC6455_MESSAGE_OVERSIZED_MESSAGE "\x81""\xff""\x00""\x9e"
 
-#define RFC6455_FRAMED_SHORT "\x81""\x04" MESSAGE_SHORT
+#define RFC6455_FRAMED_SHORT "\x81""\x04"MESSAGE_SHORT
+#define RFC6455_FRAMED_LONG "\x81""\x7e""\x00""\x9e"MESSAGE_LONG
+#define RFC6455_OVERSIZED_LEN 0x100000
+
+#define RFC6455_FRAMED_PONG "\x8A""\x04"MESSAGE_SHORT
 
 START_TEST(test_rfc6455_handshake) {
 	client_t *client = u_client_create();
@@ -167,13 +171,62 @@ START_TEST(test_rfc6455_oversized_message) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_frame_small) {
-	int frame_len = 0;
+START_TEST(test_rfc6455_frame_short) {
+	gsize frame_len = 0;
 	char *frame = rfc6455_prepare_frame(op_text, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame length correct");
 	test_str_eq(frame, RFC6455_FRAMED_SHORT, "Frame contains header");
 	
+	free(frame);
+}
+END_TEST
+
+START_TEST(test_rfc6455_frame_long) {
+	gsize frame_len = 0;
+	char *frame = rfc6455_prepare_frame(op_text, MESSAGE_LONG, sizeof(MESSAGE_LONG)-1, &frame_len);
+	
+	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_LONG)-1, "Frame length correct");
+	test_bin_eq(frame, RFC6455_FRAMED_LONG, sizeof(RFC6455_FRAMED_LONG)-1, "Frame contains header");
+	
+	free(frame);
+}
+END_TEST
+
+START_TEST(test_rfc6455_frame_oversized) {
+	gsize frame_len = 0;
+	char *frame = rfc6455_prepare_frame(op_text, "", RFC6455_OVERSIZED_LEN, &frame_len);
+	
+	test_int32_eq(frame_len, 0, "Frame length correct");
+	test_ptr_eq(frame, NULL, "Frame is null");
+	
+	free(frame);
+}
+END_TEST
+
+START_TEST(test_rfc6455_pong) {
+	gsize frame_len = 0;
+	char *frame = rfc6455_prepare_frame(op_pong, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
+	
+	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_PONG)-1, "Frame length correct");
+	test_str_eq(frame, RFC6455_FRAMED_PONG, "Pong frame contains pong");
+	
+	free(frame);
+}
+END_TEST
+
+START_TEST(test_rfc6455_frame_from_message) {
+	message_t message;
+	message.type = op_text;
+	message.buffer = g_string_new(MESSAGE_SHORT);
+	
+	gsize frame_len = 0;
+	char *frame = rfc6455_prepare_frame_from_message(&message, &frame_len);
+	
+	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Correct short frame length");
+	test_str_eq(frame, RFC6455_FRAMED_SHORT, "Short frame correct");
+	
+	g_string_free(message.buffer, TRUE);
 	free(frame);
 }
 END_TEST
@@ -210,8 +263,24 @@ Suite* rfc6455_suite() {
 	tcase_add_test(tc, test_rfc6455_oversized_message);
 	suite_add_tcase(s, tc);
 	
-	tc = tcase_create("Small Frame");
-	tcase_add_test(tc, test_rfc6455_frame_small);
+	tc = tcase_create("Send Short Frame");
+	tcase_add_test(tc, test_rfc6455_frame_short);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Send Long Frame");
+	tcase_add_test(tc, test_rfc6455_frame_long);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Send Oversized Frame");
+	tcase_add_test(tc, test_rfc6455_frame_oversized);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Send Pong");
+	tcase_add_test(tc, test_rfc6455_pong);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Send from Message");
+	tcase_add_test(tc, test_rfc6455_frame_from_message);
 	suite_add_tcase(s, tc);
 	
 	return s;

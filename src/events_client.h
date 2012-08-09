@@ -36,6 +36,9 @@
 /**
  * A published message that is waiting to be sent to users. It contains all the data it
  * needs to send a message, regardless of any other memory references.
+ *
+ * @attention This is an INTERNAL data structure that SHOULD NOT be used outside of
+ * events_client
  */
 typedef struct evs_client_message_s {
 	/**
@@ -60,7 +63,7 @@ typedef struct evs_client_message_s {
 	/**
 	 * The length of #message
 	 */
-	guint16 message_len;
+	guint64 message_len;
 } STRUCT_PACKED evs_client_message_t;
 
 /**

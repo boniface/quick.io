@@ -34,10 +34,16 @@
 // Ignore the first bit of the second byte, it's the masking bit
 #define SECOND_BYTE 0b01111111
 
+// The value indicating we're sending a 16-bit unsigned int as the length
+#define SECOND_BYTE_16BIT_LEN 126
+
 // The different payload lengths that change the header
+#define PAYLOAD_LEN_SHORT 125
+#define PAYLOAD_LEN_LONG 126
+#define PAYLOAD_LEN_DEADLY 127
+
 #define PAYLOAD_SHORT 125
-#define PAYLOAD_LONG 126
-#define PAYLOAD_DEADLY 127
+#define PAYLOAD_LONG 0xFFFF
 
 // Mask is 32 bits
 #define MASK_LEN 32 / 8

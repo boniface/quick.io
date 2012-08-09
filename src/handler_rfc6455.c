@@ -2,10 +2,6 @@
 #include "handler_rfc6455_const.h"
 
 /**
- * The corresponding RFC: http://tools.ietf.org/html/rfc6455
- */
-
-/**
  * Read masked text from the socket buffer.
  */
 static status_t _rfc6455_read(client_t *client, int header_len) {
@@ -64,7 +60,7 @@ static status_t _rfc6455_start(client_t *client) {
 	
 	// The first 7 bits of the second byte tell us the length
 	// You can't make this stuff up :(
-	guint64 len = *(buff + 1) & SECOND_BYTE;
+	guint16 len = *(buff + 1) & SECOND_BYTE;
 	
 	// The 32bit mask data: position dependent based on the payload len
 	char *mask = NULL;
@@ -72,13 +68,13 @@ static status_t _rfc6455_start(client_t *client) {
 	// The length of the header for this message
 	guint16 header_len = 0;
 	
-	if (len <= PAYLOAD_SHORT) {
+	if (len <= PAYLOAD_LEN_SHORT) {
 		// Length is good, now all we need is the mask (right after the headers)
 		mask = buff + HEADER_LEN;
 		
 		// Skip the headers and the mask
 		header_len = HEADER_LEN + MASK_LEN;
-	} else if (len == PAYLOAD_LONG) {
+	} else if (len == PAYLOAD_LEN_LONG) {
 		// We haven't finished reading the extended header from the socket
 		if (sb->len < EXTENDED_HEADER_LEN) {
 			return CLIENT_WAIT;
@@ -150,8 +146,9 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	return CLIENT_WRITE;
 }
 
-char* rfc6455_prepare_frame(opcode_t type, gchar *payload, int payload_len, int *frame_len) {
+char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, gsize *frame_len) {
 	char *frame;
+	guint8 header_size = 0;
 	
 	// If 125 chars or less, then only use 7 bits to represent
 	// payload length
@@ -162,47 +159,65 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, int payload_len, int 
 	if (payload_len <= PAYLOAD_SHORT) {
 		// Since this is a small message, we only need 2 extra bytes
 		// to represent the data
-		*frame_len = (payload_len + 2);
+		header_size = HEADER_LEN;
+		*frame_len = payload_len + header_size;
 		
 		frame = malloc(*frame_len * sizeof(*frame));
 		
 		// If can't malloc...that's bad.
 		if (frame == NULL) {
-			*frame_len = -1;
 			return NULL;
-		}
-		
-		// The first frame of text is ALWAYS the same
-		*frame = FIRST_BYTE;
-		
-		// The opcode that we should sent back to the client
-		switch (type) {
-			case op_pong:
-				*frame |= OP_PONG;
-				break;
-			
-			default:
-			case op_text:
-				*frame |= OP_TEXT;
-				break;
 		}
 		
 		// The second frame: the first bit is always 0 (data going
 		// to the client is never masked), and since the length is
 		// less than 125, that bit will ALWAYS be set to 0, as it should
 		*(frame + 1) = payload_len;
+	} else if (payload_len <= PAYLOAD_LONG) {
+		// We need an extra 2 bytes, for 4 bytes in total,
+		// to provide the header for this message
+		header_size = EXTENDED_HEADER_LEN;
+		*frame_len = payload_len + header_size;
 		
-		memcpy((frame + 2), payload, payload_len);
+		frame = malloc(*frame_len * sizeof(*frame));
+		
+		// If can't malloc...that's bad.
+		if (frame == NULL) {
+			return NULL;
+		}
+		
+		// The second frame: the first bit is always 0 (data going
+		// to the client is never masked), and to indicate that we
+		// are sending a 16-bit payload, we need to set this to 126,
+		// which will also set the masking bit to 0
+		*(frame + 1) = SECOND_BYTE_16BIT_LEN;
+		*((guint16*)(frame + 2)) = GUINT16_TO_BE(payload_len);
 	} else {
-		ERROR("Msg len > 125, not implemented");
-		*frame_len = -1;
+		ERROR("Msg len > 65535, not implemented");
 		return NULL;
 	}
+	
+	// The first frame of text is ALWAYS the same
+	*frame = FIRST_BYTE;
+	
+	// The opcode that we should sent back to the client
+	switch (type) {
+		case op_pong:
+			*frame |= OP_PONG;
+			break;
+		
+		default:
+		case op_text:
+			*frame |= OP_TEXT;
+			break;
+	}
+	
+	memcpy((frame + header_size), payload, payload_len);
 	
 	return frame;
 }
 
-char* rfc6455_prepare_frame_from_message(message_t *message, int *frame_len) {
+char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
 	return rfc6455_prepare_frame(
 		message->type,
 		message->buffer->str,

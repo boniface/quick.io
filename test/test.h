@@ -78,6 +78,29 @@
 	test_str_eq(test, should_be, "")
 
 /**
+ * Tests if the binary blocks are equal, with a message if something goes wrong.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param length The length of the binary blob.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_bin_eq(test, should_be, length, description) { \
+	_test_setup(char*, test, should_be); \
+	_msg("The binary blobs do not match: '%s'!='%s'", actual, expect, description); \
+	_fail_unless(memcmp(actual, expect, length) == 0, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two strings are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param length The length of the binary blob.
+ */
+#define test_bin_eq_(test, should_be, length) \
+	test_bin_eq(test, should_be, length, "")
+
+/**
  * Tests if the two chars are equal.
  *
  * @param test The thing to test.
@@ -223,3 +246,24 @@
  */
 #define test_status_eq_(test, should_be) \
 	test_int32_eq(test, should_be, "")
+
+/**
+ * Tests if the two pointers are equal.
+ * 
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_ptr_eq(test, should_be, description) { \
+	_test_setup(void*, test, should_be); \
+	_msg("Assertion %p==%p failed", actual, expect, description); \
+	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two pointers are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ */
+#define test_ptr_eq_(test, should_be) \
+	test_ptr_eq(test, should_be, "")

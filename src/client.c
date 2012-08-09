@@ -89,7 +89,7 @@ status_t client_write(client_t *client, message_t *message) {
 	char *frame;
 	
 	// The amount of data to write to the socket
-	int frame_len = 0;
+	gsize frame_len = 0;
 	
 	switch (client->handler) {
 		case h_rfc6455:
@@ -100,12 +100,16 @@ status_t client_write(client_t *client, message_t *message) {
 			return CLIENT_ABORTED;
 	}
 	
+	if (frame == NULL) {
+		CLIENT_ABORTED;
+	}
+	
 	status_t status = client_write_frame(client, frame, frame_len);
 	free(frame);
 	return status;
 }
 
-status_t client_write_frame(client_t *client, char *frame, int frame_len) {
+status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	if (frame_len > -1) {
 		send(client->sock, frame, frame_len, MSG_NOSIGNAL);
 		return CLIENT_GOOD;

@@ -1,5 +1,6 @@
 /**
  * Handle clients that adhere to rfc6455.
+ * @see http://tools.ietf.org/html/rfc6455
  * @file handler_rfc6455.h
  */
 
@@ -34,17 +35,18 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
  * @param payload_len The length of the payload
  * @param[out] frame_len The length of the final frame.
  *
- * @return The fully-framed frame to write to the client.
+ * @return The fully-framed frame to write to the client. If NULL, there was an error in 
+ * frame creation.
  * @attention The return of this function MUST be free'd
  */
-char* rfc6455_prepare_frame(opcode_t type, gchar *payload, int payload_len, int *frame_len);
+char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, gsize *frame_len);
 
 /**
  * An accessor for rfc6455_prepare_frame.
  *
  * @see rfc6455_prepare_frame
  */
-char* rfc6455_prepare_frame_from_message(message_t *message, int *frame_len);
+char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len);
 
 /**
  * Read incoming data from the client.
