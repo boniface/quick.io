@@ -37,4 +37,4 @@ test:
 	
 test-jenkins: clean
 	$(MAKE) test TEST_OUTPUT_XML=1
-	./ext/gcovr -x --object-directory src/ -o test_coverage.xml
+	./ext/gcovr -x --object-directory=src/ -r . -o test_coverage.xml
