@@ -61,7 +61,7 @@
 /**
  * The client sent a bad message.
  */
-#define CLIENT_BAD_MESSAGE 1 << 7
+#define CLIENT_BAD_MESSAGE_FORMAT 1 << 7
 
 /**
  * The client sent a message with an unsupported opcode.  Kill him.
@@ -102,7 +102,7 @@
 /**
  * Any event that means the client is just being stupid.
  */
-#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNKNOWN_EVENT | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE)
+#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNKNOWN_EVENT | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE_FORMAT)
 
 /**
  * The client status type.

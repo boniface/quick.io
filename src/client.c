@@ -88,7 +88,7 @@ status_t client_write(client_t *client, message_t *message) {
 	// Extract the message from the client, if necessary
 	if (message == NULL) {
 		if (client->message == NULL) {
-			return CLIENT_BAD_MESSAGE;
+			return CLIENT_BAD_MESSAGE_FORMAT;
 		}
 		
 		message = client->message;

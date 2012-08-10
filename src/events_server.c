@@ -44,7 +44,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// If the first : in the string was the first character....
 	if (end == NULL || curr == end) {
 		DEBUG("Bad event specifier.");
-		return CLIENT_BAD_MESSAGE;
+		return CLIENT_BAD_MESSAGE_FORMAT;
 	}
 	
 	// Null terminate our event
@@ -64,7 +64,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	
 	if (end == NULL) {
 		DEBUG("Bad messageId");
-		return CLIENT_BAD_MESSAGE;
+		return CLIENT_BAD_MESSAGE_FORMAT;
 	}
 	
 	// Make the sub-string NULL terminated so this works
@@ -78,7 +78,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// There has to be something found for this to work
 	if (end == NULL) {
 		DEBUG("Bad message format: data type");
-		return CLIENT_BAD_MESSAGE;
+		return CLIENT_BAD_MESSAGE_FORMAT;
 	}
 	
 	// To allow the string compares to work
@@ -90,16 +90,17 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 		event->type = d_json;
 	} else {
 		DEBUG("No matching data type found");
-		return CLIENT_BAD_MESSAGE;
+		return CLIENT_BAD_MESSAGE_FORMAT;
 	}
 	
 	// Don't allow memory to go rampant
-	if (++end > buffer_end) {
-		DEBUG("Memory overrun");
-		return CLIENT_BAD_MESSAGE;
+	if (end > buffer_end) {
+		return CLIENT_BAD_MESSAGE_FORMAT;
 	}
 	
 	// Finally, set the pointer to the data, everything following the "="
+	// Note: this MAY be null
+	#warning Write a test case checking this when =NULL
 	event->data = end;
 	
 	return CLIENT_GOOD;
@@ -162,6 +163,13 @@ static gchar* _clean_event_name(const gchar *event_path) {
 static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
 	return CLIENT_WRITE;
+}
+
+/**
+ * Does nothing, just says "good" back.
+ */
+static status_t _evs_server_noop(client_t *client, event_t *event, GString *response) {
+	return CLIENT_GOOD;
 }
 
 /**
@@ -361,9 +369,10 @@ gboolean evs_server_init() {
 	evs_server_on("/sub", evs_server_subscribe, NULL, NULL, FALSE);
 	evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
 	evs_server_on("/unsub", evs_server_unsubscribe, NULL, NULL, FALSE);
+	evs_server_on("/noop", _evs_server_noop, NULL, NULL, FALSE);
 	
 	// Internal commands are ready, let the app register its commands.
-	apps_register_events();
+	// apps_register_events();
 	
 	return TRUE;
 }
