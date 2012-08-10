@@ -44,7 +44,7 @@ typedef gboolean (*app_bool_cb)();
  *
  * @param client The client to do work on.
  */
-typedef void (*app_client_cb)(client_t *client);
+typedef void (*app_client_cb)(const client_t *client);
 
 /**
  * A callback for when a client subscribes/unsubscribes from an event.
@@ -52,7 +52,7 @@ typedef void (*app_client_cb)(client_t *client);
  * @param event The event that was triggered.
  * @param client The client that sent the event.
  */
-typedef void (*app_evs_client_cb)(gchar *event, client_t *client);
+typedef void (*app_evs_client_cb)(const client_t *client, const path_extra_t extra, const guint extra_len);
 
 /**
  * For closured "on" functions.
@@ -62,9 +62,11 @@ typedef void (*app_evs_client_cb)(gchar *event, client_t *client);
  * @param on_subscribe The function that should be notified when a client subscribes to this event.
  * @param handle_children If this handler handles children events with handlers.
  *
- * @see event_handler_s
+ * @return The object representing the event, able to be called.
+ *
+ * @see event_info_s
  */
-typedef void (*app_on)(gchar *event, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
+typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * A module callback that takes an "on" function.
@@ -207,7 +209,7 @@ void apps_client_close(client_t *client);
  * @param event The name of the event the client subscribed to.
  * @param client The client that subscribed.
  */
-void apps_evs_client_subscribe(gchar *event, client_t *client);
+void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *sub);
 
 /**
  * Inform all the apps when a client has unsubscribed to something.
@@ -215,4 +217,4 @@ void apps_evs_client_subscribe(gchar *event, client_t *client);
  * @param event The name of the event the client unsubscribed from.
  * @param client The client that unsubscribed.
  */
-void apps_evs_client_unsubscribe(gchar *event, client_t *client);
+void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t *sub);

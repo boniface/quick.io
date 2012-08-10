@@ -239,43 +239,22 @@ Suite* rfc6455_suite() {
 	tcase_add_test(tc, test_rfc6455_handshake);
 	suite_add_tcase(s, tc);
 	
-	tc = tcase_create("Short Message");
+	tc = tcase_create("Recieve Messages");
 	tcase_add_test(tc, test_rfc6455_short_message);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Partial Message");
-	tcase_add_test(tc, test_rfc6455_partial_short_message);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Multi Partial Messages");
-	tcase_add_test(tc, test_rfc6455_multi_partial_short_messages);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Partial message, broken header");
-	tcase_add_test(tc, test_rfc6455_multi_partial_broken_header);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Long Message");
 	tcase_add_test(tc, test_rfc6455_long_message);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Oversized Message");
 	tcase_add_test(tc, test_rfc6455_oversized_message);
 	suite_add_tcase(s, tc);
 	
-	tc = tcase_create("Send Short Frame");
+	tc = tcase_create("Partial Messages");
+	tcase_add_test(tc, test_rfc6455_partial_short_message);
+	tcase_add_test(tc, test_rfc6455_multi_partial_short_messages);
+	tcase_add_test(tc, test_rfc6455_multi_partial_broken_header);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Send Frames");
 	tcase_add_test(tc, test_rfc6455_frame_short);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Send Long Frame");
 	tcase_add_test(tc, test_rfc6455_frame_long);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Send Oversized Frame");
 	tcase_add_test(tc, test_rfc6455_frame_oversized);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Send Pong");
 	tcase_add_test(tc, test_rfc6455_pong);
 	suite_add_tcase(s, tc);
 	

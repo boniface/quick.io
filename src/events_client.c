@@ -26,35 +26,52 @@ static GMutex _messages_lock;
  * This function IS NOT thread safe.  Only the main thread that is listening
  * on clients should ever call it with and_create == TRUE.
  */
-static GHashTable* _get_subscriptions_with_key(gchar **event, gboolean and_create) {
-	evs_client_sub_t *sub = g_hash_table_lookup(_events, *event);
+static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboolean and_create) {
+	evs_client_sub_t *sub = g_hash_table_lookup(_events, event_path);
 	
-	if (sub == NULL && and_create && validate_event(*event)) {
-		// Use the default hashing functions, only using memory locations anyway
-		// (*client->*client is what is being stored)
-		sub = malloc(sizeof(*sub));
+	if (sub == NULL && and_create) {
+		// To validate this event, check the server events to make sure there
+		// is a handler registered
+		path_extra_t extra;
+		guint extra_len;
+		event_handler_t *handler = evs_server_get_handler(event_path, &extra, &extra_len);
+		
+		// If no handler was found, don't create anything
+		if (handler == NULL) {
+			return NULL;
+		}
+		
+		sub = g_try_malloc0(sizeof(*sub));
+		
+		// Well, this could be bad
+		if (sub == NULL) {
+			g_list_free_full(extra, g_free);
+			return NULL;
+		}
 		
 		// Keep around a reference to the key for passing around for easier
 		// persistence when the event names are freed from a message
-		sub->event = g_strdup(*event);
+		sub->event_path = g_strdup(event_path);
 		
-		// The hash table we use
+		// Use the default hashing functions, only using memory locations anyway
+		// (*client->*client is what is being stored)
 		sub->clients = g_hash_table_new(NULL, NULL);
+		
+		// Because we'll need this for some future references, let's keep the
+		// handler around: this will also save us on future lookups for the same
+		// event
+		sub->handler = handler;
+		
+		// Save the extra elements on the path, we'll need those again later
+		sub->extra = extra;
+		sub->extra_len = extra_len;
 		
 		// The hash table relies on the key existing for its
 		// lifetime: duplicate and insert
-		g_hash_table_insert(_events, sub->event, sub);
+		g_hash_table_insert(_events, sub->event_path, sub);
 	}
 	
-	// Set the event name to be point to the key
-	*event = sub->event;
-	
-	return sub->clients;
-}
-
-static GHashTable* _get_subscriptions(gchar *event, gboolean and_create) {
-	gchar *e = event;
-	return _get_subscriptions_with_key(&e, and_create);
+	return sub;
 }
 
 /**
@@ -74,11 +91,11 @@ void evs_client_client_ready(client_t *client) {
 	evs_client_sub_client(UNSUBSCRIBED, client);
 }
 
-status_t evs_client_sub_client(gchar *event, client_t *client) {
+status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// Attempt to get the subscription to check if it exists
-	GHashTable *subs = _get_subscriptions_with_key(&event, TRUE);
+	evs_client_sub_t *sub = _get_subscription(event_path, TRUE);
 	
-	if (subs == NULL) {
+	if (sub == NULL) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
@@ -91,47 +108,47 @@ status_t evs_client_sub_client(gchar *event, client_t *client) {
 	}
 	
 	// Don't add the client if he's already subscribed
-	if (g_hash_table_contains(subs, client)) {
+	if (g_hash_table_contains(sub->clients, client)) {
 		return CLIENT_ALREADY_SUBSCRIBED;
 	}
 	
-	DEBUGF("Subscribing client to: %s", event);
+	DEBUGF("Subscribing client to: %s", event_path);
 	
 	// Subscribe the client
-	g_hash_table_insert(subs, client, client);
+	g_hash_table_insert(sub->clients, client, client);
 	
 	// Give the client a reference to the key of the event he is subscribed to
-	g_ptr_array_add(client->subs, event);
+	g_ptr_array_add(client->subs, sub);
 	
 	// Send the apps callback
-	apps_evs_client_subscribe(event, client);
+	apps_evs_client_subscribe(client, sub);
 	
 	return CLIENT_GOOD;
 }
 
-status_t evs_client_unsub_client(gchar *event, client_t *client) {
+status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	// Attempt to get the subscription to check if it exists
-	GHashTable *subs = _get_subscriptions_with_key(&event, FALSE);
+	evs_client_sub_t *sub = _get_subscription(event_path, FALSE);
 	
-	if (subs == NULL) {
+	if (sub == NULL) {
 		return CLIENT_CANNOT_UNSUBSCRIBE;
 	}
 	
 	// If the client isn't a member of the subscription, that's an error
-	if (!g_hash_table_remove(subs, client)) {
+	if (!g_hash_table_remove(sub->clients, client)) {
 		return CLIENT_CANNOT_UNSUBSCRIBE;
 	}
 	
 	// The client isn't subscribed anymore, remove from his list
-	g_ptr_array_remove_fast(client->subs, event);
+	g_ptr_array_remove_fast(client->subs, sub);
 	
 	// Send the apps callback
-	apps_evs_client_unsubscribe(event, client);
+	apps_evs_client_unsubscribe(client, sub);
 	
 	// If the client has removed all subscriptions, add him back to UNSUBSCRIBED
 	// unless he was just removed from UNSUBSCRIBED, then just leave empty (assumes
 	// the client is being added to another subscription)
-	if (client->subs->len == 0 && strcmp(event, UNSUBSCRIBED) != 0) {
+	if (client->subs->len == 0 && strcmp(sub->event_path, UNSUBSCRIBED) != 0) {
 		evs_client_sub_client(UNSUBSCRIBED, client);
 	}
 	
@@ -148,20 +165,14 @@ void evs_client_client_free(client_t *client) {
 	// Remove all the subscriptions from the client, firing
 	// off all the remove events
 	for (gsize i = 0; i < client->subs->len; i++) {
-		gchar *event = g_ptr_array_index(client->subs, i);
-		// Remove the client from the subscription
-		GHashTable *subs = _get_subscriptions(event, FALSE);
+		evs_client_sub_t *sub = g_ptr_array_index(client->subs, i);
 		
-		// Attempt to remove the client, not a big deal if the event doesn't exist
-		// because the client is already gone
-		if (subs != NULL) {
-			// If we can't remove the client, then he wasn't there to begin with,
-			// so just move on
-			g_hash_table_remove(subs, client);
-		}
+		// If we can't remove the client, then he wasn't there to begin with,
+		// so just move on
+		g_hash_table_remove(sub->clients, client);
 		
 		// Send the apps callback
-		apps_evs_client_unsubscribe(event, client);
+		apps_evs_client_unsubscribe(client, sub);
 	}
 	
 	// Clean up the excess memory (and the underlying array used to hold it)
@@ -181,90 +192,109 @@ void evs_client_pub_messages() {
 	
 	// Go through all the messages and publish!
 	for (gsize i = 0; i < messages->len; i++) {
+		#warning This might be freed before it can be published
 		evs_client_message_t *message = g_ptr_array_index(messages, i);
-		GHashTable *subs = _get_subscriptions(message->event, FALSE);
 		
-		// It's possible for the subscription to have been removed
-		// between publish command and now
-		if (subs != NULL) {
-			GPtrArray *dead_clients = g_ptr_array_new();
-			gchar *msgs[h_len];
-			gsize msglen[h_len];
+		GPtrArray *dead_clients = g_ptr_array_new();
+		gchar *msgs[h_len];
+		gsize msglen[h_len];
+		
+		msgs[h_rfc6455] = rfc6455_prepare_frame(
+			message->type,
+			message->message,
+			message->message_len,
+			&msglen[h_rfc6455]
+		);
+		
+		// Go through all the clients and give them their messages
+		GHashTableIter iter;
+		client_t *client, *client2;
+		g_hash_table_iter_init(&iter, message->sub->clients);
+		while (g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client2)) {
+			enum handlers handler = client->handler;
 			
-			msgs[h_rfc6455] = rfc6455_prepare_frame(
-				message->type,
-				message->message,
-				message->message_len,
-				&msglen[h_rfc6455]
-			);
-			
-			// Go through all the clients and give them their messages
-			GHashTableIter iter;
-			client_t *client, *client2;
-			g_hash_table_iter_init(&iter, subs);
-			while (g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client2)) {
-				enum handlers handler = client->handler;
-				
-				// This is very bad...
-				if (handler == h_none) {
-					// We cannot remove the client from this hash table directly or it
-					// invalidates the iterator, so we have to delay it.
-					g_ptr_array_add(dead_clients, client);
-					continue;
-				}
-				
-				if (client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_ABORTED) {
-					g_ptr_array_add(dead_clients, client);
-				}
+			// This is very bad...
+			if (handler == h_none) {
+				// We cannot remove the client from this hash table directly or it
+				// invalidates the iterator, so we have to delay it.
+				g_ptr_array_add(dead_clients, client);
+				continue;
 			}
 			
-			// Clean up all the allocated frames
-			for (int i = 0; i < h_len; i++) {
-				free(msgs[i]);
+			if (client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_ABORTED) {
+				g_ptr_array_add(dead_clients, client);
 			}
-			
-			for (gsize i = 0; i < dead_clients->len; i++) {
-				socket_close(g_ptr_array_index(dead_clients, i));
-			}
-			
-			g_ptr_array_free(dead_clients, TRUE);
 		}
 		
-		// Clean up the message
+		// Clean up all the allocated frames
+		for (int i = 0; i < h_len; i++) {
+			free(msgs[i]);
+		}
+		
+		// Clean up dead clients
+		for (gsize i = 0; i < dead_clients->len; i++) {
+			socket_close(g_ptr_array_index(dead_clients, i));
+		}
+			
+		// Clean all that memory
+		g_ptr_array_free(dead_clients, TRUE);
 		g_free(message->message);
-		free(message);
+		g_free(message);
 	}
 	
 	// Clean up the messages array we copied
 	g_ptr_array_free(messages, TRUE);
 }
 
-status_t evs_client_pub_event(const gchar *event, const enum data_t type, const gchar *data) {
-	// We're not actually going to modify *event, we're just going to use it as a temporary
-	// pointer until we get a pointer to our persistent
-	gchar *subs_event = (gchar*)event;
+status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data) {
+	// First, start by constructing the name of the event we're publishing to, complete
+	// with all extra path elements
+	gchar *event_path = evs_server_path_from_handler(handler);
 	
-	// DO NOT create a subscription from here, this MUST be thread safe.
-	GHashTable *subs = _get_subscriptions_with_key(&subs_event, FALSE /* DONT TOUCH */);
+	if (event_path == NULL) {
+		return CLIENT_UNKNOWN_EVENT;
+	}
 	
-	if (subs == NULL) {
+	evs_client_sub_t *sub;
+	
+	// Skip all the loopy logic unless there are items
+	if (extra != NULL) {
+		// Add all of the extra path elements to the event path so we can resolve
+		// the actual event and clients we're publishing to
+		GString *ep = g_string_new(event_path);
+		
+		path_extra_t curr = g_list_first(extra);
+		do {
+			g_string_append_printf(ep, "/%s", (gchar*)curr->data);
+		} while ((curr = g_list_next(curr)) != NULL);
+		
+		// DO NOT create a subscription from here, this MUST be thread safe.
+		sub = _get_subscription(ep->str, FALSE /* DON'T TOUCH */);
+		
+		g_string_free(ep, TRUE);
+	} else {
+		// DO NOT create a subscription from here, this MUST be thread safe.
+		sub = _get_subscription(event_path, FALSE /* DON'T TOUCH */);
+	}
+	
+	if (sub == NULL) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
 	// Attempt to create a new publishable message
-	evs_client_message_t *emsg = malloc(sizeof(*emsg));
+	evs_client_message_t *emsg = g_try_malloc0(sizeof(*emsg));
 	if (emsg == NULL) {
 		return CLIENT_SERVER_OVERLOADED;
 	}
 	
 	// Format the message that will be sent to the clients
 	GString *message = g_string_sized_new(100);
-	g_string_printf(message, F_EVENT, subs_event, 0, DATA_TYPE(type), data);
+	g_string_printf(message, F_EVENT, sub->event_path, 0, DATA_TYPE(type), data);
 	
-	emsg->event = subs_event;
+	emsg->sub = sub;
+	emsg->type = op_text;
 	emsg->message = message->str;
 	emsg->message_len = message->len;
-	emsg->type = op_text;
 	
 	// We need to add a message in a thread-safe way
 	g_mutex_lock(&_messages_lock);
@@ -292,10 +322,12 @@ void evs_client_cleanup() {
 	
 	g_hash_table_iter_init(&iter, _events);
 	while (g_hash_table_iter_next(&iter, (void*)&key, (void*)&sub)) {
-		DEBUGF("Hitting subscription: %s - %d", sub->event, g_hash_table_size(sub->clients));
+		DEBUGF("Hitting subscription: %s - %d", sub->event_path, g_hash_table_size(sub->clients));
 		if (g_hash_table_size(sub->clients) == 0) {
-			DEBUGF("Removing empty subscription: %s", sub->event);
-		
+			DEBUGF("Removing empty subscription: %s", sub->event_path);
+			
+			g_free(sub->event_path);
+			g_list_free_full(sub->extra, g_free);
 			g_hash_table_unref(sub->clients);
 			g_hash_table_iter_remove(&iter);
 		}

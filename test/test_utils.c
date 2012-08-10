@@ -18,6 +18,7 @@ client_t* u_client_create() {
 	message->buffer = g_string_sized_new(1);
 	
 	client->message = message;
+	client->handler = h_none;
 	
 	return client;
 }

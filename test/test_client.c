@@ -12,6 +12,10 @@
 
 #define BAD_HANDSHAKE "asdfsadfasdfasdfasdfasdf\n\n"
 
+#define MASK "abcd"
+#define MESSAGE "test"
+#define MESSAGE_FRAMED "\x81""\x84"MASK"\x15\x07\x10\x10"
+
 START_TEST(test_client_incomplete_handshake_0) {
 	client_t *client = u_client_create();
 	
@@ -73,26 +77,55 @@ START_TEST(test_client_bad_headers) {
 }
 END_TEST
 
+START_TEST(test_client_message_no_handler_incoming) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
+	test_status_eq(client_message(client), CLIENT_ABORTED, "Client rejected: no handler");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_client_message_no_handler_continue) {
+	client_t *client = u_client_create();
+	client->message->remaining_length = 100;
+	
+	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
+	test_status_eq(client_message(client), CLIENT_ABORTED, "Client rejected: no handler");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_client_message_incoming) {
+	client_t *client = u_client_create();
+	client->handler = h_rfc6455;
+	
+	// g_string_assign(client->message->socket_buffer, MESSAGE_FRAMED);
+	// test_status_eq(client_message(client), CLIENT_GOOD, "Read message");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
 	
-	tc = tcase_create("Incomplete Handshake");
+	tc = tcase_create("Handshake");
 	tcase_add_test(tc, test_client_incomplete_handshake_0);
 	tcase_add_test(tc, test_client_incomplete_handshake_1);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Empty Handshake");
 	tcase_add_test(tc, test_client_empty_handshake);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("No Handlers");
 	tcase_add_test(tc, test_client_no_handlers_0);
 	tcase_add_test(tc, test_client_no_handlers_1);
+	tcase_add_test(tc, test_client_bad_headers);
 	suite_add_tcase(s, tc);
 	
-	tc = tcase_create("No Handlers");
-	tcase_add_test(tc, test_client_bad_headers);
+	tc = tcase_create("Message");
+	tcase_add_test(tc, test_client_message_no_handler_incoming);
+	tcase_add_test(tc, test_client_message_no_handler_continue);
+	tcase_add_test(tc, test_client_message_incoming);
 	suite_add_tcase(s, tc);
 	
 	return s;

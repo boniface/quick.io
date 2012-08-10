@@ -34,6 +34,44 @@
 #define EVS_CLIENT_CLIENT_INTIAL_COUNT 4
 
 /**
+ * The value that is stored in the hash table so that we can access
+ * the pointer to the key for passing around to events.
+ */
+typedef struct evs_client_sub_s {
+	/**
+	 * The name of the event.
+	 * This is a duplicated string that is referenced all over the place.
+	 * @attention MUST be free()'d when done.
+	 */
+	gchar *event_path;
+	
+	/**
+	 * The extra path segments that are on the end of the path.
+	 *
+	 * @attention MUST be g_list_free()'d when done.
+	 */
+	path_extra_t extra;
+	
+	/**
+	 * The length of the extra path segments.
+	 */
+	guint extra_len;
+	
+	/**
+	 * The hash table (used as a set) of clients.
+	 *
+	 * @see http://developer.gnome.org/glib/2.30/glib-Hash-Tables.html#id915490
+	 */
+	GHashTable *clients;
+	
+	/**
+	 * The handler for this event. Keep this around to save us on lookups to 
+	 * evs_server_get_handler().
+	 */
+	event_handler_t *handler;
+} evs_client_sub_t;
+
+/**
  * A published message that is waiting to be sent to users. It contains all the data it
  * needs to send a message, regardless of any other memory references.
  *
@@ -45,7 +83,7 @@ typedef struct evs_client_message_s {
 	 * The name of the event.
 	 * @attention MUST NOT be free()'d
 	 */
-	gchar *event;
+	evs_client_sub_t *sub;
 	
 	/**
 	 * The opcode of the message.
@@ -65,26 +103,6 @@ typedef struct evs_client_message_s {
 	 */
 	guint64 message_len;
 } STRUCT_PACKED evs_client_message_t;
-
-/**
- * The value that is stored in the hash table so that we can access
- * the pointer to the key for passing around to events.
- */
-typedef struct evs_client_sub_s {
-	/**
-	 * The name of the event.
-	 * This is a duplicated string that is referenced all over the place.
-	 * @attention MUST be free()'d when done.
-	 */
-	gchar *event;
-	
-	/**
-	 * The hash table (used as a set) of clients.
-	 *
-	 * @see http://developer.gnome.org/glib/2.30/glib-Hash-Tables.html#id915490
-	 */
-	GHashTable *clients;
-} evs_client_sub_t;
 
 /**
  * Setup everything the pubsub needs to run.
@@ -109,7 +127,7 @@ void evs_client_client_ready(client_t* client);
  * subscriptions allowed.
  * @return CLIENT_ALREADY_SUBSCRIBED - Already subscribed to this event.
  */
-status_t evs_client_sub_client(gchar *event, client_t *client);
+status_t evs_client_sub_client(const gchar *event_path, client_t *client);
 
 /**
  * The client has been closed and should be cleaned up.
@@ -129,7 +147,7 @@ void evs_client_client_free(client_t *client);
  *
  * @return CLIENT_CANNOT_UNSUBSCRIBE - The client was either not subscribed to the event of the event didn't exist.  Either way, the client will not recieve notifications for this event.
  */
-status_t evs_client_unsub_client(gchar *event, client_t *client);
+status_t evs_client_unsub_client(const gchar *event_path, client_t *client);
 
 /**
  * Publish the entire message queue immediately.
@@ -145,13 +163,14 @@ void evs_client_pub_messages();
  *
  * @ingroup ModuleFunctions
  *
- * @param event The event name to publish to.
+ * @param handler The event handler to publish to.
+ * @param extra Any extra path parameters to put onto the path of the event.
  * @param type The type of the data (json, plain, etc).
  * @param data The actual data to be sent.
  *
  * @attention IS thread safe.
  */
-MODULE_EXPORT status_t evs_client_pub_event(const gchar *event, const enum data_t type, const gchar *data);
+MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data);
 
 /**
  * A cleanup routine for empty events.

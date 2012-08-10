@@ -1,15 +1,20 @@
 #include "qio.h"
 
 /**
- * A table of all of the commands that a client can send.
+ * A table of all of the commands that a client can send, referenced by the path.
  */
-static GHashTable* _events;
+static GHashTable* _events_by_path;
+
+/**
+ * A table of all of the commands that a client can send, referenced by the handler.
+ */
+static GHashTable* _events_by_handler;
 
 /**
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
-static status_t _event_new(message_t *message, event_info_t **handler, event_t *event) {
+static status_t _event_new(message_t *message, event_handler_t **handler, event_t *event) {
 	// Clear out the event we're setting
 	memset(event, 0, sizeof(*event));
 	
@@ -46,7 +51,7 @@ static status_t _event_new(message_t *message, event_info_t **handler, event_t *
 	*end = '\0';
 	
 	// Attempt to find what handles this event
-	*handler = evs_server_get_einfo(curr, &(event->extra_segments), &(event->extra_segments_len));
+	*handler = evs_server_get_handler(curr, &(event->extra_segments), &(event->extra_segments_len));
 	
 	// If there isn't handler, that's wrong
 	if (*handler == NULL) {
@@ -114,6 +119,44 @@ static void _event_free(event_t *event) {
 }
 
 /**
+ * Clean up the name of the event.
+ *
+ * @param event_path The path to clean
+ *
+ * @return The cleaned path. This MUST be g_free()'d when done.
+ */
+static gchar* _clean_event_name(const gchar *event_path) {
+	// Remove any duplicated slashes
+	GString *ep = g_string_new(event_path);
+	gchar prev = ep->str[0];
+	gsize i = 1;
+	while (i < ep->len) {
+		if (ep->str[i] == '/' && prev == '/') {
+			// Remove the single slash
+			g_string_erase(ep, i, 1);
+		} else {
+			prev = ep->str[i];
+			i++;
+		}
+	}
+	
+	// Remove any trailing slashes
+	if (ep->str[--i] == '/') {
+		g_string_erase(ep, i, 1);
+	}
+	
+	// Make sure it starts with a slash
+	if (*(ep->str) != '/') {
+		g_string_prepend_c(ep, '/');
+	}
+	
+	gchar *path = ep->str;
+	g_string_free(ep, FALSE);
+	
+	return path;
+}
+
+/**
  * The "ping:" command
  */
 static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
@@ -146,21 +189,30 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 	return CLIENT_GOOD;
 }
 
-event_info_t* evs_server_get_einfo(gchar *curr, GList **extra, guint *extra_len) {
-	event_info_t *handler = NULL;
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint *extra_len) {
+	event_handler_t *handler = NULL;
+	
+	// Reset the incoming parameters to make sure we work.
+	if (extra != NULL) {
+		*extra = NULL;
+		*extra_len = 0;
+	}
+	
+	// We cannot modify event_path, so let's modify this!
+	gchar *ep = g_strdup(event_path);
 	
 	// Get a pointer to the end of the string
-	gchar *end = curr + strlen(curr);
+	gchar *end = ep + strlen(ep);
 	
 	// Move from the end of the string to the front, looking for less-specific
 	// event specifiers as we move on
-	while (end > curr) {
+	while (end > ep) {
 		// Make the end pointer NULL terminate the string so that we can use
 		// the buffer as a series of strings
 		*end = '\0';
 		
 		// Attempt to find the handler
-		handler = (event_info_t*)g_hash_table_lookup(_events, curr);
+		handler = (event_handler_t*)g_hash_table_lookup(_events_by_path, ep);
 		
 		// If we found the most-specific command
 		if (handler != NULL && handler->handle_children) {
@@ -168,7 +220,7 @@ event_info_t* evs_server_get_einfo(gchar *curr, GList **extra, guint *extra_len)
 		}
 		
 		// Rewind the end pointer to the next '/'
-		while (*(--end) != '/' && end > curr);
+		while (*(--end) != '/' && end > ep);
 		
 		// If the event is in the form "/some/event/" (trailing slash), this
 		// could be null, so ignore
@@ -176,12 +228,24 @@ event_info_t* evs_server_get_einfo(gchar *curr, GList **extra, guint *extra_len)
 			continue;
 		}
 		
-		// If it falls through here, then no command was found, so plop the current
-		// segment onto the extra segments list
-		// +1 -> the iterator moves onto the '/', and we don't want that in the segment
-		*extra = g_list_prepend(*extra, end + 1);
-		(*extra_len)++;
+		// Only if we care about extra parameters
+		if (extra != NULL) {
+			// If it falls through here, then no command was found, so plop the current
+			// segment onto the extra segments list
+			// +1 -> the iterator moves onto the '/', and we don't want that in the segment
+			gchar *c = g_strdup(end + 1);
+			*extra = g_list_prepend(*extra, c);
+			(*extra_len)++;
+		}
 	}
+	
+	if (handler == NULL) {
+		g_list_free_full(*extra, g_free);
+		*extra_len = 0;
+	}
+	
+	// Hooray, we didn't mess with event_path!
+	g_free(ep);
 	
 	// If we made it to the beginning of the string, we couldn't find the event
 	// (also implies that *handler == NULL)
@@ -197,7 +261,10 @@ status_t evs_server_subscribe(client_t *client, event_t *event, GString *respons
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
-	status_t status = evs_client_sub_client(event->data, client);
+	gchar *event_path = _clean_event_name(event->data);
+	status_t status = evs_client_sub_client(event_path, client);
+	g_free(event_path);
+	
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
 		// The event was invalid, inform the client
@@ -226,10 +293,12 @@ status_t evs_server_unsubscribe(client_t *client, event_t *event, GString *respo
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
-	status_t status = evs_client_unsub_client(event->data, client);
+	gchar *event_path = _clean_event_name(event->data);
+	status_t status = evs_client_unsub_client(event_path, client);
+	g_free(event_path);
 	
 	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
-		g_string_prepend(response, EVENT_RESPONSE_CANNOT_UNSUBSRIBE);
+		g_string_prepend(response, EVENT_RESPONSE_CANNOT_UNSUBSCRIBE);
 		return CLIENT_WRITE;
 	}
 	
@@ -240,8 +309,8 @@ status_t evs_server_handle(client_t *client) {
 	#warning allow forcing apps to namespaces
 	
 	event_t event;
-	event_info_t *einfo = NULL;
-	status_t status = _event_new(client->message, &einfo, &event);
+	event_handler_t *handler = NULL;
+	status_t status = _event_new(client->message, &handler, &event);
 	
 	DEBUGF("Event: %s", event.name);
 	
@@ -250,61 +319,43 @@ status_t evs_server_handle(client_t *client) {
 	if (status == CLIENT_GOOD) {
 		// The client->message->buffer is now empty, as free'd by _event_new
 		#warning Create test case to verify buffer is empty after _event_new
-		status = einfo->handler(client, &event, client->message->buffer);
+		status = handler->fn(client, &event, client->message->buffer);
 	}
 	
 	_event_free(&event);
 	return status;
 }
 
-void evs_server_on(const gchar *event_name, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children) {
+event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_cb on_subscribe, const on_subscribe_cb on_unsubscribe, const gboolean handle_children) {
 	// Don't allow events with EVENT_DELIMITER in the name
-	if (g_strstr_len(event_name, -1, EVENT_DELIMITER) != NULL) {
-		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_name);
-		return;
+	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
+		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_path);
+		return NULL;
 	}
 	
-	// Make sure the event starts with a "/"
-	if (*event_name != '/') {
-		ERRORF("Could not add event \"%s\", event must start with \"/\"", event_name);
-		return;
-	}
-	
-	// Remove any duplicated slashes
-	GString *event = g_string_new(event_name);
-	gchar prev = event->str[0];
-	gsize i = 1;
-	while (i < event->len) {
-		if (event->str[i] == '/' && prev == '/') {
-			// Remove the single slash
-			g_string_erase(event, i, 1);
-		} else {
-			prev = event->str[i];
-			i++;
-		}
-	}
-	
-	// Remove any trailing slashes
-	if (event->str[--i] == '/') {
-		g_string_erase(event, i, 1);
-	}
+	gchar *path = _clean_event_name(event_path);
 	
 	// Grab some memory to store the event info
-	event_info_t *einfo = malloc(sizeof(*einfo));
-	einfo->handler = handler;
-	einfo->on_subscribe = on_subscribe;
-	einfo->on_unsubscribe = on_unsubscribe;
-	einfo->handle_children = handle_children;
+	event_handler_t *handler = g_try_malloc0(sizeof(*handler));
+	handler->fn = fn;
+	handler->on_subscribe = on_subscribe;
+	handler->on_unsubscribe = on_unsubscribe;
+	handler->handle_children = handle_children;
 	
 	// Store the handler for the event
-	g_hash_table_insert(_events, event->str, einfo);
+	g_hash_table_insert(_events_by_path, path, handler);
+	g_hash_table_insert(_events_by_handler, handler, path);
 	
-	// Don't free the string we just inserted into the hash table
-	g_string_free(event, FALSE);
+	return handler;
+}
+
+gchar* evs_server_path_from_handler(const event_handler_t *handler) {
+	return g_hash_table_lookup(_events_by_handler, handler);
 }
 
 gboolean evs_server_init() {
-	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+	_events_by_path = g_hash_table_new(g_str_hash, g_str_equal);
+	_events_by_handler = g_hash_table_new(NULL, NULL);
 	
 	evs_server_on("/ping", _evs_server_ping, NULL, NULL, FALSE);
 	evs_server_on("/sub", evs_server_subscribe, NULL, NULL, FALSE);

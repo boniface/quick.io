@@ -57,6 +57,7 @@ status_t client_message(client_t* client) {
 			
 			default:
 			case h_none:
+				// This should technically be impossible, nevertheless...
 				ERROR("Client went into message processing without a handler");
 				return CLIENT_ABORTED;
 		}
@@ -109,7 +110,7 @@ status_t client_write(client_t *client, message_t *message) {
 	}
 	
 	if (frame == NULL) {
-		CLIENT_ABORTED;
+		return CLIENT_ABORTED;
 	}
 	
 	status_t status = client_write_frame(client, frame, frame_len);
