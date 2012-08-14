@@ -1,6 +1,6 @@
 /**
  * Utilities for running test cases.
- * @file test_utils.h
+ * @file utils.h
  */
 
 #pragma once

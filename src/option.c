@@ -51,6 +51,10 @@ gchar* option_bind_address() {
 	return _bind_address;
 }
 
+gchar* option_config_file() {
+	return _config_file;
+}
+
 gint32 option_port() {
 	return _port;
 }

@@ -94,9 +94,9 @@ gint32 option_apps_prefixes_count();
 gchar* option_bind_address();
 
 /**
- * Gets the port that we're supposed to run on.
+ * Gets the config file being used.
  */
-gint32 option_port();
+gchar* option_config_file();
 
 /**
  * Gets the gossip bind address.
@@ -117,6 +117,11 @@ guint64 option_max_message_size();
  * The number of rooms a client may be subscribed to.
  */
 guint64 option_max_subscriptions();
+
+/**
+ * Gets the port that we're supposed to run on.
+ */
+gint32 option_port();
 
 /**
  * Gets the number of processes that should be spawned.

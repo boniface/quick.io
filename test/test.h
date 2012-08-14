@@ -7,8 +7,9 @@
 #include <check.h>
 #include "qio.h"
 #include "test_client.h"
+#include "test_option.h"
 #include "test_rfc6455.h"
-#include "test_utils.h"
+#include "utils.h"
 
 /**
  * Test that the assertion is true.
@@ -174,7 +175,7 @@
  */
 #define test_int32_eq(test, should_be, description) { \
 	_test_setup(gint32, test, should_be); \
-	_msg("Assertion %d==%d failed", actual, expect, description); \
+	_msg("Assertion %"G_GINT32_FORMAT"==%"G_GINT32_FORMAT" failed", actual, expect, description); \
 	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
 
 /**
@@ -195,7 +196,7 @@
  */
 #define test_uint32_eq(test, should_be, description) { \
 	_test_setup(guint32, test, should_be); \
-	_msg("Assertion %d==%d failed", actual, expect, description); \
+	_msg("Assertion %"G_GUINT32_FORMAT"==%"G_GUINT32_FORMAT" failed", actual, expect, description); \
 	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
 
 /**
@@ -205,7 +206,49 @@
  * @param should_be What the thing is expected to be.
  */
 #define test_uint32_eq_(test, should_be) \
-	test_int32_eq(test, should_be, "")
+	test_uint32_eq(test, should_be, "")
+
+/**
+ * Tests if the two int64s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_int64_eq(test, should_be, description) { \
+	_test_setup(gint64, test, should_be); \
+	_msg("Assertion %"G_GINT64_FORMAT"==%"G_GINT64_FORMAT" failed", actual, expect, description); \
+	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two int64s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ */
+#define test_int64_eq_(test, should_be) \
+	test_int64_eq(test, should_be, "")
+
+/**
+ * Tests if the two uint64s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ * @param description The description of the test, to be printed with failure information
+ */
+#define test_uint64_eq(test, should_be, description) { \
+	_test_setup(guint64, test, should_be); \
+	_msg("Assertion %"G_GUINT64_FORMAT"==%"G_GUINT64_FORMAT" failed", actual, expect, description); \
+	_fail_unless(test == should_be, __FILE__, __LINE__, msg, NULL);}
+
+/**
+ * Tests if the two uint64s are equal.
+ *
+ * @param test The thing to test.
+ * @param should_be What the thing is expected to be.
+ */
+#define test_uint64_eq_(test, should_be) \
+	test_uint64_eq(test, should_be, "")
 
 /**
  * Tests if the two size_t's are equal.

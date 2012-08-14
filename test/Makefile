@@ -2,7 +2,7 @@ include ../Makefile.inc
 
 CFLAGS += -I../src -c
 LIBCHECK = /usr/lib/libcheck.a
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard test*.c))
+OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard test*.c)) $(BUILDDIR)/utils.o
 QIO_OBJECTS = $(filter-out $(OBJECTS), $(wildcard $(BUILDDIR)/*.o))
 TEST_OUTPUT_XML = 0
 
