@@ -19,10 +19,16 @@
 		backtrace_symbols_fd(array, size, 2);
 		exit(1);
 	}
+	
+	static void _sigint_handler(int sig) {
+		DEBUG("Sigint: Dying");
+		exit(1);
+	}
 #endif
 
 void debug_handle_signals() {
 	#ifdef COMPILE_DEBUG
 		signal(SIGSEGV, _sigsev_handler);
+		signal(SIGINT, _sigint_handler);
 	#endif
 }

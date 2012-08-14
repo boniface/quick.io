@@ -14,6 +14,8 @@
 
 #define MASK "abcd"
 #define MESSAGE_RFC6455_NOOP "\x81""\x8D"MASK"N\x0c\x0c\x0b\x11XY\x14\r\x03\n\n\\"
+#define MESSAGE_RFC6455_NOOP_0 "\x81""\x8D"MASK
+#define MESSAGE_RFC6455_NOOP_1 "N\x0c\x0c\x0b\x11XY\x14\r\x03\n\n\\"
 
 START_TEST(test_client_incomplete_handshake_0) {
 	client_t *client = u_client_create();
@@ -108,6 +110,21 @@ START_TEST(test_client_message_incoming) {
 }
 END_TEST
 
+START_TEST(test_client_message_continue) {
+	client_t *client = u_client_create();
+	client->handler = h_rfc6455;
+	
+	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP_0, sizeof(MESSAGE_RFC6455_NOOP_0)-1);
+	test_status_eq(client_message(client), CLIENT_WAIT, "Read message");
+	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer emptied");
+	
+	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP_1, sizeof(MESSAGE_RFC6455_NOOP_1)-1);
+	test_status_eq(client_message(client), CLIENT_GOOD, "Read message");
+	
+	u_client_free(client);
+}
+END_TEST
+
 static void _message_setup() {
 	evs_server_init();
 }
@@ -130,6 +147,7 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_message_no_handler_incoming);
 	tcase_add_test(tc, test_client_message_no_handler_continue);
 	tcase_add_test(tc, test_client_message_incoming);
+	tcase_add_test(tc, test_client_message_continue);
 	suite_add_tcase(s, tc);
 	
 	return s;

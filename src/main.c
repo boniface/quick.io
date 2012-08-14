@@ -83,8 +83,6 @@ int init_main(int argc, char *argv[]) {
 #else
 int main(int argc, char *argv[]) {
 #endif
-	#warning Standardize names!  Seriously, naming conventions matter
-	
 	debug_handle_signals();
 	
 	// Move into the directory holding this binary
