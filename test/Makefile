@@ -1,8 +1,8 @@
 include ../Makefile.inc
 
-CFLAGS += -I../src -c
+CFLAGS += -I../src -c -DTESTING=1
 LIBCHECK = /usr/lib/libcheck.a
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard test*.c)) $(BUILDDIR)/utils.o
+OBJECTS = $(BUILDDIR)/test.o $(BUILDDIR)/utils.o
 QIO_OBJECTS = $(filter-out $(OBJECTS), $(wildcard $(BUILDDIR)/*.o))
 TEST_OUTPUT_XML = 0
 
@@ -23,6 +23,6 @@ clean:
 	rm -f client_statuses.inc
 	$(MAKE) -C python clean
 
-$(BUILDDIR)/%.o: %.c test.h $(QIO_OBJECTS)
+$(BUILDDIR)/%.o: %.c test.h
 	@echo "\n\n"-------- Compiling $< --------
 	@$(CC) $(CFLAGS) -DTEST_OUTPUT_XML=$(TEST_OUTPUT_XML) $< -o $@

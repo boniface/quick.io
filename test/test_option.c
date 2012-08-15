@@ -54,7 +54,7 @@
 #define QIOINI_BAD_1 "[quick.io]\n" \
 	"apps-prefixes = /tons/;/of/;/prefixes/\n" \
 
-static void _command_setup() {
+static void _test_option_setup() {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI, 1, sizeof(QIOINI), f);
 	fclose(f);
@@ -155,7 +155,7 @@ Suite* option_suite() {
 	Suite *s = suite_create("Option");
 	
 	tc = tcase_create("Command Line Args");
-	tcase_add_checked_fixture(tc, _command_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
 	tcase_add_test(tc, test_option_cl_args_short);
 	tcase_add_test(tc, test_option_cl_args_long);
 	tcase_add_test(tc, test_option_cl_args_fail);
@@ -166,7 +166,7 @@ Suite* option_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Config File Options");
-	tcase_add_checked_fixture(tc, _command_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
 	tcase_add_test(tc, test_option_all);
 	tcase_add_test(tc, test_option_bad_subs);
 	tcase_add_test(tc, test_option_bad_prefixes);

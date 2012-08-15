@@ -128,3 +128,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 		return CLIENT_ABORTED;
 	}
 }
+
+#ifdef TESTING
+#include "../test/test_client.c"
+#endif

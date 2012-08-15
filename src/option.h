@@ -153,3 +153,7 @@ MODULE_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_e
  * @param[out] error Any error that might happen when parsing the command line args. 
  */
 gboolean option_parse_args(int argc, char *argv[], GError **error);
+
+#ifdef TESTING
+#include "../test/test_option.h"
+#endif

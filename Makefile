@@ -1,5 +1,8 @@
 include Makefile.inc
 
+GCOVR_ROOT = src/
+GCOVR_ARGS = --object-directory=$(GCOVR_ROOT) -r . --exclude='$(GCOVR_ROOT)debug.c' --exclude='test.*'
+
 .PHONY: all build clean debug test
 
 all: debug
@@ -33,8 +36,8 @@ test:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
 	@$(MAKE) debug TESTING=1
 	@$(MAKE) -C test test DEBUG=1
-	@./ext/gcovr --object-directory=src/ -r . -p
+	@./ext/gcovr -p $(GCOVR_ARGS)
 	
 test-jenkins: clean
 	$(MAKE) test TEST_OUTPUT_XML=1
-	./ext/gcovr -x --object-directory=src/ -r . -o test_coverage.xml
+	./ext/gcovr -x -o test_coverage.xml $(GCOVR_ARGS)

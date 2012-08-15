@@ -78,7 +78,7 @@ typedef struct event_s {
 	 * If the event is: /some/test/event, and the handler is /some,
 	 * then this will be ["test", "event"].
 	 *
-	 * @note This must be free'd with g_list_free
+	 * @attention This must be free'd with g_list_free_full(extra_segments, g_free)
 	 */
 	path_extra_t extra_segments;
 	
@@ -86,7 +86,7 @@ typedef struct event_s {
 	 * The number of extra segments, so that clients don't have to iterate
 	 * to find the length.
 	 */
-	guint extra_segments_len;
+	guint16 extra_segments_len;
 	
 	/**
 	 * The callback number the client sent.
@@ -167,15 +167,12 @@ typedef struct event_handler_s {
  * Get all of the event info for the event.
  *
  * @param event_path The event path.
- * @param[out] extra Where any extra path segments are put. If NULL, neither this nor
- * extra_len will be updated. MUST be g_list_free_full(extra, g_free)'d.
- * @param[out] extra_len The number of extra path segments. Will not be updated if extra is NULL.
- *
- * @attention Both extra and extra_len will be cleared if extra isn't null.
+ * @param[out] extra Where any extra path segments are put. Will not be updated if NULL. MUST be g_list_free_full(extra, g_free)'d.
+ * @param[out] extra_len The number of extra path segments. Will not be updated if NULL.
  *
  * @return The event handler. If null, extra will also be NULL.
  */
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint *extra_len);
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint16 *extra_len);
 
 /**
  * Handle an event from a client.
@@ -224,3 +221,7 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler);
  * Init the event listening interface.
  */
 gboolean evs_server_init();
+
+#ifdef TESTING
+#include "../test/test_events_server.h"
+#endif

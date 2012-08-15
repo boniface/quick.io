@@ -1,7 +1,7 @@
 include ../Makefile.inc
 
 # Hide everything by default, unless annotated with MODULE_EXPORT
-CFLAGS += -c -fvisibility=hidden
+CFLAGS += -I. -c -fvisibility=hidden
 LDFLAGS += -Wl,-E
 
 OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c))
@@ -22,6 +22,6 @@ $(TARGET): $(OBJECTS)
 	@$(CC) $(LDFLAGS) $^ -o $@
 endif
 
-$(BUILDDIR)/%.o: %.c %.h
+$(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
 	@echo "\n\n"-------- Compiling $< --------
 	@$(CC) $(CFLAGS) $< -o $@

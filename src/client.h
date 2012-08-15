@@ -266,3 +266,7 @@ void client_kill(client_t *client);
  * Cleans up the dead clients.
  */
 void client_cleanup();
+
+#ifdef TESTING
+#include "../test/test_client.h"
+#endif

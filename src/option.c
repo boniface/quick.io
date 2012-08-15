@@ -155,3 +155,7 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	
 	return success;
 }
+
+#ifdef TESTING
+#include "../test/test_option.c"
+#endif

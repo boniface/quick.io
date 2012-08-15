@@ -69,7 +69,21 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	
 	// Make the sub-string NULL terminated so this works
 	*end = '\0';
-	event->callback = g_ascii_strtoull(curr, NULL, 10);
+	
+	// Support a message like: "/noop::plain="
+	// There doesn't need to be a callback specified, but if there is one, and it's wrong,
+	// that is still an error
+	if (end - curr > 1) {
+		gchar *endptr;
+		event->callback = g_ascii_strtoull(curr, &endptr, 10);
+		
+		if (event->callback == 0 && endptr == curr) {
+			DEBUG("Bad callback id");
+			return CLIENT_BAD_MESSAGE_FORMAT;
+		}
+	} else {
+		event->callback = 0;
+	}
 	
 	// And the data type
 	curr = end + 1;
@@ -100,8 +114,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	
 	// Finally, set the pointer to the data, everything following the "="
 	// Note: this MAY be null
-	#warning Write a test case checking this when =NULL
-	event->data = end;
+	event->data = end + 1;
 	
 	return CLIENT_GOOD;
 }
@@ -113,9 +126,11 @@ static void _event_free(event_t *event) {
 	// Since all the pointers in the event struct are just into the original buffer,
 	// we don't need to free anything but this one string, and everything else is done
 	free(event->name);
+	event->name = NULL;
 	
 	if (event->extra_segments != NULL) {
-		g_list_free(event->extra_segments);
+		g_list_free_full(event->extra_segments, g_free);
+		event->extra_segments = NULL;
 	}
 }
 
@@ -197,14 +212,12 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 	return CLIENT_GOOD;
 }
 
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint *extra_len) {
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint16 *extra_len) {
 	event_handler_t *handler = NULL;
 	
-	// Reset the incoming parameters to make sure we work.
-	if (extra != NULL) {
-		*extra = NULL;
-		*extra_len = 0;
-	}
+	// Internal extras
+	path_extra_t iextra = NULL;
+	guint16 iextra_len = 0;
 	
 	// We cannot modify event_path, so let's modify this!
 	gchar *ep = g_strdup(event_path);
@@ -223,11 +236,20 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 		handler = (event_handler_t*)g_hash_table_lookup(_events_by_path, ep);
 		
 		// If we found the most-specific command
-		if (handler != NULL && handler->handle_children) {
+		// This one is a bit hard to read: if there is a handler and any extra parameters,
+		// then make sure the handler supports it; if there are no extra parameters, then
+		// it's good
+		if (handler != NULL && (iextra_len == 0 || (iextra_len > 0 && handler->handle_children))) {
 			break;
 		}
 		
+		// Since the handler wasn't the right one, reset it to NULL so that it won't be
+		// accidentally returned
+		handler = NULL;
+		
 		// Rewind the end pointer to the next '/'
+		// Important: don't allow this to pass the start of the string -- this also changes
+		// the condition for the while loop
 		while (*(--end) != '/' && end > ep);
 		
 		// If the event is in the form "/some/event/" (trailing slash), this
@@ -236,27 +258,33 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 			continue;
 		}
 		
-		// Only if we care about extra parameters
-		if (extra != NULL) {
-			// If it falls through here, then no command was found, so plop the current
-			// segment onto the extra segments list
-			// +1 -> the iterator moves onto the '/', and we don't want that in the segment
-			gchar *c = g_strdup(end + 1);
-			*extra = g_list_prepend(*extra, c);
-			(*extra_len)++;
-		}
+		// If it falls through here, then no command was found, so plop the current
+		// segment onto the extra segments list
+		// +1 -> the iterator moves onto the '/', and we don't want that in the segment
+		gchar *c = g_strdup(end + 1);
+		
+		iextra = g_list_prepend(iextra, c);
+		iextra_len++;
 	}
 	
-	if (handler == NULL) {
-		g_list_free_full(*extra, g_free);
-		*extra_len = 0;
+	if (handler == NULL && iextra != NULL) {
+		g_list_free_full(iextra, g_free);
+		iextra = NULL;
+		iextra_len = 0;
 	}
 	
-	// Hooray, we didn't mess with event_path!
+	if (extra != NULL) {
+		*extra = iextra;
+	}
+	
+	if (extra_len != NULL) {
+		*extra_len = iextra_len;
+	}
+	
 	g_free(ep);
 	
 	// If we made it to the beginning of the string, we couldn't find the event
-	// (also implies that *handler == NULL)
+	// (also implies that handler == NULL)
 	return handler;
 }
 
@@ -314,8 +342,6 @@ status_t evs_server_unsubscribe(client_t *client, event_t *event, GString *respo
 }
 
 status_t evs_server_handle(client_t *client) {
-	#warning allow forcing apps to namespaces
-	
 	event_t event;
 	event_handler_t *handler = NULL;
 	status_t status = _event_new(client->message, &handler, &event);
@@ -376,3 +402,7 @@ gboolean evs_server_init() {
 	
 	return TRUE;
 }
+
+#ifdef TESTING
+#include "../test/test_events_server.c"
+#endif

@@ -279,3 +279,7 @@ status_t rfc6455_incoming(client_t *client) {
 	// If the client wasn't handled above, that was bad, we don't support it
 	return CLIENT_UNSUPPORTED_OPCODE;
 }
+
+#ifdef TESTING
+#include "../test/test_handler_rfc6455.c"
+#endif

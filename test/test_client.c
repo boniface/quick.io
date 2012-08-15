@@ -17,6 +17,10 @@
 #define MESSAGE_RFC6455_NOOP_0 "\x81""\x8D"MASK
 #define MESSAGE_RFC6455_NOOP_1 "N\x0c\x0c\x0b\x11XY\x14\r\x03\n\n\\"
 
+static void _test_message_setup() {
+	evs_server_init();
+}
+
 START_TEST(test_client_incomplete_handshake_0) {
 	client_t *client = u_client_create();
 	
@@ -125,10 +129,6 @@ START_TEST(test_client_message_continue) {
 }
 END_TEST
 
-static void _message_setup() {
-	evs_server_init();
-}
-
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -143,7 +143,7 @@ Suite* client_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Message");
-	tcase_add_checked_fixture(tc, _message_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_message_setup, NULL);
 	tcase_add_test(tc, test_client_message_no_handler_incoming);
 	tcase_add_test(tc, test_client_message_no_handler_continue);
 	tcase_add_test(tc, test_client_message_incoming);

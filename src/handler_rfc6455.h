@@ -66,3 +66,7 @@ status_t rfc6455_incoming(client_t *client);
  * @param client The client sending data.
  */
 status_t rfc6455_continue(client_t *client);
+
+#ifdef TESTING
+#include "../test/test_handler_rfc6455.h"
+#endif
