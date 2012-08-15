@@ -5,6 +5,7 @@
 HEADERS = $(wildcard *.h)
 
 DIR_BUILD = build
+DIR_BUILD_DEBUG = build_debug
 DIR_BUILD_TEST = build_test
 
 # The output directory
@@ -19,8 +20,11 @@ CFLAGS = -O2 -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuni
 LDFLAGS = $(shell pkg-config --libs $(LIBS))
 
 # If we should include debug everything
-DEBUG_FLAGS = 
 ifneq ($(DEBUG),)
-	DEBUG_FLAGS = -g -rdynamic
-	CFLAGS += $(DEBUG_FLAGS) -DCOMPILE_DEBUG=1
+	CFLAGS += -g -rdynamic -fno-inline -fno-default-inline -DCOMPILE_DEBUG=1
+endif
+
+#From: http://stackoverflow.com/questions/3432542/how-can-i-get-more-accurate-results-from-gcov
+ifneq ($(TESTING),)
+	CFLAGS += -fno-inline -fno-default-inline --coverage -DTESTING=1
 endif

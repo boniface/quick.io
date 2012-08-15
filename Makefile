@@ -8,6 +8,7 @@ GCOVR_ARGS = --object-directory=$(GCOVR_ROOT) -r . --exclude='$(GCOVR_ROOT)debug
 all: debug
 
 debug:
+	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_DEBUG))
 	$(MAKE) build DEBUG=1
 
 docs:
@@ -15,7 +16,7 @@ docs:
 	doxygen
 
 run: debug
-	./build/server
+	./$(DIR_BUILD_DEBUG)/server
 
 build:
 	pkg-config --exists '$(LIBS_VERSIONS)'
@@ -26,6 +27,7 @@ build:
 
 clean:
 	rm -rf $(DIR_BUILD)
+	rm -rf $(DIR_BUILD_DEBUG)
 	rm -rf $(DIR_BUILD_TEST)
 	rm -f test*.xml
 	$(MAKE) -C app clean
@@ -34,7 +36,7 @@ clean:
 
 test:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
-	@$(MAKE) debug TESTING=1
+	@$(MAKE) build DEBUG=1 TESTING=1
 	@$(MAKE) -C test test DEBUG=1
 	@./ext/gcovr -p $(GCOVR_ARGS)
 	

@@ -14,7 +14,6 @@ default: $(TARGET)
 
 # If compiling in shared mode, make sure we have coverage support
 ifeq ($(TESTING),1)
-CFLAGS += --coverage -DTESTING=1
 $(TARGET): $(OBJECTS)
 else
 $(TARGET): $(OBJECTS)
