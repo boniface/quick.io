@@ -12,6 +12,7 @@
  * The message format for events being sent to a client.
  */
 #define F_EVENT "%s" EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
+#define F_EVENT_CALLBACK "/callback/%" G_GUINT32_FORMAT EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
 
 /**
  * Gets a string for the event type.
@@ -164,13 +165,27 @@ void evs_client_pub_messages();
  * @ingroup ModuleFunctions
  *
  * @param handler The event handler to publish to.
- * @param extra Any extra path parameters to put onto the path of the event.
- * @param type The type of the data (json, plain, etc).
- * @param data The actual data to be sent.
+ * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
+ * @param type The type of the data (json, plain, etc). d_plain if none.
+ * @param data The actual data to be sent. NULL if none.
  *
  * @attention IS thread safe.
  */
 MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data);
+
+/**
+ * Prepare a message to be sent to 1 individual user.
+ *
+ * @param handler The event handler; if NULL, will use the callback.
+ * @param callback The callback to send to the user; 0 if no callback.
+ * @param server_callback What should be sent to the client, indicating the server wants a callback. 0 if no callback is wanted.
+ * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
+ * @param type The type of the data (json, plain, etc).  d_plain if none.
+ * @param data The actual data to be sent. NULL if none.
+ * @param buffer Where the formatted message will be written. MUST NOT be NULL.
+ */
+MODULE_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+
 
 /**
  * A cleanup routine for empty events.

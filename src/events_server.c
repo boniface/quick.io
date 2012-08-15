@@ -177,6 +177,7 @@ static gchar* _clean_event_name(const gchar *event_path) {
  */
 static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
+	g_string_append(response, event->data);
 	return CLIENT_WRITE;
 }
 
@@ -190,26 +191,89 @@ static status_t _evs_server_noop(client_t *client, event_t *event, GString *resp
 /**
  * Send a message to the channel a user is subscribed to.
  *
+ * CURRENTLY DISABLED UNTIL I GET SOME BETTER IDEAS.
+ *
  * Syntax: "send:1477:some random message string"
  */
+/**
 static status_t _evs_server_send(client_t *client, event_t *event, GString *response) {
-	// gchar *room = _slice(message);
+	gchar *room = _slice(message);
 	
-	// if (room == NULL) {
-	// 	return CLIENT_BAD_COMMAND;
-	// }
+	if (room == NULL) {
+		return CLIENT_BAD_COMMAND;
+	}
 	
-	// DEBUGF("event_send: %s; message: %s", room, message->buffer->str);
+	DEBUGF("event_send: %s; message: %s", room, message->buffer->str);
 	
-	// status_t status = pub_message(room, message);
-	// free(room);
+	status_t status = pub_message(room, message);
+	free(room);
 	
-	// // We don't send anything back for a send...that's handled transparently for us
-	// g_string_truncate(message->buffer, 0);
+	// We don't send anything back for a send...that's handled transparently for us
+	g_string_truncate(message->buffer, 0);
 	
-	// return status;
+	return status;
 	
 	return CLIENT_GOOD;
+}
+*/
+
+static status_t _evs_server_subscribe(client_t *client, event_t *event, GString *response) {
+	DEBUGF("event_subscribe: %s", event->data);
+	
+	// External clients aren't allowed to know about UNSUBSCRIBED
+	if (strncmp(event->data, UNSUBSCRIBED, sizeof(UNSUBSCRIBED)-1) == 0) {
+		g_string_printf(response, "%s:%s", EVENT_RESPONSE_INVALID_SUBSCRIPTION, UNSUBSCRIBED);
+		return CLIENT_WRITE;
+	}
+	
+	gchar *event_path = _clean_event_name(event->data);
+	status_t status = evs_client_sub_client(event_path, client);
+	
+	// Attempt to subscribe the client to the event
+	if (status == CLIENT_INVALID_SUBSCRIPTION) {
+		// The event was invalid, inform the client
+		g_string_append(response, EVENT_RESPONSE_INVALID_SUBSCRIPTION);
+		status = CLIENT_WRITE;
+	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
+		// The client is subscribed to the maximum number of rooms already, may not add any more
+		g_string_append(response, EVENT_RESPONSE_MAX_SUBSCRIPTIONS);
+		status = CLIENT_WRITE;
+	} else if (status == CLIENT_ALREADY_SUBSCRIBED) {
+		// Why is he subscribing again?
+		g_string_append(response, EVENT_RESPONSE_ALREADY_SUBSCRIBED);
+		status = CLIENT_WRITE;
+	}
+	
+	if (status == CLIENT_WRITE) {
+		g_string_append_printf(response, ":%s", event_path);
+	}
+	
+	g_free(event_path);
+	
+	// The event was valid, so there's nothing more to do
+	return status;
+}
+
+static status_t _evs_server_unsubscribe(client_t *client, event_t *event, GString *response) {
+	DEBUGF("event_unsubscribe: %s", event->data);
+	
+	// External clients aren't allowed to know about UNSUBSCRIBED
+	if (strcmp(event->data, UNSUBSCRIBED) == 0) {
+		g_string_printf(response, "%s:%s", EVENT_RESPONSE_CANNOT_UNSUBSCRIBE, UNSUBSCRIBED);
+		return CLIENT_WRITE;
+	}
+	
+	gchar *event_path = _clean_event_name(event->data);
+	status_t status = evs_client_unsub_client(event_path, client);
+	
+	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
+		g_string_printf(response, "%s:%s", EVENT_RESPONSE_CANNOT_UNSUBSCRIBE, event_path);
+		status = CLIENT_WRITE;
+	}
+	
+	g_free(event_path);
+	
+	return status;
 }
 
 event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint16 *extra_len) {
@@ -288,59 +352,6 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 	return handler;
 }
 
-status_t evs_server_subscribe(client_t *client, event_t *event, GString *response) {
-	#warning create test case for empty responses when they should be empty
-	DEBUGF("event_subscribe: %s", event->data);
-	
-	// External clients aren't allowed to know about UNSUBSCRIBED
-	if (strcmp(event->data, UNSUBSCRIBED) == 0) {
-		return CLIENT_INVALID_SUBSCRIPTION;
-	}
-	
-	gchar *event_path = _clean_event_name(event->data);
-	status_t status = evs_client_sub_client(event_path, client);
-	g_free(event_path);
-	
-	// Attempt to subscribe the client to the event
-	if (status == CLIENT_INVALID_SUBSCRIPTION) {
-		// The event was invalid, inform the client
-		g_string_prepend(response, EVENT_RESPONSE_INVALID_SUBSCRIPTION);
-		return CLIENT_WRITE;
-	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
-		// The client is subscribed to the maximum number of rooms already, may not add any more
-		g_string_prepend(response, EVENT_RESPONSE_MAX_SUBSCRIPTIONS);
-		return CLIENT_WRITE;
-	} else if (status == CLIENT_ALREADY_SUBSCRIBED) {
-		// Why is he subscribing again?
-		g_string_prepend(response, EVENT_RESPONSE_ALREADY_SUBSCRIBED);
-		return CLIENT_WRITE;
-	}
-	
-	// The event was valid, so there's nothing more to do
-	return CLIENT_GOOD;
-}
-
-status_t evs_server_unsubscribe(client_t *client, event_t *event, GString *response) {
-	#warning create test case for empty responses when they should be empty
-	DEBUGF("event_unsubscribe: %s", event->data);
-	
-	// External clients aren't allowed to know about UNSUBSCRIBED
-	if (strcmp(event->data, UNSUBSCRIBED) == 0) {
-		return CLIENT_INVALID_SUBSCRIPTION;
-	}
-	
-	gchar *event_path = _clean_event_name(event->data);
-	status_t status = evs_client_unsub_client(event_path, client);
-	g_free(event_path);
-	
-	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
-		g_string_prepend(response, EVENT_RESPONSE_CANNOT_UNSUBSCRIBE);
-		return CLIENT_WRITE;
-	}
-	
-	return CLIENT_GOOD;
-}
-
 status_t evs_server_handle(client_t *client) {
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -352,8 +363,36 @@ status_t evs_server_handle(client_t *client) {
 	// send the handler everything
 	if (status == CLIENT_GOOD) {
 		// The client->message->buffer is now empty, as free'd by _event_new
-		#warning Create test case to verify buffer is empty after _event_new
 		status = handler->fn(client, &event, client->message->buffer);
+	}
+	
+	// Prepare the event for writing back to the client
+	if (status == CLIENT_WRITE) {
+		// If there is data, then it needs to be stolen from the buffer
+		// Otherwise, there could be all sorts of issues with formatting
+		// the buffer using what's already in the buffer
+		gchar *data;
+		if (client->message->buffer->len == 0) {
+			data = "";
+		} else {
+			data = client->message->buffer->str;
+			g_string_free(client->message->buffer, FALSE);
+			client->message->buffer = g_string_sized_new(100);
+		}
+		
+		#warning TODO: Server callbacks
+		status = evs_client_format_message(handler, event.callback, 0, event.extra_segments, event.type, data, client->message->buffer);
+		
+		// If we get CLIENT_GOOD back from format_message, then we still need it to be
+		// CLIENT_WRITE, otherwise we want to send back the error message
+		if (status == CLIENT_GOOD) {
+			status = CLIENT_WRITE;
+		}
+		
+		// len == 0 results in this being null, so it won't need free'd
+		if (*data != '\0') {
+			g_free(data);
+		}
 	}
 	
 	_event_free(&event);
@@ -392,10 +431,10 @@ gboolean evs_server_init() {
 	_events_by_handler = g_hash_table_new(NULL, NULL);
 	
 	evs_server_on("/ping", _evs_server_ping, NULL, NULL, FALSE);
-	evs_server_on("/sub", evs_server_subscribe, NULL, NULL, FALSE);
-	evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
-	evs_server_on("/unsub", evs_server_unsubscribe, NULL, NULL, FALSE);
+	evs_server_on("/sub", _evs_server_subscribe, NULL, NULL, FALSE);
+	evs_server_on("/unsub", _evs_server_unsubscribe, NULL, NULL, FALSE);
 	evs_server_on("/noop", _evs_server_noop, NULL, NULL, FALSE);
+	// evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
 	
 	// Internal commands are ready, let the app register its commands.
 	// apps_register_events();

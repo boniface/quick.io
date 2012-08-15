@@ -17,6 +17,8 @@ client_t* u_client_create() {
 	message->socket_buffer = g_string_sized_new(1);
 	message->buffer = g_string_sized_new(1);
 	
+	client->subs = g_ptr_array_new();
+	
 	client->message = message;
 	client->handler = h_none;
 	
@@ -26,6 +28,7 @@ client_t* u_client_create() {
 void u_client_free(client_t *client) {
 	g_string_free(client->message->socket_buffer, TRUE);
 	g_string_free(client->message->buffer, TRUE);
+	g_ptr_array_free(client->subs, TRUE);
 	free(client->message);
 	free(client);
 }

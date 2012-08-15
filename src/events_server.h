@@ -93,6 +93,11 @@ typedef struct event_s {
 	 */
 	guint32 callback;
 	
+	/**
+	 * The callback the server wants to recieve for this event.
+	 */
+	guint32 server_callback;
+	
 	/** 
 	 * The type of data sitting in the data buffer.
 	 */
@@ -180,16 +185,6 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
  * @param client The client that sent the event to handle.
  */
 status_t evs_server_handle(client_t *client);
-
-/**
- * The "/sub::plain=1477" command.
- */
-status_t evs_server_subscribe(client_t*, event_t*, GString *response);
-
-/**
- * The "/unsub::plain=1477" command.
- */
-status_t evs_server_unsubscribe(client_t*, event_t*, GString *response);
 
 /**
  * Listen for an event from clients.

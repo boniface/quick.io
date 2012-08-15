@@ -2,6 +2,8 @@
 
 void _test_event_creation_setup() {
 	evs_server_init();
+	evs_client_init();
+	apps_init();
 }
 
 START_TEST(test_evs_server_clean_name_0) {
@@ -242,6 +244,11 @@ START_TEST(test_evs_event_creation_invalid_data) {
 }
 END_TEST
 
+START_TEST(test_evs_new_handler_bad_path) {
+	test_ptr_eq(evs_server_on("/:event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
+}
+END_TEST
+
 START_TEST(test_evs_get_handler_0) {
 	path_extra_t extra;
 	guint16 extra_len;
@@ -323,6 +330,129 @@ START_TEST(test_evs_get_handler_6) {
 }
 END_TEST
 
+START_TEST(test_evs_path_from_handler) {
+	event_handler_t *handler = g_hash_table_lookup(_events_by_path, "/noop");
+	
+	test_str_eq(evs_server_path_from_handler(handler), "/noop", "Found correct event");
+}
+END_TEST
+
+START_TEST(test_evs_handler_noop) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/noop:123:plain=test");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Noop recieved");
+	test_size_eq(client->message->buffer->len, 0, "No data sent back");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_ping) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/ping:123:plain=test");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=test", "Ping sent back correct data");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_subscribe) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/sub:456:plain=/doesnt/exist");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/doesnt/exist", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_subscribe_to_unsubscribed) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/sub:456:plain=0");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":0", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_subscribe_too_many_subs) {
+	client_t *client = u_client_create();
+	
+	guint64 max = option_max_subscriptions();
+	while (max--) {
+		g_ptr_array_add(client->subs, NULL);
+	}
+	
+	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_MAX_SUBSCRIPTIONS":/noop", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_subscribe_already_subscribed) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
+	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
+	
+	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_ALREADY_SUBSCRIBED":/noop", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_unsubscribe) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
+	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
+	
+	g_string_assign(client->message->buffer, "/unsub:456:plain=/noop");
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Unsubscribed");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/unsub:456:plain=/noop");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/noop", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_unsubscribe_unsubscribed) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/unsub:456:plain=0");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":0", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* events_server_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Events - Server");
@@ -348,6 +478,11 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_event_creation_invalid_data);
 	suite_add_tcase(s, tc);
 	
+	tc = tcase_create("Handler Creation");
+	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_test(tc, test_evs_new_handler_bad_path);
+	suite_add_tcase(s, tc);
+	
 	tc = tcase_create("Handler Getting");
 	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
 	tcase_add_test(tc, test_evs_get_handler_0);
@@ -357,6 +492,20 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_get_handler_4);
 	tcase_add_test(tc, test_evs_get_handler_5);
 	tcase_add_test(tc, test_evs_get_handler_6);
+	tcase_add_test(tc, test_evs_path_from_handler);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Default Event Handlers");
+	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_test(tc, test_evs_handler_noop);
+	tcase_add_test(tc, test_evs_handler_ping);
+	tcase_add_test(tc, test_evs_handler_subscribe);
+	tcase_add_test(tc, test_evs_handler_subscribe_to_unsubscribed);
+	tcase_add_test(tc, test_evs_handler_subscribe_too_many_subs);
+	tcase_add_test(tc, test_evs_handler_subscribe_already_subscribed);
+	tcase_add_test(tc, test_evs_handler_unsubscribe);
+	tcase_add_test(tc, test_evs_handler_unsubscribe_not_subscribed);
+	tcase_add_test(tc, test_evs_handler_unsubscribe_unsubscribed);
 	suite_add_tcase(s, tc);
 	
 	return s;

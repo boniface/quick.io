@@ -33,7 +33,7 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
 		// To validate this event, check the server events to make sure there
 		// is a handler registered
 		path_extra_t extra;
-		guint extra_len;
+		guint16 extra_len;
 		event_handler_t *handler = evs_server_get_handler(event_path, &extra, &extra_len);
 		
 		// If no handler was found, don't create anything
@@ -83,6 +83,53 @@ static void _new_messages() {
 	g_mutex_unlock(&_messages_lock);
 }
 
+/**
+ * Because we don't want to give away the subscription to anything outside, this
+ * is only accessible internally.  The wrapper removes the sub before return.
+ */
+static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, evs_client_sub_t **sub) {
+	// A callback takes precedence over an event handler, always
+	if (callback != 0) {
+		g_string_printf(buffer, F_EVENT_CALLBACK, callback, server_callback, DATA_TYPE(type), data);
+	} else {
+		// First, start by constructing the name of the event we're publishing to, complete
+		// with all extra path elements
+		gchar *handler_path = evs_server_path_from_handler(handler);
+		
+		if (handler_path == NULL) {
+			return CLIENT_UNKNOWN_EVENT;
+		}
+		
+		// Skip all the loopy logic unless there are extra path segments
+		if (extra != NULL) {
+			// Add all of the extra path elements to the event path so we can resolve
+			// the actual event and clients we're publishing to
+			GString *ep = g_string_new(handler_path);
+			
+			path_extra_t curr = g_list_first(extra);
+			do {
+				g_string_append_printf(ep, "/%s", (gchar*)curr->data);
+			} while ((curr = g_list_next(curr)) != NULL);
+			
+			// DO NOT create a subscription from here, this MUST be thread safe.
+			*sub = _get_subscription(ep->str, FALSE /* DON'T TOUCH */);
+			
+			g_string_free(ep, TRUE);
+		} else {
+			// DO NOT create a subscription from here, this MUST be thread safe.
+			*sub = _get_subscription(handler_path, FALSE /* DON'T TOUCH */);
+		}
+		
+		if (*sub == NULL) {
+			return CLIENT_INVALID_SUBSCRIPTION;
+		}
+		
+		g_string_printf(buffer, F_EVENT, (*sub)->event_path, server_callback, DATA_TYPE(type), data);
+	}
+	
+	return CLIENT_GOOD;
+}
+
 void evs_client_client_ready(client_t *client) {
 	// Initialize our internal management from the client
 	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
@@ -103,7 +150,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// unsubscribed sub
 	evs_client_unsub_client(UNSUBSCRIBED, client);
 	
-	if (client->subs->len > option_max_subscriptions()) {
+	if (client->subs->len >= option_max_subscriptions()) {
 		return CLIENT_TOO_MANY_SUBSCRIPTIONS;
 	}
 	
@@ -247,39 +294,7 @@ void evs_client_pub_messages() {
 }
 
 status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data) {
-	// First, start by constructing the name of the event we're publishing to, complete
-	// with all extra path elements
-	gchar *event_path = evs_server_path_from_handler(handler);
-	
-	if (event_path == NULL) {
-		return CLIENT_UNKNOWN_EVENT;
-	}
-	
-	evs_client_sub_t *sub;
-	
-	// Skip all the loopy logic unless there are items
-	if (extra != NULL) {
-		// Add all of the extra path elements to the event path so we can resolve
-		// the actual event and clients we're publishing to
-		GString *ep = g_string_new(event_path);
-		
-		path_extra_t curr = g_list_first(extra);
-		do {
-			g_string_append_printf(ep, "/%s", (gchar*)curr->data);
-		} while ((curr = g_list_next(curr)) != NULL);
-		
-		// DO NOT create a subscription from here, this MUST be thread safe.
-		sub = _get_subscription(ep->str, FALSE /* DON'T TOUCH */);
-		
-		g_string_free(ep, TRUE);
-	} else {
-		// DO NOT create a subscription from here, this MUST be thread safe.
-		sub = _get_subscription(event_path, FALSE /* DON'T TOUCH */);
-	}
-	
-	if (sub == NULL) {
-		return CLIENT_INVALID_SUBSCRIPTION;
-	}
+
 	
 	// Attempt to create a new publishable message
 	evs_client_message_t *emsg = g_try_malloc0(sizeof(*emsg));
@@ -289,7 +304,11 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	
 	// Format the message that will be sent to the clients
 	GString *message = g_string_sized_new(100);
-	g_string_printf(message, F_EVENT, sub->event_path, 0, DATA_TYPE(type), data);
+	
+	evs_client_sub_t *sub;
+	
+	// There are no callbacks on for broadcast messages
+	_evs_client_format_message(handler, 0, 0, extra, type, data, message, &sub);
 	
 	emsg->sub = sub;
 	emsg->type = op_text;
@@ -306,6 +325,10 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	return CLIENT_GOOD;
 }
 
+status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer) {
+	evs_client_sub_t *sub;
+	return _evs_client_format_message(handler, callback, server_callback, extra, type, data, buffer, &sub);
+}
 gboolean evs_client_init() {
 	// Keys are copied before they are inserted, so when they're removed,
 	// they must be freed
