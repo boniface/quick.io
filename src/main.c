@@ -7,16 +7,21 @@
 #include "qio.h"
 
 /**
+ * Allow access to the pids from the test framework
+ */
+static pid_t *_pids;
+
+/**
  * Fork all of the children processes.
  *
  * *pipes will be set to the write pipes into the children.
  */
-static gboolean _main_fork(pid_t **pids) {
+static gboolean _main_fork() {
 	gint32 processes = option_processes();
 	
 	// If this malloc fails, shit is fucked
-	*pids = malloc(processes * sizeof(**pids));
-	if (*pids == NULL) {
+	_pids = malloc(processes * sizeof(*_pids));
+	if (_pids == NULL) {
 		ERROR("Processes malloc() failed. Lol.");
 		return FALSE;
 	}
@@ -41,7 +46,7 @@ static gboolean _main_fork(pid_t **pids) {
 		// The child is pid == 0
 		if (pid == 0) {
 			// Done with these guys
-			free(*pids);
+			free(_pids);
 			
 			// Get epoll and listening going.  If this fails...shit.
 			if (!socket_init_process()) {
@@ -61,20 +66,20 @@ static gboolean _main_fork(pid_t **pids) {
 			exit(1);
 		} else {
 			// Save the process id for later culling
-			*(*pids + processes) = pid;
+			*(_pids + processes) = pid;
 		}
 	}
 	
 	return TRUE;
 }
 
-static void _main_cull_children(int *pids) {
+void main_cull_children() {
 	DEBUG("All children are being culled...");
 
 	gint32 count = option_processes();
 	while (count-- > 0) {
 		DEBUGF("Killing: %d", count);
-		kill(*(pids + count), SIGINT);
+		kill(*(_pids + count), SIGINT);
 	}
 }
 
@@ -138,28 +143,24 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	pid_t *pids;
-#ifndef TESTING
-	if (_main_fork(&pids)) {
+	if (_main_fork()) {
 		DEBUG("Children forked");
 	} else {
 		ERROR("Could not fork children.");
 		return 1;
 	}
-#endif
 	
 	if (apps_postfork()) {
 		DEBUG("Postfork apps done");
 	} else {
 		ERROR("Error with apps postfork");
-		_main_cull_children(pids);
+		main_cull_children();
 		return 1;
 	}
 	
 	printf("READY\n");
 	fflush(stdout);
 	
-#ifndef TESTING
 	// The main thread just sits here, waiting
 	// The children processes will never get here
 	gint32 count = option_processes();
@@ -176,7 +177,10 @@ int main(int argc, char *argv[]) {
 			count++;
 		}
 	}
-#endif
 	
 	return 1;
 }
+
+#ifdef TESTING
+#include "../test/test_main.c"
+#endif

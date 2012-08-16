@@ -1,6 +1,7 @@
 include ../Makefile.inc
+include ../src/Makefile
 
-CFLAGS += -I../src -c -DTESTING=1
+CFLAGS += -I../src -DTESTING=1
 LIBCHECK = /usr/lib/libcheck.a
 OBJECTS = $(BUILDDIR)/test.o $(BUILDDIR)/utils.o
 QIO_OBJECTS = $(filter-out $(OBJECTS), $(wildcard $(BUILDDIR)/*.o))
@@ -17,11 +18,9 @@ test: client_statuses.inc $(OBJECTS)
 	
 	@echo "\n\n"-------- Running test suite --------
 	@$(BUILDDIR)/test
-	@# $(MAKE) -C python test
 
 clean:
 	rm -f client_statuses.inc
-	$(MAKE) -C python clean
 
 $(BUILDDIR)/%.o: %.c test.h
 	@echo "\n\n"-------- Compiling $< --------

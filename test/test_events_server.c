@@ -244,6 +244,22 @@ START_TEST(test_evs_event_creation_invalid_data) {
 }
 END_TEST
 
+START_TEST(test_evs_event_creation_invalid_handler) {
+	client_t *client = u_client_create();
+	
+	event_t event;
+	event_handler_t *handler = NULL;
+	message_t *message = client->message;
+	
+	g_string_assign(message->buffer, "/:123:plain");
+	
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_UNKNOWN_EVENT, "Invalid event");
+	
+	_event_free(&event);
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_evs_new_handler_bad_path) {
 	test_ptr_eq(evs_server_on("/:event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
 }
@@ -340,10 +356,22 @@ END_TEST
 START_TEST(test_evs_handler_noop) {
 	client_t *client = u_client_create();
 	
-	g_string_assign(client->message->buffer, "/noop:123:plain=test");
+	g_string_assign(client->message->buffer, "/noop:0:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Noop recieved");
-	test_size_eq(client->message->buffer->len, 0, "No data sent back");
+	test_size_eq(client->message->buffer->len, 0, "No data set");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_noop_callback) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->buffer, "/noop:123:plain=test");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Noop recieved");
+	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=", "Callback with no data");
 	
 	u_client_free(client);
 }
@@ -476,6 +504,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_event_creation_invalid_callback);
 	tcase_add_test(tc, test_evs_event_creation_invalid_junk);
 	tcase_add_test(tc, test_evs_event_creation_invalid_data);
+	tcase_add_test(tc, test_evs_event_creation_invalid_handler);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Handler Creation");
@@ -498,6 +527,7 @@ Suite* events_server_suite() {
 	tc = tcase_create("Default Event Handlers");
 	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
 	tcase_add_test(tc, test_evs_handler_noop);
+	tcase_add_test(tc, test_evs_handler_noop_callback);
 	tcase_add_test(tc, test_evs_handler_ping);
 	tcase_add_test(tc, test_evs_handler_subscribe);
 	tcase_add_test(tc, test_evs_handler_subscribe_to_unsubscribed);

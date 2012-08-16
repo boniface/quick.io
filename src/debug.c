@@ -15,13 +15,19 @@
 		size = backtrace(array, BACKTRACE_SIZE);
 		
 		// print out all the frames to stderr
-		fprintf(stderr, "Error: signal %d:\n", sig);
+		fprintf(stderr, "Error: segfault\n");
 		backtrace_symbols_fd(array, size, 2);
 		exit(1);
 	}
 	
 	static void _sigint_handler(int sig) {
-		DEBUG("Sigint: Dying");
+		DEBUG("SIGINT: Dying");
+		exit(1);
+	}
+	
+	static void _sigterm_handler(int sig) {
+		DEBUG("SIGTERM: Killing the children");
+		main_cull_children();
 		exit(1);
 	}
 #endif
@@ -30,5 +36,6 @@ void debug_handle_signals() {
 	#ifdef COMPILE_DEBUG
 		signal(SIGSEGV, _sigsev_handler);
 		signal(SIGINT, _sigint_handler);
+		signal(SIGTERM, _sigterm_handler);
 	#endif
 }

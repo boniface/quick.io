@@ -95,7 +95,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 		return CLIENT_BAD_MESSAGE_FORMAT;
 	}
 	
-	// To allow the string compares to work
+	// To allow the string compares to work -- overwrites the "="
 	*end = '\0';
 	
 	if (g_strcmp0(curr, "plain") == 0) {
@@ -108,13 +108,12 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	}
 	
 	// Don't allow memory to go rampant
-	if (end > buffer_end) {
-		return CLIENT_BAD_MESSAGE_FORMAT;
+	if (++end > buffer_end) {
+		event->data = "";
+	} else {
+		// Finally, set the pointer to the data, everything following the "="
+		event->data = end;
 	}
-	
-	// Finally, set the pointer to the data, everything following the "="
-	// Note: this MAY be null
-	event->data = end + 1;
 	
 	return CLIENT_GOOD;
 }
@@ -185,7 +184,12 @@ static status_t _evs_server_ping(client_t *client, event_t *event, GString *resp
  * Does nothing, just says "good" back.
  */
 static status_t _evs_server_noop(client_t *client, event_t *event, GString *response) {
-	return CLIENT_GOOD;
+	g_string_set_size(response, 0);
+	if (event->callback) {
+		return CLIENT_WRITE;
+	} else {
+		return CLIENT_GOOD;
+	}
 }
 
 /**

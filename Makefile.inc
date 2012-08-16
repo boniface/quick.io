@@ -16,15 +16,23 @@ LIBS += glib-2.0 libsoup-2.4
 LIBS_VERSIONS = glib-2.0 >= 2.32 libsoup-2.4 >= 2.38
 
 # The flags
-CFLAGS = -O2 -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS))
+CFLAGS = -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS))
 LDFLAGS = $(shell pkg-config --libs $(LIBS))
 
 # If we should include debug everything
-ifneq ($(DEBUG),)
+ifdef DEBUG
+	OPTIMIZE = 0
 	CFLAGS += -g -rdynamic -fno-inline -fno-default-inline -DCOMPILE_DEBUG=1
 endif
 
 #From: http://stackoverflow.com/questions/3432542/how-can-i-get-more-accurate-results-from-gcov
-ifneq ($(TESTING),)
+ifdef TESTING
+	OPTIMIZE = 0
 	CFLAGS += -fno-inline -fno-default-inline --coverage -DTESTING=1
+endif
+
+# Don't optimize when debugging, profiling, testing, etc
+# Gives better information about coverage and everything
+ifndef OPTIMIZE
+	CFLAGS += -O2
 endif
