@@ -79,9 +79,9 @@ Suite* socket_suite() {
 	tc = tcase_create("Connections");
 	tcase_add_checked_fixture(tc, _socket_setup, _socket_teardown);
 	tcase_set_timeout(tc, option_timeout() + 1);
-	// tcase_add_test(tc, test_socket_accept);
-	// tcase_add_test(tc, test_socket_timeout);
-	// tcase_add_test(tc, test_socket_handshake);
+	tcase_add_test(tc, test_socket_accept);
+	tcase_add_test(tc, test_socket_timeout);
+	tcase_add_test(tc, test_socket_handshake);
 	tcase_add_test(tc, test_socket_ping);
 	suite_add_tcase(s, tc);
 	
