@@ -38,10 +38,8 @@ status_t client_handshake(client_t *client) {
 	// Done reading headers
 	soup_message_headers_free(req_headers);
 	
-	if (status == CLIENT_WRITE) {
-		// We read the header successfully, clean up after ourselves
-		g_string_truncate(client->message->socket_buffer, 0);
-	}
+	// We read the header, no matter what was returned, it's our job to clear it
+	g_string_truncate(client->message->socket_buffer, 0);
 	
 	return status;
 }

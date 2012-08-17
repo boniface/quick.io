@@ -19,6 +19,9 @@
 #define MESSAGE_SHORT "test"
 #define RFC6455_MESSAGE_SHORT "\x81""\x84"MASK"\x15\x07\x10\x10"
 
+#define RFC6455_MESSAGE_BROKEN_HEADER_P1 "\x81"
+#define RFC6455_MESSAGE_BROKEN_HEADER_P2 "\x84"MASK"\x15\x07\x10\x10"
+
 #define RFC6455_MESSAGE_SHORT_P1 "\x81""\x84"MASK
 #define RFC6455_MESSAGE_SHORT_P2 "\x15\x07\x10\x10"
 
@@ -68,6 +71,19 @@ START_TEST(test_rfc6455_short_message) {
 	test_char_eq(client->message->type, op_text, "Opcode set to text");
 	test_uint32_eq(client->message->mask, *((guint32*)MASK), "Correct mask in message");
 	test_str_eq(client->message->buffer->str, MESSAGE_SHORT, "Message decoded correctly");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_rfc6455_partial_no_header) {
+	client_t *client = u_client_create();
+	
+	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_BROKEN_HEADER_P1);
+	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short header rejected");
+	
+	g_string_append(client->message->socket_buffer, RFC6455_MESSAGE_BROKEN_HEADER_P2);
+	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
 	
 	u_client_free(client);
 }
@@ -246,6 +262,7 @@ Suite* rfc6455_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Partial Messages");
+	tcase_add_test(tc, test_rfc6455_partial_no_header);
 	tcase_add_test(tc, test_rfc6455_partial_short_message);
 	tcase_add_test(tc, test_rfc6455_multi_partial_short_messages);
 	tcase_add_test(tc, test_rfc6455_multi_partial_broken_header);

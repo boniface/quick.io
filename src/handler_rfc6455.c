@@ -53,11 +53,6 @@ static status_t _rfc6455_start(client_t *client) {
 	GString *sb = client->message->socket_buffer;
 	char *buff = sb->str;
 	
-	// If we haven't even finished reading the header from the socket
-	if (sb->len < HEADER_LEN) {
-		return CLIENT_WAIT;
-	}
-	
 	// The first 7 bits of the second byte tell us the length
 	// You can't make this stuff up :(
 	guint16 len = *(buff + 1) & SECOND_BYTE;
@@ -266,6 +261,11 @@ status_t rfc6455_continue(client_t *client) {
 }
 
 status_t rfc6455_incoming(client_t *client) {
+	// If we haven't even finished reading the header from the socket
+	if (client->message->socket_buffer->len < HEADER_LEN) {
+		return CLIENT_WAIT;
+	}
+	
 	char *buff = client->message->socket_buffer->str;
 	
 	// If data came from the client unmasked, then that's wrong. Abort.
