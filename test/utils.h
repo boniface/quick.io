@@ -6,6 +6,21 @@
 #pragma once
 #include "test.h"
 
+
+#define U_HANDSHAKE "GET /chat HTTP/1.1\r\n" \
+	"Host: server.example.com\r\n" \
+	"Upgrade: websocket\r\n" \
+	"Connection: Upgrade\r\n" \
+	"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" \
+	"Origin: http://example.com\r\n" \
+	"Sec-WebSocket-Version: 13\r\n\r\n"
+
+#define U_HANDSHAKE_RESPONSE "HTTP/1.1 101 Switching Protocols\r\n" \
+	"Upgrade: websocket\r\n" \
+	"Connection: Upgrade\r\n" \
+	"Access-Control-Allow-Origin: *\r\n" \
+	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+
 /**
  * Convert a status_t to a string, for printing.
  *
@@ -49,3 +64,10 @@ void u_main_teardown(pid_t pid);
  * @return The socket connected to the server.
  */
 int u_connect();
+
+/**
+ * Connect to a running server instance, and complete an RFC6455 handshake.
+ *
+ * @return The socket connected to the server.
+ */
+int u_ws_connect();

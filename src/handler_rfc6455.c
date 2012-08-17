@@ -146,9 +146,11 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	return CLIENT_WRITE;
 }
 
-char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, gsize *frame_len) {
+char* rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len) {
 	char *frame;
-	guint8 header_size = 0;
+	
+	// If masked, then start the header off with room from the mask
+	guint8 header_size = masked ? MASK_LEN : 0;
 	
 	// If 125 chars or less, then only use 7 bits to represent
 	// payload length
@@ -159,7 +161,7 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, 
 	if (payload_len <= PAYLOAD_SHORT) {
 		// Since this is a small message, we only need 2 extra bytes
 		// to represent the data
-		header_size = HEADER_LEN;
+		header_size += HEADER_LEN;
 		*frame_len = payload_len + header_size;
 		
 		frame = g_try_malloc0(*frame_len * sizeof(*frame));
@@ -176,7 +178,7 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, 
 	} else if (payload_len <= PAYLOAD_LONG) {
 		// We need an extra 2 bytes, for 4 bytes in total,
 		// to provide the header for this message
-		header_size = EXTENDED_HEADER_LEN;
+		header_size += EXTENDED_HEADER_LEN;
 		*frame_len = payload_len + header_size;
 		
 		frame = g_try_malloc0(*frame_len * sizeof(*frame));
@@ -212,7 +214,26 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, 
 			break;
 	}
 	
-	memcpy((frame + header_size), payload, payload_len);
+	if (masked) {
+		// The length was set above, so this is safe
+		*(frame + 1) |= MASK_BIT;
+		
+		// The mask can just be a random 32bit int, then we trick it into some bytes
+		gint32 randmask = g_random_int();
+		char *mask = (char*)&randmask;
+		
+		// The mask comes directly after the header
+		memcpy((frame + 2), mask, MASK_LEN);
+		
+		// The start of the encoded bytes
+		char *start = frame + header_size;
+		
+		for (guint64 i = 0; i < payload_len; i++) {
+			*(start + i) = *(payload + i) ^ *(mask + (i % MASK_LEN));
+		}
+	} else {
+		memcpy((frame + header_size), payload, payload_len);
+	}
 	
 	return frame;
 }
@@ -220,6 +241,7 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, 
 char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
 	return rfc6455_prepare_frame(
 		message->type,
+		FALSE,
 		message->buffer->str,
 		message->buffer->len,
 		frame_len

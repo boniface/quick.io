@@ -46,10 +46,10 @@
 #define PAYLOAD_LONG 0xFFFF
 
 // Mask is 32 bits
-#define MASK_LEN 32 / 8
+#define MASK_LEN (32 / 8)
 
 // Header is 16 bits
-#define HEADER_LEN 16 / 8
+#define HEADER_LEN (16 / 8)
 
 // Extended-length header contains an extra 16 bits for payload len
-#define EXTENDED_HEADER_LEN HEADER_LEN + (16 / 8)
+#define EXTENDED_HEADER_LEN (HEADER_LEN + (16 / 8))

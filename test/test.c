@@ -9,11 +9,11 @@ int main(int argc, char *argv[]) {
 	int number_failed = 0;
 	
 	SRunner *sr = srunner_create(suite_create("Master"));
-	srunner_add_suite(sr, client_suite());
-	srunner_add_suite(sr, events_server_suite());
-	srunner_add_suite(sr, main_suite());
-	srunner_add_suite(sr, option_suite());
-	srunner_add_suite(sr, rfc6455_suite());
+	// srunner_add_suite(sr, client_suite());
+	// srunner_add_suite(sr, events_server_suite());
+	// srunner_add_suite(sr, main_suite());
+	// srunner_add_suite(sr, option_suite());
+	// srunner_add_suite(sr, rfc6455_suite());
 	srunner_add_suite(sr, socket_suite());
 
 #if TEST_OUTPUT_XML

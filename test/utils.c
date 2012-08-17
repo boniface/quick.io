@@ -91,3 +91,18 @@ int u_connect() {
 	
 	return sock;
 }
+
+int u_ws_connect() {
+	int sock = u_connect();
+	
+	char buff[sizeof(U_HANDSHAKE_RESPONSE)];
+	memset(&buff, 0, sizeof(buff));
+	
+	test(sock, "Connection established");
+	test_int32_eq(send(sock, U_HANDSHAKE, sizeof(U_HANDSHAKE)-1, 0), sizeof(U_HANDSHAKE)-1, "Handshake sent");
+	test_int32_eq(read(sock, buff, sizeof(buff)), sizeof(U_HANDSHAKE_RESPONSE)-1, "Correct response length read");
+	
+	test_str_eq(buff, U_HANDSHAKE_RESPONSE, "Correct response sent");
+	
+	return sock;
+}

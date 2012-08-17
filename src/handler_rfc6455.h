@@ -31,6 +31,7 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
  * Prepare a frame to be sent to the client.
  *
  * @param type The opcode to put into the frame.
+ * @param masked If the frame should be masked.
  * @param payload The data to be put into the response
  * @param payload_len The length of the payload
  * @param[out] frame_len The length of the final frame.
@@ -39,7 +40,7 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
  * frame creation.
  * @attention The return of this function MUST be free'd
  */
-char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, gsize *frame_len);
+char* rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len);
 
 /**
  * An accessor for rfc6455_prepare_frame.

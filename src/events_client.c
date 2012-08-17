@@ -248,6 +248,7 @@ void evs_client_pub_messages() {
 		
 		msgs[h_rfc6455] = rfc6455_prepare_frame(
 			message->type,
+			FALSE,
 			message->message,
 			message->message_len,
 			&msglen[h_rfc6455]
