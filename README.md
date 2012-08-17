@@ -1,7 +1,15 @@
-# Testing the server
+# Quick.io (aka QIO)
 
-1. `cd` into test/python
-2. `virtualenv ve`
-3. `. ve/bin/activate`
-4. pip install -r requirements.txt
-5. `deactivate`
+## Requirements
+
+* glib >= 2.32
+* libsoup >= 2.38 (will probably be replaced soon)
+* check (only for running unit tests)
+
+## Testing
+
+With check installed, run:
+
+```bash
+make test
+```
