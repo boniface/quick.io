@@ -19,6 +19,13 @@ static int _epoll;
 static client_t *_fake_client;
 
 /**
+ * Performs maintenance routines.
+ */
+static void _socket_maintenance() {
+	evs_client_cleanup();
+}
+
+/**
  * Adds an epoll listener on the specified fd.
  */
 static gboolean _socket_epoll_add(int fd, client_t *client) {
@@ -55,15 +62,12 @@ static gpointer _socket_accept_client(gpointer unused) {
 			continue;
 		}
 		
-		client_t *client = malloc(sizeof(*client));
+		client_t *client = g_try_malloc0(sizeof(*client));
 		if (client == NULL) {
 			ERROR("Client could not be malloc()'d");
 			close(sock);
 			continue;
 		}
-		
-		// Make sure our memory is nice and spiffy-clean
-		memset(client, 0, sizeof(*client));
 		
 		// Basic information about this client
 		client->sock = sock;
@@ -95,8 +99,7 @@ static void _socket_message_new(client_t *client) {
 	
 	// Replace any slots in the message that might have been freed
 	if (message == NULL) {
-		message = malloc(sizeof(*message));
-		memset(message, 0, sizeof(*message));
+		message = g_try_malloc0(sizeof(*message));
 	}
 	
 	if (message->socket_buffer == NULL) {
@@ -123,6 +126,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// Check the timer to see if it has expired
 		// A read operation on a timerfd will return > -1 if the 
 		// timer has expired.
+		// 8 is the most bytes the int returned can be
 		if (client->timer && read(client->timer, buffer, 8) > -1) {
 			// If the client has been caught misbehaving...
 			DEBUG("Misbehaving client closed because of timeout");
@@ -205,7 +209,7 @@ static void _socket_tick() {
 	
 	if (ticks++ % SOCKET_MAINTENANCE_CLEANUP == 0) {
 		// Clean up any client subscriptions
-		evs_client_cleanup();
+		_socket_maintenance();
 	}
 	
 	// Reset the timer
@@ -291,14 +295,11 @@ gboolean socket_init_process() {
 		return FALSE;
 	}
 	
-	_fake_client = malloc(sizeof(*_fake_client));
+	_fake_client = g_try_malloc0(sizeof(*_fake_client));
 	if (_fake_client == NULL) {
 		ERROR("_fake_client could not be malloc()'d");
 		return FALSE;
 	}
-	
-	// Make sure our memory is nice and spiffy-clean
-	memset(_fake_client, 0, sizeof(*_fake_client));
 	
 	// Setup the maintenance job
 	_socket_tick();
@@ -400,3 +401,7 @@ void socket_clear_timer(client_t *client) {
 		client->timer = 0;
 	}
 }
+
+#ifdef TESTING
+#include "../test/test_socket.c"
+#endif

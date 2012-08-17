@@ -116,3 +116,7 @@ gboolean socket_set_timer(client_t *client, int timeout_sec, long timeout_nano);
  * @param client The now-behaving client.
  */
 void socket_clear_timer(client_t *client);
+
+#ifdef TESTING
+#include "../test/test_socket.h"
+#endif

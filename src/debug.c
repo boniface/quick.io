@@ -16,7 +16,9 @@
 		
 		// print out all the frames to stderr
 		fprintf(stderr, "Error: segfault\n");
-		backtrace_symbols_fd(array, size, 2);
+		
+		// +1 -> skip this function
+		backtrace_symbols_fd(array + 1, size, 2);
 		exit(1);
 	}
 	

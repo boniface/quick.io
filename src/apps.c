@@ -58,7 +58,7 @@ gboolean apps_init() {
 		gchar *path;
 		if (strspn(app_path, PATH_STARTERS) == 0) {
 			size_t len = strlen(app_path) + sizeof(PATH_CURR_DIR);
-			path = malloc(len * sizeof(*path));
+			path = g_try_malloc0(len * sizeof(*path));
 			snprintf(path, len, "%s%s", PATH_CURR_DIR, app_path);
 		} else {
 			path = g_strdup(app_path);
@@ -75,7 +75,7 @@ gboolean apps_init() {
 		}
 		
 		// For storing the app information
-		app_t *app = malloc(sizeof(*app));
+		app_t *app = g_try_malloc0(sizeof(*app));
 		
 		if (app == NULL) {
 			ERRORF("Could not allocate memory for app: %s", path);
@@ -84,9 +84,6 @@ gboolean apps_init() {
 		
 		// We allocated, so save it
 		g_ptr_array_add(_apps, app);
-		
-		// Make sure the app is all blank
-		memset(app, 0, sizeof(*app));
 		
 		// Save the name of the app
 		gchar* (*app_name)(void);
@@ -135,10 +132,7 @@ app_t* apps_get_app(gchar *app_name) {
 }
 
 gboolean apps_run() {
-	for (gsize i = 0; i < _apps->len; i++) {
-		// Get the app
-		app_t *app = g_ptr_array_index(_apps, i);
-		
+	APP_FOREACH(
 		// If there isn't a run function, then just move on
 		if (app->run == NULL) {
 			continue;
@@ -152,7 +146,7 @@ gboolean apps_run() {
 		}
 		
 		app->thread = thread;
-	}
+	)
 	
 	return TRUE;
 }

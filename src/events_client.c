@@ -349,7 +349,9 @@ void evs_client_cleanup() {
 		if (g_hash_table_size(sub->clients) == 0) {
 			DEBUGF("Removing empty subscription: %s", sub->event_path);
 			
-			g_free(sub->event_path);
+			// The key will be free'd when the iter is unref'd
+			// g_free(sub->event_path);
+			//
 			g_list_free_full(sub->extra, g_free);
 			g_hash_table_unref(sub->clients);
 			g_hash_table_iter_remove(&iter);

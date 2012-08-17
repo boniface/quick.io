@@ -162,7 +162,7 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, 
 		header_size = HEADER_LEN;
 		*frame_len = payload_len + header_size;
 		
-		frame = malloc(*frame_len * sizeof(*frame));
+		frame = g_try_malloc0(*frame_len * sizeof(*frame));
 		
 		// If can't malloc...that's bad.
 		if (frame == NULL) {
@@ -179,7 +179,7 @@ char* rfc6455_prepare_frame(opcode_t type, gchar *payload, guint64 payload_len, 
 		header_size = EXTENDED_HEADER_LEN;
 		*frame_len = payload_len + header_size;
 		
-		frame = malloc(*frame_len * sizeof(*frame));
+		frame = g_try_malloc0(*frame_len * sizeof(*frame));
 		
 		// If can't malloc...that's bad.
 		if (frame == NULL) {

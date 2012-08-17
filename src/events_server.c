@@ -441,7 +441,7 @@ gboolean evs_server_init() {
 	// evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
 	
 	// Internal commands are ready, let the app register its commands.
-	// apps_register_events();
+	apps_register_events();
 	
 	return TRUE;
 }

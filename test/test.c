@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
 	srunner_add_suite(sr, main_suite());
 	srunner_add_suite(sr, option_suite());
 	srunner_add_suite(sr, rfc6455_suite());
+	srunner_add_suite(sr, socket_suite());
 
 #if TEST_OUTPUT_XML
 	srunner_set_xml(sr, "../test_unit.xml");

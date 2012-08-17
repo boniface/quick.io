@@ -18,6 +18,7 @@
 #define MESSAGE_RFC6455_NOOP_1 "N\x0c\x0c\x0b\x11XY\x14\r\x03\n\n\\"
 
 static void _test_message_setup() {
+	apps_init();
 	evs_server_init();
 }
 
