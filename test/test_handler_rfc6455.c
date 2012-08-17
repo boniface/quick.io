@@ -19,8 +19,8 @@
 #define MESSAGE_SHORT "test"
 #define RFC6455_MESSAGE_SHORT "\x81""\x84"MASK"\x15\x07\x10\x10"
 
-#define RFC6455_MESSAGE_BROKEN_HEADER_P1 "\x81"
-#define RFC6455_MESSAGE_BROKEN_HEADER_P2 "\x84"MASK"\x15\x07\x10\x10"
+#define RFC6455_MESSAGE_PARTIAL_NO_HEADER_P1 "\x81"
+#define RFC6455_MESSAGE_PARTIAL_NO_HEADER_P2 "\x84"MASK"\x15\x07\x10\x10"
 
 #define RFC6455_MESSAGE_SHORT_P1 "\x81""\x84"MASK
 #define RFC6455_MESSAGE_SHORT_P2 "\x15\x07\x10\x10"
@@ -34,6 +34,9 @@
 
 #define MESSAGE_LONG "some message that happens to be longer than 125 characters, which makes it the perfect size to cause a larger header to be required to send the message length"
 #define RFC6455_MESSAGE_LONG "\x81""\xfe""\x00""\x9e""abcd\x12\r\x0e""\x01""A\x0f\x06\x17\x12\x03\x04""\x01""A\x16\x0b\x05""\x15""B\x0b\x05\x11\x12\x06\n""\x12""B\x17""\x0b""A\x00""\x06""D\r\r\r\x03\x04""\x10""C\x10\t\x03\rDPPVD\x02\n\x02\x16\x00\x01\x17\x01\x13""\x11""OD\x16\n\n\x07\tB\x0e\x05\n\x07""\x10""D\x08""\x16""C\x10\t""\x07""C\x14\x04\x10\x05\x01\x02""\x16""C\x17\x08\x18""\x06""D\x15\rC\x07\x00\x17\x10""\x01""A""\x03""C\x08\x00\x10\x04\x01""\x13""B\x0b\x01\x00\x06\x06""\x16""A\x16""\x0c""D\x03""\x07""C\x16\x04\x13\x16\r\x13\x07""\x07""D\x15\rC\x17\x04\x0c""\x07""D\x15\n""\x06""D\x0c\x07\x10\x17\x00\x05""\x06""D\r\x07\r\x03\x15\n"
+
+#define RFC6455_MESSAGE_LONG_BROKEN_HEADER_1 "\x81""\xfe""\x00"
+#define RFC6455_MESSAGE_LONG_BROKEN_HEADER_2 "\x9e""abcd\x12\r\x0e""\x01""A\x0f\x06\x17\x12\x03\x04""\x01""A\x16\x0b\x05""\x15""B\x0b\x05\x11\x12\x06\n""\x12""B\x17""\x0b""A\x00""\x06""D\r\r\r\x03\x04""\x10""C\x10\t\x03\rDPPVD\x02\n\x02\x16\x00\x01\x17\x01\x13""\x11""OD\x16\n\n\x07\tB\x0e\x05\n\x07""\x10""D\x08""\x16""C\x10\t""\x07""C\x14\x04\x10\x05\x01\x02""\x16""C\x17\x08\x18""\x06""D\x15\rC\x07\x00\x17\x10""\x01""A""\x03""C\x08\x00\x10\x04\x01""\x13""B\x0b\x01\x00\x06\x06""\x16""A\x16""\x0c""D\x03""\x07""C\x16\x04\x13\x16\r\x13\x07""\x07""D\x15\rC\x17\x04\x0c""\x07""D\x15\n""\x06""D\x0c\x07\x10\x17\x00\x05""\x06""D\r\x07\r\x03\x15\n"
 
 #define RFC6455_MESSAGE_OVERSIZED_MESSAGE "\x81""\xff""\x00""\x9e"
 
@@ -79,10 +82,23 @@ END_TEST
 START_TEST(test_rfc6455_partial_no_header) {
 	client_t *client = u_client_create();
 	
-	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_BROKEN_HEADER_P1);
+	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_PARTIAL_NO_HEADER_P1);
 	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short header rejected");
 	
-	g_string_append(client->message->socket_buffer, RFC6455_MESSAGE_BROKEN_HEADER_P2);
+	g_string_append(client->message->socket_buffer, RFC6455_MESSAGE_PARTIAL_NO_HEADER_P2);
+	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_rfc6455_partial_no_header_long) {
+	client_t *client = u_client_create();
+	
+	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_LONG_BROKEN_HEADER_1, sizeof(RFC6455_MESSAGE_LONG_BROKEN_HEADER_1)-1);
+	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Large header rejected");
+	
+	g_string_append_len(client->message->socket_buffer, RFC6455_MESSAGE_LONG_BROKEN_HEADER_2, sizeof(RFC6455_MESSAGE_LONG_BROKEN_HEADER_2)-1);
 	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
 	
 	u_client_free(client);
@@ -263,6 +279,7 @@ Suite* rfc6455_suite() {
 	
 	tc = tcase_create("Partial Messages");
 	tcase_add_test(tc, test_rfc6455_partial_no_header);
+	tcase_add_test(tc, test_rfc6455_partial_no_header_long);
 	tcase_add_test(tc, test_rfc6455_partial_short_message);
 	tcase_add_test(tc, test_rfc6455_multi_partial_short_messages);
 	tcase_add_test(tc, test_rfc6455_multi_partial_broken_header);
