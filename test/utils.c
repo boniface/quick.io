@@ -45,15 +45,23 @@ void u_main_setup(pid_t *pid) {
 		
 		close(out[1]);
 		
-		// The server needs some time to get started
-		sleep(1);
+		for (int i = 0; i < 5; i++) {
+			// The server needs some time to get started
+			usleep(MS_TO_USEC(50));
+			
+			// Wait for the server to emit "READY", then we can run our tests
+			char buff[6];
+			memset(&buff, 0, sizeof(buff));
+			if (read(out[0], buff, sizeof(buff)) > 0) {
+				test_str_eq(buff, "READY\n", "Server inited");
+			}
+			
+			close(out[0]);
+			
+			return;
+		}
 		
-		// Wait for the server to emit "READY", then we can run our tests
-		char buff[200];
-		memset(&buff, 0, sizeof(buff));
-		read(out[0], buff, sizeof(buff));
-		test_str_eq(buff, "READY\n", "Server inited");
-		close(out[0]);
+		test(FALSE, "Server failed to init");
 	} else {
 		close(out[0]);
 		

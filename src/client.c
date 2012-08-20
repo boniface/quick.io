@@ -74,6 +74,7 @@ status_t client_message(client_t* client) {
 	
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
+		DEBUGF("Message: %s", client->message->buffer->str);
 		status = evs_server_handle(client);
 		
 		#warning Need to handle different client status messages from handlers appropriately
@@ -118,11 +119,9 @@ status_t client_write(client_t *client, message_t *message) {
 
 status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	// Frames will ALWAYS be larger than 0, there MUST be a header
-	if (frame_len > 0) {
-		send(client->sock, frame, frame_len, MSG_NOSIGNAL);
+	if (frame_len > 0 && send(client->sock, frame, frame_len, MSG_NOSIGNAL) > -1) {
 		return CLIENT_GOOD;
 	} else {
-		ERROR("Something went wrong with frame creation...");
 		return CLIENT_ABORTED;
 	}
 }

@@ -117,7 +117,7 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 	gchar buffer[option_max_message_size()];
 	
 	DEBUGF("Event: %d", client->sock);
-	
+
 	if (evs & EPOLLRDHUP) {
 		DEBUGF("Client HUP: %d", client->sock);
 		// The underlying socket was closed
@@ -139,12 +139,14 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		
 		// Read the message the client sent, unless it's too large,
 		// then kill the client
-		int len;
+		gssize len;
 		while ((len = read(client->sock, buffer, sizeof(buffer))) > 0) {
+			DEBUGF("Read: %ld", len);
+			
 			// Put the buffer into our string
 			g_string_append_len(client->message->socket_buffer, buffer, len);
 			
-			// If the client needs to ehance his calm, kill the connection.
+			// If the client needs to enhance his calm, kill the connection.
 			if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
 				DEBUG("Client needs to enhance his calm");
 				socket_close(client);
@@ -152,47 +154,56 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 			}
 		}
 		
-		status_t status;
-		if (client->initing == 1) {
-			DEBUG("Client handshake");
-			status = client_handshake(client);
-			
-			// Headers are sent without encoding, don't use the client wrapper
-			if (status & CLIENT_WRITE) {
-				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
+		// While there is still something on the socket buffer to process
+		while (client->message && client->message->socket_buffer->len > 0) {
+			status_t status;
+			if (client->initing == 1) {
+				DEBUG("Client handshake");
+				status = client_handshake(client);
 				
-				// The handshake is complete, we're done here.
-				client->initing = 0;
+				// Headers are sent without encoding, don't use the client wrapper
+				if (status & CLIENT_WRITE) {
+					status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
+					
+					// The handshake is complete, we're done here.
+					client->initing = 0;
+					
+					// Set the user into a room
+					evs_client_client_ready(client);
+				}
+			} else {
+				DEBUG("Message from client");
+				status = client_message(client);
 				
-				// Set the user into a room
-				evs_client_client_ready(client);
+				// Send back a framed response for the websocket
+				if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
+					status = CLIENT_ABORTED;
+				}
 			}
-		} else {
-			DEBUG("Message from client");
-			status = client_message(client);
 			
-			// Send back a framed response for the websocket
-			if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
-				status = CLIENT_ABORTED;
+			// If the client becomes good, then clear the timer and let him live
+			if (status == CLIENT_GOOD) {
+				socket_clear_timer(client);
+				
+				// Clean up the message buffer, since we just finished processing him
+				socket_message_clean(client, TRUE, FALSE);
+			
+			// The client gets 1 timer to make itself behave. If it doesn't in this
+			// time, then we summarily kill it.
+			} else if (status == CLIENT_WAIT && !client->timer) {
+				socket_set_timer(client, 0, 0);
+				
+				// The buffer will still be set, we're waiting, so just exit
+				break;
+				
+			// The client is misbehaving. Close him.
+			} else {
+				DEBUGF("Bad client, closing: status=%d", status);
+				socket_close(client);
+				
+				// The client is gone...we're done.
+				break;
 			}
-		}
-		
-		// If the client becomes good, then clear the timer and let him live
-		if (status == CLIENT_GOOD) {
-			socket_clear_timer(client);
-			
-			// Clean up the message buffer, since we just finished processing him
-			socket_message_free(client, client->message->socket_buffer->len == 0);
-		
-		// The client is misbehaving. Close him.
-		} else if (status & CLIENT_BAD) {
-			DEBUGF("Bad client, closing: status=%d", status);
-			socket_close(client);
-		
-		// The client gets 1 timer to make itself behave. If it doesn't in this
-		// time, then we summarily kill it.
-		} else if (status == CLIENT_WAIT && !client->timer) {
-			socket_set_timer(client, 0, 0);
 		}
 	}
 }
@@ -223,7 +234,7 @@ void socket_loop() {
 	// Where the OS will put events for us
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
-	while (1) {
+	while (TRUE) {
 		int num_evs = epoll_wait(_epoll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 		
 		// Since we're polling at an interval, it's possible no events
@@ -231,6 +242,11 @@ void socket_loop() {
 		if (num_evs < 1) {
 			continue;
 		}
+		
+		#ifdef TESTING
+			test_lock_acquire();
+			test_lock_release();
+		#endif
 		
 		// Some events actually did happen; go through them all!
 		for (int i = 0; i < num_evs; i++) {
@@ -324,14 +340,25 @@ void socket_close(client_t *client) {
 	// Closing the socket also causes the OS to remove it from epoll
 	close(client->sock);
 	socket_clear_timer(client);
-	socket_message_free(client, TRUE);
+	socket_message_free(client);
 	free(client);
 }
 
-/**
- * Free everything inside of the client message.
- */
-void socket_message_free(client_t *client, gboolean purge_socket_buffer) {
+void socket_message_free(client_t *client) {
+	message_t *message = client->message;
+	
+	// If the client doesn't have a message, don't be stupid
+	if (message == NULL) {
+		return;
+	}
+	
+	g_string_free(message->buffer, TRUE);
+	g_string_free(message->socket_buffer, TRUE);
+	free(message);
+	client->message = NULL;
+}
+
+void socket_message_clean(client_t *client, gboolean truncate_buffer, gboolean truncate_socket_buffer) {
 	message_t *message = client->message;
 	
 	if (message == NULL) {
@@ -339,20 +366,17 @@ void socket_message_free(client_t *client, gboolean purge_socket_buffer) {
 		return;
 	}
 	
-	// Get rid of the message buffer, the message has been handled
-	if (message->buffer != NULL) {
-		g_string_free(message->buffer, TRUE);
-		message->buffer = NULL;
-	}
-	
 	message->remaining_length = 0;
 	message->type = 0;
 	message->mask = 0;
 	
-	if (purge_socket_buffer || message->socket_buffer->len == 0) {
-		g_string_free(message->socket_buffer, TRUE);
-		free(message);
-		client->message = NULL;
+	// Get rid of the message buffer, the message has been handled
+	if (truncate_buffer) {
+		g_string_truncate(message->buffer, 0);
+	}
+	
+	if (truncate_socket_buffer) {
+		g_string_truncate(message->socket_buffer, 0);
 	}
 }
 

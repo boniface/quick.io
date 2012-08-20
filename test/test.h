@@ -5,8 +5,12 @@
  */
 #pragma once
 #include <check.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <semaphore.h>
 #include "qio.h"
 #include "utils.h"
+#include "utils_locks.h"
 
 /**
  * Test that the assertion is true.

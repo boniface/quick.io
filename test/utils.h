@@ -6,7 +6,6 @@
 #pragma once
 #include "test.h"
 
-
 #define U_HANDSHAKE "GET /chat HTTP/1.1\r\n" \
 	"Host: server.example.com\r\n" \
 	"Upgrade: websocket\r\n" \
@@ -20,6 +19,20 @@
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
 	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+
+/**
+ * Convert milliseconds to microseconds.  Just so it's easier to read.
+ *
+ * @param ms The number of milliseconds to put into nanoseconds.
+ */
+#define MS_TO_USEC(ms) (ms * 1000)
+
+/**
+ * Convert seconds to microseconds.  Just so it's easier to read.
+ *
+ * @param secs The number of seconds to put into nanoseconds.
+ */
+#define SEC_TO_USEC(sec) MS_TO_USEC(sec * 1000)
 
 /**
  * Convert a status_t to a string, for printing.

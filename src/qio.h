@@ -29,3 +29,7 @@ typedef struct evs_client_sub_s evs_client_sub_t;
 #include "monkey.h"
 #include "option.h"
 #include "socket.h"
+
+#ifdef TESTING
+#include "../test/utils_locks.h"
+#endif

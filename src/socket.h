@@ -86,17 +86,21 @@ gboolean socket_init_process();
 void socket_close(client_t *client);
 
 /**
- * Free the client message, but not necessarily the underlying socket buffer.
+ * Clean up the client message buffers.
  *
- * The socket buffer will not be freed unless it is empty or it is forced with
- * purge_socket_buffer.
- * 
- * @param client The client to free up and close.
- * @param purge_socket_buffer
- * If TRUE, then the socket buffer will be forcibly dumped even if it is not empty.
- * Otherwise, the socket buffer is left intact for futher reading / appending.
+ * @param client The client whose buffers need cleaning.
+ * @param truncate_buffer If the buffer should be truncated.
+ * @param truncate_socket_buffer If the socket buffer should be truncated.
  */
-void socket_message_free(client_t *client, gboolean purge_socket_buffer);
+void socket_message_clean(client_t *client, gboolean truncate_buffer, gboolean truncate_socket_buffer);
+
+/**
+ * Free the client's message buffers and remove the message.
+ *
+ * @param client The client whose message buffers should be removed.
+ */
+void socket_message_free(client_t *client);
+
 
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will

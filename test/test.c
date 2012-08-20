@@ -3,6 +3,12 @@
 #include "test.h"
 
 int main(int argc, char *argv[]) {
+	// Setup the cross-process locking mechanism
+	if (!test_lock_init()) {
+		ERROR("Could not setup inter-process locking.  Failing.");
+		return 1;
+	}
+
 	// Move into the directory holding this binary
 	chdir(dirname(argv[0]));
 
@@ -23,6 +29,8 @@ int main(int argc, char *argv[]) {
 	srunner_run_all(sr, CK_NORMAL);
 	number_failed += srunner_ntests_failed(sr);
 	srunner_free(sr);
+	
+	test_lock_close();
 	
 	return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
