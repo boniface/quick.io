@@ -130,11 +130,11 @@ START_TEST(test_socket_two_messages) {
 	// The server should respond with two pings, make sure it does
 	// +2 -> for the headers
 	// *2 -> the two messages
-	char buff[sizeof(PING_DOUBLE_RESPONSE)-1];
+	char buff[sizeof(PING_DOUBLE_RESPONSE)];
 	memset(buff, 0, sizeof(buff));
 	
 	gsize got = 0, i = 3;
-	while (i-- && (got += read(sock, buff + got, sizeof(buff))) < sizeof(buff));
+	while (i-- && (got += read(sock, buff + got, sizeof(buff))) < (sizeof(buff)-1));
 	
 	test_str_eq(buff, PING_DOUBLE_RESPONSE, "Two messages recieved");
 	
