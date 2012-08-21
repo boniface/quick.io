@@ -101,7 +101,6 @@ void socket_message_clean(client_t *client, gboolean truncate_buffer, gboolean t
  */
 void socket_message_free(client_t *client);
 
-
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will
  * be killed.

@@ -37,6 +37,8 @@ void u_main_setup(pid_t *pid) {
 	int out[2];
 	test_int32_eq(pipe(out), 0, "Pipes ready");
 	
+	utils_stats_setup();
+	
 	*pid = fork();
 	if (*pid) {
 		// Parse the config options so they can be used locally
@@ -47,7 +49,7 @@ void u_main_setup(pid_t *pid) {
 		
 		for (int i = 0; i < 5; i++) {
 			// The server needs some time to get started
-			usleep(MS_TO_USEC(50));
+			usleep(MS_TO_USEC(20));
 			
 			// Wait for the server to emit "READY", then we can run our tests
 			char buff[6];
@@ -76,6 +78,7 @@ void u_main_setup(pid_t *pid) {
 
 void u_main_teardown(pid_t pid) {
 	kill(pid, SIGTERM);
+	utils_stats_teardown();
 }
 
 int u_connect() {

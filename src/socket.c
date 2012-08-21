@@ -119,6 +119,8 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 	DEBUGF("Event: %d", client->sock);
 
 	if (evs & EPOLLRDHUP) {
+		UTILS_STATS_INC(socket_hups);
+		
 		DEBUGF("Client HUP: %d", client->sock);
 		// The underlying socket was closed
 		socket_close(client);
@@ -128,6 +130,8 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// timer has expired.
 		// 8 is the most bytes the int returned can be
 		if (client->timer && read(client->timer, buffer, 8) > -1) {
+			UTILS_STATS_INC(socket_timeouts);
+			
 			// If the client has been caught misbehaving...
 			DEBUG("Misbehaving client closed because of timeout");
 			socket_close(client);
@@ -141,13 +145,13 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 		// then kill the client
 		gssize len;
 		while ((len = read(client->sock, buffer, sizeof(buffer))) > 0) {
-			DEBUGF("Read: %ld", len);
-			
 			// Put the buffer into our string
 			g_string_append_len(client->message->socket_buffer, buffer, len);
 			
 			// If the client needs to enhance his calm, kill the connection.
 			if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
+				UTILS_STATS_INC(socket_bad_clients);
+				
 				DEBUG("Client needs to enhance his calm");
 				socket_close(client);
 				return;
@@ -172,6 +176,8 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 					evs_client_client_ready(client);
 				}
 			} else {
+				UTILS_STATS_INC(socket_messages);
+				
 				DEBUG("Message from client");
 				status = client_message(client);
 				
@@ -191,6 +197,8 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 			// The client gets 1 timer to make itself behave. If it doesn't in this
 			// time, then we summarily kill it.
 			} else if (status == CLIENT_WAIT && !client->timer) {
+				UTILS_STATS_INC(socket_client_wait);
+				
 				socket_set_timer(client, 0, 0);
 				
 				// The buffer will still be set, we're waiting, so just exit
@@ -198,6 +206,8 @@ static void _socket_handle_client(client_t *client, uint32_t evs) {
 				
 			// The client is misbehaving. Close him.
 			} else {
+				UTILS_STATS_INC(socket_bad_clients);
+				
 				DEBUGF("Bad client, closing: status=%d", status);
 				socket_close(client);
 				

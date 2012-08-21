@@ -84,6 +84,9 @@ START_TEST(test_socket_ping) {
 	test_str_eq(buff, PING_RESPONSE, "Decoded message");
 	
 	close(sock);
+	
+	test_size_eq(utils_stats()->socket_messages, 1, "Server processed 1 message");
+	test_size_eq(utils_stats()->socket_client_wait, 0, "Client was not waited for");
 }
 END_TEST
 
@@ -96,7 +99,7 @@ START_TEST(test_socket_too_much_data) {
 	memset(&buff, 'a', sizeof(buff));
 	
 	// Don't buffer anything
-	int flag = 1;\
+	int flag = 1;
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 	
 	// Flood the socket with tons of data and make sure it gets closed
@@ -109,6 +112,11 @@ START_TEST(test_socket_too_much_data) {
 	test_int32_eq(send(sock, buff, sizeof(buff), MSG_NOSIGNAL), -1, "Socket closed");
 	
 	close(sock);
+	
+	test_size_eq(utils_stats()->socket_messages, 0, "Server accepted no messages");
+	test_size_eq(utils_stats()->socket_client_wait, 0, "Client was not waited for");
+	test_size_eq(utils_stats()->socket_hups, 0, "Client didn't close");
+	test_size_eq(utils_stats()->socket_bad_clients, 1, "Client was forcibly closed");
 }
 END_TEST
 
@@ -139,6 +147,9 @@ START_TEST(test_socket_two_messages) {
 	test_str_eq(buff, PING_DOUBLE_RESPONSE, "Two messages recieved");
 	
 	close(sock);
+	
+	test_size_eq(utils_stats()->socket_messages, 2, "Server processed 2 messages");
+	test_size_eq(utils_stats()->socket_client_wait, 0, "Client was not waited for");
 }
 END_TEST
 
@@ -148,7 +159,7 @@ START_TEST(test_socket_close_after_message) {
 	test(sock, "Connection established");
 	
 	// Don't buffer anything
-	int flag = 1;\
+	int flag = 1;
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 	
 	gsize frame_len = 0;
@@ -156,19 +167,84 @@ START_TEST(test_socket_close_after_message) {
 	
 	test_lock_acquire();
 	send(sock, frame, frame_len, MSG_NOSIGNAL);
-	
-	usleep(SEC_TO_USEC(1));
-	
-	send(sock, frame, frame_len, MSG_NOSIGNAL);
 	test_lock_release();
 	
-	usleep(SEC_TO_USEC(1));
+	// Make sure the epoll has time to respond
+	usleep(MS_TO_USEC(100));
+	
+	// Send a message and a close, this message should not go through
+	test_lock_acquire();
+	send(sock, frame, frame_len, MSG_NOSIGNAL);
+	close(sock);
+	test_lock_release();
+	
+	free(frame);
+	
+	usleep(MS_TO_USEC(100));
+	
+	test_size_eq(utils_stats()->socket_messages, 1, "Second message not processed");
+	test_size_eq(utils_stats()->socket_hups, 1, "Client HUPed");
+	test_size_eq(utils_stats()->socket_bad_clients, 0, "Server left client open");
+	test_size_eq(utils_stats()->socket_client_wait, 0, "Client was not waited for");
+}
+END_TEST
+
+START_TEST(test_socket_close_partial_message) {
+	int sock = u_ws_connect();
+	
+	test(sock, "Connection established");
+	
+	// Don't buffer anything
+	int flag = 1;
+	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	
+	gsize frame_len = 0;
+	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	test_lock_acquire();
-	// close(sock);
+	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
+	usleep(MS_TO_USEC(100));
+	close(sock);
 	test_lock_release();
 	
+	usleep(MS_TO_USEC(100));
+	
+	test_size_eq(utils_stats()->socket_messages, 1, "Partial message recieved");
+	test_size_eq(utils_stats()->socket_hups, 1, "Client HUPed");
+	test_size_eq(utils_stats()->socket_bad_clients, 0, "Server left client open");
+	test_size_eq(utils_stats()->socket_client_wait, 1, "Client was waited for");
+}
+END_TEST
+
+START_TEST(test_socket_close_bad_message) {
+	// Steps:
+	//    1) Client sends a bad message
+	//    2) Before the server can close the client, client closes
+	//    3) Server closes the client
+	//    4) epoll SHOULD NOT send a HUP, thus double-freeing the client
+	int sock = u_ws_connect();
+	
+	test(sock, "Connection established");
+	
+	// Don't buffer anything
+	int flag = 1;
+	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	
+	char buff[100];
+	memset(&buff, 0, sizeof(buff));
+	
+	test_lock_acquire();
+	send(sock, buff, sizeof(buff), MSG_NOSIGNAL);
+	usleep(MS_TO_USEC(100));
 	close(sock);
+	test_lock_release();
+	
+	usleep(MS_TO_USEC(100));
+	
+	test_size_eq(utils_stats()->socket_messages, 1, "Bad message accepted");
+	test_size_eq(utils_stats()->socket_hups, 0, "Client did not HUP");
+	test_size_eq(utils_stats()->socket_bad_clients, 1, "Server left client open");
+	test_size_eq(utils_stats()->socket_client_wait, 0, "Client was not waited for");
 }
 END_TEST
 
@@ -186,7 +262,9 @@ Suite* socket_suite() {
 	tcase_add_test(tc, test_socket_ping);
 	tcase_add_test(tc, test_socket_too_much_data);
 	tcase_add_test(tc, test_socket_two_messages);
-	// tcase_add_test(tc, test_socket_close_after_message);
+	tcase_add_test(tc, test_socket_close_after_message);
+	tcase_add_test(tc, test_socket_close_partial_message);
+	tcase_add_test(tc, test_socket_close_bad_message);
 	suite_add_tcase(s, tc);
 	
 	return s;

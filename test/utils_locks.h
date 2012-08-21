@@ -1,10 +1,17 @@
-#pragma once
-#include "qio.h"
-
 /**
  * Creates locks across processes to allow pausing things for creating conditions.
  * @file utils_locks.h
  */
+
+#pragma once
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <semaphore.h>
+
+// The specific utils files shouldn't require anything, they're utilities that
+// operate independently of everything.  Don't include "test.h" here, or circular
+// dependencies go crazy.
+#include "qio.h"
 
 /**
  * The name of the semaphore in use.

@@ -1,8 +1,9 @@
-#include "test.h"
-
 /**
  * The file that we puts locks on.
  */
+
+#include "utils_locks.h"
+
 static sem_t *_sem;
 
 gboolean test_lock_init() {
