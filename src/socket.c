@@ -35,11 +35,11 @@ static gboolean _socket_epoll_add(int fd, client_t *client) {
 	ev.data.ptr = client;
 	
 	// Start listening on the socket for anything the client has to offer
-	qio_error_and_do_if(
-		epoll_ctl(_epoll, EPOLL_CTL_ADD, fd, &ev) == -1,
-		"Could not add socket to epoll",
-		{ socket_close(client); return FALSE; }
-	);
+	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, fd, &ev) == -1) {
+		ERROR("Could not add socket to epoll");
+		socket_close(client);
+		return FALSE;
+	}
 	
 	return TRUE;
 }
@@ -52,25 +52,24 @@ static gpointer _socket_accept_client(gpointer unused) {
 		int sock = accept(_listen_sock, (struct sockaddr*)NULL, NULL);
 		
 		// Couldn't accept...move on
-		qio_error_and_do_if(
-			sock == -1,
-			"Could not accept socket",
-			{ continue; }
-		);
+		if (sock == -1) {
+			ERROR("Could not accept socket");
+			continue;
+		}
 		
-		qio_error_and_do_if(
-			fcntl(sock, F_SETFL, O_NONBLOCK) == -1,
-			"Could not set client non-blocking",
-			{ close(sock); continue; }
-		);
+		if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
+			ERROR("Could not set client non-blocking");
+			close(sock);
+			continue;
+		}
 		
 		client_t *client = g_try_malloc0(sizeof(*client));
 		
-		qio_error_and_do_if(
-			client == NULL,
-			"Client could not be malloc()'d",
-			{ close(sock); continue; }
-		);
+		if (client == NULL) {
+			ERROR("Client could not be malloc()'d");
+			close(sock);
+			continue;
+		}
 		
 		// Basic information about this client
 		client->sock = sock;
@@ -252,11 +251,10 @@ void socket_loop() {
 		
 		// Since we're polling at an interval, it's possible no events
 		// will have happened
-		qio_error_and_do_if(
-			num_evs < 1,
-			"epoll_wait failed",
-			{ continue; }
-		);
+		if(num_evs < 1) {
+			ERROR("epoll_wait failed");
+			continue;
+		}
 		
 		#ifdef TESTING
 			test_lock_acquire();
@@ -281,11 +279,10 @@ void socket_loop() {
 gboolean socket_init() {
 	struct sockaddr_in addy;
 	
-	qio_ret_val_if(
-		(_listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1,
-		FALSE,
-		"Could not create socket"
-	);
+	if ((_listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		ERROR("Could not create socket");
+		return FALSE;
+	}
 	
 	addy.sin_family = AF_INET;
 	addy.sin_port = htons(option_port());
@@ -293,23 +290,20 @@ gboolean socket_init() {
 	memset(&addy.sin_zero, 0, sizeof(addy.sin_zero));
 	
 	int on = 1;
-	qio_ret_val_if(
-		setsockopt(_listen_sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1,
-		FALSE,
-		"Could not set socket option"
-	);
+	if (setsockopt(_listen_sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
+		ERROR("Could not set socket option");
+		return FALSE;
+	}
 	
-	qio_ret_val_if_f(
-		bind(_listen_sock, (struct sockaddr*)&addy, sizeof(addy)) == -1,
-		FALSE,
-		"Could not bind: %s", strerror(errno)
-	);
+	if (bind(_listen_sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
+		ERRORF("Could not bind: %s", strerror(errno));
+		return FALSE;
+	}
 	
-	qio_ret_val_if_f(
-		listen(_listen_sock, LISTEN_BACKLOG) == -1,
-		FALSE,
-		"Could not listen: %s", strerror(errno)
-	);
+	if (listen(_listen_sock, LISTEN_BACKLOG) == -1) {
+		ERRORF("Could not listen: %s", strerror(errno));
+		return FALSE;
+	}
 	
 	return TRUE;
 }
@@ -318,28 +312,24 @@ gboolean socket_init_process() {
 	// 1 -> a positive, int size must be given; ignored by new kernels
 	_epoll = epoll_create(1);
 	
-	qio_ret_val_if_f(
-		_epoll < 1,
-		FALSE,
-		"Could not init epoll: %s", strerror(errno)
-	);
+	if (_epoll < 1) {
+		ERRORF("Could not init epoll: %s", strerror(errno));
+		return FALSE;
+	}
 	
 	GError *error = NULL;
 	_thread = g_thread_try_new(__FILE__, _socket_accept_client, NULL, &error);
 	
-	qio_ret_val_if_f(
-		_thread == NULL,
-		FALSE,
-		"Could not init socket accept in thread: %s", error->message
-	);
+	if (_thread == NULL) {
+		ERRORF("Could not init socket accept in thread: %s", error->message);
+		return FALSE;
+	}
 	
 	_fake_client = g_try_malloc0(sizeof(*_fake_client));
 	
-	qio_ret_val_if(
-		_fake_client == NULL,
-		FALSE,
-		"_fake_client could not be malloc()'d"
-	);
+	if (_fake_client == NULL) {
+		ERROR("_fake_client could not be malloc()'d");
+	}
 	
 	// Setup the maintenance job
 	_socket_tick();
@@ -413,11 +403,11 @@ gboolean socket_set_timer(client_t *client, int timeout_sec, long timeout_nano) 
 	int timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 	
 	// If something goes wrong with the timer, just kill the stupid client
-	qio_error_and_do_if(
-		timer == -1,
-		"Could not create a timer for client",
-		{ socket_close(client); return FALSE; }
-	);
+	if (timer == -1) {
+		ERROR("Could not create a timer for client");
+		socket_close(client);
+		return FALSE;
+	}
 	
 	struct itimerspec spec;
 	

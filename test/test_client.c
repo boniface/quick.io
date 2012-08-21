@@ -130,6 +130,27 @@ START_TEST(test_client_message_continue) {
 }
 END_TEST
 
+START_TEST(test_client_no_message) {
+	client_t *client = u_client_create();
+	message_t *message = client->message;
+	client->message = NULL;
+	
+	test_status_eq(client_write(client, NULL), CLIENT_BAD_MESSAGE_FORMAT, "No message to write");
+	
+	client->message = message;
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_client_no_handler) {
+	client_t *client = u_client_create();
+	
+	test_status_eq(client_write(client, NULL), CLIENT_ABORTED, "No handler");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -149,6 +170,11 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_message_no_handler_continue);
 	tcase_add_test(tc, test_client_message_incoming);
 	tcase_add_test(tc, test_client_message_continue);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Writing");
+	tcase_add_test(tc, test_client_no_message);
+	tcase_add_test(tc, test_client_no_handler);
 	suite_add_tcase(s, tc);
 	
 	return s;
