@@ -29,6 +29,7 @@ typedef struct evs_client_sub_s evs_client_sub_t;
 #include "debug.h"
 #include "handler_rfc6455.h"
 #include "main.h"
+#include "misc.h"
 #include "monkey.h"
 #include "option.h"
 #include "socket.h"

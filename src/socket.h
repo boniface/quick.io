@@ -92,7 +92,7 @@ void socket_close(client_t *client);
  * @param truncate_buffer If the buffer should be truncated.
  * @param truncate_socket_buffer If the socket buffer should be truncated.
  */
-void socket_message_clean(client_t *client, gboolean truncate_buffer, gboolean truncate_socket_buffer);
+void socket_message_clean(client_t *client, gboolean truncate_socket_buffer, gboolean truncate_buffer);
 
 /**
  * Free the client's message buffers and remove the message.
@@ -103,13 +103,16 @@ void socket_message_free(client_t *client);
 
 /**
  * Sets a timer on a socket; when the timer expires, the corresponding client will
- * be killed.
+ * be killed.  If a timer already exists on a client, a new one will not be created.
  *
  * If the timer parameters are both 0, then the defaults from the config file are used.
  *
  * @param client The client to set the timer on.
  * @param timeout_sec The number of seconds to wait.
  * @param timeout_nano The number of nanoseconds to wait.
+ *
+ * @return TRUE on success / already existing timer, FALSE if the timer couldn't be set. It's
+ * a pretty good idea to kill the client if this ever returns FALSE.
  */
 gboolean socket_set_timer(client_t *client, int timeout_sec, long timeout_nano);
 
