@@ -1,7 +1,7 @@
 /**
  * @file module.h
  * 
- * For making function visible to modules.
+ * For making functions visible to modules.
  * The single macro for making functions visible to loaded modules (aka. apps).
  */
 #pragma once

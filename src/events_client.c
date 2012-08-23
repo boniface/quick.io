@@ -281,7 +281,7 @@ void evs_client_pub_messages() {
 		
 		// Clean up dead clients
 		for (gsize i = 0; i < dead_clients->len; i++) {
-			socket_close(g_ptr_array_index(dead_clients, i));
+			conns_client_close(g_ptr_array_index(dead_clients, i));
 		}
 			
 		// Clean all that memory

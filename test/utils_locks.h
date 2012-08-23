@@ -20,8 +20,6 @@
 
 /**
  * Init the lock mechanisms.
- *
- * @param file The path to the server (this is what a lock is created on).
  */
 gboolean test_lock_init();
 

@@ -204,17 +204,17 @@ void apps_client_connect(client_t *client);
 void apps_client_close(client_t *client);
 
 /**
- * Inform all the apps when a client has subscribed to something.
+ * Inform all the apps when a client has added a subscription.
  * 
- * @param event The name of the event the client subscribed to.
  * @param client The client that subscribed.
+ * @param sub The subscription the client added.
  */
 void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *sub);
 
 /**
- * Inform all the apps when a client has unsubscribed to something.
+ * Inform all the apps when a client has dropped a subscription.
  * 
- * @param event The name of the event the client unsubscribed from.
  * @param client The client that unsubscribed.
+ * @param sub The subscription the client dropped.
  */
 void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t *sub);

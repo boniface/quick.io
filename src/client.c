@@ -119,7 +119,7 @@ status_t client_write(client_t *client, message_t *message) {
 
 status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	// Frames will ALWAYS be larger than 0, there MUST be a header
-	if (frame_len > 0 && send(client->sock, frame, frame_len, MSG_NOSIGNAL) > -1) {
+	if (frame_len > 0 && qsys_write(client, frame, frame_len) > -1) {
 		return CLIENT_GOOD;
 	} else {
 		return CLIENT_ABORTED;

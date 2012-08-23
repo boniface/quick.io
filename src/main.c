@@ -1,8 +1,6 @@
-#include <libgen.h>
-#include <signal.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <libgen.h> // For dirname()
+#include <sys/types.h> // For wait()
+#include <sys/wait.h> // For wait()
 
 #include "qio.h"
 
@@ -10,6 +8,32 @@
  * Allow access to the pids from the test framework
  */
 static pid_t *_pids;
+
+/**
+ * Runs the main event loop.
+ */
+static void _main_loop() {
+	if (!qsys_init()) {
+		return;
+	}
+	
+	GError *error = NULL;
+	GThread *_thread = g_thread_try_new(__FILE__, qsys_accept, NULL, &error);
+	if (_thread == NULL) {
+		ERRORF("Could not init socket accept in thread: %s", error->message);
+		return;
+	}
+	
+	if (!conns_qsys_ready()) {
+		ERROR("Connections qsys_ready() callback failed");
+		return;
+	}
+	
+	// The main event loop for the server
+	while (TRUE) {
+		qsys_dispatch();
+	}
+}
 
 /**
  * Fork all of the children processes.
@@ -46,12 +70,6 @@ static gboolean _main_fork() {
 			// Done with these guys
 			free(_pids);
 			
-			// Get epoll and listening going.  If this fails...shit.
-			if (!socket_init_process()) {
-				ERRORF("Epoll init failed in #%d", processes);
-				exit(1);
-			}
-			
 			// Init the apps. If they fail, then why are we running?
 			if (!apps_run()) {
 				ERRORF("Could not init apps in #%d.", processes);
@@ -59,8 +77,8 @@ static gboolean _main_fork() {
 			}
 			
 			// Run the socket loop
-			socket_loop();
-			ERRORF("A CHILD EXITED THE SOCKET LOOP: #%d", processes);
+			_main_loop();
+			ERRORF("A CHILD EXITED THE EVENT LOOP: #%d", processes);
 			exit(1);
 		} else {
 			// Save the process id for later culling
@@ -127,7 +145,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (socket_init()) {
+	if (qsys_listen()) {
 		DEBUG("Socket listener setup");
 	} else {
 		ERROR("Could not init socket.");

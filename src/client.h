@@ -186,14 +186,14 @@ typedef struct client_s {
 	/**
 	 * The underlying socket for this client.
 	 */
-	int sock;
+	qsys_socket socket;
 	
 	/**
 	 * A timer for killing stupid clients.
 	 *
 	 * @see socket_set_timer
 	 */
-	int timer;
+	qsys_timer timer;
 	
 	/**
 	 * If the client is still in the initing (handshake) process.

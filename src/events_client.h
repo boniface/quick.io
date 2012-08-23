@@ -12,6 +12,10 @@
  * The message format for events being sent to a client.
  */
 #define F_EVENT "%s" EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
+
+/**
+ * The message format for a callback.
+ */
 #define F_EVENT_CALLBACK "/callback/%" G_GUINT32_FORMAT EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
 
 /**
@@ -120,7 +124,7 @@ void evs_client_client_ready(client_t* client);
 /**
  * Subscribes a client to an event.
  * 
- * @param event The name of the event the client should be subscribed to.
+ * @param event_path The name of the event the client should be subscribed to.
  * @param client The client to subscribe to event.
  *
  * @return CLIENT_INVALID_SUBSCRIPTION - The event name doesn't exist.
@@ -143,7 +147,7 @@ void evs_client_client_free(client_t *client);
 /**
  * Removes the client from the room.
  *
- * @param event The name of the event to unsubscribe the client from.
+ * @param event_path The name of the event to unsubscribe the client from.
  * @param client The client to unsubscribe from event.
  *
  * @return CLIENT_CANNOT_UNSUBSCRIBE - The client was either not subscribed to the event of the event didn't exist.  Either way, the client will not recieve notifications for this event.

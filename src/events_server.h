@@ -189,15 +189,15 @@ status_t evs_server_handle(client_t *client);
 /**
  * Listen for an event from clients.
  *
- * @param event The name of the event to be notified for.
- * @param handler The function that should be called when the event comes in.
+ * @param event_path The name of the event to be notified for.
+ * @param fn The function that should be called when the event comes in.
  * @param on_subscribe The function to be called when a client subscribes to this event.
  * @param on_unsubscribe The function to be called when a client unsubscribes from this event.
  * @param handle_children If this handler handles children events with handlers.
  *
  * @see event_info_s
  */
-event_handler_t* evs_server_on(const gchar *event, handler_fn fn, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
+event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * Gets the name of an event from the handler.
