@@ -22,6 +22,11 @@ typedef struct evs_client_sub_s evs_client_sub_t;
  */
 typedef struct client_s client_t;
 
+/**
+ * Defined in client.h
+ */
+typedef guint16 status_t;
+
 #include "../test/utils_stats.h"
 #include "../test/utils_locks.h"
 

@@ -12,7 +12,7 @@ TESTING = 0
 
 default: $(TARGET)
 
-# If compiling in shared mode, make sure we have coverage support
+# If compiling in testing mode, make sure we have coverage support
 ifeq ($(TESTING),1)
 $(TARGET): $(OBJECTS)
 else

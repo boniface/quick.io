@@ -70,3 +70,7 @@ void qsys_timer_clear(client_t *client) {
 		_qsys_timer_clear(client);
 	}
 }
+
+#ifdef TESTING
+#include "../test/test_qsys.c"
+#endif

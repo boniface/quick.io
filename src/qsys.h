@@ -212,3 +212,7 @@ gboolean _qsys_timer_set(client_t *client, guint16 sec, guint16 ms);
  * @param client The client to clean up.
  */
 void _qsys_timer_clear(client_t *client);
+
+#ifdef TESTING
+#include "../test/test_qsys.h"
+#endif

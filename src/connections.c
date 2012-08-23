@@ -97,7 +97,7 @@ void conns_client_close(client_t *client) {
 }
 
 void conns_client_hup(client_t *client) {
-	UTILS_STATS_INC(socket_hups);
+	UTILS_STATS_INC(conns_hups);
 		
 	DEBUGF("Client HUP: %d", client->socket);
 	
@@ -106,11 +106,11 @@ void conns_client_hup(client_t *client) {
 }
 
 void conns_client_timer(client_t *client) {
-	UTILS_STATS_INC(socket_timeouts);
-	
 	if (client == _fake_client) {
 		_conns_tick();
 	} else {
+		UTILS_STATS_INC(conns_timeouts);
+		
 		// If the client has been caught misbehaving...
 		DEBUG("Misbehaving client closed because of timeout");
 		conns_client_close(client);
@@ -134,7 +134,7 @@ void conns_client_data(client_t *client) {
 		
 		// If the client needs to enhance his calm, kill the connection.
 		if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
-			UTILS_STATS_INC(socket_bad_clients);
+			UTILS_STATS_INC(conns_bad_clients);
 			
 			DEBUG("Client needs to enhance his calm");
 			conns_client_close(client);
@@ -160,7 +160,7 @@ void conns_client_data(client_t *client) {
 				evs_client_client_ready(client);
 			}
 		} else {
-			UTILS_STATS_INC(socket_messages);
+			UTILS_STATS_INC(conns_messages);
 			
 			DEBUG("Message from client");
 			status = client_message(client);
@@ -181,7 +181,7 @@ void conns_client_data(client_t *client) {
 		// The client gets 1 timer to make itself behave. If it doesn't in this
 		// time, then we summarily kill it.
 		} else if (status == CLIENT_WAIT) {
-			UTILS_STATS_INC(socket_client_wait);
+			UTILS_STATS_INC(conns_client_wait);
 			
 			qsys_timer_set(client, 0, 0);
 			
@@ -190,7 +190,7 @@ void conns_client_data(client_t *client) {
 			
 		// The client is misbehaving. Close him.
 		} else {
-			UTILS_STATS_INC(socket_bad_clients);
+			UTILS_STATS_INC(conns_bad_clients);
 			
 			DEBUGF("Bad client, closing: status=%d", status);
 			conns_client_close(client);

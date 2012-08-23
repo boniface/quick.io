@@ -35,27 +35,27 @@ typedef struct test_stats_s {
 	/**
 	 * The number of hups that were seen.
 	 */
-	gsize socket_hups;
+	gsize conns_hups;
 	
 	/**
 	 * The number of messages that clients sent.
 	 */
-	gsize socket_messages;
+	gsize conns_messages;
 	
 	/**
 	 * The number of timeouts that were encountered.
 	 */
-	gsize socket_timeouts;
+	gsize conns_timeouts;
 	
 	/**
 	 * The number of bad clients forcibly closed.
 	 */
-	gsize socket_bad_clients;
+	gsize conns_bad_clients;
 	
 	/**
 	 * The number of times clients were put into CLIENT_WAIT
 	 */
-	gsize socket_client_wait;
+	gsize conns_client_wait;
 } test_stats_t;
 
 /**
