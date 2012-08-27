@@ -6,14 +6,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/time.h>
 #include <unistd.h>
 
-#define CLIENTS 10
+#define CLIENTS 20000
 #define THREADS 4
 #define ADDRESS "127.0.0.1"
 
 // A list of addresses you can bind to (if opening tons of connections)
-char *addresses[] = {"0.0.0.0"};
+char *addresses[] = {"127.0.0.1", "0.0.0.0", "192.168.2.2"};
 
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
 	"Host: server.example.com\n" \
@@ -36,27 +37,37 @@ char *addresses[] = {"0.0.0.0"};
 #define ERRORF(format, ...) _LOGF("ERROR", format, __VA_ARGS__)
 
 #define EPOLL_MAX_EVENTS 100
-#define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
+#define EPOLL_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET | EPOLLOUT
 
 uint which = 0;
 int *epoll;
 GHashTable *clients;
 
-void hitserver() {
+guint64 now() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL); 
+	
+	// In format: SECS + MS, right next to each other
+	// 4567: 4 seconds, 567 ms
+	
+	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+}
+
+gpointer hitserver(gpointer none) {
 	guint64 cnt = 1;
 	
 	int which_address = 0;
 	
 	for (uint i = 0; i < CLIENTS; i++) {
 		if (cnt++ % 1000 == 0) {
-			DEBUG("1K Created");	
+			DEBUG("1K Created");
 		}
 	
 		int sock = socket(AF_INET, SOCK_STREAM, 0);
 		
 		if (sock < 0) {
 			ERRORF("Could not create socket: %s", strerror(errno));
-			return;
+			return NULL;
 		}
 		
 		struct sockaddr_in client_addr;
@@ -78,6 +89,8 @@ void hitserver() {
 		serv_addr.sin_port = htons(5000);
 		inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
 		
+		fcntl(sock, F_SETFL, O_NONBLOCK);
+		
 		int on = 1;
 		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
 			ERROR("Could not set socket option");
@@ -86,15 +99,15 @@ void hitserver() {
 		}
 		
 		if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1) {
-			ERRORF("Could not connect: %s", strerror(errno));
-			close(sock);
-			continue;
+			if (errno != EINPROGRESS) {
+				ERRORF("Could not connect: %s", strerror(errno));
+				close(sock);
+				continue;
+			}
 		}
 		
-		fcntl(sock, F_SETFL, O_NONBLOCK);
-		
 		struct epoll_event ev;
-		ev.events = EPOLL_READ_EVENTS;
+		ev.events = EPOLL_EVENTS;
 		ev.data.fd = sock;
 		
 		int *ptr = malloc(sizeof(*ptr));
@@ -109,12 +122,14 @@ void hitserver() {
 			continue;
 		}
 		
-		if (send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL) < 0) {
-			ERRORF("Could not send handshake: %s", strerror(errno));
-			g_hash_table_remove(clients, ptr);
-			continue;
-		}
+		// if (send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL) < 0) {
+		// 	ERRORF("Could not send handshake: %s", strerror(errno));
+		// 	g_hash_table_remove(clients, ptr);
+		// 	continue;
+		// }
 	}
+	
+	return NULL;
 }
 
 gpointer watch(gpointer thread) {
@@ -127,6 +142,8 @@ gpointer watch(gpointer thread) {
 	int poll = *(epoll + num);
 	
 	guint64 tick = 0;
+	
+	guint64 prev = now();
 	
 	while (1) {
 		int num_evs = epoll_wait(poll, events, EPOLL_MAX_EVENTS, 1000);
@@ -143,8 +160,13 @@ gpointer watch(gpointer thread) {
 				closed++;
 				DEBUGF("Socket closed: %d", closed);
 				close(sock);
+			} else if (ev.events & EPOLLOUT) {
+				// send(sock, "TEST", 4, MSG_NOSIGNAL);
 			} else {
 				int *inited = g_hash_table_lookup(clients, &sock);
+				if (inited == NULL) {
+					continue;
+				}
 				if (!(*inited)) {
 					send(sock, sub, sizeof(sub), MSG_NOSIGNAL);
 					*inited = 1;
@@ -154,12 +176,17 @@ gpointer watch(gpointer thread) {
 					;
 				}
 				
-				if (tick++ % 10000 == 0) {
-					DEBUGF("+10K messages; Closed: %d", closed);
+				if (tick++ % 1000 == 0) {
+					guint64 n = now();
+					
+					DEBUGF("+1K messages; Closed: %d - Elapsed: %"G_GUINT64_FORMAT, closed, n-prev);
+					prev = n;
 				}
 			}
 		}
 	}
+	
+	return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -170,7 +197,7 @@ int main(int argc, char *argv[]) {
 		*(epoll + i) = epoll_create(1);
 	}
 	
-	hitserver();
+	g_thread_new("hit", hitserver, NULL);
 	
 	for (int i = 0; i < THREADS-1; i++) {
 		size_t *num = malloc(sizeof(*num));
