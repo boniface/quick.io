@@ -186,42 +186,6 @@ START_TEST(test_qsys_abort_before_response) {
 }
 END_TEST
 
-START_TEST(test_qsys_close_after_message) {
-	int sock = u_ws_connect();
-	
-	test(sock, "Connection established");
-	
-	// Don't buffer anything
-	int flag = 1;
-	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
-	
-	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
-	
-	test_lock_acquire();
-	send(sock, frame, frame_len, MSG_NOSIGNAL);
-	test_lock_release();
-	
-	// Make sure the epoll has time to respond
-	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
-	
-	// Send a message and a close, this message should not go through
-	test_lock_acquire();
-	send(sock, frame, frame_len, MSG_NOSIGNAL);
-	close(sock);
-	test_lock_release();
-	
-	free(frame);
-	
-	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
-	
-	test_size_eq(utils_stats()->conns_messages, 1, "Second message not processed");
-	test_size_eq(utils_stats()->conns_hups, 1, "Client HUPed");
-	test_size_eq(utils_stats()->conns_bad_clients, 0, "Server left client open");
-	test_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
-}
-END_TEST
-
 START_TEST(test_qsys_close_partial_message) {
 	int sock = u_ws_connect();
 	
@@ -326,7 +290,6 @@ Suite* qsys_suite() {
 	tcase_add_test(tc, test_qsys_too_much_data);
 	tcase_add_test(tc, test_qsys_two_messages);
 	tcase_add_test(tc, test_qsys_abort_before_response);
-	tcase_add_test(tc, test_qsys_close_after_message);
 	tcase_add_test(tc, test_qsys_close_partial_message);
 	tcase_add_test(tc, test_qsys_close_bad_message);
 	tcase_add_test(tc, test_qsys_two_partial_messages);

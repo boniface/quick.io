@@ -116,7 +116,7 @@ void _qsys_dispatch() {
 	
 	// Since we're polling at an interval, it's possible no events
 	// will have happened
-	if(num_evs < 1) {
+	if (num_evs < 1) {
 		ERROR("epoll_wait failed");
 		return;
 	}

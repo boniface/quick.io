@@ -151,6 +151,20 @@ START_TEST(test_client_no_handler) {
 }
 END_TEST
 
+START_TEST(test_client_oversized_message) {
+	client_t *client = u_client_create();
+	client->handler = h_rfc6455;
+	
+	gchar *really_long = g_strnfill(0xFFFF + 1, 'a');
+	g_string_assign(client->message->buffer, really_long);
+	g_free(really_long);
+	
+	test_status_eq(client_write(client, NULL), CLIENT_ABORTED, "Message too long");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -170,6 +184,7 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_message_no_handler_continue);
 	tcase_add_test(tc, test_client_message_incoming);
 	tcase_add_test(tc, test_client_message_continue);
+	tcase_add_test(tc, test_client_oversized_message);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Writing");
