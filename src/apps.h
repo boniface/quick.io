@@ -29,6 +29,11 @@
 #define PATH_CURR_DIR "./"
 
 /**
+ * Where the applications are stored, by default
+ */
+#define APP_PATH "apps/"
+
+/**
  * A completely void app callback.
  */
 typedef void (*app_cb)();
@@ -218,3 +223,8 @@ void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *s
  * @param sub The subscription the client dropped.
  */
 void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t *sub);
+
+
+#ifdef TESTING
+#include "../test/test_apps.h"
+#endif

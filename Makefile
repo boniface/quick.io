@@ -42,4 +42,4 @@ test:
 	
 test-jenkins: clean
 	$(MAKE) test TEST_OUTPUT_XML=1
-	@./ext/gcovr -x -o test_coverage.xml $(GCOVR_ARGS) --exclude='src/qsys*'
+	@./ext/gcovr -x -o test_coverage.xml $(GCOVR_ARGS) --exclude='src/qsys*' --exclude='src/main*'

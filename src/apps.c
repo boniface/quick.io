@@ -57,9 +57,9 @@ gboolean apps_init() {
 		// name, and open that module
 		gchar *path;
 		if (strspn(app_path, PATH_STARTERS) == 0) {
-			size_t len = strlen(app_path) + sizeof(PATH_CURR_DIR);
-			path = g_try_malloc0(len * sizeof(*path));
-			snprintf(path, len, "%s%s", PATH_CURR_DIR, app_path);
+			size_t len = strlen(app_path) + sizeof(PATH_CURR_DIR) + sizeof(APP_PATH);
+			path = g_try_malloc0((len * sizeof(*path)));
+			snprintf(path, len, "%s"APP_PATH"%s", PATH_CURR_DIR, app_path);
 		} else {
 			path = g_strdup(app_path);
 		}
@@ -248,3 +248,7 @@ void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t 
 		}
 	)
 }
+
+#ifdef TESTING
+#include "../test/test_apps.c"
+#endif

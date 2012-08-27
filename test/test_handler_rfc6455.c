@@ -14,6 +14,11 @@
 	"Access-Control-Allow-Origin: *\r\n" \
 	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
 
+#define NOT_RFC6455_HANDSHAKE "GET /chat HTTP/1.1\n" \
+	"Host: server.example.com\n" \
+	"Upgrade: websocket\n" \
+	"Connection: Upgrade\n\n"
+
 #define MASK "abcd"
 
 #define MESSAGE_SHORT "test"
@@ -58,6 +63,19 @@ START_TEST(test_rfc6455_handshake) {
 	test_char_eq(client->initing, '\0', "Client init flag updated");
 	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer cleared");
 	test_int32_eq(client->handler, h_rfc6455, "Correct handler applied");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_rfc6455_handshake_no_key) {
+	client_t *client = u_client_create();
+	
+	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
+	
+	test_int64_eq(soup_headers_parse_request(NOT_RFC6455_HANDSHAKE, sizeof(NOT_RFC6455_HANDSHAKE)-1, req_headers, NULL, NULL, NULL), SOUP_STATUS_OK, "Headers parsed");
+	
+	test_status_eq(rfc6455_handshake(client, req_headers), CLIENT_UNSUPPORTED, "Client not supported");
 	
 	u_client_free(client);
 }
@@ -269,6 +287,7 @@ Suite* rfc6455_suite() {
 	
 	tc = tcase_create("Handshake");
 	tcase_add_test(tc, test_rfc6455_handshake);
+	tcase_add_test(tc, test_rfc6455_handshake_no_key);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Recieve Messages");
