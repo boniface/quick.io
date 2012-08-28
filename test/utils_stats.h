@@ -68,6 +68,11 @@ typedef struct test_stats_s {
 	gsize apps_postfork;
 	
 	/**
+	 * The number of times app_run is hit.
+	 */
+	gsize apps_run;
+	
+	/**
 	 * The number of times app_client_connect is hit.
 	 */
 	gsize apps_client_connect;

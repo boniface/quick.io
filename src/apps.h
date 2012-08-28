@@ -186,13 +186,6 @@ gboolean apps_prefork();
 gboolean apps_run();
 
 /**
- * Gets the app named.
- *
- * @param name The name of the app to get the module for.
- */
-app_t* apps_get_app(gchar *name);
-
-/**
  * Tell the apps it's their turns to register the evnets they listen for.  This runs in
  * the main thread before forking.
  */

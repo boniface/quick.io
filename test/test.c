@@ -16,13 +16,13 @@ int main(int argc, char *argv[]) {
 	
 	SRunner *sr = srunner_create(suite_create("Master"));
 	srunner_add_suite(sr, apps_suite());
-	// srunner_add_suite(sr, client_suite());
-	// srunner_add_suite(sr, conns_suite());
-	// srunner_add_suite(sr, events_server_suite());
-	// srunner_add_suite(sr, main_suite());
-	// srunner_add_suite(sr, option_suite());
-	// srunner_add_suite(sr, qsys_suite());
-	// srunner_add_suite(sr, rfc6455_suite());
+	srunner_add_suite(sr, client_suite());
+	srunner_add_suite(sr, conns_suite());
+	srunner_add_suite(sr, events_server_suite());
+	srunner_add_suite(sr, main_suite());
+	srunner_add_suite(sr, option_suite());
+	srunner_add_suite(sr, qsys_suite());
+	srunner_add_suite(sr, rfc6455_suite());
 
 #if TEST_OUTPUT_XML
 	srunner_set_xml(sr, "../test_unit.xml");

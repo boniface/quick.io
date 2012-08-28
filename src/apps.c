@@ -118,16 +118,6 @@ gboolean apps_init() {
 	return TRUE;
 }
 
-app_t* apps_get_app(gchar *app_name) {
-	APP_FOREACH(
-		if (strcmp(app_name, app->name) == 0) {
-			return app;
-		}
-	)
-	
-	return NULL;
-}
-
 gboolean apps_run() {
 	APP_FOREACH(
 		// If there isn't a run function, then just move on

@@ -44,6 +44,21 @@ START_TEST(test_apps_events_off) {
 }
 END_TEST
 
+START_TEST(test_apps_events_handle) {
+	apps_register_events();
+	client_t *client = u_client_create();
+	
+	evs_client_sub_client("/test/event", client);
+	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	
+	g_string_assign(client->message->buffer, "/test/event:0:plain=");
+	evs_server_handle(client);
+	test_size_eq(utils_stats()->apps_client_handler, 1, "Single handler called");
+	
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_apps_cb_register) {
 	// Make sure our only app was registered
 	test_size_eq(_apps->len, 1, "App registered");
@@ -63,6 +78,16 @@ END_TEST
 START_TEST(test_apps_cb_postfork) {
 	test(apps_postfork(), "Apps postforked");
 	test_size_eq(utils_stats()->apps_postfork, 1, "Test app postforked");
+}
+END_TEST
+
+START_TEST(test_apps_cb_run) {
+	test(apps_run(), "Apps postforked");
+	
+	// Give the app time to get going
+	usleep(MS_TO_USEC(100));
+	
+	test_size_eq(utils_stats()->apps_run, 1, "Test app running");
 }
 END_TEST
 
@@ -129,6 +154,7 @@ Suite* apps_suite() {
 	tcase_add_test(tc, test_apps_events_register);
 	tcase_add_test(tc, test_apps_events_on);
 	tcase_add_test(tc, test_apps_events_off);
+	tcase_add_test(tc, test_apps_events_handle);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Callbacks");
@@ -136,6 +162,7 @@ Suite* apps_suite() {
 	tcase_add_test(tc, test_apps_cb_register);
 	tcase_add_test(tc, test_apps_cb_prefork);
 	tcase_add_test(tc, test_apps_cb_postfork);
+	tcase_add_test(tc, test_apps_cb_run);
 	tcase_add_test(tc, test_apps_cb_client_connect);
 	tcase_add_test(tc, test_apps_cb_client_close);
 	tcase_add_test(tc, test_apps_cb_client_subscribe);
