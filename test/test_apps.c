@@ -39,8 +39,6 @@ START_TEST(test_apps_events_register_bad) {
 	test(option_parse_args(argc, argv, NULL), "File ready");
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
 	
-	app_t *app = g_ptr_array_index(_apps, 0);
-	
 	test_not(apps_init(), "Bad app failed to init");
 }
 END_TEST
@@ -55,8 +53,6 @@ START_TEST(test_apps_events_register_nonexistent) {
 	
 	test(option_parse_args(argc, argv, NULL), "File ready");
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
-	
-	app_t *app = g_ptr_array_index(_apps, 0);
 	
 	test_not(apps_init(), "Bad app failed to init");
 }

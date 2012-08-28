@@ -1,6 +1,6 @@
 include Makefile.inc
 
-GCOVR_ARGS = -p -r . --exclude='$(GCOVR_ROOT)debug.c' --exclude='test.*' --single-directory
+GCOVR_ARGS = -p -r . --exclude='src/debug.*' --exclude='test.*' --single-directory
 GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/ 
 GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
