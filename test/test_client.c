@@ -165,6 +165,15 @@ START_TEST(test_client_oversized_message) {
 }
 END_TEST
 
+START_TEST(test_client_no_frame_len) {
+	client_t *client = u_client_create();
+	
+	client_write_frame(client, NULL, 0);
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -190,6 +199,7 @@ Suite* client_suite() {
 	tc = tcase_create("Writing");
 	tcase_add_test(tc, test_client_no_message);
 	tcase_add_test(tc, test_client_no_handler);
+	tcase_add_test(tc, test_client_no_frame_len);
 	suite_add_tcase(s, tc);
 	
 	return s;
