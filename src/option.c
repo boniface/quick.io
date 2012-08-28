@@ -37,10 +37,14 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 		return FALSE;
 	}
 	
+	// Allow this function to be called multiple times
+	// Mainly for testing
+	_apps_count = 0;
+	
 	GList *apps = NULL;
 	while (key_len--) {
 		gchar *key = *(keys + key_len);
-		if (g_strstr_len(key, -1, "-") == NULL) {
+		if (g_strstr_len(key, -1, ":") == NULL) {
 			gchar *path = g_key_file_get_string(conf, OPT_APPS_GROUP_NAME, key, NULL);
 			
 			// There ABSOLUTELY DOES NOT have to be a prefix for an application,

@@ -20,7 +20,7 @@
  * The suffix for app prefix configuration.
  * Yeah, it has a really fun name.
  */
-#define OPT_APP_PREFIX_SUFFIX "-prefix"
+#define OPT_APP_PREFIX_SUFFIX ":prefix"
 
 /**
  * The types of entries that are in the configuration file.

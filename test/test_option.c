@@ -37,7 +37,7 @@
 	"[quick.io-apps]\n" \
 	"skeleton = skeleton\n" \
 	"test = test\n" \
-	"test-prefix = /test"
+	"test:prefix = /test"
 
 #define QIOINI_BAD_MAX_SUBS "[quick.io]\n" \
 	"max-subs = 100\n" \

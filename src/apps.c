@@ -41,12 +41,7 @@ static GPtrArray *_apps;
 
 gboolean apps_init() {
 	opt_app_t **apps = option_apps();
-	
 	_apps = g_ptr_array_new();
-	if (_apps == NULL) {
-		ERROR("Could not allocate space for the apps.");
-		return FALSE;
-	}
 	
 	gint32 app_count = option_apps_count();
 	for (int i = 0; i < app_count; i++) {
@@ -75,12 +70,7 @@ gboolean apps_init() {
 		}
 		
 		// For storing the app information
-		app_t *app = g_try_malloc0(sizeof(*app));
-		
-		if (app == NULL) {
-			ERRORF("Could not allocate memory for app: %s", path);
-			return FALSE;
-		}
+		app_t *app = g_malloc0(sizeof(*app));
 		
 		// We allocated, so save it
 		g_ptr_array_add(_apps, app);
