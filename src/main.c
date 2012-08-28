@@ -13,10 +13,6 @@ static pid_t *_pids;
  * Runs the main event loop.
  */
 static void _main_loop() {
-	if (!qsys_init()) {
-		return;
-	}
-	
 	GError *error = NULL;
 	GThread *_thread = g_thread_try_new(__FILE__, qsys_accept, NULL, &error);
 	if (_thread == NULL) {
@@ -74,6 +70,11 @@ static gboolean _main_fork() {
 			if (!apps_run()) {
 				ERRORF("Could not init apps in #%d.", processes);
 				exit(1);
+			}
+			
+			if (!qsys_init()) {
+				ERRORF("Could not init QSys in #%d.", processes);
+				return;
 			}
 			
 			// Run the socket loop

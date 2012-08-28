@@ -10,12 +10,10 @@
 
 #include "qio.h"
 
-/**
- * A macro to ease boiler-plate in the apps.
- */
-#define APP_NAME(name) \
-	gchar* app_name() { \
-		return g_strdup(name); \
+#define APP_INIT() \
+	static gchar *_app_name = NULL; \
+	void qio_set_app_name(const gchar *name) { \
+		_app_name = g_strdup(name); \
 	}
 
 /**
@@ -45,11 +43,16 @@ typedef void (*app_cb)();
 typedef gboolean (*app_bool_cb)();
 
 /**
+ * An app callback that accepts a string argument.
+ */
+typedef void (*app_cb_str)();
+
+/**
  * A callback that does work on a client.
  *
  * @param client The client to do work on.
  */
-typedef void (*app_client_cb)(const client_t *client);
+typedef void (*app_cb_client)(const client_t *client);
 
 /**
  * A callback for when a client subscribes/unsubscribes from an event.
@@ -57,7 +60,7 @@ typedef void (*app_client_cb)(const client_t *client);
  * @param event The event that was triggered.
  * @param client The client that sent the event.
  */
-typedef void (*app_evs_client_cb)(const client_t *client, const path_extra_t extra, const guint extra_len);
+typedef void (*app_cb_evs_client)(const client_t *client, const path_extra_t extra, const guint extra_len);
 
 /**
  * For closured "on" functions.
@@ -93,6 +96,8 @@ typedef struct app_s {
 	
 	/**
 	 * The prefix that all events the app registers are forced to.
+	 *
+	 * @attention This should NEVER be free'd
 	 */
 	gchar *event_prefix;
 	
@@ -107,6 +112,11 @@ typedef struct app_s {
 	 * @see http://developer.gnome.org/glib/2.32/glib-Dynamic-Loading-of-Modules.html
 	 */
 	GModule *module;
+	
+	/**
+	 * The callback for setting the application name.
+	 */
+	app_cb_str _set_app_name;
 	
 	/**
 	 * A reference to an application's `app_run` function.
@@ -132,25 +142,25 @@ typedef struct app_s {
 	 * A reference to an application's `app_client_connect` function.
 	 * A notification that a new client has connected and been accepted.
 	 */
-	app_client_cb client_connect;
+	app_cb_client client_connect;
 	
 	/**
 	 * A reference to an application's `app_client_close` function.
 	 * A notification that a client has closed.
 	 */
-	app_client_cb client_close;
+	app_cb_client client_close;
 	
 	/**
 	 * A reference to an application's `app_evs_client_subscribe` function.
 	 * A notification that a client has subscribed to an event.
 	 */
-	app_evs_client_cb subscribe;
+	app_cb_evs_client subscribe;
 	
 	/**
 	 * A reference to an application's `app_evs_client_unsubscribe` function.
 	 * A notification that a client has unsubscribed from an event.
 	 */
-	app_evs_client_cb unsubscribe;
+	app_cb_evs_client unsubscribe;
 	
 	/**
 	 * A reference to an application's `app_register_events` function.

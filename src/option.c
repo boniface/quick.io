@@ -9,10 +9,6 @@ static GOptionEntry command_options[] = {
 };
 
 // Config file options
-static gchar **_apps = NULL;
-static gint32 _apps_count = 0;
-static gchar **_apps_prefixes = NULL;
-static gint32 _apps_prefixes_count = 0;
 static gchar *_bind_address = "127.0.0.1";
 static gint32 _port = 5000;
 static gint32 _max_mess_size = 1024;
@@ -21,8 +17,6 @@ static gint32 _processes = 8;
 static gint32 _timeout = 5;
 
 static config_file_entry_t _config_options[] = {
-	{"apps", e_string_array, &_apps, &_apps_count},
-	{"apps-prefixes", e_string_array, &_apps_prefixes, &_apps_prefixes_count},
 	{"bind-address", e_string, &_bind_address},
 	{"port", e_int, &_port},
 	{"processes", e_int, &_processes},
@@ -31,20 +25,67 @@ static config_file_entry_t _config_options[] = {
 	{"timeout", e_int, &_timeout},
 };
 
-gchar** option_apps() {
+// The processed list of apps and their prefixes
+static opt_app_t **_apps = NULL;
+static gint32 _apps_count = 0;
+
+static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
+	gsize key_len = 0;
+	gchar **keys = g_key_file_get_keys(conf, OPT_APPS_GROUP_NAME, &key_len, error);
+	
+	if (keys == NULL) {
+		return FALSE;
+	}
+	
+	GList *apps = NULL;
+	while (key_len--) {
+		gchar *key = *(keys + key_len);
+		if (g_strstr_len(key, -1, "-") == NULL) {
+			gchar *path = g_key_file_get_string(conf, OPT_APPS_GROUP_NAME, key, NULL);
+			
+			// There ABSOLUTELY DOES NOT have to be a prefix for an application,
+			// so it's fine to use the NULL value to denote no prefix
+			gchar key_prefix[strlen(key) + sizeof(OPT_APP_PREFIX_SUFFIX)];
+			g_snprintf(key_prefix, sizeof(key_prefix), "%s"OPT_APP_PREFIX_SUFFIX, path);
+			gchar *prefix = g_key_file_get_string(conf, OPT_APPS_GROUP_NAME, key_prefix, NULL);
+			
+			_apps_count++;
+			
+			opt_app_t *app = g_malloc0(sizeof(*app));
+			app->config_group = g_strdup(key);
+			app->path = path;
+			app->prefix = prefix;
+			
+			apps = g_list_prepend(apps, app);
+		}
+	}
+	
+	if (_apps_count > 0) {
+		apps = g_list_first(apps);
+		
+		// Plop all the apps into an array
+		gsize i = 0;
+		_apps = g_malloc0(_apps_count * sizeof(*_apps));
+		
+		// This is kinda disgusting...
+		do {
+			*(_apps + i++) = apps->data;
+		} while ((apps = g_list_next(apps)));
+	}
+	
+	// Man, this is just gross
+	g_list_free(g_list_first(apps));
+	g_strfreev(keys);
+	
+	return TRUE;
+}
+
+opt_app_t** option_apps() {
 	return _apps;
 }
 
 gint32 option_apps_count() {
 	return _apps_count;
-}
-
-gchar** option_apps_prefixes() {
-	return _apps_prefixes;
-}
-
-gint32 option_apps_prefixes_count() {
-	return _apps_prefixes_count;
 }
 
 gchar* option_bind_address() {
@@ -78,16 +119,21 @@ gint32 option_timeout() {
 gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error) {
 	GKeyFile *conf = g_key_file_new();
 	
-	if (group_name == NULL) {
-		group_name = DEFAULT_GROUP_NAME;
-		opts = _config_options;
-		opts_len = G_N_ELEMENTS(_config_options);
-	}
-	
 	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
 		ERRORF("Could not load config file: %s", _config_file);
 		g_key_file_free(conf);
 		return FALSE;
+	}
+	
+	// If parsing the defaults, then also parse up the app configuration
+	if (group_name == NULL) {
+		group_name = OPT_DEFAULT_GROUP_NAME;
+		opts = _config_options;
+		opts_len = G_N_ELEMENTS(_config_options);
+		
+		if (!_option_parse_apps(conf, error)) {
+			return FALSE;
+		}
 	}
 	
 	for (size_t i = 0; i < opts_len; i++) {
@@ -125,16 +171,6 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		ERROR("Option `max-subs` must be a power of 2.");
 		g_key_file_free(conf);
 		return FALSE;
-	}
-	
-	// Make sure that the number of prefixes given matches the number of apps
-	if (_apps_prefixes_count != _apps_count) {
-		ERROR("The number of app prefixes and apps do not match. Ignoring prefixes.");
-		
-		// Remove all prefixes, they're not reliable
-		_apps_prefixes_count = 0;
-		g_strfreev(_apps_prefixes);
-		_apps_prefixes = NULL;
 	}
 	
 	g_key_file_free(conf);

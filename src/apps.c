@@ -30,6 +30,8 @@ static app_callbacks_t callbacks[] = {
 	{offsetof(app_t, subscribe), "app_evs_client_subscribe"},
 	{offsetof(app_t, unsubscribe), "app_evs_client_unsubscribe"},
 	{offsetof(app_t, register_events), "app_register_events"},
+	
+	{offsetof(app_t, _set_app_name), "qio_set_app_name"},
 };
 
 /**
@@ -38,11 +40,9 @@ static app_callbacks_t callbacks[] = {
 static GPtrArray *_apps;
 
 gboolean apps_init() {
-	gchar **app_names = option_apps();
-	gchar **app_prefixes = option_apps_prefixes();
+	opt_app_t **apps = option_apps();
 	
 	_apps = g_ptr_array_new();
-	
 	if (_apps == NULL) {
 		ERROR("Could not allocate space for the apps.");
 		return FALSE;
@@ -50,18 +50,18 @@ gboolean apps_init() {
 	
 	gint32 app_count = option_apps_count();
 	for (int i = 0; i < app_count; i++) {
-		gchar *app_path = *(app_names + i);
+		opt_app_t *o_app = *(apps + i);
 		
 		// Check to see if an absolute path to a module was given
 		// If it was not, assuming looking in ./, so add that to the
 		// name, and open that module
 		gchar *path;
-		if (strspn(app_path, PATH_STARTERS) == 0) {
-			size_t len = strlen(app_path) + sizeof(PATH_CURR_DIR) + sizeof(APP_PATH);
+		if (strspn(o_app->path, PATH_STARTERS) == 0) {
+			size_t len = strlen(o_app->path) + sizeof(PATH_CURR_DIR) + sizeof(APP_PATH);
 			path = g_try_malloc0((len * sizeof(*path)));
-			snprintf(path, len, "%s"APP_PATH"%s", PATH_CURR_DIR, app_path);
+			snprintf(path, len, "%s"APP_PATH"%s", PATH_CURR_DIR, o_app->path);
 		} else {
-			path = g_strdup(app_path);
+			path = g_strdup(o_app->path);
 		}
 		
 		// G_MODULE_BIND_MASK: Be module-lazy and make sure the module keeps
@@ -85,21 +85,10 @@ gboolean apps_init() {
 		// We allocated, so save it
 		g_ptr_array_add(_apps, app);
 		
-		// Save the name of the app
-		gchar* (*app_name)(void);
-		if (g_module_symbol(module, "app_name", (void**)&app_name)) {
-			app->name = app_name();
-		} else {
-			ERRORF("App doesn't have a name: %s", path);
-			return FALSE;
-		}
-		
-		// We might need this elsewhere
+		// Some basics that we'll definitely need
 		app->module = module;
-		
-		if (option_apps_prefixes_count() > 0) {
-			app->event_prefix = *(app_prefixes + i);
-		}
+		app->name = o_app->config_group;
+		app->event_prefix = o_app->prefix;
 		
 		// Done looking at the path
 		free(path);
@@ -116,6 +105,14 @@ gboolean apps_init() {
 				*((app_cb*)(((char*)app) + callbacks[i].offset)) = curr_cb;
 			}
 		}
+		
+		// If the app didn't register any of the boilerplate stuff
+		if (app->_set_app_name == NULL) {
+			ERRORF("App \"%s\" did not use APP_INIT()", app->name);
+			return FALSE;
+		}
+		
+		app->_set_app_name(app->name);
 	}
 
 	return TRUE;
@@ -201,7 +198,7 @@ gboolean apps_postfork() {
 
 void apps_client_close(client_t *client) {
 	APP_FOREACH(
-		app_client_cb cb = app->client_close;
+		app_cb_client cb = app->client_close;
 		
 		if (cb != NULL) {
 			cb(client);
@@ -211,7 +208,7 @@ void apps_client_close(client_t *client) {
 
 void apps_client_connect(client_t *client) {
 	APP_FOREACH(
-		app_client_cb cb = app->client_connect;
+		app_cb_client cb = app->client_connect;
 		
 		if (cb != NULL) {
 			cb(client);
@@ -226,7 +223,7 @@ void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *s
 	
 	// Notify all the general listeners that a subscription happened.
 	APP_FOREACH(
-		app_evs_client_cb cb = app->subscribe;
+		app_cb_evs_client cb = app->subscribe;
 		
 		if (cb != NULL) {
 			cb(client, sub->extra, sub->extra_len);
@@ -241,7 +238,7 @@ void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t 
 	
 	// Notify all the general listeners that an unsubscription happened.
 	APP_FOREACH(
-		app_evs_client_cb cb = app->unsubscribe;
+		app_cb_evs_client cb = app->unsubscribe;
 		
 		if (cb != NULL) {
 			cb(client, sub->extra, sub->extra_len);

@@ -9,7 +9,18 @@
 /**
  * The name of the group that we read from the configuration file.
  */
-#define DEFAULT_GROUP_NAME "quick.io"
+#define OPT_DEFAULT_GROUP_NAME "quick.io"
+
+/**
+ * The group name for the applications configuration
+ */
+#define OPT_APPS_GROUP_NAME "quick.io-apps"
+
+/**
+ * The suffix for app prefix configuration.
+ * Yeah, it has a really fun name.
+ */
+#define OPT_APP_PREFIX_SUFFIX "-prefix"
 
 /**
  * The types of entries that are in the configuration file.
@@ -62,13 +73,33 @@ typedef struct config_file_entry_s {
 } config_file_entry_t;
 
 /**
+ * Applications have two pieces of information: their path and prefix
+ */
+typedef struct opt_app_s {
+	/**
+	 * The name of the configuration section for the app.
+	 */
+	gchar *config_group;
+	
+	/**
+	 * The path to the application's executable.
+	 */
+	gchar *path;
+	
+	/**
+	 * The prefix that the app should be under.
+	 */
+	gchar *prefix;
+} opt_app_t;
+
+/**
  * Gets the apps that should run.
  *
  * @return
  * An array of null-terminated strings, containing the names of the apps from the
  * configuration file.
  */
-gchar** option_apps();
+opt_app_t** option_apps();
 
 /**
  * The number of apps specififed.

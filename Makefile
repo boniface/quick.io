@@ -1,7 +1,8 @@
 include Makefile.inc
 
-GCOVR_ROOT = src/
-GCOVR_ARGS = --object-directory=$(GCOVR_ROOT) -r . --exclude='$(GCOVR_ROOT)debug.c' --exclude='test.*'
+GCOVR_ARGS = -p -r . --exclude='$(GCOVR_ROOT)debug.c' --exclude='test.*' --single-directory
+GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/ 
+GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
 .PHONY: all build clean debug test
 
@@ -21,7 +22,7 @@ run: debug
 build:
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	mkdir -p $(BUILDDIR)
-	cp quickio.ini $(BUILDDIR)
+	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
 	$(MAKE) -C src
 	$(MAKE) -C app
 
@@ -38,8 +39,10 @@ test:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
 	@$(MAKE) build DEBUG=1 TESTING=1
 	@$(MAKE) -C test test DEBUG=1
-	@./ext/gcovr -p $(GCOVR_ARGS)
+	@./ext/gcovr $(GCOVR_ARGS_SRC) $(BUILDDIR)
+	@./ext/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps
 	
 test-jenkins: clean
 	$(MAKE) test TEST_OUTPUT_XML=1
-	@./ext/gcovr -x -o test_coverage.xml $(GCOVR_ARGS) --exclude='src/qsys*' --exclude='src/main*'
+	@./ext/gcovr $(GCOVR_ARGS_SRC) -x -o test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(BUILDDIR)
+	@./ext/gcovr $(GCOVR_ARGS_APPS) -x -o test_coverage_apps.xml $(BUILDDIR)/apps

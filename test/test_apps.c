@@ -1,7 +1,8 @@
 #include "test.h"
 
 static void _apps_setup() {
-	
+	option_parse_config_file(NULL, NULL, 0, NULL);
+	apps_init();
 }
 
 START_TEST(test_apps_register) {
