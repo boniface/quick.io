@@ -43,6 +43,6 @@ test:
 	@./ext/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps
 	
 test-jenkins: clean
-	$(MAKE) test TEST_OUTPUT_XML=1
-	@./ext/gcovr $(GCOVR_ARGS_SRC) -x -o test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(BUILDDIR)
-	@./ext/gcovr $(GCOVR_ARGS_APPS) -x -o test_coverage_apps.xml $(BUILDDIR)/apps
+	@$(MAKE) test TEST_OUTPUT_XML=1
+	@./ext/gcovr $(GCOVR_ARGS_SRC) -x -o test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(DIR_BUILD_TEST)
+	@./ext/gcovr $(GCOVR_ARGS_APPS) -x -o test_coverage_apps.xml $(DIR_BUILD_TEST)/apps
