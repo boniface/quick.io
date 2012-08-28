@@ -174,7 +174,7 @@ static gchar* _clean_event_name(const gchar *event_path) {
 /**
  * The "ping:" command
  */
-static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_ping(const client_t *client, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
 	g_string_append(response, event->data);
 	return CLIENT_WRITE;
@@ -183,7 +183,7 @@ static status_t _evs_server_ping(client_t *client, event_t *event, GString *resp
 /**
  * Does nothing, just says "good" back.
  */
-static status_t _evs_server_noop(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_noop(const client_t *client, event_t *event, GString *response) {
 	g_string_set_size(response, 0);
 	if (event->callback) {
 		return CLIENT_WRITE;
@@ -221,7 +221,7 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 }
 */
 
-static status_t _evs_server_subscribe(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_subscribe(const client_t *client, event_t *event, GString *response) {
 	DEBUGF("event_subscribe: %s", event->data);
 	
 	// External clients aren't allowed to know about UNSUBSCRIBED
@@ -231,7 +231,9 @@ static status_t _evs_server_subscribe(client_t *client, event_t *event, GString 
 	}
 	
 	gchar *event_path = _clean_event_name(event->data);
-	status_t status = evs_client_sub_client(event_path, client);
+	
+	// So we break a rule: subscribe has to change the client for subscriptions, so allow it
+	status_t status = evs_client_sub_client(event_path, (client_t*)client);
 	
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
@@ -258,7 +260,7 @@ static status_t _evs_server_subscribe(client_t *client, event_t *event, GString 
 	return status;
 }
 
-static status_t _evs_server_unsubscribe(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_unsubscribe(const client_t *client, event_t *event, GString *response) {
 	DEBUGF("event_unsubscribe: %s", event->data);
 	
 	// External clients aren't allowed to know about UNSUBSCRIBED
@@ -268,7 +270,9 @@ static status_t _evs_server_unsubscribe(client_t *client, event_t *event, GStrin
 	}
 	
 	gchar *event_path = _clean_event_name(event->data);
-	status_t status = evs_client_unsub_client(event_path, client);
+	
+	// So we break a rule: unsubscribe has to change the client for subscriptions, so allow it
+	status_t status = evs_client_unsub_client(event_path, (client_t*)client);
 	
 	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
 		g_string_printf(response, "%s:%s", EVENT_RESPONSE_CANNOT_UNSUBSCRIBE, event_path);

@@ -74,7 +74,7 @@ static gboolean _main_fork() {
 			
 			if (!qsys_init()) {
 				ERRORF("Could not init QSys in #%d.", processes);
-				return;
+				exit(1);
 			}
 			
 			// Run the socket loop

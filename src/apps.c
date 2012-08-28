@@ -196,9 +196,9 @@ gboolean apps_postfork() {
 	return TRUE;
 }
 
-void apps_client_close(client_t *client) {
+void apps_client_connect(client_t *client) {
 	APP_FOREACH(
-		app_cb_client cb = app->client_close;
+		app_cb_client cb = app->client_connect;
 		
 		if (cb != NULL) {
 			cb(client);
@@ -206,9 +206,9 @@ void apps_client_close(client_t *client) {
 	)
 }
 
-void apps_client_connect(client_t *client) {
+void apps_client_close(client_t *client) {
 	APP_FOREACH(
-		app_cb_client cb = app->client_connect;
+		app_cb_client cb = app->client_close;
 		
 		if (cb != NULL) {
 			cb(client);
@@ -226,7 +226,7 @@ void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *s
 		app_cb_evs_client cb = app->subscribe;
 		
 		if (cb != NULL) {
-			cb(client, sub->extra, sub->extra_len);
+			cb(client, sub->event_path, sub->extra, sub->extra_len);
 		}
 	)
 }
@@ -241,7 +241,7 @@ void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t 
 		app_cb_evs_client cb = app->unsubscribe;
 		
 		if (cb != NULL) {
-			cb(client, sub->extra, sub->extra_len);
+			cb(client, sub->event_path, sub->extra, sub->extra_len);
 		}
 	)
 }

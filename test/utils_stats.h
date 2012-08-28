@@ -56,6 +56,51 @@ typedef struct test_stats_s {
 	 * The number of times clients were put into CLIENT_WAIT
 	 */
 	gsize conns_client_wait;
+	
+	/**
+	 * The number of times app_prefork is hit.
+	 */
+	gsize apps_prefork;
+	
+	/**
+	 * The number of times app_postfork is hit.
+	 */
+	gsize apps_postfork;
+	
+	/**
+	 * The number of times app_client_connect is hit.
+	 */
+	gsize apps_client_connect;
+	
+	/**
+	 * The number of times app_client_close is hit.
+	 */
+	gsize apps_client_close;
+	
+	/**
+	 * The number of times app_evs_client_subscribe is hit.
+	 */
+	gsize apps_client_subscribe;
+	
+	/**
+	 * The number of times app_evs_client_unsubscribe is hit.
+	 */
+	gsize apps_client_unsubscribe;
+	
+	/**
+	 * The number of times the test_handler is hit.
+	 */
+	gsize apps_client_handler;
+	
+	/**
+	 * The number of times the test_handler_on is hit.
+	 */
+	gsize apps_client_handler_on;
+	
+	/**
+	 * The number of times the test_handler_off is hit.
+	 */
+	gsize apps_client_handler_off;
 } test_stats_t;
 
 /**
@@ -72,10 +117,12 @@ void utils_stats_teardown();
  * Gets the stats shared memory object.  No need to store a reference to this: just
  * call it as needed.
  *
+ * @ingroup ModuleFunctions
+ *
  * @note You should use the Glib Atomic operations for the slots in this.
  * @see http://developer.gnome.org/glib/2.32/glib-Atomic-Operations.html
  */
-test_stats_t* utils_stats();
+MODULE_EXPORT test_stats_t* utils_stats();
 
 /**
  * A helper for incrementing a slot in test_stats_t

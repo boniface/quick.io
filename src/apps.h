@@ -60,7 +60,7 @@ typedef void (*app_cb_client)(const client_t *client);
  * @param event The event that was triggered.
  * @param client The client that sent the event.
  */
-typedef void (*app_cb_evs_client)(const client_t *client, const path_extra_t extra, const guint extra_len);
+typedef void (*app_cb_evs_client)(const client_t *client, const gchar *event_path, const path_extra_t extra, const guint extra_len);
 
 /**
  * For closured "on" functions.

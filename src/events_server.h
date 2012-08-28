@@ -121,7 +121,7 @@ typedef struct event_s {
  * @param response The buffer that the handler should write his response to. If the handler
  * is going to write something to this buffer, it MUST return CLIENT_WRITE.
  */
-typedef status_t (*handler_fn)(client_t *client, event_t *event, GString *response);
+typedef status_t (*handler_fn)(const client_t *client, event_t *event, GString *response);
 
 /**
  * A callback for when a client subscribes to a specific event.
