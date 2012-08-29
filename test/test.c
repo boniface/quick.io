@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
 	srunner_add_suite(sr, apps_suite());
 	srunner_add_suite(sr, client_suite());
 	srunner_add_suite(sr, conns_suite());
+	srunner_add_suite(sr, events_client_suite());
 	srunner_add_suite(sr, events_server_suite());
 	srunner_add_suite(sr, main_suite());
 	srunner_add_suite(sr, option_suite());

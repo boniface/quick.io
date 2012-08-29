@@ -20,11 +20,45 @@ static GPtrArray *_messages;
  */
 static GMutex _messages_lock;
 
+/**
+ * Creates a subscription from a handler and friends.
+ */
+static evs_client_sub_t* _create_subscription(const gchar *event_path, event_handler_t *handler, path_extra_t extra, guint16 extra_len) {
+	evs_client_sub_t *sub = g_try_malloc0(sizeof(*sub));
+
+	// Well, this could be bad
+	if (sub == NULL) {
+		return NULL;
+	}
+
+	// Keep around a reference to the key for passing around for easier
+	// persistence when the event names are freed from a message
+	sub->event_path = g_strdup(event_path);
+
+	// Use the default hashing functions, only using memory locations anyway
+	// (*client->*client is what is being stored)
+	sub->clients = g_hash_table_new(NULL, NULL);
+
+	// Because we'll need this for some future references, let's keep the
+	// handler around: this will also save us on future lookups for the same
+	// event
+	sub->handler = handler;
+
+	// Save the extra elements on the path, we'll need those again later
+	sub->extra = extra;
+	sub->extra_len = extra_len;
+	
+	return sub;
+}
+
 /** 
  * Shortcut for getting a subscription, or creating it if it doesn't exist.
  *
  * This function IS NOT thread safe.  Only the main thread that is listening
  * on clients should ever call it with and_create == TRUE.
+ *
+ * @note If you are calling this with and_create, you MUST add a client to sub->clients
+ * in order to ensure that the cleanup mechanisms work properly.
  */
 static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboolean and_create) {
 	evs_client_sub_t *sub = g_hash_table_lookup(_events, event_path);
@@ -41,30 +75,11 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
 			return NULL;
 		}
 		
-		sub = g_try_malloc0(sizeof(*sub));
-		
-		// Well, this could be bad
+		sub = _create_subscription(event_path, handler, extra, extra_len);
 		if (sub == NULL) {
 			g_list_free_full(extra, g_free);
-			return NULL;
+			return;
 		}
-		
-		// Keep around a reference to the key for passing around for easier
-		// persistence when the event names are freed from a message
-		sub->event_path = g_strdup(event_path);
-		
-		// Use the default hashing functions, only using memory locations anyway
-		// (*client->*client is what is being stored)
-		sub->clients = g_hash_table_new(NULL, NULL);
-		
-		// Because we'll need this for some future references, let's keep the
-		// handler around: this will also save us on future lookups for the same
-		// event
-		sub->handler = handler;
-		
-		// Save the extra elements on the path, we'll need those again later
-		sub->extra = extra;
-		sub->extra_len = extra_len;
 		
 		// The hash table relies on the key existing for its
 		// lifetime: duplicate and insert
@@ -83,10 +98,6 @@ static void _new_messages() {
 	g_mutex_unlock(&_messages_lock);
 }
 
-/**
- * Because we don't want to give away the subscription to anything outside, this
- * is only accessible internally.  The wrapper removes the sub before return.
- */
 static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, evs_client_sub_t **sub) {
 	// A callback takes precedence over an event handler, always
 	if (callback != 0) {
@@ -150,13 +161,13 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// unsubscribed sub
 	evs_client_unsub_client(UNSUBSCRIBED, client);
 	
-	if (client->subs->len >= option_max_subscriptions()) {
-		return CLIENT_TOO_MANY_SUBSCRIPTIONS;
-	}
-	
 	// Don't add the client if he's already subscribed
 	if (g_hash_table_contains(sub->clients, client)) {
 		return CLIENT_ALREADY_SUBSCRIBED;
+	}
+	
+	if (client->subs->len >= option_max_subscriptions()) {
+		return CLIENT_TOO_MANY_SUBSCRIPTIONS;
 	}
 	
 	DEBUGF("Subscribing client to: %s", event_path);
@@ -167,8 +178,12 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// Give the client a reference to the key of the event he is subscribed to
 	g_ptr_array_add(client->subs, sub);
 	
-	// Send the apps callback
-	apps_evs_client_subscribe(client, sub);
+	// No app callbacks for subscribing to UNSUBSCRIBED
+	// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
+	// references will be identical everywhere
+	if (event_path != UNSUBSCRIBED) {
+		apps_evs_client_subscribe(client, sub);
+	}
 	
 	return CLIENT_GOOD;
 }
@@ -189,8 +204,12 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	// The client isn't subscribed anymore, remove from his list
 	g_ptr_array_remove_fast(client->subs, sub);
 	
-	// Send the apps callback
-	apps_evs_client_unsubscribe(client, sub);
+	// No app callbacks for unsubscribing from UNSUBSCRIBED
+	// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
+	// references will be identical everywhere
+	if (event_path != UNSUBSCRIBED) {
+		apps_evs_client_unsubscribe(client, sub);
+	}
 	
 	// If the client has removed all subscriptions, add him back to UNSUBSCRIBED
 	// unless he was just removed from UNSUBSCRIBED, then just leave empty (assumes
@@ -202,7 +221,7 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	return CLIENT_GOOD;
 }
 
-void evs_client_client_free(client_t *client) {
+void evs_client_client_clean(client_t *client) {
 	// It's possible the client never behaved and was killed before
 	// its subscriptions were setup
 	if (client->subs == NULL) {
@@ -224,6 +243,7 @@ void evs_client_client_free(client_t *client) {
 	
 	// Clean up the excess memory (and the underlying array used to hold it)
 	g_ptr_array_free(client->subs, TRUE);
+	client->subs = NULL;
 }
 
 void evs_client_pub_messages() {
@@ -308,7 +328,7 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	
 	evs_client_sub_t *sub;
 	
-	// There are no callbacks on for broadcast messages
+	// There are no callbacks for broadcast messages
 	_evs_client_format_message(handler, 0, 0, extra, type, data, message, &sub);
 	
 	emsg->sub = sub;
@@ -330,11 +350,17 @@ status_t evs_client_format_message(const event_handler_t *handler, const guint32
 	evs_client_sub_t *sub;
 	return _evs_client_format_message(handler, callback, server_callback, extra, type, data, buffer, &sub);
 }
+
 gboolean evs_client_init() {
 	// Keys are copied before they are inserted, so when they're removed,
 	// they must be freed
 	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	_new_messages();
+	
+	// Setup the UNSUBSCRIBED subscription: it's fake, so we have to do it here
+	evs_client_sub_t *sub = _create_subscription(UNSUBSCRIBED, NULL, NULL, 0);
+	g_hash_table_insert(_events, sub->event_path, sub);
+	
 	return TRUE;
 }
 
@@ -359,3 +385,7 @@ void evs_client_cleanup() {
 		}
 	}
 }
+
+#ifdef TESTING
+#include "../test/test_events_client.c"
+#endif

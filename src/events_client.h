@@ -142,7 +142,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client);
  *
  * @param client The client that should be free'd
  */
-void evs_client_client_free(client_t *client);
+void evs_client_client_clean(client_t *client);
 
 /**
  * Removes the client from the room.
@@ -187,6 +187,10 @@ MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, cons
  * @param type The type of the data (json, plain, etc).  d_plain if none.
  * @param data The actual data to be sent. NULL if none.
  * @param buffer Where the formatted message will be written. MUST NOT be NULL.
+ *
+ * @return CLIENT_GOOD - If the message was prepared and formatted successfully.
+ * @return CLIENT_INVALID_SUBSCRIPTION - If there are no clients subscribed to this event, such
+ * that sending the event would do nothing.
  */
 MODULE_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
 
@@ -197,3 +201,8 @@ MODULE_EXPORT status_t evs_client_format_message(const event_handler_t *handler,
  * @warning NOT thread safe.
  */
 void evs_client_cleanup();
+
+
+#ifdef TESTING
+#include "../test/test_events_client.h"
+#endif

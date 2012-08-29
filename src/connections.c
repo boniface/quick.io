@@ -87,7 +87,7 @@ void conns_client_close(client_t *client) {
 	apps_client_close(client);
 	
 	// Remove the client from all his subscriptions
-	evs_client_client_free(client);
+	evs_client_client_clean(client);
 	
 	// Closing the socket also causes the OS to remove it from epoll
 	qsys_close(client);
