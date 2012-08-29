@@ -78,7 +78,7 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
 		sub = _create_subscription(event_path, handler, extra, extra_len);
 		if (sub == NULL) {
 			g_list_free_full(extra, g_free);
-			return;
+			return NULL;
 		}
 		
 		// The hash table relies on the key existing for its
@@ -181,7 +181,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// No app callbacks for subscribing to UNSUBSCRIBED
 	// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
 	// references will be identical everywhere
-	if (event_path != UNSUBSCRIBED) {
+	if (*event_path != *UNSUBSCRIBED) {
 		apps_evs_client_subscribe(client, sub);
 	}
 	
@@ -207,7 +207,7 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	// No app callbacks for unsubscribing from UNSUBSCRIBED
 	// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
 	// references will be identical everywhere
-	if (event_path != UNSUBSCRIBED) {
+	if (*event_path != *UNSUBSCRIBED) {
 		apps_evs_client_unsubscribe(client, sub);
 	}
 	
@@ -237,8 +237,13 @@ void evs_client_client_clean(client_t *client) {
 		// so just move on
 		g_hash_table_remove(sub->clients, client);
 		
-		// Send the apps callback
-		apps_evs_client_unsubscribe(client, sub);
+		// No app callbacks for leaving UNSUBSCRIBED
+		// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
+		// references will be identical everywhere
+		
+		if (*(sub->event_path) != *UNSUBSCRIBED) {
+			apps_evs_client_unsubscribe(client, sub);
+		}
 	}
 	
 	// Clean up the excess memory (and the underlying array used to hold it)

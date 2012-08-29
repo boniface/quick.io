@@ -27,6 +27,9 @@
  * The subscription that a user without any subscriptions will always have.
  * This is removed as soon as the user subscribes to an event, and added back
  * when the user no longer has any subscriptions.
+ *
+ * The name of this event is invalid, so it is safe to do simple string
+ * dereferences to check for equality
  */
 #define UNSUBSCRIBED "0"
 

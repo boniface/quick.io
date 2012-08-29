@@ -206,6 +206,9 @@ START_TEST(test_evs_client_ready) {
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "Added to unsubscribed");
 	
+	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
+	
 	u_client_free(client);
 }
 END_TEST
@@ -215,6 +218,9 @@ START_TEST(test_evs_client_subscribe_bad_subscription) {
 	
 	test_status_eq(evs_client_sub_client("test", client), CLIENT_INVALID_SUBSCRIPTION, "Subscription not found");
 	test_size_eq(client->subs->len, 0, "No subscriptions");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
 	
 	u_client_free(client);
 }
@@ -232,6 +238,9 @@ START_TEST(test_evs_client_subscribe_too_many_subscriptions) {
 	
 	test_status_eq(evs_client_sub_client("/test/event/test2", client), CLIENT_TOO_MANY_SUBSCRIPTIONS, "Subscription not found");
 	
+	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 0 * option_apps_count(), "Only real unsubscribes sent");
+	
 	u_client_free(client);
 }
 END_TEST
@@ -246,6 +255,9 @@ START_TEST(test_evs_client_subscribe_already_subscribed) {
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In subscription");
 	
+	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
+	
 	u_client_free(client);
 }
 END_TEST
@@ -256,10 +268,12 @@ START_TEST(test_evs_client_unsubscribe) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 	
-	
 	evs_client_sub_t *sub = _get_subscription(UNSUBSCRIBED, FALSE);
 	test_size_eq(client->subs->len, 1, "In unsubscribed");
 	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In unsubscribed");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 1 * option_apps_count(), "Only real unsubscribes sent");
 	
 	u_client_free(client);
 }
@@ -280,6 +294,9 @@ START_TEST(test_evs_client_unsubscribe_not_subscribed) {
 	test(_get_subscription("/test/event/test", TRUE) != NULL, "Subscription created");
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_CANNOT_UNSUBSCRIBE, "Subscribed");
 	
+	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
+	
 	u_client_free(client);
 }
 END_TEST
@@ -294,6 +311,9 @@ START_TEST(test_evs_client_sub_unsub_0) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 	
+	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
+	
 	u_client_free(client);
 }
 END_TEST
@@ -307,6 +327,9 @@ START_TEST(test_evs_client_sub_unsub_1) {
 	test_status_eq(evs_client_unsub_client("/test/event/test2", client), CLIENT_GOOD, "Unsubscribed");
 	test_status_eq(evs_client_sub_client("/test/event/test3", client), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_unsub_client("/test/event/test3", client), CLIENT_GOOD, "Unsubscribed");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
 	
 	u_client_free(client);
 }
@@ -323,6 +346,29 @@ START_TEST(test_evs_client_sub_unsub_2) {
 	test_status_eq(evs_client_unsub_client("/test/event/test2", client), CLIENT_GOOD, "Unsubscribed");
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 	
+	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_clean_unsubscribed) {
+	client_t *client = u_client_create();
+	
+	DEBUG("1");
+	evs_client_client_ready(client);
+	DEBUG("2");
+	evs_client_client_clean(client);
+	DEBUG("3");
+	
+	test_ptr_eq(client->subs, NULL, "No subscriptions");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
+	
+	// So that u_client_free doesn't freak out
+	client->subs = g_ptr_array_new();
 	u_client_free(client);
 }
 END_TEST
@@ -349,6 +395,9 @@ START_TEST(test_evs_client_clean) {
 	
 	sub = _get_subscription("/test/event/test3", FALSE);
 	test_size_eq(g_hash_table_size(sub->clients), 0, "No more clients subscribed 3");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Unsubscribes sent to client close");
 	
 	// So that u_client_free doesn't freak out
 	client->subs = g_ptr_array_new();
@@ -428,6 +477,7 @@ Suite* events_client_suite() {
 	
 	tc = tcase_create("Client Cleaning");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
+	tcase_add_test(tc, test_evs_client_clean_unsubscribed);
 	tcase_add_test(tc, test_evs_client_clean);
 	tcase_add_test(tc, test_evs_client_clean_bad_client);
 	suite_add_tcase(s, tc);
