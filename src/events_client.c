@@ -396,8 +396,13 @@ void evs_client_cleanup() {
 	while (g_hash_table_iter_next(&iter, (void*)&key, (void*)&sub)) {
 		DEBUGF("Hitting subscription: %s - %d", sub->event_path, g_hash_table_size(sub->clients));
 		if (g_hash_table_size(sub->clients) == 0) {
-			DEBUGF("Removing empty subscription: %s", sub->event_path);
 			
+			// Don't free UNSUBSCRIBED, we can't re-add it
+			if (*(sub->event_path) == *UNSUBSCRIBED) {
+				continue;
+			}
+			
+			DEBUGF("Removing empty subscription: %s", sub->event_path);
 			// The key will be free'd when the iter is unref'd
 			// g_free(sub->event_path);
 			//

@@ -366,6 +366,14 @@ START_TEST(test_evs_client_clean_unsubscribed) {
 	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
 	
+	// Get rid of the empty subscription
+	evs_client_cleanup();
+	
+	// Unsubscribed should NEVER be removed, even when empty
+	evs_client_sub_t *sub = _get_subscription(UNSUBSCRIBED, FALSE);
+	test(sub != NULL, "UNSUBSCRIBED still exists");
+	test_size_eq(g_hash_table_size(sub->clients), 0, "No clients in UNSUBSCRIBED");
+	
 	// So that u_client_free doesn't freak out
 	client->subs = g_ptr_array_new();
 	u_client_free(client);
