@@ -324,6 +324,8 @@ status_t rfc6455_incoming(client_t *client) {
 	// If data came from the client unmasked, then that's wrong. Abort.
 	// There MUST always be at least the first byte, so we don't need
 	// any continuation logic here
+	//
+	// See: http://tools.ietf.org/html/rfc6455#section-5.1
 	if ((*(buff + 1) & MASK_BIT) == 0) {
 		return CLIENT_NEED_MASK;
 	}
@@ -335,7 +337,20 @@ status_t rfc6455_incoming(client_t *client) {
 		client->message->type = op_text;
 		return _rfc6455_start(client);
 	} else if (opcode == OP_CONTINUATION) {
-		return _rfc6455_start(client);
+		// Continuation frames are too complicated to implement at the moment,
+		// and I don't see myself needing them, so I'm just not going to implement
+		// them.
+		//
+		// From: http://tools.ietf.org/html/rfc6455#section-5.4
+		// Example: EXAMPLE: For a text message sent as three fragments, the first
+		// fragment would have an opcode of 0x1 and a FIN bit clear, the
+		// second fragment would have an opcode of 0x0 and a FIN bit clear,
+		// and the third fragment would have an opcode of 0x0 and a FIN bit
+		// that is set.
+		//
+		// This is way too complicated.  Seriously, why?
+		return CLIENT_ABORTED;
+		// return _rfc6455_start(client);
 	} else if (opcode == OP_CLOSE) {
 		return CLIENT_ABORTED;
 	} else if (opcode == OP_PING) {
