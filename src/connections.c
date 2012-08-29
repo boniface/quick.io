@@ -93,7 +93,6 @@ void conns_client_close(client_t *client) {
 	qsys_close(client);
 	conns_message_free(client);
 	free(client);
-	mprobe(client);
 }
 
 void conns_client_hup(client_t *client) {

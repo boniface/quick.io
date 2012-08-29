@@ -260,8 +260,18 @@ START_TEST(test_evs_event_creation_invalid_handler) {
 }
 END_TEST
 
-START_TEST(test_evs_new_handler_bad_path) {
+START_TEST(test_evs_new_handler_bad_path_0) {
 	test_ptr_eq(evs_server_on("/:event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
+}
+END_TEST
+
+START_TEST(test_evs_new_handler_bad_path_1) {
+	test_ptr_eq(evs_server_on("/=event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
+}
+END_TEST
+
+START_TEST(test_evs_new_handler_bad_path_2) {
+	test_ptr_eq(evs_server_on("/=:event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
 }
 END_TEST
 
@@ -509,7 +519,9 @@ Suite* events_server_suite() {
 	
 	tc = tcase_create("Handler Creation");
 	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
-	tcase_add_test(tc, test_evs_new_handler_bad_path);
+	tcase_add_test(tc, test_evs_new_handler_bad_path_0);
+	tcase_add_test(tc, test_evs_new_handler_bad_path_1);
+	tcase_add_test(tc, test_evs_new_handler_bad_path_2);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Handler Getting");

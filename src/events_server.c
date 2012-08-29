@@ -410,7 +410,13 @@ status_t evs_server_handle(client_t *client) {
 event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_cb on_subscribe, const on_subscribe_cb on_unsubscribe, const gboolean handle_children) {
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
-		ERRORF("Could not add event \"%s\", \":\" not allowed in event names.", event_path);
+		ERRORF("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
+		return NULL;
+	}
+	
+	// Don't allow events with EVENT_DATA_DELIMITER in the name
+	if (g_strstr_len(event_path, -1, EVENT_DATA_DELIMITER) != NULL) {
+		ERRORF("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 	

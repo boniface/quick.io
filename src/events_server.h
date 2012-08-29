@@ -14,6 +14,13 @@
 #define EVENT_DELIMITER ":"
 
 /**
+ * What is used to separate the event parameters from the data.
+ *
+ * @note The "=" character is not allowed in event names.
+ */
+#define EVENT_DATA_DELIMITER "="
+
+/**
  * Response to the client that the subscription is invalid.
  */
 #define EVENT_RESPONSE_INVALID_SUBSCRIPTION "invalid"
