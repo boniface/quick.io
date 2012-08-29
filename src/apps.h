@@ -60,8 +60,10 @@ typedef void (*app_cb_client)(const client_t *client);
 /**
  * A callback for when a client subscribes/unsubscribes from an event.
  *
- * @param event The event that was triggered.
- * @param client The client that sent the event.
+ * @param client The client that subscribed/unsubscribed.
+ * @param event_path The event that was un/subscribed to.
+ * @param extra Any extra path elements on this event.
+ * @param extra_len The number of extra parameters.
  */
 typedef void (*app_cb_evs_client)(const client_t *client, const gchar *event_path, const path_extra_t extra, const guint extra_len);
 
@@ -204,7 +206,7 @@ gboolean apps_postfork();
  *
  * @param client The client that was accepted.
  */
-void apps_client_connect(client_t *client);
+void apps_client_connect(const client_t *client);
 
 /**
  * Inform all the apps that a client has closed so that he can be removed from 
@@ -212,7 +214,7 @@ void apps_client_connect(client_t *client);
  *
  * @param client The client that closed.
  */
-void apps_client_close(client_t *client);
+void apps_client_close(const client_t *client);
 
 /**
  * Inform all the apps when a client has added a subscription.

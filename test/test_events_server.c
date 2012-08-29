@@ -28,7 +28,7 @@ START_TEST(test_evs_server_clean_name_2) {
 END_TEST
 
 START_TEST(test_evs_event_creation_valid_minimal) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	memset(&event, 0, sizeof(event));
@@ -58,7 +58,7 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 END_TEST
 
 START_TEST(test_evs_event_creation_valid_callback) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	memset(&event, 0, sizeof(event));
@@ -77,7 +77,7 @@ START_TEST(test_evs_event_creation_valid_callback) {
 END_TEST
 
 START_TEST(test_evs_event_creation_valid_json) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	memset(&event, 0, sizeof(event));
@@ -97,7 +97,7 @@ START_TEST(test_evs_event_creation_valid_json) {
 END_TEST
 
 START_TEST(test_evs_event_creation_no_data) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	memset(&event, 0, sizeof(event));
@@ -117,7 +117,7 @@ START_TEST(test_evs_event_creation_no_data) {
 END_TEST
 
 START_TEST(test_evs_event_creation_handle_children) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_handler_t *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
 	
@@ -148,7 +148,7 @@ START_TEST(test_evs_event_creation_handle_children) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -164,7 +164,7 @@ START_TEST(test_evs_event_creation_invalid) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid_with_event) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -180,7 +180,7 @@ START_TEST(test_evs_event_creation_invalid_with_event) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid_callback_id) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -197,7 +197,7 @@ START_TEST(test_evs_event_creation_invalid_callback_id) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid_callback) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -213,7 +213,7 @@ START_TEST(test_evs_event_creation_invalid_callback) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid_junk) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -229,7 +229,7 @@ START_TEST(test_evs_event_creation_invalid_junk) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid_data) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -245,7 +245,7 @@ START_TEST(test_evs_event_creation_invalid_data) {
 END_TEST
 
 START_TEST(test_evs_event_creation_invalid_handler) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	event_t event;
 	event_handler_t *handler = NULL;
@@ -354,7 +354,7 @@ START_TEST(test_evs_path_from_handler) {
 END_TEST
 
 START_TEST(test_evs_handler_noop) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/noop:0:plain=test");
 	
@@ -366,7 +366,7 @@ START_TEST(test_evs_handler_noop) {
 END_TEST
 
 START_TEST(test_evs_handler_noop_callback) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/noop:123:plain=test");
 	
@@ -378,7 +378,7 @@ START_TEST(test_evs_handler_noop_callback) {
 END_TEST
 
 START_TEST(test_evs_handler_ping) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/ping:123:plain=test");
 	
@@ -390,7 +390,7 @@ START_TEST(test_evs_handler_ping) {
 END_TEST
 
 START_TEST(test_evs_handler_subscribe) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/sub:456:plain=/doesnt/exist");
 	
@@ -402,7 +402,7 @@ START_TEST(test_evs_handler_subscribe) {
 END_TEST
 
 START_TEST(test_evs_handler_subscribe_to_unsubscribed) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/sub:456:plain=0");
 	
@@ -414,7 +414,7 @@ START_TEST(test_evs_handler_subscribe_to_unsubscribed) {
 END_TEST
 
 START_TEST(test_evs_handler_subscribe_too_many_subs) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	guint64 max = option_max_subscriptions();
 	while (max--) {
@@ -431,7 +431,7 @@ START_TEST(test_evs_handler_subscribe_too_many_subs) {
 END_TEST
 
 START_TEST(test_evs_handler_subscribe_already_subscribed) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
@@ -446,7 +446,7 @@ START_TEST(test_evs_handler_subscribe_already_subscribed) {
 END_TEST
 
 START_TEST(test_evs_handler_unsubscribe) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
@@ -460,7 +460,7 @@ START_TEST(test_evs_handler_unsubscribe) {
 END_TEST
 
 START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/unsub:456:plain=/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
@@ -471,7 +471,7 @@ START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
 END_TEST
 
 START_TEST(test_evs_handler_unsubscribe_unsubscribed) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->buffer, "/unsub:456:plain=0");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");

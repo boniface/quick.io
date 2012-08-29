@@ -52,7 +52,7 @@
 #define RFC6455_FRAMED_PONG "\x8A""\x04"MESSAGE_SHORT
 
 START_TEST(test_rfc6455_handshake) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, RFC6455_HANDSHAKE);
 	
@@ -69,7 +69,7 @@ START_TEST(test_rfc6455_handshake) {
 END_TEST
 
 START_TEST(test_rfc6455_handshake_no_key) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
 	
@@ -82,7 +82,7 @@ START_TEST(test_rfc6455_handshake_no_key) {
 END_TEST
 
 START_TEST(test_rfc6455_short_message) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT);
 	
@@ -98,7 +98,7 @@ START_TEST(test_rfc6455_short_message) {
 END_TEST
 
 START_TEST(test_rfc6455_partial_no_header) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_PARTIAL_NO_HEADER_P1);
 	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short header rejected");
@@ -111,7 +111,7 @@ START_TEST(test_rfc6455_partial_no_header) {
 END_TEST
 
 START_TEST(test_rfc6455_partial_no_header_long) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_LONG_BROKEN_HEADER_1, sizeof(RFC6455_MESSAGE_LONG_BROKEN_HEADER_1)-1);
 	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Large header rejected");
@@ -124,7 +124,7 @@ START_TEST(test_rfc6455_partial_no_header_long) {
 END_TEST
 
 START_TEST(test_rfc6455_partial_short_message) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT_P1);
@@ -147,7 +147,7 @@ START_TEST(test_rfc6455_partial_short_message) {
 END_TEST
 
 START_TEST(test_rfc6455_multi_partial_short_messages) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_P1);
@@ -173,7 +173,7 @@ START_TEST(test_rfc6455_multi_partial_short_messages) {
 END_TEST
 
 START_TEST(test_rfc6455_multi_partial_broken_header) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_BROKEN_HEADER_P1);
@@ -196,7 +196,7 @@ START_TEST(test_rfc6455_multi_partial_broken_header) {
 END_TEST
 
 START_TEST(test_rfc6455_long_message) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_LONG, sizeof(RFC6455_MESSAGE_LONG)-1);
 	
@@ -211,7 +211,7 @@ END_TEST
 
 
 START_TEST(test_rfc6455_oversized_message) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_OVERSIZED_MESSAGE, sizeof(RFC6455_MESSAGE_OVERSIZED_MESSAGE)-1);
 	

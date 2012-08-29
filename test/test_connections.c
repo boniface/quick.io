@@ -3,7 +3,7 @@
 #define PING "/ping:123:plain=pingeth"
 
 START_TEST(test_conns_message_clean_0) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -20,7 +20,7 @@ START_TEST(test_conns_message_clean_0) {
 END_TEST
 
 START_TEST(test_conns_message_clean_1) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -37,7 +37,7 @@ START_TEST(test_conns_message_clean_1) {
 END_TEST
 
 START_TEST(test_conns_message_clean_2) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -54,7 +54,7 @@ START_TEST(test_conns_message_clean_2) {
 END_TEST
 
 START_TEST(test_conns_message_clean_3) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;

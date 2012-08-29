@@ -23,7 +23,7 @@ static void _test_message_setup() {
 }
 
 START_TEST(test_client_incomplete_handshake_0) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, INCOMPLETE_HANDSHAKE_HTTP);
 	test_status_eq(client_handshake(client), CLIENT_WAIT, "Waiting for complete handshake");
@@ -33,7 +33,7 @@ START_TEST(test_client_incomplete_handshake_0) {
 END_TEST
 
 START_TEST(test_client_incomplete_handshake_1) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, INCOMPLETE_HANDSHAKE_WS);
 	test_status_eq(client_handshake(client), CLIENT_WAIT, "Waiting for complete handshake");
@@ -43,7 +43,7 @@ START_TEST(test_client_incomplete_handshake_1) {
 END_TEST
 
 START_TEST(test_client_empty_handshake) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	// Make sure that soup_headers_parse_request is fine parsing empty strings
 	g_string_assign(client->message->socket_buffer, "");
@@ -54,7 +54,7 @@ START_TEST(test_client_empty_handshake) {
 END_TEST
 
 START_TEST(test_client_no_handlers_0) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, NO_HANDLER_HANDSHAKE_KEYS);
 	test_status_eq(client_handshake(client), CLIENT_UNSUPPORTED, "No handler found");
@@ -64,7 +64,7 @@ START_TEST(test_client_no_handlers_0) {
 END_TEST
 
 START_TEST(test_client_no_handlers_1) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, NO_HANDLER_HANDSHAKE_HORRIBLE);
 	test_status_eq(client_handshake(client), CLIENT_UNSUPPORTED, "Rejected headers");
@@ -74,7 +74,7 @@ START_TEST(test_client_no_handlers_1) {
 END_TEST
 
 START_TEST(test_client_bad_headers) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
 	test_status_eq(client_handshake(client), CLIENT_ABORTED, "Headers rejected");
@@ -84,7 +84,7 @@ START_TEST(test_client_bad_headers) {
 END_TEST
 
 START_TEST(test_client_message_no_handler_incoming) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
 	test_status_eq(client_message(client), CLIENT_ABORTED, "Client rejected: no handler");
@@ -94,7 +94,7 @@ START_TEST(test_client_message_no_handler_incoming) {
 END_TEST
 
 START_TEST(test_client_message_no_handler_continue) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	client->message->remaining_length = 100;
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
@@ -105,7 +105,7 @@ START_TEST(test_client_message_no_handler_continue) {
 END_TEST
 
 START_TEST(test_client_message_incoming) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP, sizeof(MESSAGE_RFC6455_NOOP)-1);
@@ -116,7 +116,7 @@ START_TEST(test_client_message_incoming) {
 END_TEST
 
 START_TEST(test_client_message_continue) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP_0, sizeof(MESSAGE_RFC6455_NOOP_0)-1);
@@ -131,7 +131,7 @@ START_TEST(test_client_message_continue) {
 END_TEST
 
 START_TEST(test_client_no_message) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	message_t *message = client->message;
 	client->message = NULL;
 	
@@ -143,7 +143,7 @@ START_TEST(test_client_no_message) {
 END_TEST
 
 START_TEST(test_client_no_handler) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	test_status_eq(client_write(client, NULL), CLIENT_ABORTED, "No handler");
 	
@@ -152,7 +152,7 @@ START_TEST(test_client_no_handler) {
 END_TEST
 
 START_TEST(test_client_oversized_message) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	
 	gchar *really_long = g_strnfill(0xFFFF + 1, 'a');
@@ -166,7 +166,7 @@ START_TEST(test_client_oversized_message) {
 END_TEST
 
 START_TEST(test_client_no_frame_len) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	client_write_frame(client, NULL, 0);
 	

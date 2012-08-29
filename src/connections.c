@@ -32,7 +32,7 @@ static void _socket_message_new(client_t *client) {
 static void _conns_tick() {
 	static guint ticks = 0;
 	
-	// Send out messages at the end of a loop (this will always be hit on event loop)
+	// Send out messages
 	evs_client_pub_messages();
 	
 	if (ticks++ % CONNS_MAINTENANCE_CLEANUP == 0) {
@@ -91,9 +91,9 @@ void conns_client_close(client_t *client) {
 	
 	// Closing the socket also causes the OS to remove it from epoll
 	qsys_close(client);
-	qsys_timer_clear(client);
 	conns_message_free(client);
 	free(client);
+	mprobe(client);
 }
 
 void conns_client_hup(client_t *client) {
@@ -143,7 +143,7 @@ void conns_client_data(client_t *client) {
 	}
 	
 	// While there is still something on the socket buffer to process
-	while (client->message && client->message->socket_buffer->len > 0) {
+	while (client->message->socket_buffer->len > 0) {
 		status_t status;
 		if (client->initing == 1) {
 			DEBUG("Client handshake");
@@ -194,24 +194,27 @@ void conns_client_data(client_t *client) {
 			
 			DEBUGF("Bad client, closing: status=%d", status);
 			conns_client_close(client);
+			client = NULL;
 			
 			// The client is gone...we're done.
 			break;
 		}
 	}
+	
+	if (client != NULL && client->message->socket_buffer->len == 0 && client->message->remaining_length == 0) {
+		conns_message_free(client);
+	}
 }
 
 void conns_message_free(client_t *client) {
-	message_t *message = client->message;
-	
 	// If the client doesn't have a message, don't be stupid
-	if (message == NULL) {
+	if (client->message == NULL) {
 		return;
 	}
 	
-	g_string_free(message->buffer, TRUE);
-	g_string_free(message->socket_buffer, TRUE);
-	free(message);
+	g_string_free(client->message->buffer, TRUE);
+	g_string_free(client->message->socket_buffer, TRUE);
+	free(client->message);
 	client->message = NULL;
 }
 

@@ -88,10 +88,16 @@ typedef struct evs_client_sub_s {
  */
 typedef struct evs_client_message_s {
 	/**
-	 * The name of the event.
-	 * @attention MUST NOT be free()'d
+	 * The path of the event we're publishing to.
+	 * This causes another hash table lookup, but it saves us from the following case:
+	 *
+	 * 1) Publish event to /test/event
+	 * 2) All clients unsubscribe from /test/event
+	 * 3) We attempt to publish with an invalid pointer (segfault!)
+	 *
+	 * @attention MUST be free()'d when done.
 	 */
-	evs_client_sub_t *sub;
+	gchar *event_path;
 	
 	/**
 	 * The opcode of the message.

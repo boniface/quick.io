@@ -6,8 +6,11 @@
 #pragma once
 #include <check.h>
 #include <fcntl.h>
+#include <mcheck.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include "qio.h"
 #include "utils.h"
 

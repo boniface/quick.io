@@ -176,7 +176,7 @@ gboolean apps_postfork() {
 	return TRUE;
 }
 
-void apps_client_connect(client_t *client) {
+void apps_client_connect(const client_t *client) {
 	APP_FOREACH(
 		app_cb_client cb = app->client_connect;
 		
@@ -186,7 +186,7 @@ void apps_client_connect(client_t *client) {
 	)
 }
 
-void apps_client_close(client_t *client) {
+void apps_client_close(const client_t *client) {
 	APP_FOREACH(
 		app_cb_client cb = app->client_close;
 		

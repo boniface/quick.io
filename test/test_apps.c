@@ -60,7 +60,7 @@ END_TEST
 
 START_TEST(test_apps_events_on_0) {
 	apps_register_events();
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/test/event", client);
 	
@@ -72,7 +72,7 @@ END_TEST
 
 START_TEST(test_apps_events_on_1) {
 	apps_register_events();
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/event", client);
 	
@@ -84,7 +84,7 @@ END_TEST
 
 START_TEST(test_apps_events_off_0) {
 	apps_register_events();
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/test/event", client);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
@@ -98,7 +98,7 @@ END_TEST
 
 START_TEST(test_apps_events_off_1) {
 	apps_register_events();
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/event", client);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
@@ -112,7 +112,7 @@ END_TEST
 
 START_TEST(test_apps_events_handle_0) {
 	apps_register_events();
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/test/event", client);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
@@ -127,7 +127,7 @@ END_TEST
 
 START_TEST(test_apps_events_handle_1) {
 	apps_register_events();
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/event", client);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
@@ -177,7 +177,7 @@ START_TEST(test_apps_cb_run) {
 END_TEST
 
 START_TEST(test_apps_cb_client_connect) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	apps_client_connect(client);
 	test_size_eq(utils_stats()->apps_client_connect, 2, "Single client connected, 2 apps fired");
@@ -187,7 +187,7 @@ START_TEST(test_apps_cb_client_connect) {
 END_TEST
 
 START_TEST(test_apps_cb_client_close) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	
 	apps_client_close(client);
 	test_size_eq(utils_stats()->apps_client_close, 2, "Single client disconnected, 2 apps fired");
@@ -197,7 +197,7 @@ START_TEST(test_apps_cb_client_close) {
 END_TEST
 
 START_TEST(test_apps_cb_client_subscribe) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
 	sub->event_path = "/test";
 	sub->extra = NULL;
@@ -214,7 +214,7 @@ START_TEST(test_apps_cb_client_subscribe) {
 END_TEST
 
 START_TEST(test_apps_cb_client_unsubscribe) {
-	client_t *client = u_client_create();
+	client_t *client = u_client_create(NULL);
 	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
 	sub->event_path = "/test";
 	sub->extra = NULL;

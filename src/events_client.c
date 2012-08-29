@@ -98,6 +98,9 @@ static void _new_messages() {
 	g_mutex_unlock(&_messages_lock);
 }
 
+/**
+ * @see evs_client_format_message()
+ */
 static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, evs_client_sub_t **sub) {
 	// A callback takes precedence over an event handler, always
 	if (callback != 0) {
@@ -140,6 +143,62 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 	
 	return CLIENT_GOOD;
 }
+/**
+ * Publish a single message to multiple clients.
+ *
+ * @param sub The subscription to send the message to.
+ * @param message The message to send to all the subscribers.
+ */
+static void _evs_client_pub_message(evs_client_sub_t *sub, evs_client_message_t *message) {
+	UTILS_STATS_INC(evs_client_pubd_messages);
+
+	GPtrArray *dead_clients = g_ptr_array_new();
+	
+	// For holding all the message types we might send
+	gchar *msgs[h_len];
+	gsize msglen[h_len];
+	
+	msgs[h_rfc6455] = rfc6455_prepare_frame(
+		message->type,
+		FALSE,
+		message->message,
+		message->message_len,
+		&msglen[h_rfc6455]
+	);
+	
+	// Go through all the clients and give them their messages
+	GHashTableIter iter;
+	client_t *client, *client2;
+	g_hash_table_iter_init(&iter, sub->clients);
+	while (g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client2)) {
+		enum handlers handler = client->handler;
+		
+		// This is very bad...
+		if (handler == h_none) {
+			// We cannot remove the client from this hash table directly or it
+			// invalidates the iterator, so we have to delay it.
+			g_ptr_array_add(dead_clients, client);
+			continue;
+		}
+		
+		if (client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_ABORTED) {
+			g_ptr_array_add(dead_clients, client);
+		}
+	}
+	
+	// Clean up all the allocated frames
+	for (int i = 0; i < h_len; i++) {
+		free(msgs[i]);
+	}
+	
+	// Clean up dead clients
+	for (gsize i = 0; i < dead_clients->len; i++) {
+		UTILS_STATS_INC(evs_client_pub_closes);
+		conns_client_close(g_ptr_array_index(dead_clients, i));
+	}
+	
+	g_ptr_array_free(dead_clients, TRUE);
+}
 
 void evs_client_client_ready(client_t *client) {
 	// Initialize our internal management from the client
@@ -179,8 +238,6 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	g_ptr_array_add(client->subs, sub);
 	
 	// No app callbacks for subscribing to UNSUBSCRIBED
-	// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
-	// references will be identical everywhere
 	if (*event_path != *UNSUBSCRIBED) {
 		apps_evs_client_subscribe(client, sub);
 	}
@@ -205,8 +262,6 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	g_ptr_array_remove_fast(client->subs, sub);
 	
 	// No app callbacks for unsubscribing from UNSUBSCRIBED
-	// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
-	// references will be identical everywhere
 	if (*event_path != *UNSUBSCRIBED) {
 		apps_evs_client_unsubscribe(client, sub);
 	}
@@ -238,9 +293,6 @@ void evs_client_client_clean(client_t *client) {
 		g_hash_table_remove(sub->clients, client);
 		
 		// No app callbacks for leaving UNSUBSCRIBED
-		// This is a safe check: UNSUBSCRIBED is only used internally, so the memory
-		// references will be identical everywhere
-		
 		if (*(sub->event_path) != *UNSUBSCRIBED) {
 			apps_evs_client_unsubscribe(client, sub);
 		}
@@ -264,53 +316,16 @@ void evs_client_pub_messages() {
 	
 	// Go through all the messages and publish!
 	for (gsize i = 0; i < messages->len; i++) {
-		#warning This might be freed before it can be published
 		evs_client_message_t *message = g_ptr_array_index(messages, i);
 		
-		GPtrArray *dead_clients = g_ptr_array_new();
-		gchar *msgs[h_len];
-		gsize msglen[h_len];
+		// Find if the subscription we want to send to still exists
+		evs_client_sub_t *sub = _get_subscription(message->event_path, FALSE /* DON'T TOUCH */);
 		
-		msgs[h_rfc6455] = rfc6455_prepare_frame(
-			message->type,
-			FALSE,
-			message->message,
-			message->message_len,
-			&msglen[h_rfc6455]
-		);
-		
-		// Go through all the clients and give them their messages
-		GHashTableIter iter;
-		client_t *client, *client2;
-		g_hash_table_iter_init(&iter, message->sub->clients);
-		while (g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client2)) {
-			enum handlers handler = client->handler;
-			
-			// This is very bad...
-			if (handler == h_none) {
-				// We cannot remove the client from this hash table directly or it
-				// invalidates the iterator, so we have to delay it.
-				g_ptr_array_add(dead_clients, client);
-				continue;
-			}
-			
-			if (client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_ABORTED) {
-				g_ptr_array_add(dead_clients, client);
-			}
+		if (sub != NULL) {
+			_evs_client_pub_message(sub, message);
 		}
 		
-		// Clean up all the allocated frames
-		for (int i = 0; i < h_len; i++) {
-			free(msgs[i]);
-		}
-		
-		// Clean up dead clients
-		for (gsize i = 0; i < dead_clients->len; i++) {
-			conns_client_close(g_ptr_array_index(dead_clients, i));
-		}
-			
-		// Clean all that memory
-		g_ptr_array_free(dead_clients, TRUE);
+		g_free(message->event_path);
 		g_free(message->message);
 		g_free(message);
 	}
@@ -320,8 +335,6 @@ void evs_client_pub_messages() {
 }
 
 status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data) {
-
-	
 	// Attempt to create a new publishable message
 	evs_client_message_t *emsg = g_try_malloc0(sizeof(*emsg));
 	if (emsg == NULL) {
@@ -336,7 +349,11 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	// There are no callbacks for broadcast messages
 	_evs_client_format_message(handler, 0, 0, extra, type, data, message, &sub);
 	
-	emsg->sub = sub;
+	// This one is tricky: duplicate the event path so that the following cannot happen:
+	//  1) Publish event to /test/event
+	//  2) All clients unsubscribe from /test/event
+	//  3) We attempt to publish with an invalid pointer (segfault!)
+	emsg->event_path = g_strdup(sub->event_path);
 	emsg->type = op_text;
 	emsg->message = message->str;
 	emsg->message_len = message->len;

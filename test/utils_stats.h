@@ -106,6 +106,16 @@ typedef struct test_stats_s {
 	 * The number of times the test_handler_off is hit.
 	 */
 	gsize apps_client_handler_off;
+	
+	/**
+	 * The number of messages that were published.  1 publish to many users counts as 1 message.
+	 */
+	gsize evs_client_pubd_messages;
+	
+	/**
+	 * The number of clients closed during message publishing.
+	 */
+	gsize evs_client_pub_closes;
 } test_stats_t;
 
 /**

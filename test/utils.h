@@ -38,9 +38,11 @@ char* test_status_to_str(status_t status);
 /**
  * Create a new client for tests.
  *
+ * @param socket Where the other side of the client socket should be put
+ *
  * @return A client that can be used.
  */
-client_t* u_client_create();
+client_t* u_client_create(int *socket);
 
 /**
  * Free the client allocated in u_client_create().

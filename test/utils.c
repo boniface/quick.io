@@ -7,7 +7,7 @@ char* test_status_to_str(status_t status) {
 	return "UNKNOWN";
 }
 
-client_t* u_client_create() {
+client_t* u_client_create(int *socket) {
 	client_t *client = malloc(sizeof(*client));
 	memset(client, 0, sizeof(*client));
 	
@@ -22,10 +22,21 @@ client_t* u_client_create() {
 	client->message = message;
 	client->handler = h_none;
 	
+	if (socket != NULL) {
+		int sockets[2];
+		socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
+		client->socket = sockets[0];
+		*socket = sockets[1];
+	}
+	
 	return client;
 }
 
 void u_client_free(client_t *client) {
+	if (client->socket != 0) {
+		close(client->socket);
+	}
+
 	g_string_free(client->message->socket_buffer, TRUE);
 	g_string_free(client->message->buffer, TRUE);
 	g_ptr_array_free(client->subs, TRUE);

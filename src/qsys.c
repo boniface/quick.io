@@ -45,6 +45,7 @@ gssize qsys_write(client_t *client, gchar *buff, gsize buff_size) {
 
 void qsys_close(client_t *client) {
 	_qsys_close(client->socket);
+	qsys_timer_clear(client);
 }
 
 gboolean qsys_timer_set(client_t *client, guint16 sec, guint16 ms) {
