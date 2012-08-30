@@ -45,7 +45,7 @@ START_TEST(test_qsys_timeout) {
 	test(sock, "Connection established");
 	
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 	
@@ -70,7 +70,7 @@ START_TEST(test_qsys_ping) {
 	
 	// Time to cheat: there's an rfc6455 constructor that works, so use that for framing
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	send(sock, frame, frame_len, MSG_NOSIGNAL);
 	free(frame);
@@ -126,7 +126,7 @@ START_TEST(test_qsys_two_messages) {
 	test(sock, "Connection established");
 	
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	GString *f = g_string_new_len(frame, frame_len);
 	g_string_append_len(f, frame, frame_len);
@@ -160,7 +160,7 @@ START_TEST(test_qsys_abort_before_response) {
 	test(sock, "Connection established");
 	
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	// Send a bunch of messages so that tons of writes will be done to the socket
 	GString *f = g_string_new_len(frame, frame_len);
@@ -196,7 +196,7 @@ START_TEST(test_qsys_close_partial_message) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 	
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	test_lock_acquire();
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
@@ -255,7 +255,7 @@ START_TEST(test_qsys_two_partial_messages) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 	
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
 	gsize loc = 0;
 	send(sock, frame, frame_len - 10, MSG_NOSIGNAL);
@@ -272,6 +272,28 @@ START_TEST(test_qsys_two_partial_messages) {
 	test_size_eq(utils_stats()->conns_messages, 3, "Partial messages recieved");
 	test_size_eq(utils_stats()->conns_bad_clients, 0, "Server left client open");
 	test_size_eq(utils_stats()->conns_client_wait, 2, "Client was waited for");
+	
+	close(sock);
+}
+END_TEST
+
+START_TEST(test_qsys_flash_policy) {
+	int sock = u_connect();
+	
+	test(sock, "Connection established");
+	
+	send(sock, H_FLASH_POLICY_REQUEST, sizeof(H_FLASH_POLICY_REQUEST)-1, MSG_NOSIGNAL);
+	
+	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
+	
+	gchar buff[sizeof(H_FLASH_POLICY_RESPONSE)];
+	memset(&buff, 0, sizeof(buff));
+	test_size_eq(read(sock, buff, sizeof(buff)-1), sizeof(buff)-1, "XML recieved");
+	test_str_eq(buff, H_FLASH_POLICY_RESPONSE, "Correct XML sent");
+	
+	test_size_eq(utils_stats()->conns_messages, 1, "Only handshake sent");
+	test_size_eq(utils_stats()->conns_bad_clients, 1, "Client killed");
+	test_size_eq(utils_stats()->conns_client_wait, 0, "No waiting");
 }
 END_TEST
 
@@ -293,6 +315,7 @@ Suite* qsys_suite() {
 	tcase_add_test(tc, test_qsys_close_partial_message);
 	tcase_add_test(tc, test_qsys_close_bad_message);
 	tcase_add_test(tc, test_qsys_two_partial_messages);
+	tcase_add_test(tc, test_qsys_flash_policy);
 	suite_add_tcase(s, tc);
 	
 	return s;

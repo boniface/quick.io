@@ -158,7 +158,7 @@ static void _evs_client_pub_message(evs_client_sub_t *sub, evs_client_message_t 
 	gchar *msgs[h_len];
 	gsize msglen[h_len];
 	
-	msgs[h_rfc6455] = rfc6455_prepare_frame(
+	msgs[h_rfc6455] = h_rfc6455_prepare_frame(
 		message->type,
 		FALSE,
 		message->message,
@@ -394,13 +394,12 @@ void evs_client_cleanup() {
 	
 	g_hash_table_iter_init(&iter, _events);
 	while (g_hash_table_iter_next(&iter, (void*)&key, (void*)&sub)) {
-		DEBUGF("Hitting subscription: %s - %d", sub->event_path, g_hash_table_size(sub->clients));
-		
 		// Don't free UNSUBSCRIBED, we can't re-add it
 		if (*(sub->event_path) == *UNSUBSCRIBED) {
 			continue;
 		}
 		
+		DEBUGF("Hitting subscription: %s - %d", sub->event_path, g_hash_table_size(sub->clients));
 		if (g_hash_table_size(sub->clients) == 0) {
 			DEBUGF("Removing empty subscription: %s", sub->event_path);
 			

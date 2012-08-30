@@ -4,6 +4,17 @@ status_t client_handshake(client_t *client) {
 	status_t status = CLIENT_GOOD;
 	GString *buffer = client->message->socket_buffer;
 	
+	// Now this is just absurd: flash sends a request for a policy file as:
+	//    <policy-file-request/>
+	// No headers, no newline, nothing.  Great way to talk to a server, flash.
+	// We have to intercept the request here before we do any REAL checking.
+	//
+	// We use the \n\n check below to make sure that, if we didn't get a full XML
+	// request, we're waiting for the finish.  No need to duplicate that logic here.
+	if (h_flash_policy_handles(buffer->str)) {
+		return h_flash_policy_handshake(client);
+	}
+	
 	// If the client hasn't yet sent the terminating \n\n or \r\n\r\n, then just
 	// don't parse anything, because it's not complete
 	if (!g_string_ends_with(buffer, HTTP_HEADER_TERMINATOR) && !g_string_ends_with(buffer, WEB_SOCKET_HEADER_TERMINATOR)) {
@@ -16,9 +27,9 @@ status_t client_handshake(client_t *client) {
 	
 	// Parse the headers and see if we can handle them
 	if (soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL) == SOUP_STATUS_OK) {
-		if (rfc6455_handles(path, req_headers)) {
+		if (h_rfc6455_handles(path, req_headers)) {
 			client->handler = h_rfc6455;
-			status = rfc6455_handshake(client, req_headers);
+			status = h_rfc6455_handshake(client, req_headers);
 		} else {
 			// No handler was found, and the headers were parsed OK, so
 			// we just can't support this client
@@ -50,7 +61,7 @@ status_t client_message(client_t* client) {
 	if (client->message->remaining_length) {
 		switch (client->handler) {
 			case h_rfc6455:
-				status = rfc6455_continue(client);
+				status = h_rfc6455_continue(client);
 				break;
 			
 			default:
@@ -62,7 +73,7 @@ status_t client_message(client_t* client) {
 	} else {
 		switch (client->handler) {
 			case h_rfc6455:
-				status = rfc6455_incoming(client);
+				status = h_rfc6455_incoming(client);
 				break;
 			
 			default:
@@ -101,7 +112,7 @@ status_t client_write(client_t *client, message_t *message) {
 	
 	switch (client->handler) {
 		case h_rfc6455:
-			frame = rfc6455_prepare_frame_from_message(message, &frame_len);
+			frame = h_rfc6455_prepare_frame_from_message(message, &frame_len);
 			break;
 		
 		default:

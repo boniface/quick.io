@@ -57,7 +57,7 @@
 /**
  * Read masked text from the socket buffer.
  */
-static status_t _rfc6455_read(client_t *client, int header_len) {
+static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	message_t *message = client->message;
 	char *buff = message->socket_buffer->str;
 	
@@ -100,9 +100,9 @@ static status_t _rfc6455_read(client_t *client, int header_len) {
 
 /**
  * Start reading from a masked buffer, and get all the info
- * needed so that _rfc6455_read() can run.
+ * needed so that _h_rfc6455_read() can run.
  */
-static status_t _rfc6455_start(client_t *client) {
+static status_t _h_rfc6455_start(client_t *client) {
 	GString *sb = client->message->socket_buffer;
 	char *buff = sb->str;
 	
@@ -159,15 +159,15 @@ static status_t _rfc6455_start(client_t *client) {
 	// Pass on the mask as an int to make it easier for memory management
 	client->message->mask = *((guint32*)mask);
 	
-	return _rfc6455_read(client, header_len);
+	return _h_rfc6455_read(client, header_len);
 }
 
-gboolean rfc6455_handles(gchar *path, SoupMessageHeaders *req_headers) {
+gboolean h_rfc6455_handles(gchar *path, SoupMessageHeaders *req_headers) {
 	const char *id = soup_message_headers_get_one(req_headers, VERSION_KEY);
 	return id != NULL && strncmp(id, "13", 2) == 0;
 }
 
-status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
+status_t h_rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	const char *key = soup_message_headers_get_one(req_headers, CHALLENGE_KEY);
 	
 	if (key == NULL) {
@@ -194,7 +194,7 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
 	return CLIENT_WRITE;
 }
 
-char* rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len) {
+char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len) {
 	char *frame;
 	
 	// If masked, then start the header off with room from the mask
@@ -286,8 +286,8 @@ char* rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guin
 	return frame;
 }
 
-char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
-	return rfc6455_prepare_frame(
+char* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
+	return h_rfc6455_prepare_frame(
 		message->type,
 		FALSE,
 		message->buffer->str,
@@ -296,9 +296,9 @@ char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
 	);
 }
 
-status_t rfc6455_continue(client_t *client) {
+status_t h_rfc6455_continue(client_t *client) {
 	// There are no headers when continuing
-	status_t status = _rfc6455_read(client, 0);
+	status_t status = _h_rfc6455_read(client, 0);
 	
 	if (status != CLIENT_GOOD) {
 		return status;
@@ -313,7 +313,7 @@ status_t rfc6455_continue(client_t *client) {
 	return status;
 }
 
-status_t rfc6455_incoming(client_t *client) {
+status_t h_rfc6455_incoming(client_t *client) {
 	// If we haven't even finished reading the header from the socket
 	if (client->message->socket_buffer->len < HEADER_LEN) {
 		return CLIENT_WAIT;
@@ -335,7 +335,7 @@ status_t rfc6455_incoming(client_t *client) {
 	
 	if (opcode == OP_TEXT) {
 		client->message->type = op_text;
-		return _rfc6455_start(client);
+		return _h_rfc6455_start(client);
 	} else if (opcode == OP_CONTINUATION) {
 		// Continuation frames are too complicated to implement at the moment,
 		// and I don't see myself needing them, so I'm just not going to implement
@@ -350,7 +350,7 @@ status_t rfc6455_incoming(client_t *client) {
 		//
 		// This is way too complicated.  Seriously, why?
 		return CLIENT_ABORTED;
-		// return _rfc6455_start(client);
+		// return _h_rfc6455_start(client);
 	} else if (opcode == OP_CLOSE) {
 		return CLIENT_ABORTED;
 	} else if (opcode == OP_PING) {
@@ -358,7 +358,7 @@ status_t rfc6455_incoming(client_t *client) {
 		
 		// If the message wasn't correctly processed, then return that
 		status_t status;
-		if ((status =_rfc6455_start(client)) != CLIENT_GOOD) {
+		if ((status =_h_rfc6455_start(client)) != CLIENT_GOOD) {
 			return status;
 		}
 		

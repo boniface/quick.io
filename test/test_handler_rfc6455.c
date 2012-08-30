@@ -66,7 +66,7 @@
 #define RFC6455_FRAME_PING_0 "\x89""\x84"MASK
 #define RFC6455_FRAME_PING_1 "\x15\x07\x10\x10"
 
-START_TEST(test_rfc6455_handshake) {
+START_TEST(test_h_rfc6455_handshake) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, RFC6455_HANDSHAKE);
@@ -83,25 +83,25 @@ START_TEST(test_rfc6455_handshake) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_handshake_no_key) {
+START_TEST(test_h_rfc6455_handshake_no_key) {
 	client_t *client = u_client_create(NULL);
 	
 	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
 	
 	test_int64_eq(soup_headers_parse_request(NOT_RFC6455_HANDSHAKE, sizeof(NOT_RFC6455_HANDSHAKE)-1, req_headers, NULL, NULL, NULL), SOUP_STATUS_OK, "Headers parsed");
 	
-	test_status_eq(rfc6455_handshake(client, req_headers), CLIENT_UNSUPPORTED, "Client not supported");
+	test_status_eq(h_rfc6455_handshake(client, req_headers), CLIENT_UNSUPPORTED, "Client not supported");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_short_message) {
+START_TEST(test_h_rfc6455_short_message) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
 	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer cleared after read");
 	test_uint16_eq(client->message->remaining_length, 0, "Message length==0 as buffer cleared");
 	test_char_eq(client->message->type, op_text, "Opcode set to text");
@@ -112,39 +112,39 @@ START_TEST(test_rfc6455_short_message) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_partial_no_header) {
+START_TEST(test_h_rfc6455_partial_no_header) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_PARTIAL_NO_HEADER_P1);
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short header rejected");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Short header rejected");
 	
 	g_string_append(client->message->socket_buffer, RFC6455_MESSAGE_PARTIAL_NO_HEADER_P2);
-	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_partial_no_header_long) {
+START_TEST(test_h_rfc6455_partial_no_header_long) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_LONG_BROKEN_HEADER_1, sizeof(RFC6455_MESSAGE_LONG_BROKEN_HEADER_1)-1);
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Large header rejected");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Large header rejected");
 	
 	g_string_append_len(client->message->socket_buffer, RFC6455_MESSAGE_LONG_BROKEN_HEADER_2, sizeof(RFC6455_MESSAGE_LONG_BROKEN_HEADER_2)-1);
-	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD, "Message completed");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_partial_short_message) {
+START_TEST(test_h_rfc6455_partial_short_message) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT_P1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
 	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer cleared after read");
 	test_uint16_eq(client->message->remaining_length, 4, "Waiting for 4 more characters");
 	test_char_eq(client->message->type, op_text, "Opcode set to text");
@@ -153,7 +153,7 @@ START_TEST(test_rfc6455_partial_short_message) {
 	
 	// Send the second part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_SHORT_P2);
-	test_status_eq(rfc6455_continue(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
+	test_status_eq(h_rfc6455_continue(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
 	test_size_eq(client->message->buffer->len, 4, "Message read completely");
 	test_str_eq(client->message->buffer->str, MESSAGE_SHORT, "Message decoded correctly");
 	
@@ -161,23 +161,23 @@ START_TEST(test_rfc6455_partial_short_message) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_multi_partial_short_messages) {
+START_TEST(test_h_rfc6455_multi_partial_short_messages) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_P1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
 	
 	// Send the second part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_P2);
-	test_status_eq(rfc6455_continue(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
+	test_status_eq(h_rfc6455_continue(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
 	test_uint16_eq(client->message->remaining_length, 2, "Waiting for 2 more characters");
 	test_size_eq(client->message->buffer->len, 2, "Partially decoded");
 	
 	// Send the third part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_P3);
-	test_status_eq(rfc6455_continue(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
+	test_status_eq(h_rfc6455_continue(client), CLIENT_GOOD, "Short message response: CLIENT_GOOD");
 	test_uint16_eq(client->message->remaining_length, 0, "Waiting for 0 more characters");
 	test_size_eq(client->message->buffer->len, 4, "Completely decoded");
 	
@@ -187,13 +187,13 @@ START_TEST(test_rfc6455_multi_partial_short_messages) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_multi_partial_broken_header) {
+START_TEST(test_h_rfc6455_multi_partial_broken_header) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_assign(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_BROKEN_HEADER_P1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Short message response: CLIENT_WAIT");
 	test_int32_eq(client->message->mask, 0, "Mask was not read, so not set");
 	test_size_eq(client->message->buffer->len, 0, "Nothing was added to the buffer");
 	
@@ -203,109 +203,109 @@ START_TEST(test_rfc6455_multi_partial_broken_header) {
 	
 	// Send the rest of the message
 	g_string_append(client->message->socket_buffer, RFC6455_MESSAGE_MULTI_BROKEN_HEADER_P2);
-	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Message finally read");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD, "Message finally read");
 	test_str_eq(client->message->buffer->str, MESSAGE_SHORT, "Message decoded correctly");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_continuation) {
+START_TEST(test_h_rfc6455_continuation) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_NOT_FINAL, sizeof(RFC6455_FRAME_NOT_FINAL)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD, "Parsed message okay");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_continuation_frame) {
+START_TEST(test_h_rfc6455_continuation_frame) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_CONTINUATION_NOTFINAL, sizeof(RFC6455_FRAME_CONTINUATION_NOTFINAL)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_ABORTED, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_ABORTED, "Parsed message okay");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_close) {
+START_TEST(test_h_rfc6455_close) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_CLOSE, sizeof(RFC6455_FRAME_CLOSE)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_ABORTED, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_ABORTED, "Parsed message okay");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_ping) {
+START_TEST(test_h_rfc6455_ping) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_PING, sizeof(RFC6455_FRAME_PING)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_WRITE, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WRITE, "Parsed message okay");
 	test_str_eq(client->message->buffer->str, "test", "Correct response to ping");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_bad_ping) {
+START_TEST(test_h_rfc6455_bad_ping) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_INCOMPLETE_PING, sizeof(RFC6455_FRAME_INCOMPLETE_PING)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Waiting on rest of ping");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Waiting on rest of ping");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_no_mask) {
+START_TEST(test_h_rfc6455_no_mask) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_NO_MASK, sizeof(RFC6455_FRAME_NO_MASK)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_NEED_MASK, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_NEED_MASK, "Parsed message okay");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_unsupported_opcode) {
+START_TEST(test_h_rfc6455_unsupported_opcode) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_UNSUPPORTED_OPCODE, sizeof(RFC6455_FRAME_UNSUPPORTED_OPCODE)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_UNSUPPORTED_OPCODE, "Unsupported opcode!");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_UNSUPPORTED_OPCODE, "Unsupported opcode!");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_partial_ping) {
+START_TEST(test_h_rfc6455_partial_ping) {
 	client_t *client = u_client_create(NULL);
 	
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_PING_0, sizeof(RFC6455_FRAME_PING_0)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_WAIT, "Waiting");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Waiting");
 	
 	g_string_append_len(client->message->socket_buffer, RFC6455_FRAME_PING_1, sizeof(RFC6455_FRAME_PING_1)-1);
 	
-	test_status_eq(rfc6455_continue(client), CLIENT_WRITE, "Writing stuff");
+	test_status_eq(h_rfc6455_continue(client), CLIENT_WRITE, "Writing stuff");
 	
 	test_str_eq(client->message->buffer->str, "test", "Correct ping response");
 	
@@ -313,12 +313,12 @@ START_TEST(test_rfc6455_partial_ping) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_long_message) {
+START_TEST(test_h_rfc6455_long_message) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_LONG, sizeof(RFC6455_MESSAGE_LONG)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_GOOD, "The entire message was read");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD, "The entire message was read");
 	test_char_eq(client->message->type, op_text, "Opcode set to text");
 	test_uint32_eq(client->message->mask, *((guint32*)MASK), "Correct mask in message");
 	test_str_eq(client->message->buffer->str, MESSAGE_LONG, "Message decoded correctly");
@@ -328,20 +328,20 @@ START_TEST(test_rfc6455_long_message) {
 END_TEST
 
 
-START_TEST(test_rfc6455_oversized_message) {
+START_TEST(test_h_rfc6455_oversized_message) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_OVERSIZED_MESSAGE, sizeof(RFC6455_MESSAGE_OVERSIZED_MESSAGE)-1);
 	
-	test_status_eq(rfc6455_incoming(client), CLIENT_MESSAGE_TOO_LONG, "The message was too large");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_MESSAGE_TOO_LONG, "The message was too large");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_rfc6455_frame_short) {
+START_TEST(test_h_rfc6455_frame_short) {
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame length correct");
 	test_bin_eq(frame, RFC6455_FRAMED_SHORT, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame contains header");
@@ -350,9 +350,9 @@ START_TEST(test_rfc6455_frame_short) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_frame_long) {
+START_TEST(test_h_rfc6455_frame_long) {
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, FALSE, MESSAGE_LONG, sizeof(MESSAGE_LONG)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, FALSE, MESSAGE_LONG, sizeof(MESSAGE_LONG)-1, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_LONG)-1, "Frame length correct");
 	test_bin_eq(frame, RFC6455_FRAMED_LONG, sizeof(RFC6455_FRAMED_LONG)-1, "Frame contains header");
@@ -361,9 +361,9 @@ START_TEST(test_rfc6455_frame_long) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_frame_oversized) {
+START_TEST(test_h_rfc6455_frame_oversized) {
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_text, FALSE, "", RFC6455_OVERSIZED_LEN, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_text, FALSE, "", RFC6455_OVERSIZED_LEN, &frame_len);
 	
 	test_int32_eq(frame_len, 0, "Frame length correct");
 	test_ptr_eq(frame, NULL, "Frame is null");
@@ -372,9 +372,9 @@ START_TEST(test_rfc6455_frame_oversized) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_pong) {
+START_TEST(test_h_rfc6455_pong) {
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame(op_pong, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(op_pong, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_PONG)-1, "Frame length correct");
 	test_bin_eq(frame, RFC6455_FRAMED_PONG, sizeof(RFC6455_FRAMED_PONG)-1, "Pong frame contains pong");
@@ -383,13 +383,13 @@ START_TEST(test_rfc6455_pong) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_frame_from_message) {
+START_TEST(test_h_rfc6455_frame_from_message) {
 	message_t message;
 	message.type = op_text;
 	message.buffer = g_string_new(MESSAGE_SHORT);
 	
 	gsize frame_len = 0;
-	char *frame = rfc6455_prepare_frame_from_message(&message, &frame_len);
+	char *frame = h_rfc6455_prepare_frame_from_message(&message, &frame_len);
 	
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Correct short frame length");
 	test_bin_eq(frame, RFC6455_FRAMED_SHORT, sizeof(RFC6455_FRAMED_SHORT)-1, "Short frame correct");
@@ -399,52 +399,52 @@ START_TEST(test_rfc6455_frame_from_message) {
 }
 END_TEST
 
-Suite* rfc6455_suite() {
+Suite* h_rfc6455_suite() {
 	TCase *tc;
-	Suite *s = suite_create("RFC6455");
+	Suite *s = suite_create("Handler: RFC6455");
 	
 	tc = tcase_create("Handshake");
-	tcase_add_test(tc, test_rfc6455_handshake);
-	tcase_add_test(tc, test_rfc6455_handshake_no_key);
+	tcase_add_test(tc, test_h_rfc6455_handshake);
+	tcase_add_test(tc, test_h_rfc6455_handshake_no_key);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Recieve Messages");
-	tcase_add_test(tc, test_rfc6455_short_message);
-	tcase_add_test(tc, test_rfc6455_long_message);
-	tcase_add_test(tc, test_rfc6455_oversized_message);
+	tcase_add_test(tc, test_h_rfc6455_short_message);
+	tcase_add_test(tc, test_h_rfc6455_long_message);
+	tcase_add_test(tc, test_h_rfc6455_oversized_message);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Partial Messages");
-	tcase_add_test(tc, test_rfc6455_partial_no_header);
-	tcase_add_test(tc, test_rfc6455_partial_no_header_long);
-	tcase_add_test(tc, test_rfc6455_partial_short_message);
-	tcase_add_test(tc, test_rfc6455_multi_partial_short_messages);
-	tcase_add_test(tc, test_rfc6455_multi_partial_broken_header);
+	tcase_add_test(tc, test_h_rfc6455_partial_no_header);
+	tcase_add_test(tc, test_h_rfc6455_partial_no_header_long);
+	tcase_add_test(tc, test_h_rfc6455_partial_short_message);
+	tcase_add_test(tc, test_h_rfc6455_multi_partial_short_messages);
+	tcase_add_test(tc, test_h_rfc6455_multi_partial_broken_header);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Continuation Frames");
-	tcase_add_test(tc, test_rfc6455_continuation);
-	tcase_add_test(tc, test_rfc6455_continuation_frame);
+	tcase_add_test(tc, test_h_rfc6455_continuation);
+	tcase_add_test(tc, test_h_rfc6455_continuation_frame);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Frame Types");
-	tcase_add_test(tc, test_rfc6455_close);
-	tcase_add_test(tc, test_rfc6455_ping);
-	tcase_add_test(tc, test_rfc6455_bad_ping);
-	tcase_add_test(tc, test_rfc6455_no_mask);
-	tcase_add_test(tc, test_rfc6455_partial_ping);
+	tcase_add_test(tc, test_h_rfc6455_close);
+	tcase_add_test(tc, test_h_rfc6455_ping);
+	tcase_add_test(tc, test_h_rfc6455_bad_ping);
+	tcase_add_test(tc, test_h_rfc6455_no_mask);
+	tcase_add_test(tc, test_h_rfc6455_partial_ping);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Send Frames");
-	tcase_add_test(tc, test_rfc6455_frame_short);
-	tcase_add_test(tc, test_rfc6455_frame_long);
-	tcase_add_test(tc, test_rfc6455_frame_oversized);
-	tcase_add_test(tc, test_rfc6455_pong);
-	tcase_add_test(tc, test_rfc6455_unsupported_opcode);
+	tcase_add_test(tc, test_h_rfc6455_frame_short);
+	tcase_add_test(tc, test_h_rfc6455_frame_long);
+	tcase_add_test(tc, test_h_rfc6455_frame_oversized);
+	tcase_add_test(tc, test_h_rfc6455_pong);
+	tcase_add_test(tc, test_h_rfc6455_unsupported_opcode);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Send from Message");
-	tcase_add_test(tc, test_rfc6455_frame_from_message);
+	tcase_add_test(tc, test_h_rfc6455_frame_from_message);
 	suite_add_tcase(s, tc);
 	
 	return s;

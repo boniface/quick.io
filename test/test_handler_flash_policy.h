@@ -1,4 +1,4 @@
 #pragma once
 #include "test.h"
 
-Suite* h_rfc6455_suite();
+Suite* h_flash_policy_suite();

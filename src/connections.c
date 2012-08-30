@@ -127,7 +127,6 @@ void conns_client_data(client_t *client) {
 	// then kill the client
 	gssize len;
 	while ((len = qsys_read(client, buffer, sizeof(buffer))) > 0) {
-		DEBUG("READING");
 		// Put the buffer into our string
 		g_string_append_len(client->message->socket_buffer, buffer, len);
 		

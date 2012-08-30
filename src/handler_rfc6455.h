@@ -15,7 +15,7 @@
  *
  * @return If this handler can handle this client.
  */
-gboolean rfc6455_handles(gchar *path, SoupMessageHeaders *headers);
+gboolean h_rfc6455_handles(gchar *path, SoupMessageHeaders *headers);
 
 /**
  * Handshake with the client.
@@ -25,7 +25,7 @@ gboolean rfc6455_handles(gchar *path, SoupMessageHeaders *headers);
  *
  * @return If the handshake succeeded.
  */
-status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
+status_t h_rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
 
 /**
  * Prepare a frame to be sent to the client.
@@ -40,14 +40,14 @@ status_t rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
  * frame creation.
  * @attention The return of this function MUST be free'd
  */
-char* rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len);
+char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len);
 
 /**
- * An accessor for rfc6455_prepare_frame.
+ * An accessor for h_rfc6455_prepare_frame.
  *
- * @see rfc6455_prepare_frame
+ * @see h_rfc6455_prepare_frame
  */
-char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len);
+char* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len);
 
 /**
  * Read incoming data from the client.
@@ -58,7 +58,7 @@ char* rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len);
  * @return Any client status.
  * @return CLIENT_WAIT indicates that there wasn't enough data in the socket to create a message.
  */
-status_t rfc6455_incoming(client_t *client);
+status_t h_rfc6455_incoming(client_t *client);
 
 /**
  * After a CLIENT_WAIT and remaining_length are set, this will be called to
@@ -66,7 +66,7 @@ status_t rfc6455_incoming(client_t *client);
  *
  * @param client The client sending data.
  */
-status_t rfc6455_continue(client_t *client);
+status_t h_rfc6455_continue(client_t *client);
 
 #ifdef TESTING
 #include "../test/test_handler_rfc6455.h"

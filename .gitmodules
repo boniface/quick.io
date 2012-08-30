@@ -1,3 +1,0 @@
-[submodule "client/flash"]
-	path = client/flash
-	url = git@github.com:thatguystone/web-socket-js.git

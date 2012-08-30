@@ -40,6 +40,7 @@ typedef guint16 status_t;
 #include "connections.h"
 #include "debug.h"
 #include "handler_rfc6455.h"
+#include "handler_flash_policy.h"
 #include "main.h"
 #include "monkey.h"
 #include "option.h"
