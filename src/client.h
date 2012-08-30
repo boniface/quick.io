@@ -107,7 +107,8 @@
 /**
  * The client status type.
  */
-typedef guint16 status_t;
+// Defined in qio.h
+//typedef guint16 status_t;
 
 /**
  * The opcodes that we support.
@@ -182,7 +183,7 @@ enum handlers {
 /**
  * Basic information about a connected client.
  */
-typedef struct client_s {
+struct client_s {
 	/**
 	 * The underlying socket for this client.
 	 */
@@ -217,7 +218,7 @@ typedef struct client_s {
 	 * The current message(s) that the client is sending / are being processed.
 	 */
 	message_t *message;
-} STRUCT_PACKED client_t;
+} STRUCT_PACKED;
 
 /**
  * Handle a connection from a client. Once it's handled, update the client

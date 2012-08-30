@@ -45,7 +45,7 @@
  * The value that is stored in the hash table so that we can access
  * the pointer to the key for passing around to events.
  */
-typedef struct evs_client_sub_s {
+struct evs_client_sub_s {
 	/**
 	 * The name of the event.
 	 * This is a duplicated string that is referenced all over the place.
@@ -77,7 +77,7 @@ typedef struct evs_client_sub_s {
 	 * evs_server_get_handler().
 	 */
 	event_handler_t *handler;
-} evs_client_sub_t;
+};
 
 /**
  * A published message that is waiting to be sent to users. It contains all the data it
