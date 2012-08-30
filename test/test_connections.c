@@ -1,5 +1,11 @@
 #include "test.h"
 
+/**
+ * A lot of the test cases that are associated with Connections are part of test_qsys
+ * because the two rely so heavily on each other, so go there if you don't see the
+ * cases that you are looking for.
+ */
+
 #define PING "/ping:123:plain=pingeth"
 
 START_TEST(test_conns_message_clean_0) {
@@ -72,7 +78,7 @@ END_TEST
 
 Suite* conns_suite() {
 	TCase *tc;
-	Suite *s = suite_create("Socket");
+	Suite *s = suite_create("Connections");
 	
 	tc = tcase_create("Utilities");
 	tcase_add_test(tc, test_conns_message_clean_0);

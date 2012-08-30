@@ -187,7 +187,7 @@ void conns_client_data(client_t *client) {
 			break;
 			
 		// The client is misbehaving. Close him.
-		} else {
+		} else if (status & CLIENT_BAD) {
 			UTILS_STATS_INC(conns_bad_clients);
 			
 			DEBUGF("Bad client, closing: status=%d", status);

@@ -6,6 +6,8 @@
 #define PING_RESPONSE "\x81""\x1d""/callback/123:0:plain=pingeth"
 #define PING_DOUBLE_RESPONSE PING_RESPONSE PING_RESPONSE
 
+#define INVALID_SUBSCRIPTION "/sub:0:plain=/this/doesnt/exist"
+
 static pid_t _server;
 
 static void _qsys_setup() {
@@ -297,6 +299,33 @@ START_TEST(test_qsys_flash_policy) {
 }
 END_TEST
 
+
+START_TEST(test_qsys_invalid_subscription) {
+	int sock = u_ws_connect();
+	
+	test(sock, "Connection established");
+	
+	gsize frame_len = 0;
+	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, INVALID_SUBSCRIPTION, sizeof(INVALID_SUBSCRIPTION)-1, &frame_len);
+	test_int32_eq(send(sock, frame, frame_len, MSG_NOSIGNAL), frame_len, "Subscription sent");
+	free(frame);
+	
+	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
+	
+	// Make sure the connection isn't closed: send multiple PINGS
+	for (int i = 0; i < 3; i++) {
+		frame_len = 0;
+		frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+		test_int32_eq(send(sock, frame, frame_len, MSG_NOSIGNAL), frame_len, "Subscription sent");
+		free(frame);
+		usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
+	}
+	
+	test_size_eq(utils_stats()->conns_messages, 4, "All messages processed");
+	test_size_eq(utils_stats()->conns_bad_clients, 0, "Client killed");
+}
+END_TEST
+
 Suite* qsys_suite() {
 	TCase *tc;
 	Suite *s = suite_create("QSys");
@@ -316,6 +345,7 @@ Suite* qsys_suite() {
 	tcase_add_test(tc, test_qsys_close_bad_message);
 	tcase_add_test(tc, test_qsys_two_partial_messages);
 	tcase_add_test(tc, test_qsys_flash_policy);
+	tcase_add_test(tc, test_qsys_invalid_subscription);
 	suite_add_tcase(s, tc);
 	
 	return s;
