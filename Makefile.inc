@@ -9,6 +9,7 @@ DIR_BUILD = build
 DIR_BUILD_DEBUG = build_debug
 DIR_BUILD_TEST = build_test
 QIOINI_DEFAULT = quickio.ini
+QIOINI = $(QIOINI_DEFAULT)
 
 # The output directory
 export BUILDDIR ?= $(ROOT)/$(DIR_BUILD)
