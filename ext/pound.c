@@ -9,12 +9,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define CLIENTS 20000
+#define CLIENTS 25000
 #define THREADS 4
 #define ADDRESS "127.0.0.1"
 
 // A list of addresses you can bind to (if opening tons of connections)
-char *addresses[] = {"127.0.0.1", "0.0.0.0", "192.168.2.2"};
+char *addresses[] = {"127.0.0.1", "0.0.0.0"};
 
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
 	"Host: server.example.com\n" \
@@ -23,8 +23,6 @@ char *addresses[] = {"127.0.0.1", "0.0.0.0", "192.168.2.2"};
 	"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n" \
 	"Origin: http://example.com\n" \
 	"Sec-WebSocket-Version: 13\n\n"
-
-#define SUBSCRIBE {'\x81', '\x8B', '7', '8', '9', '0', '^', 'P', 'K', 'C', 'B', 'Z', '\x03', '\x01', '\x03', '\x0f', '\x0e'}
 
 #define _LOG(level, out) fprintf(stderr, level " : %s:%d : %s\n", __FILE__, __LINE__, out)
 #define _LOGF(level, format, ...) fprintf(stderr, level " : %s:%d : " format "\n", __FILE__, __LINE__, __VA_ARGS__)
@@ -38,6 +36,13 @@ char *addresses[] = {"127.0.0.1", "0.0.0.0", "192.168.2.2"};
 
 #define EPOLL_MAX_EVENTS 100
 #define EPOLL_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET | EPOLLOUT
+
+#define SUBSCRIBE_1477 "\x81""\x9D""a""b""c""d""N""\x11""\x16""\x06""[""R""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""S""V"
+#define SUBSCRIBE_1465 "\x81""\x9D""a""b""c""d""N""\x11""\x16""\x06""[""R""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""R""U"
+#define SUBSCRIBE_1469 "\x81""\x9D""a""b""c""d""N""\x11""\x16""\x06""[""R""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""R""X"
+#define UNSUBSCRIBE_1477 "\x81""\x9F""a""b""c""d""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""U""T"
+#define UNSUBSCRIBE_1465 "\x81""\x9F""a""b""c""d""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""V"
+#define UNSUBSCRIBE_1469 "\x81""\x9F""a""b""c""d""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""Z"
 
 uint which = 0;
 int *epoll;
@@ -53,7 +58,7 @@ guint64 now() {
 	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 }
 
-gpointer hitserver(gpointer none) {
+void connect_clients() {
 	guint64 cnt = 1;
 	
 	int which_address = 0;
@@ -67,7 +72,7 @@ gpointer hitserver(gpointer none) {
 		
 		if (sock < 0) {
 			ERRORF("Could not create socket: %s", strerror(errno));
-			return NULL;
+			return;
 		}
 		
 		struct sockaddr_in client_addr;
@@ -121,12 +126,61 @@ gpointer hitserver(gpointer none) {
 			g_hash_table_remove(clients, ptr);
 			continue;
 		}
+	}
+}
+
+gpointer be_random(gpointer none) {
+	GHashTableIter iter;
+	int *sock;
+	int *inited;
+	
+	usleep(100000);
+	
+	while (1) {
+		g_hash_table_iter_init(&iter, clients);
+		while (g_hash_table_iter_next(&iter, (void*)&sock, (void*)&inited)) {
+			if (!(*inited)) {
+				continue;
+			}
+			
+			char *message;
+			gsize len;
+			switch (g_random_int_range(0, 6)) {
+				case 0:
+					message = SUBSCRIBE_1477;
+					len = sizeof(SUBSCRIBE_1477)-1;
+					break;
+				
+				case 1:
+					message = SUBSCRIBE_1465;
+					len = sizeof(SUBSCRIBE_1465)-1;
+					break;
+				
+				case 2:
+					message = SUBSCRIBE_1469;
+					len = sizeof(SUBSCRIBE_1469)-1;
+					break;
+				
+				case 3:
+					message = UNSUBSCRIBE_1477;
+					len = sizeof(UNSUBSCRIBE_1477)-1;
+					break;
+				
+				case 4:
+					message = UNSUBSCRIBE_1465;
+					len = sizeof(UNSUBSCRIBE_1465)-1;
+					break;
+					
+				case 5:
+					message = UNSUBSCRIBE_1469;
+					len = sizeof(UNSUBSCRIBE_1469)-1;
+					break;
+			}
+			
+			send(*sock, message, len, MSG_NOSIGNAL);
+		}
 		
-		// if (send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL) < 0) {
-		// 	ERRORF("Could not send handshake: %s", strerror(errno));
-		// 	g_hash_table_remove(clients, ptr);
-		// 	continue;
-		// }
+		usleep(1000000);
 	}
 	
 	return NULL;
@@ -135,7 +189,6 @@ gpointer hitserver(gpointer none) {
 gpointer watch(gpointer thread) {
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	char buff[1024];
-	char sub[] = SUBSCRIBE;
 	uint closed = 0;
 	
 	size_t num = *((int*)thread);
@@ -161,19 +214,15 @@ gpointer watch(gpointer thread) {
 				DEBUGF("Socket closed: %d", closed);
 				close(sock);
 			} else if (ev.events & EPOLLOUT) {
-				// send(sock, "TEST", 4, MSG_NOSIGNAL);
-			} else {
 				int *inited = g_hash_table_lookup(clients, &sock);
-				if (inited == NULL) {
-					continue;
-				}
 				if (!(*inited)) {
-					send(sock, sub, sizeof(sub), MSG_NOSIGNAL);
+					send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL);
 					*inited = 1;
 				}
-				
-				while (read(sock, buff, sizeof(buff)) > 0) {
-					;
+			} else {
+				memset(&buff, 0, sizeof(buff));
+				while (read(sock, buff, sizeof(buff)-1) > 0) {
+					DEBUGF("Read %s", buff);
 				}
 				
 				if (tick++ % 1000 == 0) {
@@ -197,7 +246,8 @@ int main(int argc, char *argv[]) {
 		*(epoll + i) = epoll_create(1);
 	}
 	
-	g_thread_new("hit", hitserver, NULL);
+	connect_clients();
+	g_thread_new("random", be_random, NULL);
 	
 	for (int i = 0; i < THREADS-1; i++) {
 		size_t *num = malloc(sizeof(*num));
