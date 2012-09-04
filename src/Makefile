@@ -17,8 +17,8 @@ ifeq ($(TESTING),1)
 $(TARGET): $(OBJECTS)
 else
 $(TARGET): $(OBJECTS)
-	@echo "\n\n"-------- Compiling $< --------
-	@$(CC) $(LDFLAGS) $^ -o $@
+	@echo "\n\n"-------- Compiling server --------
+	@$(CC) $^ -o $@ $(LDFLAGS)
 endif
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c

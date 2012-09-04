@@ -14,7 +14,7 @@ client_statuses.inc: ../src/client.h
 
 test: client_statuses.inc $(OBJECTS)
 	@echo "\n\n"-------- Compiling test suite --------
-	@$(CC) $(LDFLAGS) $(OBJECTS) $(LIBCHECK) $(QIO_OBJECTS) --coverage -o $(BUILDDIR)/test
+	@$(CC) $(OBJECTS) $(LIBCHECK) $(QIO_OBJECTS) --coverage -o $(BUILDDIR)/test $(LDFLAGS)
 	
 	@echo "\n\n"-------- Running test suite --------
 	@$(BUILDDIR)/test
