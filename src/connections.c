@@ -40,6 +40,8 @@ static void _conns_client_timeout_clean() {
 		client->timer--;
 		if (client->timer == -1) {
 			UTILS_STATS_INC(conns_timeouts);
+			
+			DEBUGF("Timer on client expired: %d", client->socket);
 			conns_client_close(client);
 			g_hash_table_iter_remove(&iter);
 		}
