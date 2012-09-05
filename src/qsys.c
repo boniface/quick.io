@@ -2,11 +2,6 @@
 
 #include "qsys/epoll.c"
 
-/**
- * The socket that we perform all operations on.
- */
-static qsys_socket _socket;
-
 gboolean qsys_init() {
 	if (_qsys_init()) {
 		DEBUG("Sys inited");
