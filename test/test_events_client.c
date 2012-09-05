@@ -3,6 +3,7 @@
 #define PUB_EVENT "\x81""\x1d""/test/event:0:plain=something"
 
 void _test_evs_client_setup() {
+	conns_init();
 	utils_stats_setup();
 	option_parse_config_file(NULL, NULL, 0, NULL);
 	apps_init();
