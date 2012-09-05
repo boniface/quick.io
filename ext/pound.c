@@ -1,4 +1,5 @@
 #include <event2/bufferevent.h>
+#include <event2/bufferevent_struct.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
 #include <stdio.h>
@@ -16,6 +17,12 @@
 	"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n" \
 	"Origin: http://example.com\n" \
 	"Sec-WebSocket-Version: 13\n\n"
+
+#define HANDSHAKE_RESPONSE "HTTP/1.1 101 Switching Protocols\r\n" \
+	"Upgrade: websocket\r\n" \
+	"Connection: Upgrade\r\n" \
+	"Access-Control-Allow-Origin: *\r\n" \
+	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
 
 #define _LOG(level, out) fprintf(stderr, level " : %s:%d : %s\n", __FILE__, __LINE__, out)
 #define _LOGF(level, format, ...) fprintf(stderr, level " : %s:%d : " format "\n", __FILE__, __LINE__, __VA_ARGS__)
@@ -36,19 +43,29 @@
 
 static GHashTable *clients;
 
-void readcb(struct bufferevent *bev, void *ptr) {
+void readcb(struct bufferevent *bev, void *arg) {
 	char buf[1024];
-	int n;
 	struct evbuffer *input = bufferevent_get_input(bev);
-	while ((n = evbuffer_remove(input, buf, sizeof(buf))) > 0) {
-		;
+	
+	int *inited = arg;
+	
+	if (!(*inited)) {
+		struct evbuffer_ptr evb = evbuffer_search(input, HANDSHAKE_RESPONSE, sizeof(HANDSHAKE_RESPONSE)-1, NULL);
+		
+		if (evb.pos != -1) {
+			DEBUG("INITED");
+			g_hash_table_insert(clients, bev, bev);
+			*inited = 1;
+		}
+	} 
+	
+	if (*inited) {
+		while (evbuffer_remove(input, buf, sizeof(buf)) > 0);
 	}
 }
 
 void eventcb(struct bufferevent *bev, short events, void *ptr) {
-	if (events & BEV_EVENT_CONNECTED) {
-		g_hash_table_insert(clients, bev, bev);
-	} else if (events & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+	if (events & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		g_hash_table_remove(clients, bev);
 		bufferevent_free(bev);
 	}
@@ -60,11 +77,17 @@ static void clients_cb(evutil_socket_t fd, short what, void *arg) {
 
 static void be_random(evutil_socket_t fd, short what, void *arg) {
 	GHashTableIter iter;
-	struct bufferevent *bev, *bev2;
+	struct bufferevent *bev;
+	//, *bev2;
 	
 	g_hash_table_iter_init(&iter, clients);
-	while (g_hash_table_iter_next(&iter, (void*)&bev, (void*)&bev2)) {
+	while (g_hash_table_iter_next(&iter, (void*)&bev, (void*)&bev)) {
 		struct evbuffer *out = bufferevent_get_output(bev);
+		
+		int *inited = bev->cbarg;
+		if (!(*inited)) {
+			continue;
+		}
 		
 		switch (g_random_int_range(0, 6)) {
 			case 0:
@@ -116,8 +139,10 @@ int main(int argc, char **argv) {
 	inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
 	
 	for (int i = 0; i < CLIENTS; i++) {
+		char *inited = g_malloc0(sizeof(*inited));
+		
 		struct bufferevent *bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
-		bufferevent_setcb(bev, readcb, NULL, eventcb, base);
+		bufferevent_setcb(bev, readcb, NULL, eventcb, (void*)inited);
 		
 		bufferevent_enable(bev, EV_READ|EV_WRITE);
 		evbuffer_add(bufferevent_get_output(bev), HANDSHAKE, sizeof(HANDSHAKE)-1);

@@ -168,11 +168,11 @@ void _qsys_dispatch() {
 	// Run this after everything else so that if any clients made themselves good
 	// in this round, we're not trampling them out
 	if (tick) {
+		conns_maintenance_tick();
+		
 		// Have to read the timer for it to continue to fire on an interval
 		char buff[8];
 		read(_timer, buff, sizeof(buff));
-		
-		conns_maintenance_tick();
 	}
 }
 
