@@ -7,7 +7,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define CLIENTS 100
+#define CLIENTS 1000
 #define ADDRESS "127.0.0.1"
 
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
@@ -42,6 +42,7 @@
 #define UNSUBSCRIBE_1469 "\x81""\x9F""a""b""c""d""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""Z"
 
 static GHashTable *clients;
+struct event_base *_base;
 
 void readcb(struct bufferevent *bev, void *arg) {
 	char buf[1024];
@@ -53,7 +54,6 @@ void readcb(struct bufferevent *bev, void *arg) {
 		struct evbuffer_ptr evb = evbuffer_search(input, HANDSHAKE_RESPONSE, sizeof(HANDSHAKE_RESPONSE)-1, NULL);
 		
 		if (evb.pos != -1) {
-			DEBUG("INITED");
 			g_hash_table_insert(clients, bev, bev);
 			*inited = 1;
 		}
@@ -78,7 +78,6 @@ static void clients_cb(evutil_socket_t fd, short what, void *arg) {
 static void be_random(evutil_socket_t fd, short what, void *arg) {
 	GHashTableIter iter;
 	struct bufferevent *bev;
-	//, *bev2;
 	
 	g_hash_table_iter_init(&iter, clients);
 	while (g_hash_table_iter_next(&iter, (void*)&bev, (void*)&bev)) {
@@ -117,31 +116,25 @@ static void be_random(evutil_socket_t fd, short what, void *arg) {
 	}
 }
 
-int main(int argc, char **argv) {
-	clients = g_hash_table_new(NULL, NULL);
-	struct event_base *base = event_base_new();
+static void create_clients(evutil_socket_t fd, short what, void *arg) {
+	static int runs = 0;
 	
-	struct timeval interval;
-	interval.tv_usec = 0;
-	
-	interval.tv_sec = 2;
-	struct event *timer = event_new(base, -1, EV_PERSIST, clients_cb, NULL);
-	evtimer_add(timer, &interval);
-	
-	interval.tv_sec = 1;
-	timer = event_new(base, -1, EV_PERSIST, be_random, NULL);
-	evtimer_add(timer, &interval);
-	
+	if (runs++ == (CLIENTS / 1000)) {
+		struct event *me = arg;
+		event_del(me);
+		return;
+	}
+
 	struct sockaddr_in serv_addr;
 	memset(&serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(5000);
 	inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
 	
-	for (int i = 0; i < CLIENTS; i++) {
+	for (int i = 0; i < 1000; i++) {
 		char *inited = g_malloc0(sizeof(*inited));
 		
-		struct bufferevent *bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+		struct bufferevent *bev = bufferevent_socket_new(_base, -1, BEV_OPT_CLOSE_ON_FREE);
 		bufferevent_setcb(bev, readcb, NULL, eventcb, (void*)inited);
 		
 		bufferevent_enable(bev, EV_READ|EV_WRITE);
@@ -149,8 +142,29 @@ int main(int argc, char **argv) {
 		
 		bufferevent_socket_connect(bev, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 	}
+}
+
+int main(int argc, char **argv) {
+	clients = g_hash_table_new(NULL, NULL);
+	_base = event_base_new();
 	
-	event_base_dispatch(base);
+	struct timeval interval;
+	interval.tv_usec = 0;
+	
+	interval.tv_sec = 2;
+	struct event *timer = event_new(_base, -1, EV_PERSIST, clients_cb, NULL);
+	evtimer_add(timer, &interval);
+	
+	interval.tv_sec = 1;
+	timer = event_new(_base, -1, EV_PERSIST, be_random, NULL);
+	evtimer_add(timer, &interval);
+	
+	interval.tv_sec = 5;
+	timer = event_new(_base, -1, EV_PERSIST, create_clients, NULL);
+	timer->ev_arg = timer;
+	evtimer_add(timer, &interval);
+	
+	event_base_dispatch(_base);
 	
 	return 0;
 }
