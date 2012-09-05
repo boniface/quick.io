@@ -7,6 +7,9 @@
 // Our epoll instance
 static int _epoll;
 
+// The timer used for maintenance
+static int _timer;
+
 /**
  * Adds an epoll listener on the specified fd.
  */
@@ -112,6 +115,9 @@ void _qsys_dispatch() {
 	// Where the OS will put events for us
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
+	// If the maintenance tick should be run this round
+	gboolean tick = FALSE;
+	
 	int num_evs = epoll_wait(_epoll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 	
 	// Since we're polling at an interval, it's possible no events
@@ -132,22 +138,24 @@ void _qsys_dispatch() {
 		client_t *client = ev.data.ptr;
 		guint32 events = ev.events;
 		
-		if (events & EPOLLRDHUP) {
+		if (client == NULL) {
+			tick = TRUE;
+		} else if (events & EPOLLRDHUP) {
 			// The underlying socket was closed
 			conns_client_hup(client);
 		} else if (events & EPOLLIN) {
-			char buffer[TIMER_BUFFER_SIZE];
-			
-			// Check the timer to see if it has expired
-			// A read operation on a timerfd will return > -1 if the 
-			// timer has expired.
-			// 8 is the most bytes the int returned can be
-			if (client->timer && read(client->timer, buffer, sizeof(buffer)) > -1) {
-				conns_client_timer(client);
-			} else {
-				conns_client_data(client);
-			}
+			conns_client_data(client);
 		}
+	}
+	
+	// Run this after everything else so that if any clients made themselves good
+	// in this round, we're not trampling them out
+	if (tick) {
+		// Have to read the timer for it to continue to fire on an interval
+		char buff[8];
+		read(_timer, buff, sizeof(buff));
+		
+		conns_maintenance_tick();
 	}
 }
 
@@ -163,37 +171,17 @@ void _qsys_close(qsys_socket socket) {
 	close(socket);
 }
 
-gboolean _qsys_timer_set(client_t *client, guint16 sec, guint16 ms) {
-	qsys_timer timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+gboolean _qsys_init_maintenance() {
+	_timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
 	
-	// If something goes wrong with the timer, just kill the stupid client
-	if (timer == -1) {
-		ERROR("Could not create a timer for client");
+	if (_timer == -1) {
 		return FALSE;
 	}
 	
 	struct itimerspec spec;
-	
-	// No interval on the timer
-	spec.it_interval.tv_sec = 0;
-	spec.it_interval.tv_nsec = 0;
-	
-	spec.it_value.tv_sec = sec;
-	spec.it_value.tv_nsec = MS_TO_NSEC(ms);
-	
-	timerfd_settime(timer, 0, &spec, NULL);
-	
-	// Store the timer on the client for cancelling
-	client->timer = timer;
-	
-	// Add the timer to this epoll
-	return _epoll_add(timer, client);
-}
-
-void _qsys_timer_clear(client_t *client) {
-	// Don't close stdin, stdout, or stderr
-	if (client->timer > 2) {
-		close(client->timer);
-		client->timer = 0;
-	}
+	memset(&spec, 0, sizeof(spec));
+	spec.it_value.tv_nsec = MS_TO_NSEC(MAINTENANCE_TICK);
+	spec.it_interval.tv_nsec = MS_TO_NSEC(MAINTENANCE_TICK);
+	timerfd_settime(_timer, 0, &spec, NULL);
+	return _epoll_add(_timer, NULL);
 }

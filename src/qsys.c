@@ -7,6 +7,11 @@
  */
 static qsys_socket _socket;
 
+/**
+ * Fake client: used for maintenance rounds.
+ */
+
+
 gpointer qsys_accept(gpointer not_used) {
 	while (TRUE) {
 		conns_client_new(_qsys_accept(_socket));
@@ -20,6 +25,13 @@ gboolean qsys_init() {
 		DEBUG("Sys inited");
 	} else {
 		ERROR("_qsys_init() failed");
+		return FALSE;
+	}
+	
+	if (_qsys_init_maintenance()) {
+		DEBUG("Maintenance timer inited");
+	} else {
+		ERROR("Coud not init maintenance timer");
 		return FALSE;
 	}
 	
@@ -45,31 +57,6 @@ gssize qsys_write(client_t *client, gchar *buff, gsize buff_size) {
 
 void qsys_close(client_t *client) {
 	_qsys_close(client->socket);
-	qsys_timer_clear(client);
-}
-
-gboolean qsys_timer_set(client_t *client, guint16 sec, guint16 ms) {
-	// Don't create a new timer if there is one already running
-	if (client->timer > 0) {
-		return TRUE;
-	}
-	
-	if (sec == 0 && ms == 0) {
-		sec = option_timeout();
-	}
-	
-	if (!_qsys_timer_set(client, sec, ms)) {
-		DEBUG("Could not set timer");
-		return FALSE;
-	}
-	
-	return TRUE;
-}
-
-void qsys_timer_clear(client_t *client) {
-	if (client->timer > 0) {
-		_qsys_timer_clear(client);
-	}
 }
 
 #ifdef TESTING

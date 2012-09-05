@@ -20,11 +20,6 @@ static void _main_loop() {
 		return;
 	}
 	
-	if (!conns_qsys_ready()) {
-		ERROR("Connections qsys_ready() callback failed");
-		return;
-	}
-	
 	// The main event loop for the server
 	while (TRUE) {
 		qsys_dispatch();
@@ -143,6 +138,13 @@ int main(int argc, char *argv[]) {
 		DEBUG("Server events inited");
 	} else {
 		ERROR("Could not init server events.");
+		return 1;
+	}
+	
+	if (conns_init()) {
+		DEBUG("Connections handler inited");
+	} else {
+		ERROR("Could not init connections handler.");
 		return 1;
 	}
 	

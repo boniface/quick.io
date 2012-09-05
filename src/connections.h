@@ -29,23 +29,10 @@
 #define MAX_BUFFER_SIZE_MULTIPLIER 2
 
 /**
- * The time between maintenance tasks - in milliseconds
- * @warning This number MAY NEVER be larger than 999.
+ * The number of loops to run before cleaning up.
+ * We only want to do this once per second, or so.
  */
-#define CONNS_MAINTENANCE_WAIT 100
-
-/**
- * The number of loops to run before cleaning up
- */
-#define CONNS_MAINTENANCE_CLEANUP 10
-
-/**
- * Setup the necessary control structures on a process-level (post-fork), once
- * the system is ready to process everything in the event loop.
- *
- * @return If the setup went well.
- */
-gboolean conns_qsys_ready();
+#define CONNS_MAINTENANCE_CLEANUP ((gint)(1000 / MAINTENANCE_TICK))
 
 /**
  * Accept a new connection into our midst.
@@ -79,11 +66,30 @@ void conns_client_hup(client_t *client);
 void conns_client_data(client_t *client);
 
 /**
- * The timer set on a client has expired.
+ * Clears any timeout that has been set on a client.
  *
- * @param client The client whose timer expired.
+ * @param client The client to be cleared.
  */
-void conns_client_timer(client_t *client);
+void conns_client_timeout_clear(client_t *client);
+
+/**
+ * Sets a timeout on the client, for closure if the timer elapses.
+ * If a timer is already set, this does nothing.
+ *
+ * @param client The client to be timed.
+ */
+void conns_client_timeout_set(client_t *client);
+
+/**
+ * Setup any internal structures needed.
+ */
+gboolean conns_init();
+
+/**
+ * Tick to run maintenance operations.
+ * This does all sorts of internal cleanup, message flushing, and dead client clearing.
+ */
+void conns_maintenance_tick();
 
 /**
  * Clean up the client message buffers.

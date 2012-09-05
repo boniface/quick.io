@@ -191,10 +191,10 @@ struct client_s {
 	
 	/**
 	 * A timer for killing stupid clients.
-	 *
-	 * @see socket_set_timer
+	 * This is the number of ticks a client may misbehave before he is killed.
+	 * A value of -1 indicates no timer is set.
 	 */
-	qsys_timer timer;
+	gint16 timer;
 	
 	/**
 	 * If the client is still in the initing (handshake) process.

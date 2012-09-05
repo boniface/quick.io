@@ -22,8 +22,3 @@
  * The socket type for the system.
  */
 typedef int qsys_socket;
-
-/**
- * The timer type.
- */
-typedef int qsys_timer;

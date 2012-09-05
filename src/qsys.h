@@ -13,6 +13,13 @@
 #define LISTEN_BACKLOG 1000
 
 /**
+ * The amount of time between maintenance ticks (in milliseconds).
+ *
+ * @attention THIS MUST NEVER BE > 1000.
+ */
+#define MAINTENANCE_TICK 100
+
+/**
  * Functions that MUST be implemented by system-specific functions.
  * 
  * @defgroup SysSpecific System-specific types and functions
@@ -24,7 +31,7 @@
 /**
  * Convert milliseconds to microseconds.  Just so it's easier to read.
  *
- * @param ms The number of milliseconds to put into nanoseconds.
+ * @param ms The number of milliseconds to put into microseconds.
  */
 #define MS_TO_USEC(ms) (ms * 1000)
 
@@ -38,7 +45,7 @@
 /**
  * Convert seconds to microseconds.  Just so it's easier to read.
  *
- * @param secs The number of seconds to put into nanoseconds.
+ * @param secs The number of seconds to put into microseconds.
  */
 #define SEC_TO_USEC(secs) MS_TO_USEC(secs * 1000)
 
@@ -103,22 +110,6 @@ gssize qsys_write(client_t *client, gchar *buff, gsize buff_len);
  * @param client The client to destroy.
  */
 void qsys_close(client_t *client);
-
-/**
- * Sets a timer on a client.
- *
- * @param client The client to set a timer on.
- * @param sec The number of seconds to wait
- * @param ms The number of milliseconds to wait.
- *
- * @return If the timer create suceeded.  If FALSE, the client should be closed.
- */
-gboolean qsys_timer_set(client_t *client, guint16 sec, guint16 ms);
-
-/**
- * Clears the timer on a client.
- */
-void qsys_timer_clear(client_t *client);
 
 /**
  * Initialize any internal data structures necessary for the event loop.
@@ -191,27 +182,13 @@ gssize _qsys_write(qsys_socket socket, gchar *buff, gsize buff_len);
 void _qsys_close(qsys_socket socket);
 
 /**
- * Sets a timer on a client and adds the client timer to the event loop for
- * notification.
+ * Sets up the maintenance timer.  This MUST be fired every MAINTENANCE_TICK.
  *
  * @ingroup SysSpecific
  *
- * @param client The client to be notified on timer.
- * @param sec The number of seconds to wait
- * @param ms The number of milliseconds to wait.
- *
- * @return 0/NULL if the add failed.
+ * @return If the setup succeeded.
  */
-gboolean _qsys_timer_set(client_t *client, guint16 sec, guint16 ms);
-
-/**
- * Clears the timer and removes it from the event loop.
- *
- * @ingroup SysSpecific
- *
- * @param client The client to clean up.
- */
-void _qsys_timer_clear(client_t *client);
+gboolean _qsys_init_maintenance();
 
 #ifdef TESTING
 #include "../test/test_qsys.h"

@@ -52,7 +52,7 @@ START_TEST(test_qsys_timeout) {
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 	
 	// Wait for the timeout, and then some to avoid race conditions
-	usleep(SEC_TO_USEC(option_timeout()) + MS_TO_USEC(TEST_EPOLL_WAIT));
+	usleep(SEC_TO_USEC(option_timeout() + 1) + MS_TO_USEC(TEST_EPOLL_WAIT));
 	
 	test_size_eq(utils_stats()->conns_messages, 0, "Server didn't process message");
 	test_size_eq(utils_stats()->conns_timeouts, 1, "Client timed out");
@@ -299,7 +299,6 @@ START_TEST(test_qsys_flash_policy) {
 }
 END_TEST
 
-
 START_TEST(test_qsys_invalid_subscription) {
 	int sock = u_ws_connect();
 	
@@ -332,7 +331,7 @@ Suite* qsys_suite() {
 	
 	tc = tcase_create("Connections");
 	tcase_add_checked_fixture(tc, _qsys_setup, _qsys_teardown);
-	tcase_set_timeout(tc, option_timeout() + 1);
+	tcase_set_timeout(tc, option_timeout() + 4);
 	tcase_add_test(tc, test_qsys_accept);
 	tcase_add_test(tc, test_qsys_close);
 	tcase_add_test(tc, test_qsys_timeout);
