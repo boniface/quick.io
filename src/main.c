@@ -13,14 +13,6 @@ static pid_t *_pids;
  * Runs the main event loop.
  */
 static void _main_loop() {
-	GError *error = NULL;
-	GThread *_thread = g_thread_try_new(__FILE__, qsys_accept, NULL, &error);
-	if (_thread == NULL) {
-		ERRORF("Could not init socket accept in thread: %s", error->message);
-		return;
-	}
-	
-	// The main event loop for the server
 	while (TRUE) {
 		qsys_dispatch();
 	}

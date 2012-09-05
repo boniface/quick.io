@@ -7,19 +7,6 @@
  */
 static qsys_socket _socket;
 
-/**
- * Fake client: used for maintenance rounds.
- */
-
-
-gpointer qsys_accept(gpointer not_used) {
-	while (TRUE) {
-		conns_client_new(_qsys_accept(_socket));
-	}
-	
-	return NULL;
-}
-
 gboolean qsys_init() {
 	if (_qsys_init()) {
 		DEBUG("Sys inited");
@@ -39,8 +26,7 @@ gboolean qsys_init() {
 }
 
 gboolean qsys_listen() {
-	_socket = _qsys_listen(option_bind_address(), option_port());
-	return _socket != 0;
+	return _qsys_listen(option_bind_address(), option_port());
 }
 
 void qsys_dispatch() {

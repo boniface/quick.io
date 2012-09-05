@@ -7,6 +7,10 @@
 // Our epoll instance
 static int _epoll;
 
+// The client that is notified for accept events
+static client_t *_accept;
+static int _accept_socket;
+
 // The timer used for maintenance
 static int _timer;
 
@@ -37,18 +41,21 @@ gboolean _qsys_init() {
 		return FALSE;
 	}
 	
+	if (!_epoll_add(_accept_socket, _accept)) {
+		ERROR("Could not add listening socket to epoll.");
+		return FALSE;
+	}
+	
 	return TRUE;
 }
 
-client_t* _qsys_accept(qsys_socket socket) {
+void _qsys_accept() {
 	// Loop until there are no errors accepting a socket and setting options
 	while (TRUE) {
-		qsys_socket client_socket = accept(socket, (struct sockaddr*)NULL, NULL);
+		qsys_socket client_socket = accept(_accept_socket, (struct sockaddr*)NULL, NULL);
 		
-		// Couldn't accept...move on
 		if (client_socket == -1) {
-			ERROR("Could not accept connection on socket");
-			continue;
+			return;
 		}
 		
 		if (fcntl(client_socket, F_SETFL, O_NONBLOCK) == -1) {
@@ -70,18 +77,16 @@ client_t* _qsys_accept(qsys_socket socket) {
 		if (!_epoll_add(client_socket, client)) {
 			ERROR("Could not add client to epoll");
 			_qsys_close(client_socket);
-			free(client);
+			g_free(client);
 			continue;
 		}
 		
-		return client;
+		conns_client_new(client);
 	}
 }
 
-qsys_socket _qsys_listen(gchar *address, guint16 port) {
-	qsys_socket listen_socket;
-	
-	if ((listen_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+gboolean _qsys_listen(gchar *address, guint16 port) {
+	if ((_accept_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		ERROR("Could not create socket");
 		return 0;
 	}
@@ -93,22 +98,33 @@ qsys_socket _qsys_listen(gchar *address, guint16 port) {
 	memset(&addy.sin_zero, 0, sizeof(addy.sin_zero));
 	
 	int on = 1;
-	if (setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
+	if (setsockopt(_accept_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
 		ERROR("Could not set socket option");
-		return 0;
+		return FALSE;
 	}
 	
-	if (bind(listen_socket, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
+	if (fcntl(_accept_socket, F_SETFL, O_NONBLOCK) == -1) {
+		ERROR("Could not set accept socket non-blocking");
+		return FALSE;
+	}
+	
+	if (bind(_accept_socket, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
 		ERRORF("Could not bind: %s", strerror(errno));
-		return 0;
+		return FALSE;
 	}
 	
-	if (listen(listen_socket, LISTEN_BACKLOG) == -1) {
+	if (listen(_accept_socket, LISTEN_BACKLOG) == -1) {
 		ERRORF("Could not listen: %s", strerror(errno));
-		return 0;
+		return FALSE;
+	}
+		
+	_accept = g_try_malloc0(sizeof(*_accept));
+	if (_accept == NULL) {
+		ERROR("Client could not be malloc()'d");
+		return FALSE;
 	}
 	
-	return listen_socket;
+	return TRUE;
 }
 
 void _qsys_dispatch() {
@@ -132,7 +148,6 @@ void _qsys_dispatch() {
 		test_lock_release();
 	#endif
 	
-	// Some events actually did happen; go through them all!
 	for (int i = 0; i < num_evs; i++) {
 		struct epoll_event ev = events[i];
 		client_t *client = ev.data.ptr;
@@ -140,6 +155,8 @@ void _qsys_dispatch() {
 		
 		if (client == NULL) {
 			tick = TRUE;
+		} else if (client == _accept) {
+			_qsys_accept();
 		} else if (events & EPOLLRDHUP) {
 			// The underlying socket was closed
 			conns_client_hup(client);

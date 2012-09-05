@@ -68,15 +68,6 @@ gboolean qsys_listen();
 gboolean qsys_init();
 
 /**
- * Runs the accept loop.  This MUST be run from a separate thread.
- *
- * @param not_used This is not used in the thread.
- *
- * @return Nothing will ever be returned.
- */
-gpointer qsys_accept(gpointer not_used);
-
-/**
  * Dispatches 1 round on the event loop.
  */
 void qsys_dispatch();
@@ -119,30 +110,29 @@ void qsys_close(client_t *client);
 gboolean _qsys_init();
 
 /**
- * Accepts a client from the raw socket.
+ * Accepts a client from the raw socket and fires the conns_client_new() event.
  * 
  * @ingroup SysSpecific
  *
- * @param socket The socket to accept the client on.
- *
  * @return The sys-specific socket that will be operated on.
  */
-client_t* _qsys_accept(qsys_socket socket);
+void _qsys_accept();
 
 /**
- * Sets up the socket for listening.
+ * Sets up the socket for listening.  This should also set up everything that
+ * is needed in order to accept connections.
+ *
+ * For example, with epoll, this adds the socket to the epoll interface with a
+ * dummy client so that we know when there are connections waiting to be accepted.
  *
  * @ingroup SysSpecific
- *
- * @note You should print out errors as they occur and return 0/ NULL if
- * something fails.
  *
  * @param address The address to listen on.
  * @param port The port to listen on.
  *
- * @return The socket that is ready for listening, or 0/NULL if there's a failure.
+ * @return If the socket is being listened on
  */
-qsys_socket _qsys_listen(gchar *address, guint16 port);
+gboolean _qsys_listen(gchar *address, guint16 port);
 
 /**
  * Runs 1 sys-call for the event loop, the main loop is run in qsys_run().

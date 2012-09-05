@@ -97,7 +97,7 @@ START_TEST(test_qsys_too_much_data) {
 	
 	test(sock, "Connection established");
 	
-	char buff[1024];
+	char buff[8192];
 	memset(&buff, 'a', sizeof(buff));
 	
 	// Don't buffer anything
