@@ -76,11 +76,11 @@ void handle_timer(int timer) {
 	char buff[100];
 	read(timer, buff, sizeof(buff));
 	
-	DEBUGF("Clients: %"G_GUINT64_FORMAT, clients->len);
+	DEBUGF("Clients: %"G_GUINT32_FORMAT, clients->len);
 	
-	for (guint i = 0; i < clients->len; i++) {
-		send(g_array_index(clients, int, i), TEST, sizeof(TEST)-1, MSG_NOSIGNAL);
-	}
+	// for (guint i = 0; i < clients->len; i++) {
+	// 	send(g_array_index(clients, int, i), TEST, sizeof(TEST)-1, MSG_NOSIGNAL);
+	// }
 }
 
 static void _sigint_handler(int sig) {

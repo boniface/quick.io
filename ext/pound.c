@@ -82,6 +82,15 @@ void connect_clients() {
 		char *address = *(addresses + (which_address++ % G_N_ELEMENTS(addresses)));
 		inet_pton(AF_INET, address, &client_addr.sin_addr);
 		
+		fcntl(sock, F_SETFL, O_NONBLOCK);
+		
+		int on = 1;
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
+			ERROR("Could not set socket option");
+			close(sock);
+			continue;
+		}
+		
 		if (bind(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == -1) {
 			ERRORF("Could not bind: %s", strerror(errno));
 			close(sock);
@@ -93,15 +102,6 @@ void connect_clients() {
 		serv_addr.sin_family = AF_INET;
 		serv_addr.sin_port = htons(5000);
 		inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
-		
-		fcntl(sock, F_SETFL, O_NONBLOCK);
-		
-		int on = 1;
-		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
-			ERROR("Could not set socket option");
-			close(sock);
-			continue;
-		}
 		
 		if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1) {
 			if (errno != EINPROGRESS) {
@@ -219,16 +219,18 @@ gpointer watch(gpointer thread) {
 					send(sock, HANDSHAKE, sizeof(HANDSHAKE)-1, MSG_NOSIGNAL);
 					*inited = 1;
 				}
-			} else {
+			}
+			
+			if (ev.events & EPOLLIN) {
 				memset(&buff, 0, sizeof(buff));
 				while (read(sock, buff, sizeof(buff)-1) > 0) {
-					DEBUGF("Read %s", buff);
+					;
 				}
 				
-				if (tick++ % 1000 == 0) {
+				if (tick++ % 10000 == 0) {
 					guint64 n = now();
 					
-					DEBUGF("+1K messages; Closed: %d - Elapsed: %"G_GUINT64_FORMAT, closed, n-prev);
+					DEBUGF("+10K messages; Closed: %d - Elapsed: %"G_GUINT64_FORMAT, closed, n-prev);
 					prev = n;
 				}
 			}

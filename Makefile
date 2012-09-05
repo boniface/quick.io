@@ -32,6 +32,7 @@ clean:
 	rm -rf $(DIR_BUILD_TEST)
 	rm -f test*.xml
 	$(MAKE) -C app clean
+	$(MAKE) -C ext clean
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
 
