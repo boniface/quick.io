@@ -44,13 +44,22 @@ static gboolean _main_fork() {
 			// Done with these guys
 			free(_pids);
 			
+			option_set_process(processes);
+			
+			if (apps_postfork()) {
+				DEBUGF("Postfork apps done in #%d", processes);
+			} else {
+				ERRORF("Error with apps postfork in #%d", processes);
+				exit(1);
+			}
+			
 			// Init the apps. If they fail, then why are we running?
 			if (!apps_run()) {
 				ERRORF("Could not init apps in #%d.", processes);
 				exit(1);
 			}
 			
-			qsys_main_loop(processes);
+			qsys_main_loop();
 			ERRORF("A CHILD EXITED THE EVENT LOOP: #%d", processes);
 			exit(1);
 		} else {
@@ -137,14 +146,6 @@ int main(int argc, char *argv[]) {
 		DEBUG("Children forked");
 	} else {
 		ERROR("Could not fork children.");
-		return 1;
-	}
-	
-	if (apps_postfork()) {
-		DEBUG("Postfork apps done");
-	} else {
-		ERROR("Error with apps postfork");
-		main_cull_children();
 		return 1;
 	}
 	

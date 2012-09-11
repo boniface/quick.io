@@ -172,6 +172,17 @@ MODULE_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_e
  */
 gboolean option_parse_args(int argc, char *argv[], GError **error);
 
+/**
+ * Sets the current process number and updates any internal configuration options that depend
+ * on it. 
+ *
+ * @attention As this modifies global settings, this should be called ONLY from a child process.
+ * @note This is NOT idempotent. 
+ *
+ * @param process The number of the process (0-x, x being the process number)
+ */
+void option_set_process(guint32 process);
+
 #ifdef TESTING
 #include "../test/test_option.h"
 #endif

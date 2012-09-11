@@ -2,11 +2,9 @@
 
 #include "qsys/epoll.c"
 
-void qsys_main_loop(gint32 process) {
-	gint32 port = option_port() + process;
-	
-	if (_qsys_init(option_bind_address(), port)) {
-		DEBUGF("Sys inited, listening for connections on %d", port);
+void qsys_main_loop() {
+	if (_qsys_init(option_bind_address(), option_port())) {
+		DEBUGF("Sys inited, listening for connections on %d", option_port());
 	} else {
 		ERROR("_qsys_init() failed");
 		return;

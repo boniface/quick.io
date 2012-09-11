@@ -212,6 +212,10 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	return success;
 }
 
+void option_set_process(guint32 process) {
+	_port += process;
+}
+
 #ifdef TESTING
 #include "../test/test_option.c"
 #endif

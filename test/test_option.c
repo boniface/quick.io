@@ -170,6 +170,33 @@ START_TEST(test_option_string_array) {
 }
 END_TEST
 
+START_TEST(test_option_process_specific_0) {
+	test(option_parse_args(0, NULL, NULL), "File ready");
+	test(option_parse_config_file(NULL, NULL, 0, NULL), "Couldn't load file");
+	
+	test_int32_eq(option_port(), 5000, "Correct port");
+	
+	option_set_process(0);
+	
+	test_int32_eq(option_port(), 5000, "Correct port");
+}
+END_TEST
+
+START_TEST(test_option_process_specific_1) {
+	test(option_parse_args(0, NULL, NULL), "File ready");
+	test(option_parse_config_file(NULL, NULL, 0, NULL), "Couldn't load file");
+	
+	test_int32_eq(option_port(), 5000, "Correct port");
+	
+	option_set_process(1);
+	test_int32_eq(option_port(), 5001, "Correct port");
+	
+	// Make sure it's not idempotent
+	option_set_process(1);
+	test(option_port() != 5001, "Not idempotent");
+}
+END_TEST
+
 Suite* option_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Option");
@@ -191,6 +218,12 @@ Suite* option_suite() {
 	tcase_add_test(tc, test_option_empty);
 	tcase_add_test(tc, test_option_bad_subs);
 	tcase_add_test(tc, test_option_string_array);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Process-specific settings");
+	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
+	tcase_add_test(tc, test_option_process_specific_0);
+	tcase_add_test(tc, test_option_process_specific_1);
 	suite_add_tcase(s, tc);
 	
 	return s;

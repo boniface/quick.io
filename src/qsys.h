@@ -59,11 +59,8 @@
 
 /**
  * Sets up the socket interface for listening, and runs the main loop of the process.
- *
- * @param process The number of the process that is running (not the pid, just a number 0-x, x
- * being the number of processes.
  */
-void qsys_main_loop(gint32 process);
+void qsys_main_loop();
 
 /**
  * Reads from the client into the buffer.
