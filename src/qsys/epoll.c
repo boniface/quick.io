@@ -32,23 +32,6 @@ static gboolean _epoll_add(int fd, client_t *client) {
 	return TRUE;
 }
 
-gboolean _qsys_init() {
-	// 1 -> a positive, int size must be given; ignored by new kernels
-	_epoll = epoll_create(1);
-	
-	if (_epoll < 1) {
-		ERRORF("Could not init epoll: %s", strerror(errno));
-		return FALSE;
-	}
-	
-	if (!_epoll_add(_accept_socket, _accept)) {
-		ERROR("Could not add listening socket to epoll.");
-		return FALSE;
-	}
-	
-	return TRUE;
-}
-
 void _qsys_accept() {
 	// Loop until there are no errors accepting a socket and setting options
 	while (TRUE) {
@@ -85,7 +68,7 @@ void _qsys_accept() {
 	}
 }
 
-gboolean _qsys_listen(gchar *address, guint16 port) {
+gboolean _qsys_init(gchar *address, guint16 port) {
 	if ((_accept_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		ERROR("Could not create socket");
 		return 0;
@@ -121,6 +104,19 @@ gboolean _qsys_listen(gchar *address, guint16 port) {
 	_accept = g_try_malloc0(sizeof(*_accept));
 	if (_accept == NULL) {
 		ERROR("Client could not be malloc()'d");
+		return FALSE;
+	}
+	
+	// 1 -> a positive, int size must be given; ignored by new kernels
+	_epoll = epoll_create(1);
+	
+	if (_epoll < 1) {
+		ERRORF("Could not init epoll: %s", strerror(errno));
+		return FALSE;
+	}
+	
+	if (!_epoll_add(_accept_socket, _accept)) {
+		ERROR("Could not add listening socket to epoll.");
 		return FALSE;
 	}
 	

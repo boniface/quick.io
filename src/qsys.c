@@ -2,30 +2,26 @@
 
 #include "qsys/epoll.c"
 
-gboolean qsys_init() {
-	if (_qsys_init()) {
-		DEBUG("Sys inited");
+void qsys_main_loop(gint32 process) {
+	gint32 port = option_port() + process;
+	
+	if (_qsys_init(option_bind_address(), port)) {
+		DEBUGF("Sys inited, listening for connections on %d", port);
 	} else {
 		ERROR("_qsys_init() failed");
-		return FALSE;
+		return;
 	}
 	
 	if (_qsys_init_maintenance()) {
 		DEBUG("Maintenance timer inited");
 	} else {
 		ERROR("Coud not init maintenance timer");
-		return FALSE;
+		return;
 	}
 	
-	return TRUE;
-}
-
-gboolean qsys_listen() {
-	return _qsys_listen(option_bind_address(), option_port());
-}
-
-void qsys_dispatch() {
-	_qsys_dispatch();
+	while (TRUE) {
+		_qsys_dispatch();
+	}
 }
 
 gssize qsys_read(client_t *client, gchar *buff, gsize buff_size) {

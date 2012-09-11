@@ -107,37 +107,18 @@ opt_app_t** option_apps();
 gint32 option_apps_count();
 
 /**
- * Gets the apps that should run.
- *
- * @return
- * An array of null-terminated strings, containing the event prefixes the apps should have (returned in the same order as option_apps()).
- */
-gchar** option_apps_prefixes();
-
-/**
- * The number of apps specififed.
- */
-gint32 option_apps_prefixes_count();
-
-/**
  * Gets the address we're supposed to bind to.
+ *
+ * @ingroup ModuleFunctions
+ *
+ * @return The address specified in the config file.
  */
-gchar* option_bind_address();
+MODULE_EXPORT gchar* option_bind_address();
 
 /**
  * Gets the config file being used.
  */
 gchar* option_config_file();
-
-/**
- * Gets the gossip bind address.
- */
-gchar* option_gossip_address();
-
-/**
- * Gets the gossip bind port.
- */
-gint32 option_gossip_port();
 
 /**
  * The maximum length a message may be.
@@ -151,13 +132,19 @@ guint64 option_max_subscriptions();
 
 /**
  * Gets the port that we're supposed to run on.
+ *
+ * @ingroup ModuleFunctions
+ *
+ * @return The port specified in the config.
  */
-gint32 option_port();
+MODULE_EXPORT gint32 option_port();
 
 /**
  * Gets the number of processes that should be spawned.
+ *
+ * @ingroup ModuleFunctions
  */
-gint32 option_processes();
+MODULE_EXPORT gint32 option_processes();
 
 /**
  * Gets the client timeout.

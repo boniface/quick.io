@@ -10,15 +10,6 @@
 static pid_t *_pids;
 
 /**
- * Runs the main event loop.
- */
-static void _main_loop() {
-	while (TRUE) {
-		qsys_dispatch();
-	}
-}
-
-/**
  * Fork all of the children processes.
  */
 static gboolean _main_fork() {
@@ -59,13 +50,7 @@ static gboolean _main_fork() {
 				exit(1);
 			}
 			
-			if (!qsys_init()) {
-				ERRORF("Could not init QSys in #%d.", processes);
-				exit(1);
-			}
-			
-			// Run the socket loop
-			_main_loop();
+			qsys_main_loop(processes);
 			ERRORF("A CHILD EXITED THE EVENT LOOP: #%d", processes);
 			exit(1);
 		} else {
@@ -137,13 +122,6 @@ int main(int argc, char *argv[]) {
 		DEBUG("Connections handler inited");
 	} else {
 		ERROR("Could not init connections handler.");
-		return 1;
-	}
-	
-	if (qsys_listen()) {
-		DEBUG("Socket listener setup");
-	} else {
-		ERROR("Could not init socket.");
 		return 1;
 	}
 	

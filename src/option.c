@@ -4,7 +4,7 @@
 static gchar* _config_file = "quickio.ini";
 
 static GOptionEntry command_options[] = {
-	{"config-file", 'f', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load", "./quickio.ini"},
+	{"config-file", 'c', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load", "./quickio.ini"},
 	{NULL}
 };
 

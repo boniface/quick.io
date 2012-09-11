@@ -53,13 +53,7 @@ void conns_client_new(client_t *client) {
 	client->initing = 1;
 	client->timer = -1;
 	
-	// This must happen before creating a timer and adding on epoll,
-	// otherwise, the close callback could be fired with a client that
-	// was never app_client_new()'d
 	apps_client_connect(client);
-	
-	// Make the client finish the handshake quickly, or drop him
-	// If we can't setup the timer, then move on
 	conns_client_timeout_set(client);
 }
 

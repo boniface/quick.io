@@ -58,19 +58,12 @@
 #include "qsys/epoll.h"
 
 /**
- * Sets up the socket for listening, does all the binding, and everything.
+ * Sets up the socket interface for listening, and runs the main loop of the process.
+ *
+ * @param process The number of the process that is running (not the pid, just a number 0-x, x
+ * being the number of processes.
  */
-gboolean qsys_listen();
-
-/**
- * Initializes any control structures needed.
- */
-gboolean qsys_init();
-
-/**
- * Dispatches 1 round on the event loop.
- */
-void qsys_dispatch();
+void qsys_main_loop(gint32 process);
 
 /**
  * Reads from the client into the buffer.
@@ -103,27 +96,8 @@ gssize qsys_write(client_t *client, gchar *buff, gsize buff_len);
 void qsys_close(client_t *client);
 
 /**
- * Initialize any internal data structures necessary for the event loop.
- *
- * @ingroup SysSpecific
- */
-gboolean _qsys_init();
-
-/**
- * Accepts a client from the raw socket and fires the conns_client_new() event.
- * 
- * @ingroup SysSpecific
- *
- * @return The sys-specific socket that will be operated on.
- */
-void _qsys_accept();
-
-/**
- * Sets up the socket for listening.  This should also set up everything that
- * is needed in order to accept connections.
- *
- * For example, with epoll, this adds the socket to the epoll interface with a
- * dummy client so that we know when there are connections waiting to be accepted.
+ * Initialize any internal data structures necessary for the event loop. This should also
+ * set up everything that is needed in order to accept connections.
  *
  * @ingroup SysSpecific
  *
@@ -132,7 +106,7 @@ void _qsys_accept();
  *
  * @return If the socket is being listened on
  */
-gboolean _qsys_listen(gchar *address, guint16 port);
+gboolean _qsys_init(gchar *address, guint16 port);
 
 /**
  * Runs 1 sys-call for the event loop, the main loop is run in qsys_run().
