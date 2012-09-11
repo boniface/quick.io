@@ -79,9 +79,6 @@ int main(int argc, char *argv[]) {
 #endif
 	debug_handle_signals();
 	
-	// Move into the directory holding this binary
-	chdir(dirname(argv[0]));
-	
 	GError *error = NULL;
 	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
@@ -89,6 +86,10 @@ int main(int argc, char *argv[]) {
 		ERROR(error->message);
 		return 1;
 	}
+	
+	// Move into the directory holding this binary
+	// Only do so after parsing the args so that the config file path is maintained
+	chdir(dirname(argv[0]));
 	
 	if (option_parse_config_file(NULL, NULL, 0, &error)) {
 		DEBUG("Config file parsed");

@@ -12,6 +12,7 @@
 
 static void _apps_setup() {
 	utils_stats_setup();
+	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
 	apps_init();
 	evs_client_init();

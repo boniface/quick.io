@@ -1,10 +1,10 @@
 #include "qio.h"
 
 // Command line options
-static gchar* _config_file = "quickio.ini";
+static gchar* _config_file = NULL;
 
 static GOptionEntry command_options[] = {
-	{"config-file", 'c', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load", "./quickio.ini"},
+	{"config-file", 'c', 0, G_OPTION_ARG_STRING, &_config_file, "Configuration file to load; if not specified, will look in the current directory", "./quickio.ini"},
 	{NULL}
 };
 
@@ -189,6 +189,22 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	
 	if (!g_option_context_parse(context, &argc, &argv, error)) {
 		success = FALSE;
+	}
+	
+	// So that there doesn't have to be any crazy free() logic
+	if (_config_file == NULL) {
+		_config_file = g_strdup("quickio.ini");
+	}
+	
+	// Resolve the absolute path to the configuration file
+	char path[PATH_MAX+1];
+	memset(&path, 0, sizeof(path));
+	if (realpath(_config_file, path) == NULL) {
+		ERRORF("Could not locate configuration file: %s", _config_file);
+		success = FALSE;
+	} else {
+		g_free(_config_file);
+		_config_file = g_strdup(path);
 	}
 	
 	g_option_context_free(context);

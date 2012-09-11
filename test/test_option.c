@@ -53,11 +53,17 @@ static void _test_option_setup() {
 }
 
 START_TEST(test_option_cl_args_short) {
-	char *argv[] = {"./server", "-f", CONFIG_FILE};
+	char *argv[] = {"./server", "-c", CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 	
+	char path[PATH_MAX+1];
+	memset(&path, 0, sizeof(path));
+	if (realpath(CONFIG_FILE, path) == NULL) {
+		test(FALSE, "Could not find config file");
+	}
+	
 	test(option_parse_args(argc, argv, NULL), "Parsed options");
-	test_str_eq(option_config_file(), CONFIG_FILE, "Correct config file");
+	test_str_eq(option_config_file(), path, "Correct config file");
 }
 END_TEST
 
@@ -65,8 +71,14 @@ START_TEST(test_option_cl_args_long) {
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 	
+	char path[PATH_MAX+1];
+	memset(&path, 0, sizeof(path));
+	if (realpath(CONFIG_FILE, path) == NULL) {
+		test(FALSE, "Could not find config file");
+	}
+	
 	test(option_parse_args(argc, argv, NULL), "Parsed options");
-	test_str_eq(option_config_file(), CONFIG_FILE, "Correct config file");
+	test_str_eq(option_config_file(), path, "Correct config file");
 }
 END_TEST
 
@@ -82,7 +94,7 @@ START_TEST(test_option_bad_config) {
 	char *argv[] = {"./server", "--config-file=this_cant_exist_EVER.ini"};
 	int argc = G_N_ELEMENTS(argv);
 	
-	test(option_parse_args(argc, argv, NULL), "File ready");
+	test_not(option_parse_args(argc, argv, NULL), "File ready");
 	test_not(option_parse_config_file(NULL, NULL, 0, NULL), "Couldn't load file");
 }
 END_TEST
