@@ -7,7 +7,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define CLIENTS 1000
+#define CLIENTS 20000
 #define ADDRESS "127.0.0.1"
 
 #define HANDSHAKE "GET /chat HTTP/1.1\n" \
@@ -49,7 +49,6 @@ void readcb(struct bufferevent *bev, void *arg) {
 	struct evbuffer *input = bufferevent_get_input(bev);
 	
 	int *inited = arg;
-	
 	if (!(*inited)) {
 		struct evbuffer_ptr evb = evbuffer_search(input, HANDSHAKE_RESPONSE, sizeof(HANDSHAKE_RESPONSE)-1, NULL);
 		
@@ -116,34 +115,6 @@ static void be_random(evutil_socket_t fd, short what, void *arg) {
 	}
 }
 
-static void create_clients(evutil_socket_t fd, short what, void *arg) {
-	static int runs = 0;
-	
-	if (runs++ == (CLIENTS / 1000)) {
-		struct event *me = arg;
-		event_del(me);
-		return;
-	}
-
-	struct sockaddr_in serv_addr;
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(5000);
-	inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
-	
-	for (int i = 0; i < 1000; i++) {
-		char *inited = g_malloc0(sizeof(*inited));
-		
-		struct bufferevent *bev = bufferevent_socket_new(_base, -1, BEV_OPT_CLOSE_ON_FREE);
-		bufferevent_setcb(bev, readcb, NULL, eventcb, (void*)inited);
-		
-		bufferevent_enable(bev, EV_READ|EV_WRITE);
-		evbuffer_add(bufferevent_get_output(bev), HANDSHAKE, sizeof(HANDSHAKE)-1);
-		
-		bufferevent_socket_connect(bev, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-	}
-}
-
 int main(int argc, char **argv) {
 	clients = g_hash_table_new(NULL, NULL);
 	_base = event_base_new();
@@ -159,10 +130,23 @@ int main(int argc, char **argv) {
 	timer = event_new(_base, -1, EV_PERSIST, be_random, NULL);
 	evtimer_add(timer, &interval);
 	
-	interval.tv_sec = 5;
-	timer = event_new(_base, -1, EV_PERSIST, create_clients, NULL);
-	timer->ev_arg = timer;
-	evtimer_add(timer, &interval);
+	struct sockaddr_in serv_addr;
+	memset(&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(5000);
+	inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
+	
+	for (int i = 0; i < CLIENTS; i++) {
+		char *inited = g_malloc0(sizeof(*inited));
+		
+		struct bufferevent *bev = bufferevent_socket_new(_base, -1, BEV_OPT_CLOSE_ON_FREE);
+		bufferevent_setcb(bev, readcb, NULL, eventcb, (void*)inited);
+		
+		bufferevent_enable(bev, EV_READ|EV_WRITE);
+		evbuffer_add(bufferevent_get_output(bev), HANDSHAKE, sizeof(HANDSHAKE)-1);
+		
+		bufferevent_socket_connect(bev, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+	}
 	
 	event_base_dispatch(_base);
 	

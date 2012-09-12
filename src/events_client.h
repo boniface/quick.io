@@ -24,16 +24,6 @@
 #define DATA_TYPE(t) (t == d_plain ? "plain" : "json")
 
 /**
- * The subscription that a user without any subscriptions will always have.
- * This is removed as soon as the user subscribes to an event, and added back
- * when the user no longer has any subscriptions.
- *
- * The name of this event is invalid, so it is safe to do simple string
- * dereferences to check for equality
- */
-#define UNSUBSCRIBED "0"
-
-/**
  * The initial number of subscriptions a client should have.
  *
  * This is a power of 2 because that is GPtrArray always expands
@@ -124,7 +114,7 @@ typedef struct evs_client_message_s {
 gboolean evs_client_init();
 
 /**
- * Add the client to UNSUBSCRIBED, waiting for any futher commands.
+ * Set up internal structures for the client.
  *
  * @param client The client that just became ready.
  */
@@ -202,7 +192,6 @@ MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, cons
  * that sending the event would do nothing.
  */
 MODULE_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
-
 
 /**
  * A cleanup routine for empty events.

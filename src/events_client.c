@@ -2,8 +2,6 @@
 
 /**
  * All of the subscriptions registered on the server.
- *
- * By default, all clients are placed into UNSUBSCRIBED until they subscribe.
  */
 static GHashTable* _events;
 
@@ -102,6 +100,11 @@ static void _new_messages() {
  * @see evs_client_format_message()
  */
 static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, evs_client_sub_t **sub) {
+	// Seriously, no handler = no message
+	if (handler == NULL) {
+		return CLIENT_INVALID_SUBSCRIPTION;
+	}
+	
 	// A callback takes precedence over an event handler, always
 	if (callback != 0) {
 		g_string_printf(buffer, F_EVENT_CALLBACK, callback, server_callback, DATA_TYPE(type), data);
@@ -203,9 +206,6 @@ static void _evs_client_pub_message(evs_client_sub_t *sub, evs_client_message_t 
 void evs_client_client_ready(client_t *client) {
 	// Initialize our internal management from the client
 	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
-	
-	// Add the user to UNSUBSCRIBED until we get a subscribe request
-	evs_client_sub_client(UNSUBSCRIBED, client);
 }
 
 status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
@@ -215,10 +215,6 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	if (sub == NULL) {
 		return CLIENT_INVALID_SUBSCRIPTION;
 	}
-	
-	// Since the user will be added to the sub, make sure they're not in the
-	// unsubscribed sub
-	evs_client_unsub_client(UNSUBSCRIBED, client);
 	
 	// Don't add the client if he's already subscribed
 	if (g_hash_table_contains(sub->clients, client)) {
@@ -237,10 +233,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// Give the client a reference to the key of the event he is subscribed to
 	g_ptr_array_add(client->subs, sub);
 	
-	// No app callbacks for subscribing to UNSUBSCRIBED
-	if (*event_path != *UNSUBSCRIBED) {
-		apps_evs_client_subscribe(client, sub);
-	}
+	apps_evs_client_subscribe(client, sub);
 	
 	return CLIENT_GOOD;
 }
@@ -261,17 +254,7 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	// The client isn't subscribed anymore, remove from his list
 	g_ptr_array_remove_fast(client->subs, sub);
 	
-	// No app callbacks for unsubscribing from UNSUBSCRIBED
-	if (*event_path != *UNSUBSCRIBED) {
-		apps_evs_client_unsubscribe(client, sub);
-	}
-	
-	// If the client has removed all subscriptions, add him back to UNSUBSCRIBED
-	// unless he was just removed from UNSUBSCRIBED, then just leave empty (assumes
-	// the client is being added to another subscription)
-	if (client->subs->len == 0 && strcmp(sub->event_path, UNSUBSCRIBED) != 0) {
-		evs_client_sub_client(UNSUBSCRIBED, client);
-	}
+	apps_evs_client_unsubscribe(client, sub);
 	
 	return CLIENT_GOOD;
 }
@@ -292,10 +275,7 @@ void evs_client_client_clean(client_t *client) {
 		// so just move on
 		g_hash_table_remove(sub->clients, client);
 		
-		// No app callbacks for leaving UNSUBSCRIBED
-		if (*(sub->event_path) != *UNSUBSCRIBED) {
-			apps_evs_client_unsubscribe(client, sub);
-		}
+		apps_evs_client_unsubscribe(client, sub);
 	}
 	
 	// Clean up the excess memory (and the underlying array used to hold it)
@@ -379,10 +359,6 @@ gboolean evs_client_init() {
 	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	_new_messages();
 	
-	// Setup the UNSUBSCRIBED subscription: it's fake, so we have to do it here
-	evs_client_sub_t *sub = _create_subscription(UNSUBSCRIBED, NULL, NULL, 0);
-	g_hash_table_insert(_events, sub->event_path, sub);
-	
 	return TRUE;
 }
 
@@ -394,11 +370,6 @@ void evs_client_cleanup() {
 	
 	g_hash_table_iter_init(&iter, _events);
 	while (g_hash_table_iter_next(&iter, (void*)&key, (void*)&sub)) {
-		// Don't free UNSUBSCRIBED, we can't re-add it
-		if (*(sub->event_path) == *UNSUBSCRIBED) {
-			continue;
-		}
-		
 		DEBUGF("Hitting subscription: %s - %d", sub->event_path, g_hash_table_size(sub->clients));
 		if (g_hash_table_size(sub->clients) == 0) {
 			DEBUGF("Removing empty subscription: %s", sub->event_path);

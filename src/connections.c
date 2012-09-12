@@ -11,6 +11,22 @@ static GHashTable *_client_timeouts;
 static gint32 _client_timeout_ticks;
 
 /**
+ * All of the clients currently connected.
+ * Functions as a set.
+ */
+static GHashTable *_clients;
+
+/**
+ * A list of all the balance requests.
+ */
+static GArray *_balances;
+
+/**
+ * The handler for balance events.
+ */
+static event_handler_t *_balance_handler;
+
+/**
  * Create a new message struct in the client
  */
 static void _conns_message_new(client_t *client) {
@@ -48,10 +64,54 @@ static void _conns_client_timeout_clean() {
 	}
 }
 
+/**
+ * Go through any balance requests and fulfill them.
+ */
+static void _conns_balance() {
+	GHashTableIter iter;
+	client_t *client;
+	g_hash_table_iter_init(&iter, _clients);
+	
+	message_t message;
+	message.buffer = g_string_sized_new(100);
+	
+	while (_balances->len > 0) {
+		conns_balance_request_t req = g_array_index(_balances, conns_balance_request_t, 0);
+		
+		DEBUGF("Balancing: %d to %s", req.count, req.to);
+		
+		guint i = 0;
+		while (i++ < req.count && g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client)) {
+			status_t error = evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req.to, message.buffer);
+			
+			DEBUGF("Sending: %s %d", message.buffer->str, error);
+			
+			client_write(client, &message);
+			g_hash_table_iter_remove(&iter);
+			conns_client_close(client);
+		}
+		
+		g_free(req.to);
+		g_array_remove_index_fast(_balances, 0);
+	}
+	
+	g_string_free(message.buffer, TRUE);
+}
+
+void conns_balance(guint count, gchar *to) {
+	conns_balance_request_t req;
+	req.count = count;
+	req.to = g_strdup(to);
+	
+	g_array_append_val(_balances, req);
+}
+
 void conns_client_new(client_t *client) {
 	// Basic information about this client
 	client->initing = 1;
 	client->timer = -1;
+	
+	g_hash_table_insert(_clients, client, client);
 	
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
@@ -59,6 +119,8 @@ void conns_client_new(client_t *client) {
 
 void conns_client_close(client_t *client) {
 	DEBUGF("A client closed: %d", client->socket);
+	
+	g_hash_table_remove(_clients, client);
 	
 	conns_client_timeout_clear(client);
 	apps_client_close(client);
@@ -168,6 +230,10 @@ gboolean conns_init() {
 	// Just hashing clients directly, as a set
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_client_timeout_ticks = option_timeout();
+	_clients = g_hash_table_new(NULL, NULL);
+	_balances = g_array_new(FALSE, FALSE, sizeof(conns_balance_request_t));
+	
+	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	
 	return TRUE;
 }
@@ -194,6 +260,9 @@ void conns_maintenance_tick() {
 	
 	// Send out messages
 	evs_client_pub_messages();
+	
+	// Check if there are any outstanding rebalance requests
+	_conns_balance();
 	
 	if (ticks++ % CONNS_MAINTENANCE_CLEANUP == 0) {
 		// Clean up any client subscriptions

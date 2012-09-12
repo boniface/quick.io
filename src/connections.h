@@ -35,6 +35,31 @@
 #define CONNS_MAINTENANCE_CLEANUP ((gint)(1000 / MAINTENANCE_TICK))
 
 /**
+ * The balance request.
+ */
+typedef struct conns_balance_request_s {
+	/**
+	 * The number of clients to move.
+	 */
+	guint count;
+	
+	/**
+	 * The external address (with port) that the clients should be moved to.
+	 */
+	gchar *to;
+} conns_balance_request_t;
+
+/**
+ * Put a new balance request into the queue.
+ *
+ * @ingroup ModuleFunctions
+ *
+ * @param count The number of clients to move.
+ * @param to The external address (with port) the clients should be sent to.
+ */
+MODULE_EXPORT void conns_balance(guint count, gchar *to);
+
+/**
  * Accept a new connection into our midst.
  * It is perfectly acceptable to close the client at this point, or do anything
  * you want with him. Typically, the best thing to do is just set some init 

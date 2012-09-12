@@ -224,12 +224,6 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 static status_t _evs_server_subscribe(const client_t *client, event_t *event, GString *response) {
 	DEBUGF("event_subscribe: %s", event->data);
 	
-	// External clients aren't allowed to know about UNSUBSCRIBED
-	if (strncmp(event->data, UNSUBSCRIBED, sizeof(UNSUBSCRIBED)-1) == 0) {
-		g_string_printf(response, "%s:%s", EVENT_RESPONSE_INVALID_SUBSCRIPTION, UNSUBSCRIBED);
-		return CLIENT_WRITE;
-	}
-	
 	gchar *event_path = _clean_event_name(event->data);
 	
 	// So we break a rule: subscribe has to change the client for subscriptions, so allow it
@@ -262,12 +256,6 @@ static status_t _evs_server_subscribe(const client_t *client, event_t *event, GS
 
 static status_t _evs_server_unsubscribe(const client_t *client, event_t *event, GString *response) {
 	DEBUGF("event_unsubscribe: %s", event->data);
-	
-	// External clients aren't allowed to know about UNSUBSCRIBED
-	if (strcmp(event->data, UNSUBSCRIBED) == 0) {
-		g_string_printf(response, "%s:%s", EVENT_RESPONSE_CANNOT_UNSUBSCRIBE, UNSUBSCRIBED);
-		return CLIENT_WRITE;
-	}
 	
 	gchar *event_path = _clean_event_name(event->data);
 	
@@ -370,8 +358,12 @@ status_t evs_server_handle(client_t *client) {
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
 	if (status == CLIENT_GOOD) {
-		// The client->message->buffer is now empty, as free'd by _event_new
-		status = handler->fn(client, &event, client->message->buffer);
+		if (handler->fn == NULL) {
+			status = CLIENT_INVALID_SUBSCRIPTION;
+		} else {
+			// The client->message->buffer is now empty, as free'd by _event_new
+			status = handler->fn(client, &event, client->message->buffer);
+		}
 	}
 	
 	// Prepare the event for writing back to the client
@@ -444,10 +436,10 @@ gboolean evs_server_init() {
 	_events_by_path = g_hash_table_new(g_str_hash, g_str_equal);
 	_events_by_handler = g_hash_table_new(NULL, NULL);
 	
-	evs_server_on("/ping", _evs_server_ping, NULL, NULL, FALSE);
-	evs_server_on("/sub", _evs_server_subscribe, NULL, NULL, FALSE);
-	evs_server_on("/unsub", _evs_server_unsubscribe, NULL, NULL, FALSE);
-	evs_server_on("/noop", _evs_server_noop, NULL, NULL, FALSE);
+	evs_server_on("/qio/ping", _evs_server_ping, NULL, NULL, FALSE);
+	evs_server_on("/qio/sub", _evs_server_subscribe, NULL, NULL, FALSE);
+	evs_server_on("/qio/unsub", _evs_server_unsubscribe, NULL, NULL, FALSE);
+	evs_server_on("/qio/noop", _evs_server_noop, NULL, NULL, FALSE);
 	// evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
 	
 	// Internal commands are ready, let the app register its commands.
