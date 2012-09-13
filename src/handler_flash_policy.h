@@ -24,7 +24,7 @@
 /**
  * If, given the headers, we support this client.
  *
- * @param buffer The buffer that flash decides to send...it's stupid.
+ * @param req The buffer that flash decides to send...it's stupid.
  *
  * @return If this handler can handle this client.
  */
@@ -34,7 +34,6 @@ gboolean h_flash_policy_handles(gchar *req);
  * Handshake with the client.
  *
  * @param client The client to handshake with
- * @param headers The HTTP headers the client sent.
  *
  * @return If the handshake succeeded.
  */
