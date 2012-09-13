@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
 	srunner_add_suite(sr, h_rfc6455_suite());
 	srunner_add_suite(sr, h_flash_policy_suite());
 	srunner_add_suite(sr, main_suite());
+	srunner_add_suite(sr, monkey_suite());
 	srunner_add_suite(sr, option_suite());
 	srunner_add_suite(sr, qsys_suite());
 
