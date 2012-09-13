@@ -13,9 +13,9 @@
 #define BAD_HANDSHAKE "asdfsadfasdfasdfasdfasdf\n\n"
 
 #define MASK "abcd"
-#define MESSAGE_RFC6455_NOOP "\x81""\x8D"MASK"N\x0c\x0c\x0b\x11XY\x14\r\x03\n\n\\"
-#define MESSAGE_RFC6455_NOOP_0 "\x81""\x8D"MASK
-#define MESSAGE_RFC6455_NOOP_1 "N\x0c\x0c\x0b\x11XY\x14\r\x03\n\n\\"
+#define MESSAGE_RFC6455_NOOP "\x81\x91""abcd""N""\x13""\n""\x0b""N""\x0c""\x0c""\x0b""\x11""X""Y""\x14""\r""\x03""\n""\n""\\"
+#define MESSAGE_RFC6455_NOOP_0 "\x81\x91""abcd"
+#define MESSAGE_RFC6455_NOOP_1 "N""\x13""\n""\x0b""N""\x0c""\x0c""\x0b""\x11""X""Y""\x14""\r""\x03""\n""\n""\\"
 
 static void _test_message_setup() {
 	apps_init();

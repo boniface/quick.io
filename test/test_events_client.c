@@ -1,15 +1,20 @@
+/**
+ * @attention The event used in this file, /test/.*, is registered in app/test.c (the test
+ * app used for unit testing apps.  It's loaded with apps_init() here.
+ */
+
 #include "test.h"
 
 #define PUB_EVENT "\x81""\x1d""/test/event:0:plain=something"
 
 void _test_evs_client_setup() {
-	conns_init();
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
 	apps_init();
 	evs_client_init();
 	evs_server_init();
+	conns_init();
 }
 
 void _test_evs_client_teardown() {
@@ -105,22 +110,33 @@ START_TEST(test_evs_client_format_message_2) {
 }
 END_TEST
 
-START_TEST(test_evs_client_format_message_3) {
+START_TEST(test_evs_client_format_message_no_handler) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 	
 	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
 	
-	path_extra_t extra = NULL;
-	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra, NULL);
-	test(handler != NULL, "Got handler");
-	
-	status_t status = evs_client_format_message(NULL, 0, 0, extra, d_plain, "ßäū€öł", buffer);
+	status_t status = evs_client_format_message(NULL, 0, 0, NULL, d_plain, "ßäū€öł", buffer);
 	
 	test_status_eq(status, CLIENT_UNKNOWN_EVENT, "Could not find handler");
 	test_size_eq(buffer->len, 0, "No message set");
 	
-	g_list_free_full(extra, g_free);
+	g_string_free(buffer, TRUE);
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_format_message_invalid_handler) {
+	client_t *client = u_client_create(NULL);
+	GString *buffer = g_string_sized_new(1);
+	
+	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
+	
+	status_t status = evs_client_format_message((const event_handler_t *)1000, 0, 0, NULL, d_plain, "ßäū€öł", buffer);
+	
+	test_status_eq(status, CLIENT_UNKNOWN_EVENT, "Could not find handler");
+	test_size_eq(buffer->len, 0, "No message set");
+	
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
 }
@@ -173,8 +189,8 @@ START_TEST(test_evs_client_format_message_not_subscribed) {
 	
 	status_t status = evs_client_format_message(handler, 0, 0, extra, d_plain, "abcd", buffer);
 	
-	test_status_eq(status, CLIENT_INVALID_SUBSCRIPTION, "No clients subscribed");
-	test_size_eq(buffer->len, 0, "No message set");
+	test_status_eq(status, CLIENT_GOOD, "Message formatted even though no clients subscribed");
+	test_str_eq(buffer->str, "/test/event/test:0:plain=abcd", "Message formatted correctly");
 	
 	g_list_free_full(extra, g_free);
 	g_string_free(buffer, TRUE);
@@ -204,11 +220,8 @@ START_TEST(test_evs_client_ready) {
 	client->subs = NULL;
 	
 	evs_client_client_ready(client);
-	evs_client_sub_t *sub = _get_subscription(UNSUBSCRIBED, FALSE);
-	
 	test(client->subs != NULL, "Subscriptions setup");
-	test_size_eq(client->subs->len, 1, "Only 1 subscription");
-	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "Added to unsubscribed");
+	test_size_eq(client->subs->len, 0, "No subscriptions");
 	
 	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
@@ -272,10 +285,7 @@ START_TEST(test_evs_client_unsubscribe) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 	
-	evs_client_sub_t *sub = _get_subscription(UNSUBSCRIBED, FALSE);
-	test_size_eq(client->subs->len, 1, "In unsubscribed");
-	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In unsubscribed");
-	
+	test_size_eq(client->subs->len, 0, "No subscriptions");
 	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 1 * option_apps_count(), "Only real unsubscribes sent");
 	
@@ -357,31 +367,6 @@ START_TEST(test_evs_client_sub_unsub_2) {
 }
 END_TEST
 
-START_TEST(test_evs_client_clean_unsubscribed) {
-	client_t *client = u_client_create(NULL);
-	
-	evs_client_client_ready(client);
-	evs_client_client_clean(client);
-	
-	test_ptr_eq(client->subs, NULL, "No subscriptions");
-	
-	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
-	
-	// Get rid of the empty subscription
-	evs_client_cleanup();
-	
-	// Unsubscribed should NEVER be removed, even when empty
-	evs_client_sub_t *sub = _get_subscription(UNSUBSCRIBED, FALSE);
-	test(sub != NULL, "UNSUBSCRIBED still exists");
-	test_size_eq(g_hash_table_size(sub->clients), 0, "No clients in UNSUBSCRIBED");
-	
-	// So that u_client_free doesn't freak out
-	client->subs = g_ptr_array_new();
-	u_client_free(client);
-}
-END_TEST
-
 START_TEST(test_evs_client_clean) {
 	client_t *client = u_client_create(NULL);
 	
@@ -393,9 +378,7 @@ START_TEST(test_evs_client_clean) {
 	
 	test_ptr_eq(client->subs, NULL, "No subscriptions");
 	
-	evs_client_sub_t *sub = _get_subscription(UNSUBSCRIBED, FALSE);
-	test_size_eq(g_hash_table_size(sub->clients), 0, "No more clients UNSUBSCRIBED");
-	
+	evs_client_sub_t *sub;
 	sub = _get_subscription("/test/event/test1", FALSE);
 	test_size_eq(g_hash_table_size(sub->clients), 0, "No more clients subscribed 1");
 	
@@ -492,9 +475,6 @@ START_TEST(test_evs_client_pub_messages_no_handler) {
 	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
 	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
 	
-	sub = _get_subscription(UNSUBSCRIBED, FALSE);
-	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
-	
 	test_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
 	test_size_eq(utils_stats()->evs_client_pub_closes, 1, "Client closed");
 }
@@ -540,7 +520,8 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_client_format_message_0);
 	tcase_add_test(tc, test_evs_client_format_message_1);
 	tcase_add_test(tc, test_evs_client_format_message_2);
-	tcase_add_test(tc, test_evs_client_format_message_3);
+	tcase_add_test(tc, test_evs_client_format_message_no_handler);
+	tcase_add_test(tc, test_evs_client_format_message_invalid_handler);
 	tcase_add_test(tc, test_evs_client_format_message_with_callback);
 	tcase_add_test(tc, test_evs_client_format_message_with_server_callback);
 	tcase_add_test(tc, test_evs_client_format_message_not_subscribed);
@@ -575,7 +556,6 @@ Suite* events_client_suite() {
 	
 	tc = tcase_create("Client Cleaning");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
-	tcase_add_test(tc, test_evs_client_clean_unsubscribed);
 	tcase_add_test(tc, test_evs_client_clean);
 	tcase_add_test(tc, test_evs_client_clean_bad_client);
 	suite_add_tcase(s, tc);

@@ -16,7 +16,7 @@
 /**
  * The message format for a callback.
  */
-#define F_EVENT_CALLBACK "/callback/%" G_GUINT32_FORMAT EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
+#define F_CALLBACK_PATH "/callback/%" G_GUINT32_FORMAT
 
 /**
  * Gets a string for the event type.
@@ -188,8 +188,7 @@ MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, cons
  * @param buffer Where the formatted message will be written. MUST NOT be NULL.
  *
  * @return CLIENT_GOOD - If the message was prepared and formatted successfully.
- * @return CLIENT_INVALID_SUBSCRIPTION - If there are no clients subscribed to this event, such
- * that sending the event would do nothing.
+ * @return CLIENT_UNKNOWN_EVENT - If the event could not be found, or no callback was given.
  */
 MODULE_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
 

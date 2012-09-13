@@ -358,9 +358,7 @@ status_t evs_server_handle(client_t *client) {
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
 	if (status == CLIENT_GOOD) {
-		if (handler->fn == NULL) {
-			status = CLIENT_INVALID_SUBSCRIPTION;
-		} else {
+		if (handler->fn != NULL) {
 			// The client->message->buffer is now empty, as free'd by _event_new
 			status = handler->fn(client, &event, client->message->buffer);
 		}
@@ -400,6 +398,7 @@ status_t evs_server_handle(client_t *client) {
 }
 
 event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_cb on_subscribe, const on_subscribe_cb on_unsubscribe, const gboolean handle_children) {
+	
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
 		ERRORF("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);

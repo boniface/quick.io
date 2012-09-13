@@ -197,7 +197,8 @@ status_t evs_server_handle(client_t *client);
  * Listen for an event from clients.
  *
  * @param event_path The name of the event to be notified for.
- * @param fn The function that should be called when the event comes in.
+ * @param fn The function that should be called when the event comes in. If this parameter is
+ * NULL, then any events sent from the clients to this event will be dropped.
  * @param on_subscribe The function to be called when a client subscribes to this event.
  * @param on_unsubscribe The function to be called when a client unsubscribes from this event.
  * @param handle_children If this handler handles children events with handlers.

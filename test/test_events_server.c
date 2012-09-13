@@ -35,12 +35,12 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop::plain=");
+	g_string_assign(message->buffer, "/qio/noop::plain=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
 	
 	// Test the event data
-	test_str_eq(event.name, "/noop", "Correct event name");
+	test_str_eq(event.name, "/qio/noop", "Correct event name");
 	test_ptr_eq(event.extra_segments, NULL, "No extra segments");
 	test_uint16_eq(event.extra_segments_len, 0, "No extra segments");
 	test_uint32_eq(event.callback, 0, "No callback");
@@ -65,7 +65,7 @@ START_TEST(test_evs_event_creation_valid_callback) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:123:plain=");
+	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
 	test_uint32_eq(event.callback, 123, "Callback gotten!");
@@ -84,7 +84,7 @@ START_TEST(test_evs_event_creation_valid_json) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:123:json={\"test\":1}");
+	g_string_assign(message->buffer, "/qio/noop:123:json={\"test\":1}");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
 	test_uint32_eq(event.callback, 123, "Callback gotten!");
@@ -104,7 +104,7 @@ START_TEST(test_evs_event_creation_no_data) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:123:plain=");
+	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
 	test_uint32_eq(event.callback, 123, "Callback gotten!");
@@ -170,7 +170,7 @@ START_TEST(test_evs_event_creation_invalid_with_event) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop::=");
+	g_string_assign(message->buffer, "/qio/noop::=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
 	
@@ -186,7 +186,7 @@ START_TEST(test_evs_event_creation_invalid_callback_id) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:abcd1234:=");
+	g_string_assign(message->buffer, "/qio/noop:abcd1234:=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
 	test_uint32_eq(event.callback, 0, "Callback parsed");
@@ -203,7 +203,7 @@ START_TEST(test_evs_event_creation_invalid_callback) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:=");
+	g_string_assign(message->buffer, "/qio/noop:=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
 	
@@ -219,7 +219,7 @@ START_TEST(test_evs_event_creation_invalid_junk) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:\x11\x01\x12\xab\x00:=hi");
+	g_string_assign(message->buffer, "/qio/noop:\x11\x01\x12\xab\x00:=hi");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
 	
@@ -235,7 +235,7 @@ START_TEST(test_evs_event_creation_invalid_data) {
 	event_handler_t *handler = NULL;
 	message_t *message = client->message;
 	
-	g_string_assign(message->buffer, "/noop:123:plain");
+	g_string_assign(message->buffer, "/qio/noop:123:plain");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
 	
@@ -275,11 +275,24 @@ START_TEST(test_evs_new_handler_bad_path_2) {
 }
 END_TEST
 
+START_TEST(test_evs_new_handler_no_fn) {
+	event_handler_t *handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
+	test(handler != NULL, "Handler created");
+	
+	client_t *client = u_client_create(NULL);
+	g_string_assign(client->message->buffer, "/another/event:0:plain=");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "No handler called");
+	
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_evs_get_handler_0) {
 	path_extra_t extra;
 	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("noop", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("qio/noop", &extra, &extra_len);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
 	test_uint16_eq(extra_len, 0, "No extra segments");
@@ -290,7 +303,7 @@ START_TEST(test_evs_get_handler_1) {
 	path_extra_t extra;
 	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("noop/", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("qio/noop/", &extra, &extra_len);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
 	test_uint16_eq(extra_len, 0, "No extra segments");
@@ -301,8 +314,8 @@ START_TEST(test_evs_get_handler_2) {
 	path_extra_t extra;
 	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/noop/", &extra, &extra_len);
-	test_ptr_eq(handler, evs_server_get_handler("/noop", NULL, NULL), "Correct handler retrieved");
+	event_handler_t *handler = evs_server_get_handler("/qio/noop/", &extra, &extra_len);
+	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL, NULL), "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
 	test_uint16_eq(extra_len, 0, "No extra segments");
 }
@@ -312,7 +325,7 @@ START_TEST(test_evs_get_handler_3) {
 	path_extra_t extra;
 	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/noop/extra/segs", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra, &extra_len);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
 	test_uint16_eq(extra_len, 0, "No extra segments");
@@ -323,8 +336,8 @@ START_TEST(test_evs_get_handler_4) {
 	path_extra_t extra;
 	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/noop/////", &extra, &extra_len);
-	test_ptr_eq(handler, evs_server_get_handler("/noop", NULL, NULL), "Correct handler retrieved");
+	event_handler_t *handler = evs_server_get_handler("/qio/noop/////", &extra, &extra_len);
+	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL, NULL), "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
 	test_uint16_eq(extra_len, 0, "No extra segments");
 }
@@ -334,8 +347,8 @@ START_TEST(test_evs_get_handler_5) {
 	path_extra_t extra;
 	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/noop\x00/more/items", &extra, &extra_len);
-	test_ptr_eq(handler, evs_server_get_handler("/noop", NULL, NULL), "Correct handler retrieved");
+	event_handler_t *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra, &extra_len);
+	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL, NULL), "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
 	test_uint16_eq(extra_len, 0, "No extra segments");
 }
@@ -357,16 +370,16 @@ START_TEST(test_evs_get_handler_6) {
 END_TEST
 
 START_TEST(test_evs_path_from_handler) {
-	event_handler_t *handler = g_hash_table_lookup(_events_by_path, "/noop");
+	event_handler_t *handler = g_hash_table_lookup(_events_by_path, "/qio/noop");
 	
-	test_str_eq(evs_server_path_from_handler(handler), "/noop", "Found correct event");
+	test_str_eq(evs_server_path_from_handler(handler), "/qio/noop", "Found correct event");
 }
 END_TEST
 
 START_TEST(test_evs_handler_noop) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/noop:0:plain=test");
+	g_string_assign(client->message->buffer, "/qio/noop:0:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Noop recieved");
 	test_size_eq(client->message->buffer->len, 0, "No data set");
@@ -378,7 +391,7 @@ END_TEST
 START_TEST(test_evs_handler_noop_callback) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/noop:123:plain=test");
+	g_string_assign(client->message->buffer, "/qio/noop:123:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Noop recieved");
 	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=", "Callback with no data");
@@ -390,7 +403,7 @@ END_TEST
 START_TEST(test_evs_handler_ping) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/ping:123:plain=test");
+	g_string_assign(client->message->buffer, "/qio/ping:123:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
 	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=test", "Ping sent back correct data");
@@ -402,7 +415,7 @@ END_TEST
 START_TEST(test_evs_handler_subscribe) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/sub:456:plain=/doesnt/exist");
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/doesnt/exist");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
 	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/doesnt/exist", "Bad event");
@@ -411,13 +424,13 @@ START_TEST(test_evs_handler_subscribe) {
 }
 END_TEST
 
-START_TEST(test_evs_handler_subscribe_to_unsubscribed) {
+START_TEST(test_evs_handler_subscribe_to_bad_format) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/sub:456:plain=0");
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=0");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":0", "Bad event");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/0", "Bad event");
 	
 	u_client_free(client);
 }
@@ -431,10 +444,10 @@ START_TEST(test_evs_handler_subscribe_too_many_subs) {
 		g_ptr_array_add(client->subs, NULL);
 	}
 	
-	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_MAX_SUBSCRIPTIONS":/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_MAX_SUBSCRIPTIONS":/qio/noop", "Bad event");
 	
 	u_client_free(client);
 }
@@ -443,13 +456,13 @@ END_TEST
 START_TEST(test_evs_handler_subscribe_already_subscribed) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
 	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
 	
-	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_ALREADY_SUBSCRIBED":/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_ALREADY_SUBSCRIBED":/qio/noop", "Bad event");
 	
 	u_client_free(client);
 }
@@ -458,11 +471,11 @@ END_TEST
 START_TEST(test_evs_handler_unsubscribe) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/sub:456:plain=/noop");
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
 	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
 	
-	g_string_assign(client->message->buffer, "/unsub:456:plain=/noop");
+	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Unsubscribed");
 	
 	u_client_free(client);
@@ -472,20 +485,20 @@ END_TEST
 START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/unsub:456:plain=/noop");
+	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/qio/noop", "Bad event");
 	
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_unsubscribe_unsubscribed) {
+START_TEST(test_evs_handler_unsubscribe_bad_event) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/unsub:456:plain=0");
+	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=0");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":0", "Bad event");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/0", "Bad event");
 	
 	u_client_free(client);
 }
@@ -522,6 +535,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_new_handler_bad_path_0);
 	tcase_add_test(tc, test_evs_new_handler_bad_path_1);
 	tcase_add_test(tc, test_evs_new_handler_bad_path_2);
+	tcase_add_test(tc, test_evs_new_handler_no_fn);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Handler Getting");
@@ -542,12 +556,12 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_handler_noop_callback);
 	tcase_add_test(tc, test_evs_handler_ping);
 	tcase_add_test(tc, test_evs_handler_subscribe);
-	tcase_add_test(tc, test_evs_handler_subscribe_to_unsubscribed);
+	tcase_add_test(tc, test_evs_handler_subscribe_to_bad_format);
 	tcase_add_test(tc, test_evs_handler_subscribe_too_many_subs);
 	tcase_add_test(tc, test_evs_handler_subscribe_already_subscribed);
 	tcase_add_test(tc, test_evs_handler_unsubscribe);
 	tcase_add_test(tc, test_evs_handler_unsubscribe_not_subscribed);
-	tcase_add_test(tc, test_evs_handler_unsubscribe_unsubscribed);
+	tcase_add_test(tc, test_evs_handler_unsubscribe_bad_event);
 	suite_add_tcase(s, tc);
 	
 	return s;

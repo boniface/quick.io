@@ -98,17 +98,22 @@ static void _new_messages() {
 
 /**
  * @see evs_client_format_message()
+ *
+ * @param path If this is not NULL, then it MUST be free()'d
  */
-static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, evs_client_sub_t **sub) {
-	// Seriously, no handler = no message
-	if (handler == NULL) {
-		return CLIENT_INVALID_SUBSCRIPTION;
-	}
+static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, gchar **path) {
+	// A way of getting the path back to the caller
+	gchar *final_path;
 	
 	// A callback takes precedence over an event handler, always
 	if (callback != 0) {
-		g_string_printf(buffer, F_EVENT_CALLBACK, callback, server_callback, DATA_TYPE(type), data);
+		final_path = g_strdup_printf(F_CALLBACK_PATH, callback);
 	} else {
+		// Seriously, no handler = no message
+		if (handler == NULL) {
+			return CLIENT_UNKNOWN_EVENT;
+		}
+		
 		// First, start by constructing the name of the event we're publishing to, complete
 		// with all extra path elements
 		gchar *handler_path = evs_server_path_from_handler(handler);
@@ -117,31 +122,26 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 			return CLIENT_UNKNOWN_EVENT;
 		}
 		
+		GString *ep = g_string_new(handler_path);
+		
 		// Skip all the loopy logic unless there are extra path segments
 		if (extra != NULL) {
-			// Add all of the extra path elements to the event path so we can resolve
-			// the actual event and clients we're publishing to
-			GString *ep = g_string_new(handler_path);
-			
 			path_extra_t curr = g_list_first(extra);
 			do {
 				g_string_append_printf(ep, "/%s", (gchar*)curr->data);
 			} while ((curr = g_list_next(curr)) != NULL);
-			
-			// DO NOT create a subscription from here, this MUST be thread safe.
-			*sub = _get_subscription(ep->str, FALSE /* DON'T TOUCH */);
-			
-			g_string_free(ep, TRUE);
-		} else {
-			// DO NOT create a subscription from here, this MUST be thread safe.
-			*sub = _get_subscription(handler_path, FALSE /* DON'T TOUCH */);
 		}
 		
-		if (*sub == NULL) {
-			return CLIENT_INVALID_SUBSCRIPTION;
-		}
-		
-		g_string_printf(buffer, F_EVENT, (*sub)->event_path, server_callback, DATA_TYPE(type), data);
+		final_path = ep->str;
+		g_string_free(ep, FALSE);
+	}
+	
+	g_string_printf(buffer, F_EVENT, final_path, server_callback, DATA_TYPE(type), data);
+	
+	if (path != NULL) {
+		*path = final_path;
+	} else {
+		g_free(final_path);
 	}
 	
 	return CLIENT_GOOD;
@@ -324,16 +324,16 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	// Format the message that will be sent to the clients
 	GString *message = g_string_sized_new(100);
 	
-	evs_client_sub_t *sub;
+	gchar *path;
 	
 	// There are no callbacks for broadcast messages
-	_evs_client_format_message(handler, 0, 0, extra, type, data, message, &sub);
+	_evs_client_format_message(handler, 0, 0, extra, type, data, message, &path);
 	
 	// This one is tricky: duplicate the event path so that the following cannot happen:
 	//  1) Publish event to /test/event
 	//  2) All clients unsubscribe from /test/event
 	//  3) We attempt to publish with an invalid pointer (segfault!)
-	emsg->event_path = g_strdup(sub->event_path);
+	emsg->event_path = path;
 	emsg->type = op_text;
 	emsg->message = message->str;
 	emsg->message_len = message->len;
@@ -349,8 +349,7 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 }
 
 status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer) {
-	evs_client_sub_t *sub;
-	return _evs_client_format_message(handler, callback, server_callback, extra, type, data, buffer, &sub);
+	return _evs_client_format_message(handler, callback, server_callback, extra, type, data, buffer, NULL);
 }
 
 gboolean evs_client_init() {
