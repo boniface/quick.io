@@ -1,14 +1,17 @@
 #include "test.h"
 
-#define INCOMPLETE_HANDSHAKE_HTTP "GET /chat HTTP/1.1\n"
-#define INCOMPLETE_HANDSHAKE_WS "GET /chat HTTP/1.1\r\n"
+#define INCOMPLETE_HANDSHAKE_HTTP "GET /qio HTTP/1.1\n"
+#define INCOMPLETE_HANDSHAKE_WS "GET /qio HTTP/1.1\r\n"
 
-#define NO_HANDLER_HANDSHAKE_KEYS "GET /chat HTTP/1.1\n" \
+#define NO_HANDLER_HANDSHAKE_KEYS "GET /qio HTTP/1.1\n" \
 	"Herp: Derp\r\n" \
 	"Merp: Terp\r\n\r\n"
-#define NO_HANDLER_HANDSHAKE_HORRIBLE "GET /chat HTTP/1.1\n" \
+#define NO_HANDLER_HANDSHAKE_HORRIBLE "GET /qio HTTP/1.1\n" \
 	"Herp\r\n" \
 	"Merp\r\n\r\n"
+
+#define BAD_PATH "GET /nope HTTP/1.1\n" \
+	"Test: something\n\n"
 
 #define BAD_HANDSHAKE "asdfsadfasdfasdfasdfasdf\n\n"
 
@@ -78,6 +81,16 @@ START_TEST(test_client_bad_headers) {
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
 	test_status_eq(client_handshake(client), CLIENT_ABORTED, "Headers rejected");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_client_bad_path) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->socket_buffer, BAD_PATH);
+	test_status_eq(client_handshake(client), CLIENT_UNSUPPORTED, "Path rejected");
 	
 	u_client_free(client);
 }
@@ -185,6 +198,7 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_no_handlers_0);
 	tcase_add_test(tc, test_client_no_handlers_1);
 	tcase_add_test(tc, test_client_bad_headers);
+	tcase_add_test(tc, test_client_bad_path);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Message");

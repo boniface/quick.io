@@ -19,6 +19,11 @@
 #define WEB_SOCKET_HEADER_TERMINATOR "\r\n\r\n"
 
 /**
+ * The path that clients are required to connect to.
+ */
+#define QIO_PATH "/qio"
+
+/**
  * Everything went as expected. Carry on.
  */
 #define CLIENT_GOOD 1 << 0

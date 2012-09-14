@@ -1,6 +1,6 @@
 #include "test.h"
 
-#define RFC6455_HANDSHAKE "GET /chat HTTP/1.1\n" \
+#define RFC6455_HANDSHAKE "GET /qio HTTP/1.1\n" \
 	"Host: server.example.com\n" \
 	"Upgrade: websocket\n" \
 	"Connection: Upgrade\n" \
@@ -14,7 +14,7 @@
 	"Access-Control-Allow-Origin: *\r\n" \
 	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
 
-#define NOT_RFC6455_HANDSHAKE "GET /chat HTTP/1.1\n" \
+#define NOT_RFC6455_HANDSHAKE "GET /qio HTTP/1.1\n" \
 	"Host: server.example.com\n" \
 	"Upgrade: websocket\n" \
 	"Connection: Upgrade\n\n"

@@ -9,7 +9,7 @@
 /**
  * A typical, RFC6455 handshake.
  */
-#define U_HANDSHAKE "GET /chat HTTP/1.1\r\n" \
+#define U_HANDSHAKE "GET /qio HTTP/1.1\r\n" \
 	"Host: server.example.com\r\n" \
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \

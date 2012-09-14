@@ -27,7 +27,9 @@ status_t client_handshake(client_t *client) {
 	
 	// Parse the headers and see if we can handle them
 	if (soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL) == SOUP_STATUS_OK) {
-		if (h_rfc6455_handles(path, req_headers)) {
+		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
+			status = CLIENT_UNSUPPORTED;
+		} else if (h_rfc6455_handles(path, req_headers)) {
 			client->handler = h_rfc6455;
 			status = h_rfc6455_handshake(client, req_headers);
 		} else {
