@@ -413,6 +413,12 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	
 	gchar *path = _clean_event_name(event_path);
 	
+	if (g_hash_table_contains(_events_by_path, path)) {
+		ERRORF("Event handler is already registered: %s", path);
+		g_free(path);
+		return NULL;
+	}
+	
 	// Grab some memory to store the event info
 	event_handler_t *handler = g_try_malloc0(sizeof(*handler));
 	handler->fn = fn;

@@ -288,6 +288,15 @@ START_TEST(test_evs_new_handler_no_fn) {
 }
 END_TEST
 
+START_TEST(test_evs_new_handler_already_exists) {
+	event_handler_t *handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
+	test(handler != NULL, "Handler created");
+	
+	handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
+	test(handler == NULL, "Handler rejected created");
+}
+END_TEST
+
 START_TEST(test_evs_get_handler_0) {
 	path_extra_t extra;
 	guint16 extra_len;
@@ -536,6 +545,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_new_handler_bad_path_1);
 	tcase_add_test(tc, test_evs_new_handler_bad_path_2);
 	tcase_add_test(tc, test_evs_new_handler_no_fn);
+	tcase_add_test(tc, test_evs_new_handler_already_exists);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Handler Getting");
