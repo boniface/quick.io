@@ -97,16 +97,15 @@ static void _conns_balance() {
 	guint i = reqs->len;
 	while (i-- > 0) {
 		conns_balance_request_t req = g_array_index(reqs, conns_balance_request_t, i);
+		evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req.to, message.buffer);
 		
 		DEBUGF("Balancing: %d to %s", req.count, req.to);
 		
 		guint cnt = 0;
 		while (cnt++ < req.count && g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client)) {
-			
-			if (evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req.to, message.buffer) == CLIENT_GOOD) {
+			if (message.buffer->len > 0) {
 				client_write(client, &message);
 			}
-			
 			g_hash_table_iter_remove(&iter);
 			conns_client_close(client);
 		}
