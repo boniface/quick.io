@@ -52,12 +52,12 @@ typedef struct conns_balance_request_s {
 /**
  * Put a new balance request into the queue.
  *
- * @ingroup ModuleFunctions
+ * @ingroup AppFunctions
  *
  * @param count The number of clients to move.
  * @param to The external address (with port) the clients should be sent to.
  */
-MODULE_EXPORT void conns_balance(guint count, gchar *to);
+APP_EXPORT void conns_balance(guint count, gchar *to);
 
 /**
  * Accept a new connection into our midst.

@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <gmodule.h>
-#include <libsoup/soup.h>
+#include <http_parser.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

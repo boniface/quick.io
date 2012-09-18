@@ -86,12 +86,14 @@ END_TEST
 START_TEST(test_h_rfc6455_handshake_no_key) {
 	client_t *client = u_client_create(NULL);
 	
-	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
+	GHashTable *headers = g_hash_table_new(g_str_hash, g_str_equal);
+	g_hash_table_insert(headers, "Host", "server.example.com");
+	g_hash_table_insert(headers, "Upgrade", "websocket");
+	g_hash_table_insert(headers, "Connection", "Upgrade");
 	
-	test_int64_eq(soup_headers_parse_request(NOT_RFC6455_HANDSHAKE, sizeof(NOT_RFC6455_HANDSHAKE)-1, req_headers, NULL, NULL, NULL), SOUP_STATUS_OK, "Headers parsed");
+	test_status_eq(h_rfc6455_handshake(client, headers), CLIENT_UNSUPPORTED, "Client not supported");
 	
-	test_status_eq(h_rfc6455_handshake(client, req_headers), CLIENT_UNSUPPORTED, "Client not supported");
-	
+	g_hash_table_unref(headers);
 	u_client_free(client);
 }
 END_TEST

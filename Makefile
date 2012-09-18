@@ -29,6 +29,10 @@ build: http-parser
 	$(MAKE) -C src
 	$(MAKE) -C app
 
+qio_apps.h:
+	mkdir -p build/docs
+	doxygen DoxyfileXml
+
 clean:
 	rm -rf $(DIR_BUILD)
 	rm -rf $(DIR_BUILD_DEBUG)

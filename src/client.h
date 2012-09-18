@@ -110,12 +110,6 @@
 #define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNKNOWN_EVENT | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE_FORMAT)
 
 /**
- * The client status type.
- */
-// Defined in qio.h
-//typedef guint16 status_t;
-
-/**
  * The opcodes that we support.
  */
 typedef enum opcode {

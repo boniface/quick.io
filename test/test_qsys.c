@@ -1,3 +1,7 @@
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+
 #include "test.h"
 
 #define TEST_EPOLL_WAIT 100

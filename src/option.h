@@ -109,11 +109,11 @@ gint32 option_apps_count();
 /**
  * Gets the address we're supposed to bind to.
  *
- * @ingroup ModuleFunctions
+ * @ingroup AppFunctions
  *
  * @return The address specified in the config file.
  */
-MODULE_EXPORT gchar* option_bind_address();
+APP_EXPORT gchar* option_bind_address();
 
 /**
  * Gets the config file being used.
@@ -133,18 +133,16 @@ guint64 option_max_subscriptions();
 /**
  * Gets the port that we're supposed to run on.
  *
- * @ingroup ModuleFunctions
+ * @ingroup AppFunctions
  *
  * @return The port specified in the config.
  */
-MODULE_EXPORT gint32 option_port();
+APP_EXPORT gint32 option_port();
 
 /**
  * Gets the number of processes that should be spawned.
- *
- * @ingroup ModuleFunctions
  */
-MODULE_EXPORT gint32 option_processes();
+gint32 option_processes();
 
 /**
  * Gets the client timeout.
@@ -154,14 +152,14 @@ gint32 option_timeout();
 /**
  * Loads the config file and populates all the options.
  *
- * @ingroup ModuleFunctions
+ * @ingroup AppFunctions
  *
  * @param group_name The name of the group that should be read and processed.
  * @param opts The options that should be populated.
  * @param opts_len The number of options being passed in.
  * @param[out] error Any GError that might happen parsing the options.
  */
-MODULE_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error);
+APP_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error);
 
 /**
  * Parses all the command line options.

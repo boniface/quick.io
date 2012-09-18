@@ -165,7 +165,7 @@ void evs_client_pub_messages();
  * messages to send, and the message is actually sent in the next loop of the main
  * thread.
  *
- * @ingroup ModuleFunctions
+ * @ingroup AppFunctions
  *
  * @param handler The event handler to publish to.
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
@@ -174,7 +174,7 @@ void evs_client_pub_messages();
  *
  * @attention IS thread safe.
  */
-MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data);
+APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data);
 
 /**
  * Prepare a message to be sent to 1 individual user.
@@ -190,7 +190,7 @@ MODULE_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, cons
  * @return CLIENT_GOOD - If the message was prepared and formatted successfully.
  * @return CLIENT_UNKNOWN_EVENT - If the event could not be found, or no callback was given.
  */
-MODULE_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+APP_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
 
 /**
  * A cleanup routine for empty events.

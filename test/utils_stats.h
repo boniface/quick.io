@@ -137,7 +137,7 @@ void utils_stats_teardown();
  * @note You should use the Glib Atomic operations for the slots in this.
  * @see http://developer.gnome.org/glib/2.32/glib-Atomic-Operations.html
  */
-MODULE_EXPORT test_stats_t* utils_stats();
+APP_EXPORT test_stats_t* utils_stats();
 
 /**
  * A helper for incrementing a slot in test_stats_t

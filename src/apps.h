@@ -11,15 +11,6 @@
 #include "qio.h"
 
 /**
- * Boiler plate helper to get applications up and running.
- */
-#define APP_INIT() \
-	static gchar *_app_name = NULL; \
-	void qio_set_app_name(const gchar *name) { \
-		_app_name = g_strdup(name); \
-	}
-
-/**
  * The characters that can begin a path.
  */
 #define PATH_STARTERS "./\\~"

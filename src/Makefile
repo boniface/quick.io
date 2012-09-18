@@ -1,6 +1,6 @@
 include ../Makefile.inc
 
-# Hide everything by default, unless annotated with MODULE_EXPORT
+# Hide everything by default, unless annotated with APP_EXPORT
 CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/http-parser
 LDFLAGS += -Wl,-E $(ROOT)/ext/http-parser/http_parser.o
 
