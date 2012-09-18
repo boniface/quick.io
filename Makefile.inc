@@ -4,7 +4,7 @@
 # Not directory-specific
 HEADERS = $(wildcard *.h)
 
-ROOT = $(shell pwd)
+export ROOT ?= $(shell pwd)
 DIR_BUILD = build
 DIR_BUILD_DEBUG = build_debug
 DIR_BUILD_TEST = build_test
@@ -15,8 +15,8 @@ QIOINI = $(QIOINI_DEFAULT)
 export BUILDDIR ?= $(ROOT)/$(DIR_BUILD)
 
 CC = gcc
-LIBS += glib-2.0 libsoup-2.4
-LIBS_VERSIONS = glib-2.0 >= 2.32 libsoup-2.4 >= 2.38
+LIBS += glib-2.0 gmodule-2.0
+LIBS_VERSIONS = glib-2.0 >= 2.32 gmodule-2.0 >= 2.32
 
 # The flags
 CFLAGS = -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS))

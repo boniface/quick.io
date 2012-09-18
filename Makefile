@@ -19,7 +19,10 @@ docs:
 run: debug
 	./$(DIR_BUILD_DEBUG)/server
 
-build:
+http-parser:
+	$(MAKE) -C ext http-parser
+
+build: http-parser
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	mkdir -p $(BUILDDIR)
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)

@@ -21,17 +21,50 @@ status_t client_handshake(client_t *client) {
 		return CLIENT_WAIT;
 	}
 	
-	// Used by soup for header parsing
-	SoupMessageHeaders *req_headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_REQUEST);
+	GHashTable *headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	gchar *path = NULL;
 	
-	// Parse the headers and see if we can handle them
-	if (soup_headers_parse_request(buffer->str, buffer->len, req_headers, NULL, &path, NULL) == SOUP_STATUS_OK) {
+	int on_path(http_parser *parser, const char *at, gsize len) {
+		path = g_strndup(at, len);
+		return 0;
+	}
+	
+	// The previously-found key
+	gchar *h_key;
+	gsize h_len = 0;
+	
+	int on_key(http_parser *parser, const char *at, gsize len) {
+		h_key = (gchar*)at;
+		h_len = len;
+		return 0;
+	}
+	
+	int on_value(http_parser *parser, const char *at, gsize len) {
+		if (h_len > 0) {
+			g_hash_table_insert(headers, g_strndup(h_key, h_len), g_strndup(at, len));
+		}
+		
+		h_len = 0;
+		return 0;
+	}
+	
+	// The callbacks used during parsing
+	http_parser_settings settings;
+	memset(&settings, 0, sizeof(settings));
+	settings.on_url = on_path;
+	settings.on_header_field = on_key;
+	settings.on_header_value = on_value;
+	
+	http_parser parser;
+	memset(&parser, 0, sizeof(parser));
+	http_parser_init(&parser, HTTP_REQUEST);
+
+	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == 0) {
 		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
 			status = CLIENT_UNSUPPORTED;
-		} else if (h_rfc6455_handles(path, req_headers)) {
+		} else if (h_rfc6455_handles(path, headers)) {
 			client->handler = h_rfc6455;
-			status = h_rfc6455_handshake(client, req_headers);
+			status = h_rfc6455_handshake(client, headers);
 		} else {
 			// No handler was found, and the headers were parsed OK, so
 			// we just can't support this client
@@ -49,7 +82,7 @@ status_t client_handshake(client_t *client) {
 	}
 	
 	// Done reading headers
-	soup_message_headers_free(req_headers);
+	g_hash_table_unref(headers);
 	
 	// We read the header, no matter what was returned, it's our job to clear it
 	g_string_truncate(client->message->socket_buffer, 0);

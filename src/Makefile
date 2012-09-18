@@ -1,8 +1,8 @@
 include ../Makefile.inc
 
 # Hide everything by default, unless annotated with MODULE_EXPORT
-CFLAGS += -I. -c -fvisibility=hidden
-LDFLAGS += -Wl,-E
+CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/http-parser
+LDFLAGS += -Wl,-E $(ROOT)/ext/http-parser/http_parser.o
 
 OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c))
 TARGET = $(BUILDDIR)/server

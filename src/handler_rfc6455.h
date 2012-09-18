@@ -15,7 +15,7 @@
  *
  * @return If this handler can handle this client.
  */
-gboolean h_rfc6455_handles(gchar *path, SoupMessageHeaders *headers);
+gboolean h_rfc6455_handles(gchar *path, GHashTable *headers);
 
 /**
  * Handshake with the client.
@@ -25,7 +25,7 @@ gboolean h_rfc6455_handles(gchar *path, SoupMessageHeaders *headers);
  *
  * @return If the handshake succeeded.
  */
-status_t h_rfc6455_handshake(client_t *client, SoupMessageHeaders *headers);
+status_t h_rfc6455_handshake(client_t *client, GHashTable *headers);
 
 /**
  * Prepare a frame to be sent to the client.

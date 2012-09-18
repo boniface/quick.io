@@ -162,13 +162,13 @@ static status_t _h_rfc6455_start(client_t *client) {
 	return _h_rfc6455_read(client, header_len);
 }
 
-gboolean h_rfc6455_handles(gchar *path, SoupMessageHeaders *req_headers) {
-	const char *id = soup_message_headers_get_one(req_headers, VERSION_KEY);
+gboolean h_rfc6455_handles(gchar *path, GHashTable *headers) {
+	const char *id = g_hash_table_lookup(headers, VERSION_KEY);
 	return id != NULL && strncmp(id, "13", 2) == 0;
 }
 
-status_t h_rfc6455_handshake(client_t *client, SoupMessageHeaders *req_headers) {
-	const char *key = soup_message_headers_get_one(req_headers, CHALLENGE_KEY);
+status_t h_rfc6455_handshake(client_t *client, GHashTable *headers) {
+	const char *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
 	
 	if (key == NULL) {
 		return CLIENT_UNSUPPORTED;
