@@ -6,8 +6,6 @@
  */
 
 #pragma once
-#include <stddef.h>
-
 #include "qio.h"
 
 /**
@@ -46,17 +44,7 @@ typedef void (*app_cb_str)();
  *
  * @param client The client to do work on.
  */
-typedef void (*app_cb_client)(const client_t *client);
-
-/**
- * A callback for when a client subscribes/unsubscribes from an event.
- *
- * @param client The client that subscribed/unsubscribed.
- * @param event_path The event that was un/subscribed to.
- * @param extra Any extra path elements on this event.
- * @param extra_len The number of extra parameters.
- */
-typedef void (*app_cb_evs_client)(const client_t *client, const gchar *event_path, const path_extra_t extra, const guint extra_len);
+typedef void (*app_cb_client)(client_t *client);
 
 /**
  * For closured "on" functions.
@@ -70,7 +58,7 @@ typedef void (*app_cb_evs_client)(const client_t *client, const gchar *event_pat
  *
  * @see event_info_s
  */
-typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
+typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_handler_cb on_subscribe, on_subscribe_handler_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * A module callback that takes an "on" function.
@@ -110,9 +98,9 @@ typedef struct app_s {
 	GModule *module;
 	
 	/**
-	 * The callback for setting the application name.
+	 * The callback for setting application-specific options (name, path, etc).
 	 */
-	app_cb_str _set_app_name;
+	app_cb_str _set_app_opts;
 	
 	/**
 	 * A reference to an application's `app_run` function.
@@ -150,13 +138,13 @@ typedef struct app_s {
 	 * A reference to an application's `app_evs_client_subscribe` function.
 	 * A notification that a client has subscribed to an event.
 	 */
-	app_cb_evs_client subscribe;
+	on_subscribe_cb subscribe;
 	
 	/**
 	 * A reference to an application's `app_evs_client_unsubscribe` function.
 	 * A notification that a client has unsubscribed from an event.
 	 */
-	app_cb_evs_client unsubscribe;
+	on_subscribe_cb unsubscribe;
 	
 	/**
 	 * A reference to an application's `app_register_events` function.
@@ -197,7 +185,7 @@ gboolean apps_postfork();
  *
  * @param client The client that was accepted.
  */
-void apps_client_connect(const client_t *client);
+void apps_client_connect(client_t *client);
 
 /**
  * Inform all the apps that a client has closed so that he can be removed from 
@@ -205,7 +193,7 @@ void apps_client_connect(const client_t *client);
  *
  * @param client The client that closed.
  */
-void apps_client_close(const client_t *client);
+void apps_client_close(client_t *client);
 
 /**
  * Inform all the apps when a client has added a subscription.
@@ -213,7 +201,7 @@ void apps_client_close(const client_t *client);
  * @param client The client that subscribed.
  * @param sub The subscription the client added.
  */
-void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *sub);
+void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub);
 
 /**
  * Inform all the apps when a client has dropped a subscription.
@@ -221,7 +209,7 @@ void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *s
  * @param client The client that unsubscribed.
  * @param sub The subscription the client dropped.
  */
-void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t *sub);
+void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub);
 
 
 #ifdef TESTING

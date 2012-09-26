@@ -1,6 +1,6 @@
 include Makefile.inc
 
-GCOVR_ARGS = -p -r . --exclude='src/debug.*' --exclude='test.*' --single-directory
+GCOVR_ARGS = -p -r . --exclude='src/debug.*' --exclude='test.*' --exclude='src/http_parser.c' --single-directory
 GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/ 
 GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
@@ -19,19 +19,15 @@ docs:
 run: debug
 	./$(DIR_BUILD_DEBUG)/server
 
-http-parser:
-	$(MAKE) -C ext http-parser
-
-build: http-parser
-	pkg-config --exists '$(LIBS_VERSIONS)'
+build_dir:
 	mkdir -p $(BUILDDIR)
+
+build: build_dir
+	pkg-config --exists '$(LIBS_VERSIONS)'
+	$(MAKE) -C ../quick.io-python/
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
 	$(MAKE) -C src
 	$(MAKE) -C app
-
-qio_apps.h:
-	mkdir -p build/docs
-	doxygen DoxyfileXml
 
 clean:
 	rm -rf $(DIR_BUILD)

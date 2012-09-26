@@ -40,7 +40,7 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
 	
 	// Test the event data
-	test_str_eq(event.name, "/qio/noop", "Correct event name");
+	test_str_eq(event.path, "/qio/noop", "Correct event name");
 	test_ptr_eq(event.extra_segments, NULL, "No extra segments");
 	test_uint16_eq(event.extra_segments_len, 0, "No extra segments");
 	test_uint32_eq(event.callback, 0, "No callback");
@@ -48,7 +48,7 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	test_str_eq(event.data, "", "No data set");
 	
 	// Test the side-effects
-	event_handler_t *right_handler = evs_server_get_handler(event.name, NULL, NULL);
+	event_handler_t *right_handler = evs_server_get_handler(event.path, NULL, NULL);
 	test_ptr_eq(handler, right_handler, "Correct handler retrieved");
 	test_size_eq(message->buffer->len, 0, "Buffer cleared");
 	
@@ -140,7 +140,7 @@ START_TEST(test_evs_event_creation_handle_children) {
 	
 	_event_free(&event);
 	
-	test_ptr_eq(event.name, NULL, "Name free'd");
+	test_ptr_eq(event.path, NULL, "Name free'd");
 	test_ptr_eq(event.extra_segments, NULL, "Extra segments free'd");
 	
 	u_client_free(client);

@@ -21,6 +21,11 @@ status_t client_handshake(client_t *client) {
 		return CLIENT_WAIT;
 	}
 	
+	// http-parser requires a bit of setup to get going:
+	// Headers go in a hash table for easy access
+	// The path is just a string we hurl around
+	// And we have to keep state while it's parsing up everything so we can populate everything
+	
 	GHashTable *headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	gchar *path = NULL;
 	
@@ -60,6 +65,7 @@ status_t client_handshake(client_t *client) {
 	http_parser_init(&parser, HTTP_REQUEST);
 	
 	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == buffer->len) {
+		// If the path is not /qio, it's not for us
 		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
 			status = CLIENT_UNSUPPORTED;
 		} else if (h_rfc6455_handles(path, headers)) {
@@ -169,6 +175,18 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 		return CLIENT_GOOD;
 	} else {
 		return CLIENT_ABORTED;
+	}
+}
+
+void client_ref(client_t *client) {
+	g_atomic_pointer_add(&(client->ref_count), 1);
+}
+
+void client_unref(client_t *client) {
+	g_atomic_pointer_add(&(client->ref_count), -1);
+	
+	if (client->ref_count == 0) {
+		g_slice_free1(sizeof(*client), client);
 	}
 }
 

@@ -180,6 +180,26 @@ enum handlers {
 };
 
 /**
+ * The current state of the client.
+ */
+enum client_state {
+	/**
+	 * The client just connected, no handshake or anything.
+	 */
+	cstate_initing,
+	
+	/**
+	 * The client is connected and operating like any other client.
+	 */
+	cstate_running,
+	
+	/**
+	 * The client is disconnected but not yet freed.
+	 */
+	cstate_dead,
+};
+
+/**
  * Basic information about a connected client.
  */
 struct client_s {
@@ -198,7 +218,7 @@ struct client_s {
 	/**
 	 * If the client is still in the initing (handshake) process.
 	 */
-	char initing;
+	enum client_state state;
 	
 	/**
 	 * The handler for this client.
@@ -217,6 +237,11 @@ struct client_s {
 	 * The current message(s) that the client is sending / are being processed.
 	 */
 	message_t *message;
+	
+	/**
+	 * The number of references the client has.
+	 */
+	volatile gsize ref_count;
 } STRUCT_PACKED;
 
 /**
@@ -256,16 +281,17 @@ status_t client_write(client_t *client, message_t *message);
 status_t client_write_frame(client_t *client, char *frame, gsize frame_len);
 
 /**
- * Marks a client as dead and gets it ready for cleanup.
- *
- * @param client The client to kill.
+ * Increment the reference count on the client.
  */
-void client_kill(client_t *client);
+APP_EXPORT void client_ref(client_t *client);
 
 /**
- * Cleans up the dead clients.
+ * Decrement the reference count on the client.
+ *
+ * @attention Once you call this function, you MUST consider your pointer to the client to be
+ * invalid, and you MAY NEVER use it again.
  */
-void client_cleanup();
+APP_EXPORT void client_unref(client_t *client);
 
 #ifdef TESTING
 #include "../test/test_client.h"

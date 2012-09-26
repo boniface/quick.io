@@ -21,7 +21,7 @@
 /**
  * Quickly determine how large the intial buffer should be.
  */
-#define STRING_BUFFER(client) client->initing == 1 ? STRING_HEADER_BUFFER_SIZE : STRING_BUFFER_SIZE
+#define STRING_BUFFER(client) client->state == cstate_initing ? STRING_HEADER_BUFFER_SIZE : STRING_BUFFER_SIZE
 
 /**
  * The maximum number of queued messages.
@@ -64,6 +64,8 @@ APP_EXPORT void conns_balance(guint count, gchar *to);
  * It is perfectly acceptable to close the client at this point, or do anything
  * you want with him. Typically, the best thing to do is just set some init 
  * values and a timer, and then wait for him to send a handshake.
+ *
+ * This client is expected to have been allocated with g_slice_alloc*
  *
  * @param client The client to accept.
  */

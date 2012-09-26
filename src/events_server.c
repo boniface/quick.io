@@ -25,10 +25,10 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	gchar *curr, *end, *tmp_end;
 	
 	// Steal the string from the buffer and replace it with a new, empty buffer
-	event->name = message->buffer->str;
+	event->path = message->buffer->str;
 	
 	// Pointer to the end of the buffer, for error checking
-	gchar *buffer_end = event->name + message->buffer->len - 1;
+	gchar *buffer_end = event->path + message->buffer->len - 1;
 	
 	// Replace what we just took in the message, for responses
 	g_string_free(message->buffer, FALSE);
@@ -38,8 +38,8 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// event:msgId:type=data
 	
 	// Start by reading out the event specifier
-	curr = event->name;
-	end = tmp_end = g_strstr_len(event->name, -1, EVENT_DELIMITER);
+	curr = event->path;
+	end = tmp_end = g_strstr_len(event->path, -1, EVENT_DELIMITER);
 	
 	// If the first : in the string was the first character....
 	if (end == NULL || curr == end) {
@@ -124,8 +124,8 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 static void _event_free(event_t *event) {
 	// Since all the pointers in the event struct are just into the original buffer,
 	// we don't need to free anything but this one string, and everything else is done
-	free(event->name);
-	event->name = NULL;
+	free(event->path);
+	event->path = NULL;
 	
 	if (event->extra_segments != NULL) {
 		g_list_free_full(event->extra_segments, g_free);
@@ -174,7 +174,7 @@ static gchar* _clean_event_name(const gchar *event_path) {
 /**
  * The "ping:" command
  */
-static status_t _evs_server_ping(const client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
 	g_string_append(response, event->data);
 	return CLIENT_WRITE;
@@ -183,7 +183,7 @@ static status_t _evs_server_ping(const client_t *client, event_t *event, GString
 /**
  * Does nothing, just says "good" back.
  */
-static status_t _evs_server_noop(const client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_noop(client_t *client, event_t *event, GString *response) {
 	g_string_set_size(response, 0);
 	if (event->callback) {
 		return CLIENT_WRITE;
@@ -221,13 +221,13 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 }
 */
 
-static status_t _evs_server_subscribe(const client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_subscribe(client_t *client, event_t *event, GString *response) {
 	DEBUGF("event_subscribe: %s", event->data);
 	
 	gchar *event_path = _clean_event_name(event->data);
 	
 	// So we break a rule: subscribe has to change the client for subscriptions, so allow it
-	status_t status = evs_client_sub_client(event_path, (client_t*)client);
+	status_t status = evs_client_sub_client(event_path, client);
 	
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
@@ -254,13 +254,13 @@ static status_t _evs_server_subscribe(const client_t *client, event_t *event, GS
 	return status;
 }
 
-static status_t _evs_server_unsubscribe(const client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_unsubscribe(client_t *client, event_t *event, GString *response) {
 	DEBUGF("event_unsubscribe: %s", event->data);
 	
 	gchar *event_path = _clean_event_name(event->data);
 	
 	// So we break a rule: unsubscribe has to change the client for subscriptions, so allow it
-	status_t status = evs_client_unsub_client(event_path, (client_t*)client);
+	status_t status = evs_client_unsub_client(event_path, client);
 	
 	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
 		g_string_printf(response, "%s:%s", EVENT_RESPONSE_CANNOT_UNSUBSCRIBE, event_path);
@@ -353,7 +353,7 @@ status_t evs_server_handle(client_t *client) {
 	event_handler_t *handler = NULL;
 	status_t status = _event_new(client->message, &handler, &event);
 	
-	DEBUGF("Event: %s", event.name);
+	DEBUGF("Event: %s", event.path);
 	
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
@@ -397,7 +397,7 @@ status_t evs_server_handle(client_t *client) {
 	return status;
 }
 
-event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_cb on_subscribe, const on_subscribe_cb on_unsubscribe, const gboolean handle_children) {
+event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_subscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
 	
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {

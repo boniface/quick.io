@@ -25,6 +25,12 @@ static void _test_message_setup() {
 	evs_server_init();
 }
 
+static void _test_refcount_setup() {
+	apps_init();
+	evs_server_init();
+	conns_init();
+}
+
 START_TEST(test_client_incomplete_handshake_0) {
 	client_t *client = u_client_create(NULL);
 	
@@ -187,6 +193,63 @@ START_TEST(test_client_no_frame_len) {
 }
 END_TEST
 
+START_TEST(test_client_refcount_0) {
+	client_t *client = u_client_create(NULL);
+	
+	client_ref(client);
+	test_size_eq(client->ref_count, 1, "Correct ref count");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_client_refcount_1) {
+	client_t *client = u_client_create(NULL);
+	
+	client_ref(client);
+	client_ref(client);
+	client_ref(client);
+	client_ref(client);
+	
+	test_size_eq(client->ref_count, 4, "Correct ref count");
+	
+	client_unref(client);
+	client_unref(client);
+	
+	test_size_eq(client->ref_count, 2, "Correct ref count");
+	
+	conns_client_close(client);
+	test_size_eq(client->state, cstate_dead, "Client closed");
+}
+END_TEST
+
+START_TEST(test_client_refcount_2) {
+	client_t *client = u_client_create(NULL);
+	
+	client_ref(client);
+	test_size_eq(client->ref_count, 1, "Correct ref count");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_client_refcount_3) {
+	client_t *client = u_client_create(NULL);
+	
+	client_ref(client);
+	client_ref(client);
+	test_size_eq(client->ref_count, 2, "Correct ref count");
+	conns_client_close(client);
+	test_size_eq(client->ref_count, 1, "Correct ref count");
+	
+	test_size_eq(client->state, cstate_dead, "Client dead");
+	
+	// Incrementing ref count after client is closed
+	client_ref(client);
+	test_size_eq(client->ref_count, 2, "Correct ref count");
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -214,6 +277,14 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_no_message);
 	tcase_add_test(tc, test_client_no_handler);
 	tcase_add_test(tc, test_client_no_frame_len);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Ref Counting");
+	tcase_add_checked_fixture(tc, _test_refcount_setup, NULL);
+	tcase_add_test(tc, test_client_refcount_0);
+	tcase_add_test(tc, test_client_refcount_1);
+	tcase_add_test(tc, test_client_refcount_2);
+	tcase_add_test(tc, test_client_refcount_3);
 	suite_add_tcase(s, tc);
 	
 	return s;

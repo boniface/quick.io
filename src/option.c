@@ -50,7 +50,7 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 			// There ABSOLUTELY DOES NOT have to be a prefix for an application,
 			// so it's fine to use the NULL value to denote no prefix
 			gchar key_prefix[strlen(key) + sizeof(OPT_APP_PREFIX_SUFFIX)];
-			g_snprintf(key_prefix, sizeof(key_prefix), "%s"OPT_APP_PREFIX_SUFFIX, path);
+			g_snprintf(key_prefix, sizeof(key_prefix), "%s"OPT_APP_PREFIX_SUFFIX, key);
 			gchar *prefix = g_key_file_get_string(conf, OPT_APPS_GROUP_NAME, key_prefix, NULL);
 			
 			_apps_count++;
@@ -74,7 +74,7 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 		// This is kinda disgusting...
 		do {
 			*(_apps + i++) = apps->data;
-		} while ((apps = g_list_next(apps)));
+		} while ((apps = g_list_next(apps)) != NULL);
 	}
 	
 	// Man, this is just gross

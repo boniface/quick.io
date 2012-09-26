@@ -2,9 +2,9 @@ include ../Makefile.inc
 
 # Hide everything by default, unless annotated with APP_EXPORT
 CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/http-parser
-LDFLAGS += -Wl,-E $(ROOT)/ext/http-parser/http_parser.o
+LDFLAGS += -Wl,-E
 
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c))
+OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o
 TARGET = $(BUILDDIR)/server
 TESTING = 0
 
@@ -12,7 +12,6 @@ TESTING = 0
 
 default: $(TARGET)
 
-# If compiling in testing mode, make sure we have coverage support
 ifeq ($(TESTING),1)
 $(TARGET): $(OBJECTS)
 else
@@ -20,6 +19,9 @@ $(TARGET): $(OBJECTS)
 	@echo "\n\n"-------- Compiling server --------
 	@$(CC) $^ -o $@ $(LDFLAGS)
 endif
+
+$(BUILDDIR)/http_parser.o:
+	$(MAKE) -C ../ext http-parser
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
 	@echo "\n\n"-------- Compiling $< --------

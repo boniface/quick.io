@@ -31,13 +31,23 @@ static app_callbacks_t callbacks[] = {
 	{offsetof(app_t, unsubscribe), "app_evs_client_unsubscribe"},
 	{offsetof(app_t, register_events), "app_register_events"},
 	
-	{offsetof(app_t, _set_app_name), "qio_set_app_name"},
+	{offsetof(app_t, _set_app_opts), "qio_set_app_opts"},
 };
 
 /**
  * The information about the apps that are currently running.
  */
 static GPtrArray *_apps;
+
+/**
+ * Runs the thread that controls an entire application.
+ */
+gpointer _app_run(gpointer app) {
+	while (TRUE) {
+		break;
+	}
+	return NULL;
+}
 
 gboolean apps_init() {
 	opt_app_t **apps = option_apps();
@@ -59,10 +69,11 @@ gboolean apps_init() {
 			path = g_strdup(o_app->path);
 		}
 		
-		// G_MODULE_BIND_MASK: Be module-lazy and make sure the module keeps
-		// all his functions to himself
-		GModule *module = g_module_open(path, G_MODULE_BIND_MASK);
+		// G_MODULE_BIND_MASK: Be module-lazy, but expose all the symbols
+		// so that any dynamically-loaded libraries (Python, JS, etc) have
+		// access to the necessary symbols
 		
+		GModule *module = g_module_open(path, G_MODULE_BIND_LAZY);
 		// If we can't open the app, just quit
 		if (module == NULL) {
 			ERRORF("Could not open app (%s): %s", path, g_module_error());
@@ -80,7 +91,15 @@ gboolean apps_init() {
 		app->name = o_app->config_group;
 		app->event_prefix = o_app->prefix;
 		
-		// Done looking at the path
+		// Find the absolute path to the directory holding the module
+		// There is no error checking here: after g_module_open, the path must exist
+		// otherwise, there would have been nothing to open, so there's really not a 
+		// case this can fail in
+		dirname(path);
+		gchar abspath[PATH_MAX];
+		realpath(path, abspath);
+		
+		// Done dealing with path
 		free(path);
 		
 		// Register all the callbacks the app has
@@ -97,12 +116,12 @@ gboolean apps_init() {
 		}
 		
 		// If the app didn't register any of the boilerplate stuff
-		if (app->_set_app_name == NULL) {
-			ERRORF("App \"%s\" did not use APP_INIT()", app->name);
+		if (app->_set_app_opts == NULL) {
+			ERRORF("App \"%s\" missing qio_set_app_opts()", app->name);
 			return FALSE;
 		}
 		
-		app->_set_app_name(app->name);
+		app->_set_app_opts(app->name, app->event_prefix, abspath);
 	}
 
 	return TRUE;
@@ -143,13 +162,13 @@ void apps_register_events() {
 	APP_FOREACH(
 		app_on_cb cb = app->register_events;
 		if (cb != NULL) {
-			event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_cb on_subscribe, const on_subscribe_cb on_unsubscribe, const gboolean handle_children) {
+			event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_subscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
 				event_handler_t* handler;
+				
 				if (app->event_prefix != NULL) {
-					GString *e = g_string_new(app->event_prefix);
-					g_string_append(e, event_path);
-					handler = evs_server_on(e->str, fn, on_subscribe, on_unsubscribe, handle_children);
-					g_string_free(e, TRUE);
+					gchar *e = g_strdup_printf("%s%s", app->event_prefix, event_path);
+					handler = evs_server_on(e, fn, on_subscribe, on_unsubscribe, handle_children);
+					g_free(e);
 				} else {
 					handler = evs_server_on(event_path, fn, on_subscribe, on_unsubscribe, handle_children);
 				}
@@ -176,7 +195,7 @@ gboolean apps_postfork() {
 	return TRUE;
 }
 
-void apps_client_connect(const client_t *client) {
+void apps_client_connect(client_t *client) {
 	APP_FOREACH(
 		app_cb_client cb = app->client_connect;
 		
@@ -186,7 +205,7 @@ void apps_client_connect(const client_t *client) {
 	)
 }
 
-void apps_client_close(const client_t *client) {
+void apps_client_close(client_t *client) {
 	APP_FOREACH(
 		app_cb_client cb = app->client_close;
 		
@@ -196,14 +215,14 @@ void apps_client_close(const client_t *client) {
 	)
 }
 
-void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *sub) {
+void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
 	if (sub->handler->on_subscribe != NULL) {
-		sub->handler->on_subscribe(client, sub->extra, sub->extra_len);
+		sub->handler->on_subscribe(client, sub->handler, sub->extra, sub->extra_len);
 	}
 	
 	// Notify all the general listeners that a subscription happened.
 	APP_FOREACH(
-		app_cb_evs_client cb = app->subscribe;
+		on_subscribe_cb cb = app->subscribe;
 		
 		if (cb != NULL) {
 			cb(client, sub->event_path, sub->extra, sub->extra_len);
@@ -211,14 +230,14 @@ void apps_evs_client_subscribe(const client_t *client, const evs_client_sub_t *s
 	)
 }
 
-void apps_evs_client_unsubscribe(const client_t *client, const evs_client_sub_t *sub) {
+void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub) {
 	if (sub->handler->on_unsubscribe != NULL) {
-		sub->handler->on_unsubscribe(client, sub->extra, sub->extra_len);
+		sub->handler->on_unsubscribe(client, sub->handler, sub->extra, sub->extra_len);
 	}
 	
 	// Notify all the general listeners that an unsubscription happened.
 	APP_FOREACH(
-		app_cb_evs_client cb = app->unsubscribe;
+		on_subscribe_cb cb = app->unsubscribe;
 		
 		if (cb != NULL) {
 			cb(client, sub->event_path, sub->extra, sub->extra_len);

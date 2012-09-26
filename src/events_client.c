@@ -259,7 +259,7 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	return CLIENT_GOOD;
 }
 
-void evs_client_client_clean(client_t *client) {
+void evs_client_client_close(client_t *client) {
 	// It's possible the client never behaved and was killed before
 	// its subscriptions were setup
 	if (client->subs == NULL) {

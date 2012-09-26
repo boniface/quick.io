@@ -75,7 +75,7 @@ typedef struct event_s {
 	 * 
 	 * @attention This MUST be freed.
 	 */
-	gchar *name;
+	gchar *path;
 	
 	/**
 	 * The extra event segments to be passed to the event handler,
@@ -128,7 +128,7 @@ typedef struct event_s {
  * @param response The buffer that the handler should write his response to. If the handler
  * is going to write something to this buffer, it MUST return CLIENT_WRITE.
  */
-typedef status_t (*handler_fn)(const client_t *client, event_t *event, GString *response);
+typedef status_t (*handler_fn)(client_t *client, event_t *event, GString *response);
 
 /**
  * A callback for when a client subscribes to a specific event.
@@ -137,15 +137,29 @@ typedef status_t (*handler_fn)(const client_t *client, event_t *event, GString *
  * subscription: it's too much temptation to do unsafe stuff.
  *
  * @param client The client that subscribed to the event.
+ * @param handler The event handler, so that references don't have to be stored in the app.
  * @param extra Any extra parameters that came in with the subscription
  * @param extra_len The count of extra.
  */
-typedef void (*on_subscribe_cb)(const client_t *client, const path_extra_t extra, const guint extra_len);
+typedef void (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint extra_len);
+
+/**
+ * A callback for when a client subscribes to a specific event.
+ * This is supplied to evs_server_on() and is called when a client subscribes
+ * to the event.  Don't give the callbacks too much information about the 
+ * subscription: it's too much temptation to do unsafe stuff.
+ *
+ * @param client The client that subscribed to the event.
+ * @param event_path The path of the event that was subscribed to.
+ * @param extra Any extra parameters that came in with the subscription
+ * @param extra_len The count of extra.
+ */
+typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const path_extra_t extra, const guint extra_len);
 
 /**
  * All of the handlers and callbacks for an event.
  */
-typedef struct event_handler_s {
+struct event_handler_s {
 	/**
 	 * The handler function for the event.
 	 * @note If this is NULL, then there will be no handler.
@@ -156,13 +170,13 @@ typedef struct event_handler_s {
 	 * The alert function for when a client subscribes to the event.
 	 * @note If this is NULL, then no notifications will be sent.
 	 */
-	on_subscribe_cb on_subscribe;
+	on_subscribe_handler_cb on_subscribe;
 	
 	/**
 	 * The alert function for when a client unsubscribes from the event.
 	 * @note If this is NULL, then no notifications will be sent.
 	 */
-	on_subscribe_cb on_unsubscribe;
+	on_subscribe_handler_cb on_unsubscribe;
 	
 	/**
 	 * If this event handler handles child events without handlers.
@@ -173,7 +187,7 @@ typedef struct event_handler_s {
 	 * will be the handler.  Otherwise, it will not.
 	 */
 	gboolean handle_children;
-} event_handler_t;
+};
 
 /**
  * Get all of the event info for the event.
@@ -205,7 +219,7 @@ status_t evs_server_handle(client_t *client);
  *
  * @see event_info_s
  */
-event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscribe_cb on_subscribe, on_subscribe_cb on_unsubscribe, gboolean handle_children);
+event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscribe_handler_cb on_subscribe, on_subscribe_handler_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * Gets the name of an event from the handler.

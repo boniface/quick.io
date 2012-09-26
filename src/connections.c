@@ -129,10 +129,11 @@ void conns_balance(guint count, gchar *to) {
 
 void conns_client_new(client_t *client) {
 	// Basic information about this client
-	client->initing = 1;
+	client->state = cstate_initing;
 	client->timer = -1;
 	
 	g_hash_table_insert(_clients, client, client);
+	client_ref(client);
 	
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
@@ -141,14 +142,17 @@ void conns_client_new(client_t *client) {
 void conns_client_close(client_t *client) {
 	DEBUGF("A client closed: %d", client->socket);
 	
-	g_hash_table_remove(_clients, client);
-	
+	client->state = cstate_dead;
 	conns_client_timeout_clear(client);
-	apps_client_close(client);
-	evs_client_client_clean(client);
-	qsys_close(client);
 	conns_message_free(client);
-	g_free(client);
+	apps_client_close(client);
+	evs_client_client_close(client);
+	qsys_close(client);
+	
+	// Remove our last reference, this MUST be done last so that any free operation
+	// doesn't interfere with the setting
+	g_hash_table_remove(_clients, client);
+	client_unref(client);
 }
 
 void conns_client_hup(client_t *client) {
@@ -187,7 +191,7 @@ void conns_client_data(client_t *client) {
 	// While there is still something on the socket buffer to process
 	while (client->message->socket_buffer->len > 0) {
 		status_t status;
-		if (client->initing == 1) {
+		if (client->state == cstate_initing) {
 			DEBUG("Client handshake");
 			status = client_handshake(client);
 			
@@ -196,7 +200,7 @@ void conns_client_data(client_t *client) {
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 				
 				// The handshake is complete, we're done here.
-				client->initing = 0;
+				client->state = cstate_running;
 				
 				// Set the user into a room
 				evs_client_client_ready(client);

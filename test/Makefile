@@ -2,6 +2,7 @@ include ../Makefile.inc
 include ../src/Makefile
 
 CFLAGS += -I../src -DTESTING=1
+LDFLAGS += --coverage
 LIBCHECK = /usr/lib/libcheck.a
 OBJECTS = $(BUILDDIR)/test.o $(BUILDDIR)/utils.o $(BUILDDIR)/utils_locks.o $(BUILDDIR)/utils_stats.o
 QIO_OBJECTS = $(filter-out $(OBJECTS), $(wildcard $(BUILDDIR)/*.o))
@@ -14,7 +15,7 @@ client_statuses.inc: ../src/client.h
 
 test: client_statuses.inc $(OBJECTS)
 	@echo "\n\n"-------- Compiling test suite --------
-	@$(CC) $(OBJECTS) $(LIBCHECK) $(QIO_OBJECTS) --coverage -o $(BUILDDIR)/test $(LDFLAGS)
+	@$(CC) $(OBJECTS) $(LIBCHECK) $(QIO_OBJECTS) -o $(BUILDDIR)/test $(LDFLAGS)
 	
 	@echo "\n\n"-------- Running test suite --------
 	@$(BUILDDIR)/test

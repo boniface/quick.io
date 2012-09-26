@@ -47,20 +47,14 @@ void _qsys_accept() {
 			continue;
 		}
 		
-		client_t *client = g_try_malloc0(sizeof(*client));
-		if (client == NULL) {
-			ERROR("Client could not be malloc()'d");
-			_qsys_close(client_socket);
-			continue;
-		}
-		
+		client_t *client = g_slice_alloc0(sizeof(*client));
 		client->socket = client_socket;
 		
 		// Listen for events from the client
 		if (!_epoll_add(client_socket, client)) {
 			ERROR("Could not add client to epoll");
 			_qsys_close(client_socket);
-			g_free(client);
+			g_slice_free1(sizeof(*client), client);
 			continue;
 		}
 		

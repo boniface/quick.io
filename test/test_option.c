@@ -37,7 +37,9 @@
 	"[quick.io-apps]\n" \
 	"skeleton = skeleton\n" \
 	"test = test\n" \
-	"test:prefix = /test"
+	"test:prefix = /test\n" \
+	"test2 = /some/path\n" \
+	"test2:prefix = /two/things\n"
 
 #define QIOINI_BAD_MAX_SUBS "[quick.io]\n" \
 	"max-subs = 100\n" \
@@ -106,7 +108,7 @@ START_TEST(test_option_all) {
 	test(option_parse_args(argc, argv, NULL), "Options parsed");
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "File parsed");
 	
-	test_int32_eq(option_apps_count(), 2, "2 apps found");
+	test_int32_eq(option_apps_count(), 3, "3 apps found");
 	test_str_eq(option_bind_address(), "0.0.0.0", "Bind address");
 	test_uint64_eq(option_max_message_size(), 4096, "Max message size");
 	test_int32_eq(option_port(), 5001, "Correct port");
@@ -115,8 +117,18 @@ START_TEST(test_option_all) {
 	test_int32_eq(option_timeout(), 15, "Tons of timeout time");
 	
 	opt_app_t **apps = option_apps();
+	
 	test_str_eq((*apps)->config_group, "skeleton", "First is skeleton");
+	test_str_eq((*apps)->path, "skeleton", "Skeleton has simple path");
+	test_ptr_eq((*apps)->prefix, NULL, "Skeleton has no prefix");
+	
 	test_str_eq((*(apps + 1))->config_group, "test", "Second is test");
+	test_str_eq((*(apps + 1))->path, "test", "Test has simple path");
+	test_str_eq((*(apps + 1))->prefix, "/test", "Test prefixed with /test");
+	
+	test_str_eq((*(apps + 2))->config_group, "test2", "Third is test2");
+	test_str_eq((*(apps + 2))->path, "/some/path", "Test2 has absolute path");
+	test_str_eq((*(apps + 2))->prefix, "/two/things", "Test2 prefixed with /two/things");
 }
 END_TEST
 

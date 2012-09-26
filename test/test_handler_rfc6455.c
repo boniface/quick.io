@@ -75,7 +75,7 @@ START_TEST(test_h_rfc6455_handshake) {
 	test_str_eq(client->message->buffer->str, RFC6455_HANDSHAKE_REPONSE, "Correct handshake sent back");
 	
 	// Make sure the side-effects are correct
-	test_char_eq(client->initing, '\0', "Client init flag updated");
+	test_size_eq(client->state, cstate_initing, "Client init flag updated");
 	test_size_eq(client->message->socket_buffer->len, 0, "Socket buffer cleared");
 	test_int32_eq(client->handler, h_rfc6455, "Correct handler applied");
 	

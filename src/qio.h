@@ -4,6 +4,8 @@
 #include <glib.h>
 #include <gmodule.h>
 #include <http_parser.h>
+#include <libgen.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,6 +18,11 @@
  * Defined in events_client.h
  */
 typedef struct evs_client_sub_s evs_client_sub_t;
+
+/**
+ * Defined in events_server.h
+ */
+typedef struct event_handler_s event_handler_t;
 
 /**
  * Defined in client.h

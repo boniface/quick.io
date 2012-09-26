@@ -114,6 +114,13 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
+	if (apps_prefork()) {
+		DEBUG("Apps preforked");
+	} else {
+		ERROR("Error with preforking apps.");
+		return 1;
+	}
+	
 	if (evs_client_init()) {
 		DEBUG("Client events inited");
 	} else {
@@ -132,13 +139,6 @@ int main(int argc, char *argv[]) {
 		DEBUG("Connections handler inited");
 	} else {
 		ERROR("Could not init connections handler.");
-		return 1;
-	}
-	
-	if (apps_prefork()) {
-		DEBUG("Apps preforked");
-	} else {
-		ERROR("Error with preforking apps.");
 		return 1;
 	}
 	

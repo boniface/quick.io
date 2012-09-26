@@ -374,7 +374,7 @@ START_TEST(test_evs_client_clean) {
 	test_status_eq(evs_client_sub_client("/test/event/test2", client), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_sub_client("/test/event/test3", client), CLIENT_GOOD, "Subscribed");
 	
-	evs_client_client_clean(client);
+	evs_client_client_close(client);
 	
 	test_ptr_eq(client->subs, NULL, "No subscriptions");
 	
@@ -404,7 +404,7 @@ START_TEST(test_evs_client_clean_bad_client) {
 	g_ptr_array_free(client->subs, TRUE);
 	client->subs = NULL;
 	
-	evs_client_client_clean(client);
+	evs_client_client_close(client);
 	
 	// So that u_client_free doesn't freak out
 	client->subs = g_ptr_array_new();

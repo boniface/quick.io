@@ -141,7 +141,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client);
  *
  * @param client The client that should be free'd
  */
-void evs_client_client_clean(client_t *client);
+void evs_client_client_close(client_t *client);
 
 /**
  * Removes the client from the room.
