@@ -27,7 +27,7 @@ static config_file_entry_t _config_options[] = {
 
 // The processed list of apps and their prefixes
 static opt_app_t **_apps = NULL;
-static gint32 _apps_count = 0;
+static guint16 _apps_count = 0;
 
 static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 	gsize key_len = 0;
@@ -88,7 +88,7 @@ opt_app_t** option_apps() {
 	return _apps;
 }
 
-gint32 option_apps_count() {
+guint16 option_apps_count() {
 	return _apps_count;
 }
 

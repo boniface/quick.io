@@ -58,16 +58,6 @@ typedef struct test_stats_s {
 	gsize conns_client_wait;
 	
 	/**
-	 * The number of times app_prefork is hit.
-	 */
-	gsize apps_prefork;
-	
-	/**
-	 * The number of times app_postfork is hit.
-	 */
-	gsize apps_postfork;
-	
-	/**
 	 * The number of times app_run is hit.
 	 */
 	gsize apps_run;

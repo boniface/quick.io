@@ -11,6 +11,12 @@ static GHashTable* _events_by_path;
 static GHashTable* _events_by_handler;
 
 /**
+ * Since event registration can happen in many different threads simultaneously,
+ * we need to lock the hash tables.
+ */
+static GMutex _events_lock;
+
+/**
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
@@ -413,6 +419,8 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	
 	gchar *path = _clean_event_name(event_path);
 	
+	g_mutex_lock(&_events_lock);
+	
 	if (g_hash_table_contains(_events_by_path, path)) {
 		ERRORF("Event handler is already registered: %s", path);
 		g_free(path);
@@ -430,6 +438,8 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	g_hash_table_insert(_events_by_path, path, handler);
 	g_hash_table_insert(_events_by_handler, handler, path);
 	
+	g_mutex_unlock(&_events_lock);
+	
 	return handler;
 }
 
@@ -446,9 +456,6 @@ gboolean evs_server_init() {
 	evs_server_on("/qio/unsub", _evs_server_unsubscribe, NULL, NULL, FALSE);
 	evs_server_on("/qio/noop", _evs_server_noop, NULL, NULL, FALSE);
 	// evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
-	
-	// Internal commands are ready, let the app register its commands.
-	apps_register_events();
 	
 	return TRUE;
 }

@@ -104,7 +104,7 @@ opt_app_t** option_apps();
 /**
  * The number of apps specififed.
  */
-gint32 option_apps_count();
+guint16 option_apps_count();
 
 /**
  * Gets the address we're supposed to bind to.

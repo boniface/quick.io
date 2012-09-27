@@ -21,14 +21,14 @@
 #define MESSAGE_RFC6455_NOOP_1 "N""\x13""\n""\x0b""N""\x0c""\x0c""\x0b""\x11""X""Y""\x14""\r""\x03""\n""\n""\\"
 
 static void _test_message_setup() {
-	apps_init();
 	evs_server_init();
+	apps_run();
 }
 
 static void _test_refcount_setup() {
-	apps_init();
 	evs_server_init();
 	conns_init();
+	apps_run();
 }
 
 START_TEST(test_client_incomplete_handshake_0) {

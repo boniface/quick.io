@@ -1,9 +1,9 @@
 #include "test.h"
 
 void _test_event_creation_setup() {
-	apps_init();
 	evs_server_init();
 	evs_client_init();
+	apps_run();
 }
 
 START_TEST(test_evs_server_clean_name_0) {

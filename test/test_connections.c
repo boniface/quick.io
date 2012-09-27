@@ -12,9 +12,9 @@
 #define MOVE2 "\x81\x17""/qio/move:0:plain=test2"
 
 void _test_conns_setup() {
-	apps_init();
 	evs_server_init();
 	conns_init();
+	apps_run();
 }
 
 START_TEST(test_conns_message_clean_0) {
@@ -93,15 +93,19 @@ START_TEST(test_conns_balance_0) {
 END_TEST
 
 START_TEST(test_conns_balance_1) {
+	DEBUG("1");
 	conns_balance(100, "test");
+	DEBUG("2");
 	
 	int socket = 0;
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 	conns_client_new(client);
+	DEBUG("3");
 	
 	test_int64_eq(_balances->len, 1, "One balance request");
 	_conns_balance();
+	DEBUG("4");
 	test_int64_eq(_balances->len, 0, "Requests cleared");
 	
 	char buff[sizeof(MOVE)+128];

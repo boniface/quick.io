@@ -46,17 +46,11 @@ static gboolean _main_fork() {
 			
 			option_set_process(processes);
 			
-			if (apps_postfork()) {
-				DEBUGF("Postfork apps done in #%d", processes);
+			if (apps_run()) {
+				DEBUG("Apps running");
 			} else {
-				ERRORF("Error with apps postfork in #%d", processes);
-				exit(1);
-			}
-			
-			// Init the apps. If they fail, then why are we running?
-			if (!apps_run()) {
-				ERRORF("Could not init apps in #%d.", processes);
-				exit(1);
+				ERROR("Could not run the apps.");
+				return 1;
 			}
 			
 			qsys_main_loop();
@@ -104,20 +98,6 @@ int main(int argc, char *argv[]) {
 		DEBUG("Config file parsed");
 	} else {
 		ERROR(error->message);
-		return 1;
-	}
-	
-	if (apps_init()) {
-		DEBUG("Apps inited");
-	} else {
-		ERROR("Could not init apps.");
-		return 1;
-	}
-	
-	if (apps_prefork()) {
-		DEBUG("Apps preforked");
-	} else {
-		ERROR("Error with preforking apps.");
 		return 1;
 	}
 	

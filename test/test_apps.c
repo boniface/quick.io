@@ -14,20 +14,14 @@ static void _apps_setup() {
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
-	apps_init();
 	evs_client_init();
 	evs_server_init();
+	apps_run();
 }
 
 static void _apps_teardown() {
 	utils_stats_teardown();
 }
-
-START_TEST(test_apps_events_register) {
-	// Just make sure registering works
-	apps_register_events();
-}
-END_TEST
 
 START_TEST(test_apps_events_register_bad) {
 	FILE *f = fopen(CONFIG_FILE, "w");
@@ -40,7 +34,7 @@ START_TEST(test_apps_events_register_bad) {
 	test(option_parse_args(argc, argv, NULL), "File ready");
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
 	
-	test_not(apps_init(), "Bad app failed to init");
+	test_not(apps_run(), "Bad app failed to init");
 }
 END_TEST
 
@@ -55,15 +49,14 @@ START_TEST(test_apps_events_register_nonexistent) {
 	test(option_parse_args(argc, argv, NULL), "File ready");
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
 	
-	test_not(apps_init(), "Bad app failed to init");
+	test_not(apps_run(), "Bad app failed to init");
 }
 END_TEST
 
 START_TEST(test_apps_events_on_0) {
-	apps_register_events();
 	client_t *client = u_client_create(NULL);
 	
-	evs_client_sub_client("/test/event", client);
+	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
 	
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
@@ -72,7 +65,6 @@ START_TEST(test_apps_events_on_0) {
 END_TEST
 
 START_TEST(test_apps_events_on_1) {
-	apps_register_events();
 	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/event", client);
@@ -84,7 +76,6 @@ START_TEST(test_apps_events_on_1) {
 END_TEST
 
 START_TEST(test_apps_events_off_0) {
-	apps_register_events();
 	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/test/event", client);
@@ -98,7 +89,6 @@ START_TEST(test_apps_events_off_0) {
 END_TEST
 
 START_TEST(test_apps_events_off_1) {
-	apps_register_events();
 	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/event", client);
@@ -112,7 +102,6 @@ START_TEST(test_apps_events_off_1) {
 END_TEST
 
 START_TEST(test_apps_events_handle_0) {
-	apps_register_events();
 	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/test/event", client);
@@ -127,7 +116,6 @@ START_TEST(test_apps_events_handle_0) {
 END_TEST
 
 START_TEST(test_apps_events_handle_1) {
-	apps_register_events();
 	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/event", client);
@@ -155,22 +143,8 @@ START_TEST(test_apps_cb_register) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_prefork) {
-	test(apps_prefork(), "Apps preforked");
-	test_size_eq(utils_stats()->apps_prefork, 2, "Test apps preforked");
-}
-END_TEST
-
-START_TEST(test_apps_cb_postfork) {
-	test(apps_postfork(), "Apps postforked");
-	test_size_eq(utils_stats()->apps_postfork, 2, "Test apps postforked");
-}
-END_TEST
-
 START_TEST(test_apps_cb_run) {
-	test(apps_run(), "Apps postforked");
-	
-	// Give the app time to get going
+	// Give the apps time to get going
 	usleep(MS_TO_USEC(100));
 	
 	test_size_eq(utils_stats()->apps_run, 2, "Test apps running");
@@ -237,7 +211,6 @@ Suite* apps_suite() {
 	
 	tc = tcase_create("Events");
 	tcase_add_checked_fixture(tc, _apps_setup, _apps_teardown);
-	tcase_add_test(tc, test_apps_events_register);
 	tcase_add_test(tc, test_apps_events_register_bad);
 	tcase_add_test(tc, test_apps_events_register_nonexistent);
 	tcase_add_test(tc, test_apps_events_on_0);
@@ -251,8 +224,6 @@ Suite* apps_suite() {
 	tc = tcase_create("Callbacks");
 	tcase_add_checked_fixture(tc, _apps_setup, _apps_teardown);
 	tcase_add_test(tc, test_apps_cb_register);
-	tcase_add_test(tc, test_apps_cb_prefork);
-	tcase_add_test(tc, test_apps_cb_postfork);
 	tcase_add_test(tc, test_apps_cb_run);
 	tcase_add_test(tc, test_apps_cb_client_connect);
 	tcase_add_test(tc, test_apps_cb_client_close);

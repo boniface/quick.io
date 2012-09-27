@@ -1,8 +1,18 @@
 /**
  * @file apps.h
  *
- * @brief Deals with apps in bulk.
- * @details Each function calls the respective function on each app.
+ * Deals with apps in bulk.
+ * The general design pattern behind the applications is that they are entirely independent
+ * from the server. Anything the apps do should have no impact on the rest of the server
+ * (segfaults not withstanding). As such, the apps should run with their own references to
+ * everything, such that any changes to the internal structures do not affect the apps,
+ * and vis-versa. That being said, the only reference the apps share with the main server
+ * is `client`, but that id ref-counted and void* in the apps (in other words, it may not be
+ * modified for any reason).
+ *
+ * Generally speaking, each app runs in its own thread, independent of the server, and it
+ * recieves callbacks asynchronously. If the application defines an `app_run()` function,
+ * then it is responsible for allocating time to fire any events it recieves.
  */
 
 #pragma once
@@ -35,7 +45,7 @@ typedef void (*app_cb)();
 typedef gboolean (*app_bool_cb)();
 
 /**
- * An app callback that accepts a string argument.
+ * A generic app callback
  */
 typedef void (*app_cb_str)();
 
@@ -72,6 +82,11 @@ typedef void (*app_on_cb)(app_on on);
  */
 typedef struct app_s {
 	/**
+	 * The app's internal ID.
+	 */
+	guint16 id;
+	
+	/**
 	 * The name of the app.
 	 *
 	 * @attention This should NEVER be free'd
@@ -91,6 +106,12 @@ typedef struct app_s {
 	GThread *thread;
 	
 	/**
+	 * The lock indicating that the application is done initing and ready to start serving
+	 * requests.
+	 */
+	GMutex ready;
+	
+	/**
 	 * A pointer to the module reference for accessing with GModule functions.
 	 *
 	 * @see http://developer.gnome.org/glib/2.32/glib-Dynamic-Loading-of-Modules.html
@@ -103,24 +124,22 @@ typedef struct app_s {
 	app_cb_str _set_app_opts;
 	
 	/**
+	 * A reference to an application's `app_init` function.
+	 * This function runs the application inside its own thread.
+	 * 
+	 * This allows the app to register events and setup anything it needs
+	 * before the server starts serving requests.
+	 */
+	app_on_cb init;
+	
+	/**
 	 * A reference to an application's `app_run` function.
 	 * This function runs the application inside its own thread.
+	 *
+	 * In order to run an application loop, or anything,
+	 * this function must be implemented.
 	 */
-	GThreadFunc run;
-	
-	/**
-	 * A reference to an application's `app_prefork` function.
-	 * A notification to the application that the server is about to fork itself. This is
-	 * called from the main thread of the main server process.
-	 */
-	app_bool_cb prefork;
-	
-	/**
-	 * A reference to an application's `app_postfork` function.
-	 * A notification to the application that the server has forked itself. This is
-	 * called from the child process.
-	 */
-	app_bool_cb postfork;
+	app_cb run;
 	
 	/**
 	 * A reference to an application's `app_client_connect` function.
@@ -154,31 +173,10 @@ typedef struct app_s {
 } app_t;
 
 /**
- * Init the list of apps and load their modules.
- */
-gboolean apps_init();
-
-/**
- * Run through the apps preforking procedures.
- */
-gboolean apps_prefork();
-
-/**
- * Run the apps in their own, separate threads. This should be run after forking
- * to ensure that all sockets and files are process-specific and not shared.
+ * Initialize and run the applications.  This function goes through all the apps, and gives
+ * them three calls, in order: app_init, app_register_events, app_run.
  */
 gboolean apps_run();
-
-/**
- * Tell the apps it's their turns to register the evnets they listen for.  This runs in
- * the main thread before forking.
- */
-void apps_register_events();
-
-/**
- * Callback for the apps, post-fork.
- */
-gboolean apps_postfork();
 
 /**
  * Inform all the apps that a new client has been accepted.
@@ -211,6 +209,10 @@ void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub);
  */
 void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub);
 
+/**
+ * Routes all queued events to the callbacks inside the apps.
+ */
+void apps_route_events(app_t app);
 
 #ifdef TESTING
 #include "../test/test_apps.h"

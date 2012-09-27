@@ -6,10 +6,14 @@
 		body \
 	}
 
+#define APP_PREFORK 0
+#define APP_POSTFORK 1
+#define APP_RUN 2
+
 /**
  * The callbacks that we're going to be using
  */
-typedef struct app_callbacks_s {
+typedef struct _app_callbacks_s {
 	/**
 	 * The offset of the callback position in the app_t struct
 	 */
@@ -19,19 +23,21 @@ typedef struct app_callbacks_s {
 	 * The name of the function in the module
 	 */
 	char *name;
-} app_callbacks_t;
+} _app_callbacks_t;
 
-static app_callbacks_t callbacks[] = {
-	{offsetof(app_t, prefork), "app_prefork"},
-	{offsetof(app_t, postfork), "app_postfork"},
+static _app_callbacks_t callbacks[] = {
+	// Called to setup basic constants in the app
+	{offsetof(app_t, _set_app_opts), "qio_set_app_opts"},
+	
+	// For running the app in its own thread
+	{offsetof(app_t, init), "app_init"},
 	{offsetof(app_t, run), "app_run"},
+	
+	// Called in the main thread when the app is running
 	{offsetof(app_t, client_connect), "app_client_connect"},
 	{offsetof(app_t, client_close), "app_client_close"},
 	{offsetof(app_t, subscribe), "app_evs_client_subscribe"},
 	{offsetof(app_t, unsubscribe), "app_evs_client_unsubscribe"},
-	{offsetof(app_t, register_events), "app_register_events"},
-	
-	{offsetof(app_t, _set_app_opts), "qio_set_app_opts"},
 };
 
 /**
@@ -42,19 +48,41 @@ static GPtrArray *_apps;
 /**
  * Runs the thread that controls an entire application.
  */
-gpointer _app_run(gpointer app) {
-	while (TRUE) {
-		break;
+static gpointer _app_run(gpointer void_app) {
+	app_t *app = void_app;
+	event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_subscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
+		event_handler_t* handler;
+		
+		if (app->event_prefix != NULL) {
+			gchar *e = g_strdup_printf("%s%s", app->event_prefix, event_path);
+			handler = evs_server_on(e, fn, on_subscribe, on_unsubscribe, handle_children);
+			g_free(e);
+		} else {
+			handler = evs_server_on(event_path, fn, on_subscribe, on_unsubscribe, handle_children);
+		}
+		
+		return handler;
 	}
+	
+	if (app->init) {
+		app->init(on);
+	}
+	
+	g_mutex_lock(&(app->ready));
+	
+	if (app->run) {
+		app->run();
+	}
+	
 	return NULL;
 }
 
-gboolean apps_init() {
+gboolean apps_run() {
 	opt_app_t **apps = option_apps();
 	_apps = g_ptr_array_new();
 	
-	gint32 app_count = option_apps_count();
-	for (int i = 0; i < app_count; i++) {
+	guint16 app_count = option_apps_count();
+	for (guint16 i = 0; i < app_count; i++) {
 		opt_app_t *o_app = *(apps + i);
 		
 		// Check to see if an absolute path to a module was given
@@ -69,7 +97,7 @@ gboolean apps_init() {
 			path = g_strdup(o_app->path);
 		}
 		
-		// G_MODULE_BIND_MASK: Be module-lazy, but expose all the symbols
+		// G_MODULE_BIND_LAZY: Be module-lazy, but expose all the symbols
 		// so that any dynamically-loaded libraries (Python, JS, etc) have
 		// access to the necessary symbols
 		
@@ -88,6 +116,7 @@ gboolean apps_init() {
 		
 		// Some basics that we'll definitely need
 		app->module = module;
+		app->id = i;
 		app->name = o_app->config_group;
 		app->event_prefix = o_app->prefix;
 		
@@ -107,7 +136,6 @@ gboolean apps_init() {
 			// For use with the current callback being registered
 			gpointer curr_cb;
 			
-			// Get the _client_close function for faster referencing later
 			if (g_module_symbol(module, callbacks[i].name, &curr_cb)) {
 				// Just side-step type check altogether. They're all function
 				// pointers
@@ -121,74 +149,16 @@ gboolean apps_init() {
 			return FALSE;
 		}
 		
-		app->_set_app_opts(app->name, app->event_prefix, abspath);
+		app->_set_app_opts(i, app->name, abspath);
+		g_mutex_init(&(app->ready));
+		app->thread = g_thread_new(app->name, _app_run, app);
 	}
-
-	return TRUE;
-}
-
-gboolean apps_run() {
-	APP_FOREACH(
-		// If there isn't a run function, then just move on
-		if (app->run == NULL) {
-			continue;
-		}
-		
-		GThread *thread = g_thread_try_new(__FILE__, app->run, NULL, NULL);
-		
-		if (thread == NULL) {
-			ERRORF("Could not init thread for app %s", app->name);
-			return FALSE;
-		}
-		
-		app->thread = thread;
-	)
 	
-	return TRUE;
-}
-
-gboolean apps_prefork() {
+	// Wait for the applications to be ready before allowing the server to run
 	APP_FOREACH(
-		if (app->prefork != NULL && app->prefork() == FALSE) {
-			return FALSE;
-		}
-	)
-	
-	return TRUE;
-}
-
-void apps_register_events() {
-	// Go through all the apps and call their register_commands function
-	APP_FOREACH(
-		app_on_cb cb = app->register_events;
-		if (cb != NULL) {
-			event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_subscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
-				event_handler_t* handler;
-				
-				if (app->event_prefix != NULL) {
-					gchar *e = g_strdup_printf("%s%s", app->event_prefix, event_path);
-					handler = evs_server_on(e, fn, on_subscribe, on_unsubscribe, handle_children);
-					g_free(e);
-				} else {
-					handler = evs_server_on(event_path, fn, on_subscribe, on_unsubscribe, handle_children);
-				}
-				
-				return handler;
-			}
-			
-			cb(on);
-		}
-	)
-}
-
-gboolean apps_postfork() {
-	APP_FOREACH(
-		app_bool_cb cb = app->postfork;
-		
-		// If the postfork callback isn't happy
-		if (cb != NULL && cb() == FALSE) {
-			ERRORF("Application failed in postfork: %s", app->name);
-			return FALSE;
+		while (g_mutex_trylock(&(app->ready))) {
+			g_mutex_unlock(&(app->ready));
+			g_thread_yield();
 		}
 	)
 	
