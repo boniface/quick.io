@@ -21,7 +21,7 @@ static GMutex _messages_lock;
 /**
  * Creates a subscription from a handler and friends.
  */
-static evs_client_sub_t* _create_subscription(const gchar *event_path, event_handler_t *handler, path_extra_t extra, guint16 extra_len) {
+static evs_client_sub_t* _create_subscription(const gchar *event_path, event_handler_t *handler, path_extra_t extra) {
 	evs_client_sub_t *sub = g_try_malloc0(sizeof(*sub));
 
 	// Well, this could be bad
@@ -43,8 +43,8 @@ static evs_client_sub_t* _create_subscription(const gchar *event_path, event_han
 	sub->handler = handler;
 
 	// Save the extra elements on the path, we'll need those again later
+	g_ptr_array_ref(extra);
 	sub->extra = extra;
-	sub->extra_len = extra_len;
 	
 	return sub;
 }
@@ -65,17 +65,16 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
 		// To validate this event, check the server events to make sure there
 		// is a handler registered
 		path_extra_t extra;
-		guint16 extra_len;
-		event_handler_t *handler = evs_server_get_handler(event_path, &extra, &extra_len);
+		event_handler_t *handler = evs_server_get_handler(event_path, &extra);
 		
 		// If no handler was found, don't create anything
 		if (handler == NULL) {
 			return NULL;
 		}
 		
-		sub = _create_subscription(event_path, handler, extra, extra_len);
+		sub = _create_subscription(event_path, handler, extra);
 		if (sub == NULL) {
-			g_list_free_full(extra, g_free);
+			g_ptr_array_unref(extra);
 			return NULL;
 		}
 		
@@ -126,10 +125,9 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 		
 		// Skip all the loopy logic unless there are extra path segments
 		if (extra != NULL) {
-			path_extra_t curr = g_list_first(extra);
-			do {
-				g_string_append_printf(ep, "/%s", (gchar*)curr->data);
-			} while ((curr = g_list_next(curr)) != NULL);
+			for (guint i = 0; i < extra->len; i++) {
+				g_string_append_printf(ep, "/%s", (gchar*)g_ptr_array_index(extra, i));
+			}
 		}
 		
 		final_path = ep->str;
@@ -376,7 +374,7 @@ void evs_client_cleanup() {
 			// The key will be free'd when the iter is unref'd
 			// g_free(sub->event_path);
 			//
-			g_list_free_full(sub->extra, g_free);
+			g_ptr_array_unref(sub->extra);
 			g_hash_table_unref(sub->clients);
 			g_hash_table_iter_remove(&iter);
 		}

@@ -51,11 +51,6 @@ struct evs_client_sub_s {
 	path_extra_t extra;
 	
 	/**
-	 * The length of the extra path segments.
-	 */
-	guint extra_len;
-	
-	/**
 	 * The hash table (used as a set) of clients.
 	 *
 	 * @see http://developer.gnome.org/glib/2.30/glib-Hash-Tables.html#id915490

@@ -40,8 +40,7 @@ START_TEST(test_evs_client_get_subscription_and_create) {
 	test(sub->handler != NULL, "Handler is set");
 	test(sub->clients != NULL, "Clients table is set");
 	test_uint32_eq(g_hash_table_size(sub->clients), 0, "No clients in table");
-	test(sub->extra == NULL, "No extra parameters");
-	test_uint32_eq(sub->extra_len, 0, "No extra parameters");
+	test_uint64_eq(sub->extra->len, 0, "No extra parameters");
 	
 	test(g_hash_table_lookup(_events, sub->event_path) != NULL, "Event registered");
 }
@@ -58,7 +57,7 @@ START_TEST(test_evs_client_format_message_0) {
 	GString *buffer = g_string_sized_new(1);
 	
 	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
-	event_handler_t *handler = evs_server_get_handler("/test/event", NULL, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(handler, 0, 0, NULL, d_plain, "some data", buffer);
@@ -76,7 +75,7 @@ START_TEST(test_evs_client_format_message_1) {
 	GString *buffer = g_string_sized_new(1);
 	
 	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
-	event_handler_t *handler = evs_server_get_handler("/test/event", NULL, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(handler, 0, 0, NULL, d_plain, "ßäū€öł", buffer);
@@ -96,7 +95,7 @@ START_TEST(test_evs_client_format_message_2) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
 	
 	path_extra_t extra = NULL;
-	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(handler, 0, 0, extra, d_plain, "ßäū€öł", buffer);
@@ -104,7 +103,7 @@ START_TEST(test_evs_client_format_message_2) {
 	test_status_eq(status, CLIENT_GOOD, "Message format succeeded");
 	test_str_eq(buffer->str, "/test/event/test:0:plain=ßäū€öł", "Message formatted correctly");
 	
-	g_list_free_full(extra, g_free);
+	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
 }
@@ -149,7 +148,7 @@ START_TEST(test_evs_client_format_message_with_callback) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client), CLIENT_GOOD, "Subscribed");
 	
 	path_extra_t extra = NULL;
-	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(NULL, 1, 0, extra, d_plain, "ßäū€öł", buffer);
@@ -157,7 +156,7 @@ START_TEST(test_evs_client_format_message_with_callback) {
 	test_status_eq(status, CLIENT_GOOD, "Got message");
 	test_str_eq(buffer->str, "/callback/1:0:plain=ßäū€öł", "Message formatted correctly");
 	
-	g_list_free_full(extra, g_free);
+	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
 }
@@ -167,7 +166,7 @@ START_TEST(test_evs_client_format_message_with_server_callback) {
 	GString *buffer = g_string_sized_new(1);
 	
 	path_extra_t extra = NULL;
-	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(NULL, 1, 123, extra, d_plain, "ßäū€öł", buffer);
@@ -175,7 +174,7 @@ START_TEST(test_evs_client_format_message_with_server_callback) {
 	test_status_eq(status, CLIENT_GOOD, "Got message");
 	test_str_eq(buffer->str, "/callback/1:123:plain=ßäū€öł", "Message formatted correctly");
 	
-	g_list_free_full(extra, g_free);
+	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
 }
 END_TEST
@@ -184,7 +183,7 @@ START_TEST(test_evs_client_format_message_not_subscribed) {
 	GString *buffer = g_string_sized_new(1);
 	
 	path_extra_t extra = NULL;
-	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(handler, 0, 0, extra, d_plain, "abcd", buffer);
@@ -192,7 +191,7 @@ START_TEST(test_evs_client_format_message_not_subscribed) {
 	test_status_eq(status, CLIENT_GOOD, "Message formatted even though no clients subscribed");
 	test_str_eq(buffer->str, "/test/event/test:0:plain=abcd", "Message formatted correctly");
 	
-	g_list_free_full(extra, g_free);
+	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
 }
 END_TEST
@@ -201,7 +200,7 @@ START_TEST(test_evs_client_format_message_not_subscribed_callback) {
 	GString *buffer = g_string_sized_new(1);
 	
 	path_extra_t extra = NULL;
-	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_format_message(handler, 123, 0, extra, d_plain, "abcd", buffer);
@@ -209,7 +208,7 @@ START_TEST(test_evs_client_format_message_not_subscribed_callback) {
 	test_status_eq(status, CLIENT_GOOD, "Got message");
 	test_str_eq(buffer->str, "/callback/123:0:plain=abcd", "Message formatted correctly");
 	
-	g_list_free_full(extra, g_free);
+	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
 }
 END_TEST
@@ -424,7 +423,7 @@ START_TEST(test_evs_client_pub_message) {
 	client->handler = h_rfc6455;
 	
 	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
-	event_handler_t *handler = evs_server_get_handler("/test/event", NULL, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
@@ -447,7 +446,7 @@ START_TEST(test_evs_client_pub_messages_closed_client) {
 	client->handler = h_rfc6455;
 	
 	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
-	event_handler_t *handler = evs_server_get_handler("/test/event", NULL, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
@@ -464,7 +463,7 @@ START_TEST(test_evs_client_pub_messages_no_handler) {
 	client_t *client = u_client_create(NULL);
 	
 	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
-	event_handler_t *handler = evs_server_get_handler("/test/event", NULL, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
@@ -484,7 +483,7 @@ START_TEST(test_evs_client_pub_messages_clear_subscription) {
 	client_t *client = u_client_create(NULL);
 	
 	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
-	event_handler_t *handler = evs_server_get_handler("/test/event", NULL, NULL);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");

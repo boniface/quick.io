@@ -41,14 +41,13 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	
 	// Test the event data
 	test_str_eq(event.path, "/qio/noop", "Correct event name");
-	test_ptr_eq(event.extra_segments, NULL, "No extra segments");
-	test_uint16_eq(event.extra_segments_len, 0, "No extra segments");
+	test_uint16_eq(event.extra_segments->len, 0, "No extra segments");
 	test_uint32_eq(event.callback, 0, "No callback");
 	test(event.type == d_plain, "Plain data type set");
 	test_str_eq(event.data, "", "No data set");
 	
 	// Test the side-effects
-	event_handler_t *right_handler = evs_server_get_handler(event.path, NULL, NULL);
+	event_handler_t *right_handler = evs_server_get_handler(event.path, NULL);
 	test_ptr_eq(handler, right_handler, "Correct handler retrieved");
 	test_size_eq(message->buffer->len, 0, "Buffer cleared");
 	
@@ -135,8 +134,8 @@ START_TEST(test_evs_event_creation_handle_children) {
 	test_str_eq(event.data, "test", "Plain data recieved");
 	
 	// Segment testing
-	test_uint16_eq(event.extra_segments_len, 1, "1 extra segment");
-	test_str_eq(event.extra_segments->data, "something", "Correct extra segment");
+	test_uint16_eq(event.extra_segments->len, 1, "1 extra segment");
+	test_str_eq(g_ptr_array_index(event.extra_segments, 0), "something", "Correct extra segment");
 	
 	_event_free(&event);
 	
@@ -299,82 +298,71 @@ END_TEST
 
 START_TEST(test_evs_get_handler_0) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("qio/noop", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("qio/noop", &extra);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
-	test_uint16_eq(extra_len, 0, "No extra segments");
 }
 END_TEST
 
 START_TEST(test_evs_get_handler_1) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("qio/noop/", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("qio/noop/", &extra);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
-	test_uint16_eq(extra_len, 0, "No extra segments");
 }
 END_TEST
 
 START_TEST(test_evs_get_handler_2) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/qio/noop/", &extra, &extra_len);
-	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL, NULL), "Correct handler retrieved");
-	test_ptr_eq(extra, NULL, "No extra segments");
-	test_uint16_eq(extra_len, 0, "No extra segments");
+	event_handler_t *handler = evs_server_get_handler("/qio/noop/", &extra);
+	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
+	test_uint64_eq(extra->len, 0, "No extra segments");
 }
 END_TEST
 
 START_TEST(test_evs_get_handler_3) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
 	test_ptr_eq(extra, NULL, "No extra segments");
-	test_uint16_eq(extra_len, 0, "No extra segments");
 }
 END_TEST
 
 START_TEST(test_evs_get_handler_4) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/qio/noop/////", &extra, &extra_len);
-	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL, NULL), "Correct handler retrieved");
-	test_ptr_eq(extra, NULL, "No extra segments");
-	test_uint16_eq(extra_len, 0, "No extra segments");
+	event_handler_t *handler = evs_server_get_handler("/qio/noop/////", &extra);
+	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
+	test_uint64_eq(extra->len, 0, "No extra segments");
 }
 END_TEST
 
 START_TEST(test_evs_get_handler_5) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
-	event_handler_t *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra, &extra_len);
-	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL, NULL), "Correct handler retrieved");
-	test_ptr_eq(extra, NULL, "No extra segments");
-	test_uint16_eq(extra_len, 0, "No extra segments");
+	event_handler_t *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra);
+	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
+	test_uint64_eq(extra->len, 0, "No extra segments");
 }
 END_TEST
 
 START_TEST(test_evs_get_handler_6) {
 	path_extra_t extra;
-	guint16 extra_len;
 	
 	event_handler_t *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
 	
-	event_handler_t *handler = evs_server_get_handler("/multi/handler", &extra, &extra_len);
+	event_handler_t *handler = evs_server_get_handler("/multi/handler/another/segment", &extra);
 	test_ptr_eq(handler, expected, "Correct handler retrieved");
-	test_uint16_eq(extra_len, 1, "1 extra segment");
-	test_str_eq(extra->data, "handler", "Correct extra segment");
+	test_uint16_eq(extra->len, 3, "3 extra segments");
+	test_str_eq(g_ptr_array_index(extra, 0), "handler", "Correct extra segment");
+	test_str_eq(g_ptr_array_index(extra, 1), "another", "Correct extra segment");
+	test_str_eq(g_ptr_array_index(extra, 2), "segment", "Correct extra segment");
 	
-	g_list_free_full(extra, g_free);
+	g_ptr_array_unref(extra);
 }
 END_TEST
 

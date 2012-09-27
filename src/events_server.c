@@ -57,7 +57,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	*end = '\0';
 	
 	// Attempt to find what handles this event
-	*handler = evs_server_get_handler(curr, &(event->extra_segments), &(event->extra_segments_len));
+	*handler = evs_server_get_handler(curr, &(event->extra_segments));
 	
 	// If there isn't handler, that's wrong
 	if (*handler == NULL) {
@@ -134,7 +134,7 @@ static void _event_free(event_t *event) {
 	event->path = NULL;
 	
 	if (event->extra_segments != NULL) {
-		g_list_free_full(event->extra_segments, g_free);
+		g_ptr_array_unref(event->extra_segments);
 		event->extra_segments = NULL;
 	}
 }
@@ -180,7 +180,7 @@ static gchar* _clean_event_name(const gchar *event_path) {
 /**
  * The "ping:" command
  */
-static status_t _evs_server_ping(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_ping(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
 	g_string_append(response, event->data);
 	return CLIENT_WRITE;
@@ -189,7 +189,7 @@ static status_t _evs_server_ping(client_t *client, event_t *event, GString *resp
 /**
  * Does nothing, just says "good" back.
  */
-static status_t _evs_server_noop(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_noop(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	g_string_set_size(response, 0);
 	if (event->callback) {
 		return CLIENT_WRITE;
@@ -227,7 +227,7 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 }
 */
 
-static status_t _evs_server_subscribe(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	DEBUGF("event_subscribe: %s", event->data);
 	
 	gchar *event_path = _clean_event_name(event->data);
@@ -260,7 +260,7 @@ static status_t _evs_server_subscribe(client_t *client, event_t *event, GString 
 	return status;
 }
 
-static status_t _evs_server_unsubscribe(client_t *client, event_t *event, GString *response) {
+static status_t _evs_server_unsubscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	DEBUGF("event_unsubscribe: %s", event->data);
 	
 	gchar *event_path = _clean_event_name(event->data);
@@ -278,12 +278,11 @@ static status_t _evs_server_unsubscribe(client_t *client, event_t *event, GStrin
 	return status;
 }
 
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint16 *extra_len) {
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra) {
 	event_handler_t *handler = NULL;
 	
 	// Internal extras
-	path_extra_t iextra = NULL;
-	guint16 iextra_len = 0;
+	path_extra_t iextra = g_ptr_array_new_with_free_func(g_free);
 	
 	// We cannot modify event_path, so let's modify this!
 	gchar *ep = g_strdup(event_path);
@@ -305,7 +304,7 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 		// This one is a bit hard to read: if there is a handler and any extra parameters,
 		// then make sure the handler supports it; if there are no extra parameters, then
 		// it's good
-		if (handler != NULL && (iextra_len == 0 || (iextra_len > 0 && handler->handle_children))) {
+		if (handler != NULL && (iextra->len == 0 || (iextra->len > 0 && handler->handle_children))) {
 			break;
 		}
 		
@@ -327,24 +326,26 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 		// If it falls through here, then no command was found, so plop the current
 		// segment onto the extra segments list
 		// +1 -> the iterator moves onto the '/', and we don't want that in the segment
-		gchar *c = g_strdup(end + 1);
+		gchar *seg = g_strdup(end + 1);
 		
-		iextra = g_list_prepend(iextra, c);
-		iextra_len++;
+		g_ptr_array_add(iextra, seg);
 	}
 	
 	if (handler == NULL && iextra != NULL) {
-		g_list_free_full(iextra, g_free);
+		g_ptr_array_unref(iextra);
 		iextra = NULL;
-		iextra_len = 0;
 	}
 	
 	if (extra != NULL) {
+		if (iextra != NULL) {
+			// Reverse the array with a sort
+			gint reverse(gconstpointer a, gconstpointer b) {
+				return 1;
+			}
+			g_ptr_array_sort(iextra, reverse);
+		}
+		
 		*extra = iextra;
-	}
-	
-	if (extra_len != NULL) {
-		*extra_len = iextra_len;
 	}
 	
 	g_free(ep);
@@ -366,7 +367,7 @@ status_t evs_server_handle(client_t *client) {
 	if (status == CLIENT_GOOD) {
 		if (handler->fn != NULL) {
 			// The client->message->buffer is now empty, as free'd by _event_new
-			status = handler->fn(client, &event, client->message->buffer);
+			status = handler->fn(client, handler, &event, client->message->buffer);
 		}
 	}
 	

@@ -176,7 +176,6 @@ START_TEST(test_apps_cb_client_subscribe) {
 	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
 	sub->event_path = "/test";
 	sub->extra = NULL;
-	sub->extra_len = 0;
 	sub->handler = g_malloc0(sizeof(*(sub->handler)));
 	
 	apps_evs_client_subscribe(client, sub);
@@ -193,7 +192,6 @@ START_TEST(test_apps_cb_client_unsubscribe) {
 	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
 	sub->event_path = "/test";
 	sub->extra = NULL;
-	sub->extra_len = 0;
 	sub->handler = g_malloc0(sizeof(*(sub->handler)));
 	
 	apps_evs_client_unsubscribe(client, sub);

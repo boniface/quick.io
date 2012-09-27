@@ -187,7 +187,7 @@ void apps_client_close(client_t *client) {
 
 void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
 	if (sub->handler->on_subscribe != NULL) {
-		sub->handler->on_subscribe(client, sub->handler, sub->extra, sub->extra_len);
+		sub->handler->on_subscribe(client, sub->handler, sub->extra);
 	}
 	
 	// Notify all the general listeners that a subscription happened.
@@ -195,14 +195,14 @@ void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
 		on_subscribe_cb cb = app->subscribe;
 		
 		if (cb != NULL) {
-			cb(client, sub->event_path, sub->extra, sub->extra_len);
+			cb(client, sub->event_path, sub->extra);
 		}
 	)
 }
 
 void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub) {
 	if (sub->handler->on_unsubscribe != NULL) {
-		sub->handler->on_unsubscribe(client, sub->handler, sub->extra, sub->extra_len);
+		sub->handler->on_unsubscribe(client, sub->handler, sub->extra);
 	}
 	
 	// Notify all the general listeners that an unsubscription happened.
@@ -210,7 +210,7 @@ void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub) 
 		on_subscribe_cb cb = app->unsubscribe;
 		
 		if (cb != NULL) {
-			cb(client, sub->event_path, sub->extra, sub->extra_len);
+			cb(client, sub->event_path, sub->extra);
 		}
 	)
 }

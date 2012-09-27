@@ -43,10 +43,12 @@
 
 /**
  * The list type used to hold extra path segments.
+ * This is reference counted, so it MUST NEVER be g_ptr_array_free'd.
  *
- * @attention Each item MUST contain a gchar*.
+ * @attention This may never be modified after it is created.
+ * @note Each item is a gchar*.
  */
-typedef GList* path_extra_t;
+typedef GPtrArray* path_extra_t;
 
 /**
  * The different types of data that an event can contain.
@@ -90,12 +92,6 @@ typedef struct event_s {
 	path_extra_t extra_segments;
 	
 	/**
-	 * The number of extra segments, so that clients don't have to iterate
-	 * to find the length.
-	 */
-	guint16 extra_segments_len;
-	
-	/**
 	 * The callback number the client sent.
 	 */
 	guint32 callback;
@@ -128,7 +124,7 @@ typedef struct event_s {
  * @param response The buffer that the handler should write his response to. If the handler
  * is going to write something to this buffer, it MUST return CLIENT_WRITE.
  */
-typedef status_t (*handler_fn)(client_t *client, event_t *event, GString *response);
+typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event_t *event, GString *response);
 
 /**
  * A callback for when a client subscribes to a specific event.
@@ -139,9 +135,8 @@ typedef status_t (*handler_fn)(client_t *client, event_t *event, GString *respon
  * @param client The client that subscribed to the event.
  * @param handler The event handler, so that references don't have to be stored in the app.
  * @param extra Any extra parameters that came in with the subscription
- * @param extra_len The count of extra.
  */
-typedef void (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint extra_len);
+typedef void (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra);
 
 /**
  * A callback for when a client subscribes to a specific event.
@@ -152,9 +147,8 @@ typedef void (*on_subscribe_handler_cb)(client_t *client, const event_handler_t 
  * @param client The client that subscribed to the event.
  * @param event_path The path of the event that was subscribed to.
  * @param extra Any extra parameters that came in with the subscription
- * @param extra_len The count of extra.
  */
-typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const path_extra_t extra, const guint extra_len);
+typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const path_extra_t extra);
 
 /**
  * All of the handlers and callbacks for an event.
@@ -194,11 +188,10 @@ struct event_handler_s {
  *
  * @param event_path The event path.
  * @param[out] extra Where any extra path segments are put. Will not be updated if NULL. MUST be g_list_free_full(extra, g_free)'d.
- * @param[out] extra_len The number of extra path segments. Will not be updated if NULL.
  *
  * @return The event handler. If null, extra will also be NULL.
  */
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra, guint16 *extra_len);
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra);
 
 /**
  * Handle an event from a client.
