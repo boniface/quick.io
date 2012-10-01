@@ -67,6 +67,7 @@ status_t client_handshake(client_t *client) {
 	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == buffer->len) {
 		// If the path is not /qio, it's not for us
 		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
+			DEBUG("HERE");
 			status = CLIENT_UNSUPPORTED;
 		} else if (h_rfc6455_handles(path, headers)) {
 			client->handler = h_rfc6455;

@@ -87,9 +87,9 @@ typedef struct event_s {
 	 * If the event is: /some/test/event, and the handler is /some,
 	 * then this will be ["test", "event"].
 	 *
-	 * @attention This must be free'd with g_list_free_full(extra_segments, g_free)
+	 * @attention This is ref-counted, so it MUST be g_ptr_array_un/ref()'d
 	 */
-	path_extra_t extra_segments;
+	path_extra_t extra;
 	
 	/**
 	 * The callback number the client sent.

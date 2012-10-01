@@ -7,6 +7,7 @@ HEADERS = $(wildcard *.h)
 export ROOT ?= $(shell pwd)
 DIR_BUILD = build
 DIR_BUILD_DEBUG = build_debug
+DIR_BUILD_PROFILE = build_profile
 DIR_BUILD_TEST = build_test
 QIOINI_DEFAULT = quickio.ini
 QIOINI = $(QIOINI_DEFAULT)
@@ -19,7 +20,7 @@ LIBS += glib-2.0 gmodule-2.0
 LIBS_VERSIONS = glib-2.0 >= 2.32 gmodule-2.0 >= 2.32
 
 # The flags
-CFLAGS = -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS))
+CFLAGS = -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized $(shell pkg-config --cflags $(LIBS)) 
 LDFLAGS = $(shell pkg-config --libs $(LIBS))
 
 # If we should include debug everything
@@ -27,6 +28,12 @@ ifdef DEBUG
 	QIOINI = quickio.ini
 	OPTIMIZE = 0
 	CFLAGS += -g -rdynamic -fno-inline -fno-default-inline -DCOMPILE_DEBUG=1
+endif
+
+# If we should include gprof stuffs
+ifdef PROFILE
+	CFLAGS += -pg -DCOMPILE_PROFILE=1
+	LDFLAGS += -pg
 endif
 
 #From: http://stackoverflow.com/questions/3432542/how-can-i-get-more-accurate-results-from-gcov

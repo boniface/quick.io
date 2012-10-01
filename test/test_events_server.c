@@ -41,7 +41,7 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	
 	// Test the event data
 	test_str_eq(event.path, "/qio/noop", "Correct event name");
-	test_uint16_eq(event.extra_segments->len, 0, "No extra segments");
+	test_uint16_eq(event.extra->len, 0, "No extra segments");
 	test_uint32_eq(event.callback, 0, "No callback");
 	test(event.type == d_plain, "Plain data type set");
 	test_str_eq(event.data, "", "No data set");
@@ -134,13 +134,13 @@ START_TEST(test_evs_event_creation_handle_children) {
 	test_str_eq(event.data, "test", "Plain data recieved");
 	
 	// Segment testing
-	test_uint16_eq(event.extra_segments->len, 1, "1 extra segment");
-	test_str_eq(g_ptr_array_index(event.extra_segments, 0), "something", "Correct extra segment");
+	test_uint16_eq(event.extra->len, 1, "1 extra segment");
+	test_str_eq(g_ptr_array_index(event.extra, 0), "something", "Correct extra segment");
 	
 	_event_free(&event);
 	
 	test_ptr_eq(event.path, NULL, "Name free'd");
-	test_ptr_eq(event.extra_segments, NULL, "Extra segments free'd");
+	test_ptr_eq(event.extra, NULL, "Extra segments free'd");
 	
 	u_client_free(client);
 }

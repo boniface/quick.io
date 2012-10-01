@@ -97,11 +97,11 @@ gboolean apps_run() {
 			path = g_strdup(o_app->path);
 		}
 		
-		// G_MODULE_BIND_LAZY: Be module-lazy, but expose all the symbols
-		// so that any dynamically-loaded libraries (Python, JS, etc) have
-		// access to the necessary symbols
+		// No flags: expose all the symbols so that any dynamically-loaded
+		// libraries (Python, JS, etc) have access to the necessary symbols + 
+		// resolve them on load
+		GModule *module = g_module_open(path, 0);
 		
-		GModule *module = g_module_open(path, G_MODULE_BIND_LAZY);
 		// If we can't open the app, just quit
 		if (module == NULL) {
 			ERRORF("Could not open app (%s): %s", path, g_module_error());

@@ -12,6 +12,10 @@ debug:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_DEBUG))
 	$(MAKE) build DEBUG=1
 
+profile:
+	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_PROFILE))
+	$(MAKE) build PROFILE=1
+
 docs:
 	mkdir -p build/docs
 	doxygen
@@ -24,7 +28,6 @@ build_dir:
 
 build: build_dir
 	pkg-config --exists '$(LIBS_VERSIONS)'
-	$(MAKE) -C ../quick.io-python/
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
 	$(MAKE) -C src
 	$(MAKE) -C app
@@ -32,6 +35,7 @@ build: build_dir
 clean:
 	rm -rf $(DIR_BUILD)
 	rm -rf $(DIR_BUILD_DEBUG)
+	rm -rf $(DIR_BUILD_PROFILE)
 	rm -rf $(DIR_BUILD_TEST)
 	rm -f test*.xml
 	$(MAKE) -C app clean

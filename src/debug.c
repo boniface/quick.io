@@ -6,7 +6,7 @@
 
 #define BACKTRACE_SIZE 100
 
-#ifdef COMPILE_DEBUG
+#if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE)
 	static void _sigsev_handler(int sig) {
 		void *array[BACKTRACE_SIZE];
 		size_t size;
@@ -35,7 +35,7 @@
 #endif
 
 void debug_handle_signals() {
-	#ifdef COMPILE_DEBUG
+	#if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE)
 		signal(SIGSEGV, _sigsev_handler);
 		signal(SIGINT, _sigint_handler);
 		signal(SIGTERM, _sigterm_handler);

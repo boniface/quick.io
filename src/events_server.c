@@ -57,9 +57,9 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	*end = '\0';
 	
 	// Attempt to find what handles this event
-	*handler = evs_server_get_handler(curr, &(event->extra_segments));
+	*handler = evs_server_get_handler(curr, &(event->extra));
 	
-	// If there isn't handler, that's wrong
+	// If there isn't a handler, that's wrong
 	if (*handler == NULL) {
 		return CLIENT_UNKNOWN_EVENT;
 	}
@@ -133,9 +133,9 @@ static void _event_free(event_t *event) {
 	free(event->path);
 	event->path = NULL;
 	
-	if (event->extra_segments != NULL) {
-		g_ptr_array_unref(event->extra_segments);
-		event->extra_segments = NULL;
+	if (event->extra != NULL) {
+		g_ptr_array_unref(event->extra);
+		event->extra = NULL;
 	}
 }
 
@@ -356,6 +356,8 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 }
 
 status_t evs_server_handle(client_t *client) {
+	DEBUGF("Message: %s", client->message->buffer->str);
+	
 	event_t event;
 	event_handler_t *handler = NULL;
 	status_t status = _event_new(client->message, &handler, &event);
@@ -369,6 +371,8 @@ status_t evs_server_handle(client_t *client) {
 			// The client->message->buffer is now empty, as free'd by _event_new
 			status = handler->fn(client, handler, &event, client->message->buffer);
 		}
+		
+		#warning Need to send back error to client if there's a callback
 	}
 	
 	// Prepare the event for writing back to the client
@@ -386,7 +390,7 @@ status_t evs_server_handle(client_t *client) {
 		}
 		
 		#warning TODO: Server callbacks
-		status = evs_client_format_message(handler, event.callback, 0, event.extra_segments, event.type, data, client->message->buffer);
+		status = evs_client_format_message(handler, event.callback, 0, event.extra, event.type, data, client->message->buffer);
 		
 		// If we get CLIENT_GOOD back from format_message, then we still need it to be
 		// CLIENT_WRITE, otherwise we want to send back the error message
