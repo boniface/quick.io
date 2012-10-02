@@ -197,8 +197,8 @@ enum client_state {
 	
 	/**
 	 * The client is disconnected but not yet freed.
+	 * This is useful mainly for unit testing.
 	 */
-	#warning Actually use this!
 	cstate_dead,
 };
 
