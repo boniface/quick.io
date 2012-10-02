@@ -507,14 +507,15 @@ void evs_client_send_callback(client_t *client, const enum data_t type, const gc
 	}
 }
 
-guint evs_client_number_subscribed(const gchar *event_path, const path_extra_t extra) {
+guint evs_client_number_subscribed(const event_handler_t *handler, const path_extra_t extra) {
 	// These operations can collide with free's, and that would be bad
 	g_mutex_lock(&_clean_lock);
 	
 	guint cnt = 0;
 	
+	gchar *event_path = evs_server_path_from_handler(handler);
 	gchar *ep = evs_server_format_path(event_path, extra);
-	evs_client_sub_t *sub = _get_subscription(event_path, FALSE);
+	evs_client_sub_t *sub = _get_subscription(ep, FALSE);
 	g_free(ep);
 	
 	if (sub != NULL) {

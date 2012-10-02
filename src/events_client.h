@@ -127,7 +127,7 @@ void evs_client_send_messages();
  *
  * @return The number of people subscribed; 0 if event does not exist.
  */
-APP_EXPORT guint evs_client_number_subscribed(const gchar *event_path, const path_extra_t extra);
+APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, const path_extra_t extra);
 
 /**
  * Send a message to everyone subscribed to the event. This just adds to the list of

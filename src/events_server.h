@@ -240,7 +240,7 @@ event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscr
  *
  * @param handler The handler to get the path for.
  *
- * @return The path of the event, NULL if not found.
+ * @return The path of the event, NULL if not found. THIS MUST NOT BE free()'d
  */
 gchar* evs_server_path_from_handler(const event_handler_t *handler);
 

@@ -642,7 +642,8 @@ END_TEST
 START_TEST(test_evs_client_number_subscribed_0) {
 	client_t *client = u_client_create(NULL);
 	
-	test_uint64_eq(evs_client_number_subscribed("/test/event", NULL), 0, "No Subscriptions");
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
+	test_uint64_eq(evs_client_number_subscribed(handler, NULL), 0, "No Subscriptions");
 	
 	u_client_free(client);
 }
@@ -652,8 +653,24 @@ START_TEST(test_evs_client_number_subscribed_1) {
 	client_t *client = u_client_create(NULL);
 	
 	evs_client_sub_client("/test/event", client, 0);
-	test_uint64_eq(evs_client_number_subscribed("/test/event", NULL), 1, "Single subscription");
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
+	test_uint64_eq(evs_client_number_subscribed(handler, NULL), 1, "Single subscription");
 	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_number_subscribed_2) {
+	client_t *client = u_client_create(NULL);
+	
+	path_extra_t extra = g_ptr_array_new();
+	g_ptr_array_add(extra, "something");
+	
+	evs_client_sub_client("/test/event/something", client, 0);
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
+	test_uint64_eq(evs_client_number_subscribed(handler, extra), 1, "Single subscription");
+	
+	g_ptr_array_free(extra, TRUE);
 	u_client_free(client);
 }
 END_TEST
@@ -740,6 +757,7 @@ Suite* events_client_suite() {
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
 	tcase_add_test(tc, test_evs_client_number_subscribed_0);
 	tcase_add_test(tc, test_evs_client_number_subscribed_1);
+	tcase_add_test(tc, test_evs_client_number_subscribed_2);
 	suite_add_tcase(s, tc);
 	
 	return s;
