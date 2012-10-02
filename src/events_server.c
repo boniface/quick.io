@@ -144,8 +144,10 @@ static void _event_free(event_t *event) {
  */
 static status_t _evs_server_ping(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
+	// Only do this if a callback is given (the logic in the handler takes
+	// care of that)
 	g_string_append(response, event->data);
-	return CLIENT_WRITE;
+	return CLIENT_GOOD;
 }
 
 /**
@@ -153,11 +155,7 @@ static status_t _evs_server_ping(client_t *client, event_handler_t *handler, eve
  */
 static status_t _evs_server_noop(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	g_string_set_size(response, 0);
-	if (event->callback) {
-		return CLIENT_WRITE;
-	} else {
-		return CLIENT_GOOD;
-	}
+	return CLIENT_GOOD;
 }
 
 /**

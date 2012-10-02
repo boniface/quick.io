@@ -428,8 +428,20 @@ START_TEST(test_evs_handler_ping) {
 	
 	g_string_assign(client->message->buffer, "/qio/ping:123:plain=test");
 	
-	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Data sent back");
 	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=test", "Ping sent back correct data");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_ping_no_data) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->buffer, "/qio/ping:123:plain=");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Data sent back");
+	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=", "Ping sent back correct data");
 	
 	u_client_free(client);
 }
@@ -528,6 +540,37 @@ START_TEST(test_evs_handler_unsubscribe_bad_event) {
 }
 END_TEST
 
+START_TEST(test_evs_server_default_callbacks_0) {
+	client_t *client = u_client_create(NULL);
+	g_string_append(client->message->buffer, "/qio/ping:0:plain=");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "No callback sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_default_callbacks_1) {
+	client_t *client = u_client_create(NULL);
+	g_string_append(client->message->buffer, "/qio/ping:0:plain=test");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "No callback sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_default_callbacks_2) {
+	client_t *client = u_client_create(NULL);
+	g_string_append(client->message->buffer, "/qio/ping:123:plain=test");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent");
+	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=test", "Correct data sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* events_server_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Events - Server");
@@ -582,6 +625,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_handler_noop);
 	tcase_add_test(tc, test_evs_handler_noop_callback);
 	tcase_add_test(tc, test_evs_handler_ping);
+	tcase_add_test(tc, test_evs_handler_ping_no_data);
 	tcase_add_test(tc, test_evs_handler_subscribe);
 	tcase_add_test(tc, test_evs_handler_subscribe_to_bad_format);
 	tcase_add_test(tc, test_evs_handler_subscribe_too_many_subs);
@@ -589,6 +633,13 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_handler_unsubscribe);
 	tcase_add_test(tc, test_evs_handler_unsubscribe_not_subscribed);
 	tcase_add_test(tc, test_evs_handler_unsubscribe_bad_event);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Default callbacks");
+	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_test(tc, test_evs_server_default_callbacks_0);
+	tcase_add_test(tc, test_evs_server_default_callbacks_1);
+	tcase_add_test(tc, test_evs_server_default_callbacks_2);
 	suite_add_tcase(s, tc);
 	
 	return s;
