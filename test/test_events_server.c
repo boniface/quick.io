@@ -6,24 +6,50 @@ void _test_event_creation_setup() {
 	apps_run();
 }
 
-START_TEST(test_evs_server_clean_name_0) {
-	gchar *path = _clean_event_name("///some////slashes//////////");
+START_TEST(test_evs_server_format_path_0) {
+	gchar *path = evs_server_format_path("///some////slashes//////////", NULL);
 	test_str_eq(path, "/some/slashes", "Extra slashes removed");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_clean_name_1) {
-	gchar *path = _clean_event_name("some/slashes");
+START_TEST(test_evs_server_format_path_1) {
+	gchar *path = evs_server_format_path("some/slashes", NULL);
 	test_str_eq(path, "/some/slashes", "Starting slash added");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_clean_name_2) {
-	gchar *path = _clean_event_name("/some/slashes/");
+START_TEST(test_evs_server_format_path_2) {
+	gchar *path = evs_server_format_path("/some/slashes/", NULL);
 	test_str_eq(path, "/some/slashes", "Trailing slash removed");
 	g_free(path);
+}
+END_TEST
+
+START_TEST(test_evs_server_format_path_3) {
+	path_extra_t extra = g_ptr_array_new();
+	g_ptr_array_add(extra, "with");
+	g_ptr_array_add(extra, "path");
+	
+	gchar *path = evs_server_format_path("/some/slashes", extra);
+	test_str_eq(path, "/some/slashes/with/path", "Path concated");
+	g_free(path);
+	
+	g_ptr_array_free(extra, TRUE);
+}
+END_TEST
+
+START_TEST(test_evs_server_format_path_4) {
+	path_extra_t extra = g_ptr_array_new();
+	g_ptr_array_add(extra, "with");
+	g_ptr_array_add(extra, "path");
+	
+	gchar *path = evs_server_format_path("/////some///slashes/////", extra);
+	test_str_eq(path, "/some/slashes/with/path", "Trailing slash removed");
+	g_free(path);
+	
+	g_ptr_array_free(extra, TRUE);
 }
 END_TEST
 
@@ -252,7 +278,7 @@ START_TEST(test_evs_event_creation_invalid_handler) {
 	
 	g_string_assign(message->buffer, "/:123:plain");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_UNKNOWN_EVENT, "Invalid event");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_INVALID_SUBSCRIPTION, "Invalid event");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -453,7 +479,7 @@ END_TEST
 START_TEST(test_evs_handler_subscribe_already_subscribed) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
+	g_string_assign(client->message->buffer, "/qio/sub:0:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
 	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
 	
@@ -468,12 +494,13 @@ END_TEST
 START_TEST(test_evs_handler_unsubscribe) {
 	client_t *client = u_client_create(NULL);
 	
-	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
+	g_string_assign(client->message->buffer, "/qio/sub:0:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
 	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
 	
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
-	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Unsubscribed");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Unsubscribed");
+	test_str_eq(client->message->buffer->str, "/callback/456:0:plain=", "Unsubscribed");
 	
 	u_client_free(client);
 }
@@ -506,9 +533,11 @@ Suite* events_server_suite() {
 	Suite *s = suite_create("Events - Server");
 	
 	tc = tcase_create("Name Cleaning");
-	tcase_add_test(tc, test_evs_server_clean_name_0);
-	tcase_add_test(tc, test_evs_server_clean_name_1);
-	tcase_add_test(tc, test_evs_server_clean_name_2);
+	tcase_add_test(tc, test_evs_server_format_path_0);
+	tcase_add_test(tc, test_evs_server_format_path_1);
+	tcase_add_test(tc, test_evs_server_format_path_2);
+	tcase_add_test(tc, test_evs_server_format_path_3);
+	tcase_add_test(tc, test_evs_server_format_path_4);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Event Creation");

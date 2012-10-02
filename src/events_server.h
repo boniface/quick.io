@@ -135,8 +135,24 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  * @param client The client that subscribed to the event.
  * @param handler The event handler, so that references don't have to be stored in the app.
  * @param extra Any extra parameters that came in with the subscription
+ * @param callback The callback to be issued if going async
+ *
+ * @return True if the client subscribed to a valid event, false otherwise, indicating the
+ * subscription should be canceled.
  */
-typedef void (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra);
+typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback);
+/**
+ * A callback for when a client subscribes to a specific event.
+ * This is supplied to evs_server_on() and is called when a client subscribes
+ * to the event.  Don't give the callbacks too much information about the 
+ * subscription: it's too much temptation to do unsafe stuff.
+ *
+ * @param client The client that subscribed to the event.
+ * @param handler The event handler, so that references don't have to be stored in the app.
+ * @param extra Any extra parameters that came in with the subscription
+ * subscription should be canceled.
+ */
+typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra);
 
 /**
  * A callback for when a client subscribes to a specific event.
@@ -170,7 +186,7 @@ struct event_handler_s {
 	 * The alert function for when a client unsubscribes from the event.
 	 * @note If this is NULL, then no notifications will be sent.
 	 */
-	on_subscribe_handler_cb on_unsubscribe;
+	on_unsubscribe_handler_cb on_unsubscribe;
 	
 	/**
 	 * If this event handler handles child events without handlers.
@@ -212,7 +228,7 @@ status_t evs_server_handle(client_t *client);
  *
  * @see event_info_s
  */
-event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscribe_handler_cb on_subscribe, on_subscribe_handler_cb on_unsubscribe, gboolean handle_children);
+event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscribe_handler_cb on_subscribe, on_unsubscribe_handler_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * Gets the name of an event from the handler.
@@ -226,6 +242,16 @@ event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscr
  * @return The path of the event, NULL if not found.
  */
 gchar* evs_server_path_from_handler(const event_handler_t *handler);
+
+/**
+ * Cleans up and formats the path, with any extra path elements added on.
+ *
+ * @param event_path The event path
+ * @param extra Any extra paramters (may be NULL).
+ *
+ * @return The complete, formatted path, with any extra parameters. This MUST be g_free()'d
+ */
+gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra);
 
 /**
  * Init the event listening interface.

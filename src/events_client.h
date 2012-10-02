@@ -65,45 +65,6 @@ struct evs_client_sub_s {
 };
 
 /**
- * A published message that is waiting to be sent to users. It contains all the data it
- * needs to send a message, regardless of any other memory references.
- *
- * @attention This is an INTERNAL data structure that SHOULD NOT be used outside of
- * events_client
- */
-typedef struct evs_client_message_s {
-	/**
-	 * The path of the event we're publishing to.
-	 * This causes another hash table lookup, but it saves us from the following case:
-	 *
-	 * 1) Publish event to /test/event
-	 * 2) All clients unsubscribe from /test/event
-	 * 3) We attempt to publish with an invalid pointer (segfault!)
-	 *
-	 * @attention MUST be free()'d when done.
-	 */
-	gchar *event_path;
-	
-	/**
-	 * The opcode of the message.
-	 * The message's opcode that will be sent to the client in the websocket message's
-	 * opcode field.
-	 */
-	opcode_t type;
-	
-	/**
-	 * The un-prepared data to send to the client.
-	 * @attention MUST be free()'d when done.
-	 */
-	gchar *message;
-	
-	/**
-	 * The length of #message
-	 */
-	guint64 message_len;
-} STRUCT_PACKED evs_client_message_t;
-
-/**
  * Setup everything the pubsub needs to run.
  */
 gboolean evs_client_init();
@@ -120,13 +81,14 @@ void evs_client_client_ready(client_t* client);
  * 
  * @param event_path The name of the event the client should be subscribed to.
  * @param client The client to subscribe to event.
+ * @param callback The callback to be issued if anything goes async.
  *
  * @return CLIENT_INVALID_SUBSCRIPTION - The event name doesn't exist.
  * @return CLIENT_TOO_MANY_SUBSCRIPTIONS - Already subscribed to the maximum number of
  * subscriptions allowed.
  * @return CLIENT_ALREADY_SUBSCRIBED - Already subscribed to this event.
  */
-status_t evs_client_sub_client(const gchar *event_path, client_t *client);
+status_t evs_client_sub_client(const gchar *event_path, client_t *client, const guint32 callback);
 
 /**
  * The client has been closed and should be cleaned up.
@@ -153,7 +115,19 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client);
  *
  * @warning NOT thread safe.
  */
-void evs_client_pub_messages();
+void evs_client_send_messages();
+
+/**
+ * Gets the number of people currently subscribed to a specific event.
+ *
+ * @ingroup AppFunctions
+ *
+ * @param event_path The event to check
+ * @param extra Any extra parameters to add to the path.
+ *
+ * @return The number of people subscribed; 0 if event does not exist.
+ */
+APP_EXPORT guint evs_client_number_subscribed(const gchar *event_path, const path_extra_t extra);
 
 /**
  * Send a message to everyone subscribed to the event. This just adds to the list of
@@ -185,7 +159,18 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const p
  * @return CLIENT_GOOD - If the message was prepared and formatted successfully.
  * @return CLIENT_UNKNOWN_EVENT - If the event could not be found, or no callback was given.
  */
-APP_EXPORT status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+
+/**
+ * The client subscribed to an invalid event. The client should be sent an error message,
+ * assuming a callback is specified, and unsubscribed from the event.
+ *
+ * @param client The client to be unsubscribed.
+ * @param event_path The path to the event
+ * @param extra Any extra segments to add to the event path
+ * @param callback The id of the callback the client sent with the event.
+ */
+APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback);
 
 /**
  * A cleanup routine for empty events.

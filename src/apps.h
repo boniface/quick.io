@@ -68,14 +68,14 @@ typedef void (*app_cb_client)(client_t *client);
  *
  * @see event_info_s
  */
-typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_handler_cb on_subscribe, on_subscribe_handler_cb on_unsubscribe, gboolean handle_children);
+typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_handler_cb on_subscribe, on_unsubscribe_handler_cb on_unsubscribe, gboolean handle_children);
 
 /**
  * A module callback that takes an "on" function.
  *
  * @param on The function to call to register event handlers.
  */
-typedef void (*app_on_cb)(app_on on);
+typedef gboolean (*app_on_cb)(app_on on);
 
 /**
  * The callbacks that the apps will recieve for different events.
@@ -194,12 +194,29 @@ void apps_client_connect(client_t *client);
 void apps_client_close(client_t *client);
 
 /**
+ * Ask the app if the given subscription is okay.
+ *
+ * @param client The client that subscribed
+ * @param sub The subscription
+ * @param callback The callback to be notified when verification is complete. Only to be used
+ * when returning CLIENT_ASYNC.
+ *
+ * @return CLIENT_GOOD Everything is good, send the callback as normal.
+ * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
+ * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
+ */
+status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const guint32 callback);
+
+/**
  * Inform all the apps when a client has added a subscription.
  * 
  * @param client The client that subscribed.
  * @param sub The subscription the client added.
+ *
+ * @return True if the client subscribed to a valid event, false otherwise, indicating the
+ * subscription should be canceled.
  */
-void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub);
+gboolean apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub);
 
 /**
  * Inform all the apps when a client has dropped a subscription.

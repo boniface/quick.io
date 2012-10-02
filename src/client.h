@@ -61,7 +61,7 @@
  * The client sent us an event we're not handling. Send back an error, but don't
  * kill the client.
  */
-#define CLIENT_UNKNOWN_EVENT 1 << 6
+#define CLIENT_INVALID_SUBSCRIPTION 1 << 6
 
 /**
  * The client sent a bad message.
@@ -79,35 +79,37 @@
 #define CLIENT_TOO_MANY_SUBSCRIPTIONS 1 << 9
 
 /**
- * The client attempted to subscribe to an event we will never send.
- */
-#define CLIENT_INVALID_SUBSCRIPTION 1 << 10
-
-/**
  * The client is already subscribed to this event
  */
-#define CLIENT_ALREADY_SUBSCRIBED 1 << 11
+#define CLIENT_ALREADY_SUBSCRIBED 1 << 10
 
 /**
  * For some reason, the client cannot be removed from this event. He will, however,
  * recieve no messages from the event in the future.
  */
-#define CLIENT_CANNOT_UNSUBSCRIBE 1 << 12
+#define CLIENT_CANNOT_UNSUBSCRIBE 1 << 11
 
 /**
  * The server is overloaded.
  */
-#define CLIENT_SERVER_OVERLOADED 1 << 13
+#define CLIENT_SERVER_OVERLOADED 1 << 12
 
 /**
  * The client is not supported by this handler / server.
  */
-#define CLIENT_UNSUPPORTED 1 << 14
+#define CLIENT_UNSUPPORTED 1 << 13
+
+/**
+ * An async operation is being performed. This should be treated like CLIENT_GOOD in
+ * most cases, but it MUST NOT send back any information to the client. The function that returned
+ * this status becomes responsible for that.
+ */
+#define CLIENT_ASYNC 1 << 14
 
 /**
  * Any event that means the client is just being stupid.
  */
-#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNKNOWN_EVENT | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE_FORMAT | CLIENT_UNSUPPORTED)
+#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE_FORMAT | CLIENT_UNSUPPORTED)
 
 /**
  * The opcodes that we support.

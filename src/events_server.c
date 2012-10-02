@@ -61,7 +61,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	
 	// If there isn't a handler, that's wrong
 	if (*handler == NULL) {
-		return CLIENT_UNKNOWN_EVENT;
+		return CLIENT_INVALID_SUBSCRIPTION;
 	}
 	
 	// Time to parse out the message Id
@@ -140,44 +140,6 @@ static void _event_free(event_t *event) {
 }
 
 /**
- * Clean up the name of the event.
- *
- * @param event_path The path to clean
- *
- * @return The cleaned path. This MUST be g_free()'d when done.
- */
-static gchar* _clean_event_name(const gchar *event_path) {
-	// Remove any duplicated slashes
-	GString *ep = g_string_new(event_path);
-	gchar prev = ep->str[0];
-	gsize i = 1;
-	while (i < ep->len) {
-		if (ep->str[i] == '/' && prev == '/') {
-			// Remove the single slash
-			g_string_erase(ep, i, 1);
-		} else {
-			prev = ep->str[i];
-			i++;
-		}
-	}
-	
-	// Remove any trailing slashes
-	if (ep->str[--i] == '/') {
-		g_string_erase(ep, i, 1);
-	}
-	
-	// Make sure it starts with a slash
-	if (*(ep->str) != '/') {
-		g_string_prepend_c(ep, '/');
-	}
-	
-	gchar *path = ep->str;
-	g_string_free(ep, FALSE);
-	
-	return path;
-}
-
-/**
  * The "ping:" command
  */
 static status_t _evs_server_ping(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
@@ -230,10 +192,9 @@ static status_t _evs_server_send(client_t *client, event_t *event, GString *resp
 static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	DEBUGF("event_subscribe: %s", event->data);
 	
-	gchar *event_path = _clean_event_name(event->data);
+	gchar *event_path = evs_server_format_path(event->data, NULL);
 	
-	// So we break a rule: subscribe has to change the client for subscriptions, so allow it
-	status_t status = evs_client_sub_client(event_path, client);
+	status_t status = evs_client_sub_client(event_path, client, event->callback);
 	
 	// Attempt to subscribe the client to the event
 	if (status == CLIENT_INVALID_SUBSCRIPTION) {
@@ -263,7 +224,7 @@ static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler
 static status_t _evs_server_unsubscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	DEBUGF("event_unsubscribe: %s", event->data);
 	
-	gchar *event_path = _clean_event_name(event->data);
+	gchar *event_path = evs_server_format_path(event->data, NULL);
 	
 	// So we break a rule: unsubscribe has to change the client for subscriptions, so allow it
 	status_t status = evs_client_unsub_client(event_path, client);
@@ -376,7 +337,7 @@ status_t evs_server_handle(client_t *client) {
 	}
 	
 	// Prepare the event for writing back to the client
-	if (status == CLIENT_WRITE) {
+	if (status == CLIENT_WRITE || (status == CLIENT_GOOD && event.callback > 0)) {
 		// If there is data, then it needs to be stolen from the buffer
 		// Otherwise, there could be all sorts of issues with formatting
 		// the buffer using what's already in the buffer
@@ -408,7 +369,7 @@ status_t evs_server_handle(client_t *client) {
 	return status;
 }
 
-event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_subscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
+event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
 	
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
@@ -422,7 +383,7 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 		return NULL;
 	}
 	
-	gchar *path = _clean_event_name(event_path);
+	gchar *path = evs_server_format_path(event_path, NULL);
 	
 	g_mutex_lock(&_events_lock);
 	
@@ -450,6 +411,44 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 
 gchar* evs_server_path_from_handler(const event_handler_t *handler) {
 	return g_hash_table_lookup(_events_by_handler, handler);
+}
+
+gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra) {
+	// Remove any duplicated slashes
+	GString *ep = g_string_new(event_path);
+	gchar prev = ep->str[0];
+	gsize i = 1;
+	while (i < ep->len) {
+		if (ep->str[i] == '/' && prev == '/') {
+			// Remove the single slash
+			g_string_erase(ep, i, 1);
+		} else {
+			prev = ep->str[i];
+			i++;
+		}
+	}
+	
+	// Remove any trailing slashes
+	if (ep->str[--i] == '/') {
+		g_string_erase(ep, i, 1);
+	}
+	
+	// Make sure it starts with a slash
+	if (*(ep->str) != '/') {
+		g_string_prepend_c(ep, '/');
+	}
+	
+	// Handle any extra parameters
+	if (extra != NULL) {
+		for (guint i = 0; i < extra->len; i++) {
+			g_string_append_printf(ep, "/%s", (gchar*)g_ptr_array_index(extra, i));
+		}
+	}
+	
+	gchar *path = ep->str;
+	g_string_free(ep, FALSE);
+	
+	return path;
 }
 
 gboolean evs_server_init() {

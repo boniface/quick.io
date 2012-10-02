@@ -1,6 +1,64 @@
 #include "qio.h"
 
 /**
+ * The types of messages that can be sent asynchronously
+ */
+enum _async_message_types {
+	/**
+	 * A broadcast message.
+	 * Requires: _message_s#event_path, _message_s#message, _message_s#message_opcode
+	 */
+	_mt_broadcast,
+	
+	/**
+	 * A message to send to 1 user.
+	 * Requires: _message_s#client, _message_s#message, _message_s#message_opcode
+	 */
+	_mt_client,
+};
+
+/**
+ * A message that is waiting to be sent to user(s). It contains all the data it
+ * needs to send a message, regardless of any other memory references.
+ */
+typedef struct _async_message_s {
+	/**
+	 * The type of message being sent
+	 */
+	enum _async_message_types type;
+	
+	/**
+	 * The client to send the message to.
+	 */
+	client_t *client;
+	
+	/**
+	 * The path of the event we're publishing to.
+	 * This causes another hash table lookup, but it saves us from the following case:
+	 *
+	 * 1) Publish event to /test/event
+	 * 2) All clients unsubscribe from /test/event
+	 * 3) We attempt to publish with an invalid pointer (segfault!)
+	 *
+	 * @attention MUST be free()'d when done.
+	 */
+	gchar *event_path;
+	
+	/**
+	 * The un-prepared data to send to the client.
+	 * @attention MUST be free()'d when done.
+	 */
+	GString *message;
+	
+	/**
+	 * The opcode of the message.
+	 * The message's opcode that will be sent to the client in the websocket message's
+	 * opcode field.
+	 */
+	opcode_t message_opcode;
+} STRUCT_PACKED _async_message_s;
+
+/**
  * All of the subscriptions registered on the server.
  */
 static GHashTable* _events;
@@ -8,15 +66,12 @@ static GHashTable* _events;
 /**
  * The list of messages that we need to send in our next loop.
  */
-static GPtrArray *_messages;
+static GAsyncQueue *_messages;
 
 /**
- * For handling messages from multiple threads.
- *
- * From the GLib docs: "It is not necessary to initialize a mutex that has been
- * created that has been statically allocated."
+ * To stop async requests from colliding with freeing subscriptions
  */
-static GMutex _messages_lock;
+static GMutex _clean_lock;
 
 /**
  * Creates a subscription from a handler and friends.
@@ -87,15 +142,6 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
 }
 
 /**
- * Create a new messages array in a thread-safe way.
- */
-static void _new_messages() {
-	g_mutex_lock(&_messages_lock);
-	_messages = g_ptr_array_new();
-	g_mutex_unlock(&_messages_lock);
-}
-
-/**
  * @see evs_client_format_message()
  *
  * @param path If this is not NULL, then it MUST be free()'d
@@ -110,7 +156,7 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 	} else {
 		// Seriously, no handler = no message
 		if (handler == NULL) {
-			return CLIENT_UNKNOWN_EVENT;
+			return CLIENT_INVALID_SUBSCRIPTION;
 		}
 		
 		// First, start by constructing the name of the event we're publishing to, complete
@@ -118,7 +164,7 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 		gchar *handler_path = evs_server_path_from_handler(handler);
 		
 		if (handler_path == NULL) {
-			return CLIENT_UNKNOWN_EVENT;
+			return CLIENT_INVALID_SUBSCRIPTION;
 		}
 		
 		GString *ep = g_string_new(handler_path);
@@ -150,7 +196,7 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * @param sub The subscription to send the message to.
  * @param message The message to send to all the subscribers.
  */
-static void _evs_client_pub_message(evs_client_sub_t *sub, evs_client_message_t *message) {
+static void _evs_client_pub_message(evs_client_sub_t *sub, _async_message_s *message) {
 	UTILS_STATS_INC(evs_client_pubd_messages);
 
 	GPtrArray *dead_clients = g_ptr_array_new();
@@ -160,10 +206,10 @@ static void _evs_client_pub_message(evs_client_sub_t *sub, evs_client_message_t 
 	gsize msglen[h_len];
 	
 	msgs[h_rfc6455] = h_rfc6455_prepare_frame(
-		message->type,
+		message->message_opcode,
 		FALSE,
-		message->message,
-		message->message_len,
+		message->message->str,
+		message->message->len,
 		&msglen[h_rfc6455]
 	);
 	
@@ -206,7 +252,7 @@ void evs_client_client_ready(client_t *client) {
 	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
 }
 
-status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
+status_t evs_client_sub_client(const gchar *event_path, client_t *client, const guint32 callback) {
 	// Attempt to get the subscription to check if it exists
 	evs_client_sub_t *sub = _get_subscription(event_path, TRUE);
 	
@@ -223,6 +269,12 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 		return CLIENT_TOO_MANY_SUBSCRIPTIONS;
 	}
 	
+	// Ask the app if the path given is okay
+	status_t status = apps_evs_client_check_subscribe(client, sub, callback);
+	if (!(status & (CLIENT_GOOD | CLIENT_ASYNC))) {
+		return status;
+	}
+	
 	DEBUGF("Subscribing client to: %s", event_path);
 	
 	// Subscribe the client
@@ -231,9 +283,10 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client) {
 	// Give the client a reference to the key of the event he is subscribed to
 	g_ptr_array_add(client->subs, sub);
 	
+	// And now, once the subscribe is complete, send the general subscribe event
 	apps_evs_client_subscribe(client, sub);
 	
-	return CLIENT_GOOD;
+	return status;
 }
 
 status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
@@ -281,67 +334,75 @@ void evs_client_client_close(client_t *client) {
 	client->subs = NULL;
 }
 
-void evs_client_pub_messages() {
-	// If there are no messages to publish, then skip this
-	if (_messages->len == 0) {
-		return;
-	}
+void evs_client_send_messages() {
+	_async_message_s *message;
 	
-	// Swap the message queue out for a new one so that we can be thread-safe
-	// in our message processing
-	GPtrArray *messages = _messages;
-	_new_messages();
-	
-	// Go through all the messages and publish!
-	for (gsize i = 0; i < messages->len; i++) {
-		evs_client_message_t *message = g_ptr_array_index(messages, i);
-		
+	void _broadcast() {
 		// Find if the subscription we want to send to still exists
 		evs_client_sub_t *sub = _get_subscription(message->event_path, FALSE /* DON'T TOUCH */);
 		
 		if (sub != NULL) {
 			_evs_client_pub_message(sub, message);
 		}
-		
-		g_free(message->event_path);
-		g_free(message->message);
-		g_free(message);
 	}
 	
-	// Clean up the messages array we copied
-	g_ptr_array_free(messages, TRUE);
+	void _single() {
+		UTILS_STATS_INC(evs_client_async_messages);
+		
+		message_t m;
+		m.type = message->message_opcode;
+		m.buffer = message->message;
+		
+		client_write(message->client, &m);
+	}
+	
+	while ((message = g_async_queue_try_pop(_messages)) != NULL) {
+		switch (message->type) {
+			case _mt_broadcast:
+				_broadcast();
+				break;
+			
+			case _mt_client:
+				_single();
+				break;
+		}
+		
+		if (message->client != NULL) {
+			client_unref(message->client);
+		}
+		
+		if (message->event_path != NULL) {
+			g_free(message->event_path);
+		}
+		
+		g_string_free(message->message, TRUE);
+		g_slice_free1(sizeof(*message), message);
+	}
 }
 
 status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data) {
-	// Attempt to create a new publishable message
-	evs_client_message_t *emsg = g_try_malloc0(sizeof(*emsg));
-	if (emsg == NULL) {
-		return CLIENT_SERVER_OVERLOADED;
-	}
-	
 	// Format the message that will be sent to the clients
 	GString *message = g_string_sized_new(100);
-	
-	gchar *path;
+	gchar *event_path;
 	
 	// There are no callbacks for broadcast messages
-	_evs_client_format_message(handler, 0, 0, extra, type, data, message, &path);
+	status_t status = _evs_client_format_message(handler, 0, 0, extra, type, data, message, &event_path);
+	
+	if (status != CLIENT_GOOD) {
+		g_string_free(message, TRUE);
+		return status;
+	}
 	
 	// This one is tricky: duplicate the event path so that the following cannot happen:
 	//  1) Publish event to /test/event
 	//  2) All clients unsubscribe from /test/event
 	//  3) We attempt to publish with an invalid pointer (segfault!)
-	emsg->event_path = path;
-	emsg->type = op_text;
-	emsg->message = message->str;
-	emsg->message_len = message->len;
-	
-	// We need to add a message in a thread-safe way
-	g_mutex_lock(&_messages_lock);
-	g_ptr_array_add(_messages, emsg);
-	g_mutex_unlock(&_messages_lock);
-	
-	g_string_free(message, FALSE);
+	_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
+	emsg->type = _mt_broadcast;
+	emsg->event_path = event_path;
+	emsg->message = message;
+	emsg->message_opcode = op_text;
+	g_async_queue_push(_messages, emsg);
 	
 	return CLIENT_GOOD;
 }
@@ -354,7 +415,7 @@ gboolean evs_client_init() {
 	// Keys are copied before they are inserted, so when they're removed,
 	// they must be freed
 	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-	_new_messages();
+	_messages = g_async_queue_new();
 	
 	return TRUE;
 }
@@ -364,6 +425,8 @@ void evs_client_cleanup() {
 	GHashTableIter iter;
 	gchar *key;
 	evs_client_sub_t *sub;
+	
+	g_mutex_lock(&_clean_lock);
 	
 	g_hash_table_iter_init(&iter, _events);
 	while (g_hash_table_iter_next(&iter, (void*)&key, (void*)&sub)) {
@@ -379,6 +442,60 @@ void evs_client_cleanup() {
 			g_hash_table_iter_remove(&iter);
 		}
 	}
+	
+	g_mutex_unlock(&_clean_lock);
+}
+
+void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback) {
+	gchar *event_path = evs_server_path_from_handler(handler);
+	
+	if (event_path == NULL) {
+		return;
+	}
+
+	// Construct the event path the client subscribed to
+	gchar *ep = evs_server_format_path(event_path, extra);
+	
+	// Remove the client, firing all callbacks
+	evs_client_unsub_client(ep, client);
+	
+	// Send a message to the client if there is a callback, otherwise ignore
+	if (callback != 0) {
+		GString *message = g_string_sized_new(100);
+		gchar *data = g_strdup_printf("%s:%s", EVENT_RESPONSE_INVALID_SUBSCRIPTION, ep);
+		if (evs_client_format_message(handler, callback, 0, extra, d_plain, data, message) == CLIENT_GOOD) {
+			_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
+			emsg->type = _mt_client;
+			emsg->message = message;
+			emsg->message_opcode = op_text;
+			
+			emsg->client = client;
+			client_ref(client);
+			
+			g_async_queue_push(_messages, emsg);
+		}
+	}
+	
+	g_free(ep);
+}
+
+guint evs_client_number_subscribed(const gchar *event_path, const path_extra_t extra) {
+	// These operations can collide with free's, and that would be bad
+	g_mutex_lock(&_clean_lock);
+	
+	guint cnt = 0;
+	
+	gchar *ep = evs_server_format_path(event_path, extra);
+	evs_client_sub_t *sub = _get_subscription(event_path, FALSE);
+	g_free(ep);
+	
+	if (sub != NULL) {
+		cnt = g_hash_table_size(sub->clients);
+	}
+	
+	g_mutex_unlock(&_clean_lock);
+	
+	return cnt;
 }
 
 #ifdef TESTING

@@ -284,7 +284,7 @@ void conns_maintenance_tick() {
 	static guint ticks = 0;
 	
 	// Send out messages
-	evs_client_pub_messages();
+	evs_client_send_messages();
 	
 	// Check if there are any outstanding rebalance requests
 	_conns_balance();

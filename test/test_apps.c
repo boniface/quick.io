@@ -56,7 +56,7 @@ END_TEST
 START_TEST(test_apps_events_on_0) {
 	client_t *client = u_client_create(NULL);
 	
-	test_status_eq(evs_client_sub_client("/test/event", client), CLIENT_GOOD, "Subscribed");
+	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
@@ -67,7 +67,7 @@ END_TEST
 START_TEST(test_apps_events_on_1) {
 	client_t *client = u_client_create(NULL);
 	
-	evs_client_sub_client("/event", client);
+	evs_client_sub_client("/event", client, 0);
 	
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
@@ -78,7 +78,7 @@ END_TEST
 START_TEST(test_apps_events_off_0) {
 	client_t *client = u_client_create(NULL);
 	
-	evs_client_sub_client("/test/event", client);
+	evs_client_sub_client("/test/event", client, 0);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
 	evs_client_unsub_client("/test/event", client);
@@ -91,7 +91,7 @@ END_TEST
 START_TEST(test_apps_events_off_1) {
 	client_t *client = u_client_create(NULL);
 	
-	evs_client_sub_client("/event", client);
+	evs_client_sub_client("/event", client, 0);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
 	evs_client_unsub_client("/event", client);
@@ -104,7 +104,7 @@ END_TEST
 START_TEST(test_apps_events_handle_0) {
 	client_t *client = u_client_create(NULL);
 	
-	evs_client_sub_client("/test/event", client);
+	evs_client_sub_client("/test/event", client, 0);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
 	g_string_assign(client->message->buffer, "/test/event:0:plain=");
@@ -118,7 +118,7 @@ END_TEST
 START_TEST(test_apps_events_handle_1) {
 	client_t *client = u_client_create(NULL);
 	
-	evs_client_sub_client("/event", client);
+	evs_client_sub_client("/event", client, 0);
 	test_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
 	
 	g_string_assign(client->message->buffer, "/event:0:plain=");

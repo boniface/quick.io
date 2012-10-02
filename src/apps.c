@@ -46,11 +46,16 @@ static _app_callbacks_t callbacks[] = {
 static GPtrArray *_apps;
 
 /**
+ * If the applications inited successfully in their threads
+ */
+static gboolean _apps_init_success = TRUE;
+
+/**
  * Runs the thread that controls an entire application.
  */
 static gpointer _app_run(gpointer void_app) {
 	app_t *app = void_app;
-	event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_subscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
+	event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
 		event_handler_t* handler;
 		
 		if (app->event_prefix != NULL) {
@@ -64,8 +69,8 @@ static gpointer _app_run(gpointer void_app) {
 		return handler;
 	}
 	
-	if (app->init) {
-		app->init(on);
+	if (app->init != NULL) {
+		_apps_init_success &= app->init(on);
 	}
 	
 	g_mutex_lock(&(app->ready));
@@ -162,7 +167,7 @@ gboolean apps_run() {
 		}
 	)
 	
-	return TRUE;
+	return _apps_init_success;
 }
 
 void apps_client_connect(client_t *client) {
@@ -185,11 +190,15 @@ void apps_client_close(client_t *client) {
 	)
 }
 
-void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
-	if (sub->handler->on_subscribe != NULL) {
-		sub->handler->on_subscribe(client, sub->handler, sub->extra);
+status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const guint32 callback) {
+	if (sub->handler->on_subscribe) {
+		return sub->handler->on_subscribe(client, sub->handler, sub->extra, callback);
 	}
 	
+	return CLIENT_GOOD;
+}
+
+gboolean apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
 	// Notify all the general listeners that a subscription happened.
 	APP_FOREACH(
 		on_subscribe_cb cb = app->subscribe;
@@ -198,6 +207,8 @@ void apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
 			cb(client, sub->event_path, sub->extra);
 		}
 	)
+	
+	return TRUE;
 }
 
 void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub) {

@@ -103,6 +103,11 @@ typedef struct test_stats_s {
 	gsize evs_client_pubd_messages;
 	
 	/**
+	 * The number of individual, async messages sent.
+	 */
+	gsize evs_client_async_messages;
+	
+	/**
 	 * The number of clients closed during message publishing.
 	 */
 	gsize evs_client_pub_closes;
