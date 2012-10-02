@@ -10,11 +10,11 @@ static GOptionEntry command_options[] = {
 
 // Config file options
 static gchar *_bind_address = "127.0.0.1";
-static gint32 _port = 5000;
-static gint32 _max_mess_size = 1024;
+static gint _port = 5000;
+static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
-static gint32 _processes = 8;
-static gint32 _timeout = 5;
+static gint _processes = 8;
+static gint _timeout = 5;
 
 static config_file_entry_t _config_options[] = {
 	{"bind-address", e_string, &_bind_address},

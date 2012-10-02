@@ -337,7 +337,6 @@ status_t evs_server_handle(client_t *client) {
 }
 
 event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
-	
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
 		ERRORF("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
@@ -361,7 +360,7 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	}
 	
 	// Grab some memory to store the event info
-	event_handler_t *handler = g_try_malloc0(sizeof(*handler));
+	event_handler_t *handler = g_malloc0(sizeof(*handler));
 	handler->fn = fn;
 	handler->on_subscribe = on_subscribe;
 	handler->on_unsubscribe = on_unsubscribe;
