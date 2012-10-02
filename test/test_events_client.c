@@ -9,6 +9,8 @@
 #define INVALID_EVENT "\x81""\x27""/callback/1:0:plain=invalid:/test/event"
 #define INVALID_EVENT_EXTRA "\x81""\x36""/callback/1:0:plain=invalid:/test/event/test/something"
 
+#define ASYNC_CALLBACK "\x81""\x19""/callback/654987:0:plain="
+
 void _test_evs_client_setup() {
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
@@ -293,6 +295,58 @@ START_TEST(test_evs_client_subscribe_reject_child) {
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscriptions");
 	
 	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_subscribe_async) {
+	client_t *client = u_client_create(NULL);
+	
+	test_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
+	
+	test_size_eq(client->subs->len, 1, "Only 1 subscription");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_subscribe_async_with_callback) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	
+	test_status_eq(evs_client_sub_client("/test/async", client, 654987), CLIENT_ASYNC, "Async");
+	
+	test_size_eq(client->subs->len, 1, "Only 1 subscription");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
+	
+	evs_client_send_messages();
+	
+	char buff[1000];
+	memset(buff, 0, sizeof(buff));
+	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(ASYNC_CALLBACK)-1, "Correct len");
+	test_bin_eq(buff, ASYNC_CALLBACK, sizeof(ASYNC_CALLBACK)-1, "Correct callback sent");
+	
+	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 async callback sent");
+}
+END_TEST
+
+START_TEST(test_evs_client_subscribe_async_without_callback) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	
+	test_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
+	
+	test_size_eq(client->subs->len, 1, "Only 1 subscription");
+	
+	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
+	
+	evs_client_send_messages();
+	
+	test_size_eq(utils_stats()->evs_client_async_messages, 0, "1 async callback sent");
 }
 END_TEST
 
@@ -640,6 +694,9 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_client_subscribe_too_many_subscriptions);
 	tcase_add_test(tc, test_evs_client_subscribe_already_subscribed);
 	tcase_add_test(tc, test_evs_client_subscribe_reject_child);
+	tcase_add_test(tc, test_evs_client_subscribe_async);
+	tcase_add_test(tc, test_evs_client_subscribe_async_with_callback);
+	tcase_add_test(tc, test_evs_client_subscribe_async_without_callback);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Unsubscribe");

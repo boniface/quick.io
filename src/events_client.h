@@ -165,12 +165,26 @@ status_t evs_client_format_message(const event_handler_t *handler, const guint32
  * The client subscribed to an invalid event. The client should be sent an error message,
  * assuming a callback is specified, and unsubscribed from the event.
  *
+ * @ingroup AppFunctions
+ *
  * @param client The client to be unsubscribed.
  * @param event_path The path to the event
  * @param extra Any extra segments to add to the event path
  * @param callback The id of the callback the client sent with the event.
  */
 APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback);
+
+/**
+ * Send a callback to a user. This is mainly used for async events that need to send stuff back.
+ *
+ * @ingroup AppFunctions
+ *
+ * @param client The client to send the callback to
+ * @param type The data type
+ * @param data The data to send with the callback
+ * @param callback The callback ID
+ */
+APP_EXPORT void evs_client_send_callback(client_t *client, const enum data_t type, const gchar *data, const guint32 callback);
 
 /**
  * A cleanup routine for empty events.

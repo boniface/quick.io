@@ -463,7 +463,10 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 	if (callback != 0) {
 		GString *message = g_string_sized_new(100);
 		gchar *data = g_strdup_printf("%s:%s", EVENT_RESPONSE_INVALID_SUBSCRIPTION, ep);
-		if (evs_client_format_message(handler, callback, 0, extra, d_plain, data, message) == CLIENT_GOOD) {
+		
+		// No error condition when sending a callback, and since we do the error check here,
+		// there's no need to do any other error checks
+		if (evs_client_format_message(NULL, callback, 0, extra, d_plain, data, message) == CLIENT_GOOD) {
 			_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
 			emsg->type = _mt_client;
 			emsg->message = message;
@@ -474,9 +477,33 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 			
 			g_async_queue_push(_messages, emsg);
 		}
+		
+		g_free(data);
 	}
 	
 	g_free(ep);
+}
+
+void evs_client_send_callback(client_t *client, const enum data_t type, const gchar *data, const guint32 callback) {
+	// Umm, that would be stupid...
+	if (callback == 0) {
+		return;
+	}
+	
+	GString *message = g_string_sized_new(100);
+	// No error condition when sending a callback, and since we do the error check here,
+	// there's no need to do any other error checks
+	if (evs_client_format_message(NULL, callback, 0, NULL, type, data, message) == CLIENT_GOOD) {
+		_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
+		emsg->type = _mt_client;
+		emsg->message = message;
+		emsg->message_opcode = op_text;
+		
+		emsg->client = client;
+		client_ref(client);
+		
+		g_async_queue_push(_messages, emsg);
+	}
 }
 
 guint evs_client_number_subscribed(const gchar *event_path, const path_extra_t extra) {

@@ -197,7 +197,7 @@ START_TEST(test_client_refcount_0) {
 	client_t *client = u_client_create(NULL);
 	
 	client_ref(client);
-	test_size_eq(client->ref_count, 1, "Correct ref count");
+	test_size_eq(client->ref_count, 2, "Correct ref count");
 	
 	u_client_free(client);
 }
@@ -211,12 +211,12 @@ START_TEST(test_client_refcount_1) {
 	client_ref(client);
 	client_ref(client);
 	
-	test_size_eq(client->ref_count, 4, "Correct ref count");
+	test_size_eq(client->ref_count, 5, "Correct ref count");
 	
 	client_unref(client);
 	client_unref(client);
 	
-	test_size_eq(client->ref_count, 2, "Correct ref count");
+	test_size_eq(client->ref_count, 3, "Correct ref count");
 	
 	conns_client_close(client);
 	test_size_eq(client->state, cstate_dead, "Client closed");
@@ -227,7 +227,7 @@ START_TEST(test_client_refcount_2) {
 	client_t *client = u_client_create(NULL);
 	
 	client_ref(client);
-	test_size_eq(client->ref_count, 1, "Correct ref count");
+	test_size_eq(client->ref_count, 2, "Correct ref count");
 	
 	u_client_free(client);
 }
@@ -238,15 +238,15 @@ START_TEST(test_client_refcount_3) {
 	
 	client_ref(client);
 	client_ref(client);
-	test_size_eq(client->ref_count, 2, "Correct ref count");
+	test_size_eq(client->ref_count, 3, "Correct ref count");
 	conns_client_close(client);
-	test_size_eq(client->ref_count, 1, "Correct ref count");
+	test_size_eq(client->ref_count, 2, "Correct ref count");
 	
 	test_size_eq(client->state, cstate_dead, "Client dead");
 	
 	// Incrementing ref count after client is closed
 	client_ref(client);
-	test_size_eq(client->ref_count, 2, "Correct ref count");
+	test_size_eq(client->ref_count, 3, "Correct ref count");
 }
 END_TEST
 

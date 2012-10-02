@@ -29,6 +29,8 @@ client_t* u_client_create(int *socket) {
 		*socket = sockets[1];
 	}
 	
+	client_ref(client);
+	
 	return client;
 }
 
