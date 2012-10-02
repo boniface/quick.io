@@ -132,7 +132,7 @@ void conns_client_new(client_t *client) {
 	client->state = cstate_initing;
 	client->timer = -1;
 	
-	g_hash_table_insert(_clients, client, client);
+	g_hash_table_add(_clients, client);
 	client_ref(client);
 	
 	apps_client_connect(client);
@@ -277,7 +277,7 @@ void conns_client_timeout_set(client_t *client) {
 	}
 	
 	client->timer = _client_timeout_ticks;
-	g_hash_table_insert(_client_timeouts, client, client);
+	g_hash_table_add(_client_timeouts, client);
 }
 
 void conns_maintenance_tick() {

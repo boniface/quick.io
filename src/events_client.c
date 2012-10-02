@@ -278,7 +278,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client, const 
 	DEBUGF("Subscribing client to: %s", event_path);
 	
 	// Subscribe the client
-	g_hash_table_insert(sub->clients, client, client);
+	g_hash_table_add(sub->clients, client);
 	
 	// Give the client a reference to the key of the event he is subscribed to
 	g_ptr_array_add(client->subs, sub);

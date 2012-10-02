@@ -109,7 +109,7 @@ START_TEST(test_qsys_too_much_data) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 	
 	// Flood the socket with tons of data and make sure it gets closed
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 15; i++) {
 		send(sock, buff, sizeof(buff), MSG_NOSIGNAL);
 	}
 	
