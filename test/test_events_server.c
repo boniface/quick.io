@@ -82,6 +82,35 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 }
 END_TEST
 
+START_TEST(test_evs_event_creation_valid_single_digit_callback) {
+	client_t *client = u_client_create(NULL);
+	
+	event_t event;
+	memset(&event, 0, sizeof(event));
+	event_handler_t *handler = NULL;
+	message_t *message = client->message;
+	
+	g_string_assign(message->buffer, "/qio/noop:1:plain=");
+	
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	
+	// Test the event data
+	test_str_eq(event.path, "/qio/noop", "Correct event name");
+	test_uint16_eq(event.extra->len, 0, "No extra segments");
+	test_uint32_eq(event.callback, 1, "No callback");
+	test(event.type == d_plain, "Plain data type set");
+	test_str_eq(event.data, "", "No data set");
+	
+	// Test the side-effects
+	event_handler_t *right_handler = evs_server_get_handler(event.path, NULL);
+	test_ptr_eq(handler, right_handler, "Correct handler retrieved");
+	test_size_eq(message->buffer->len, 0, "Buffer cleared");
+	
+	_event_free(&event);
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_evs_event_creation_valid_callback) {
 	client_t *client = u_client_create(NULL);
 	
@@ -586,6 +615,7 @@ Suite* events_server_suite() {
 	tc = tcase_create("Event Creation");
 	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
 	tcase_add_test(tc, test_evs_event_creation_valid_minimal);
+	tcase_add_test(tc, test_evs_event_creation_valid_single_digit_callback);
 	tcase_add_test(tc, test_evs_event_creation_valid_callback);
 	tcase_add_test(tc, test_evs_event_creation_valid_json);
 	tcase_add_test(tc, test_evs_event_creation_no_data);

@@ -137,8 +137,9 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  * @param extra Any extra parameters that came in with the subscription
  * @param callback The callback to be issued if going async
  *
- * @return True if the client subscribed to a valid event, false otherwise, indicating the
- * subscription should be canceled.
+ * @return CLIENT_GOOD Everything is good, send the callback as normal.
+ * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
+ * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
 typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback);
 /**

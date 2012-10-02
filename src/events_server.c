@@ -79,7 +79,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// Support a message like: "/noop::plain="
 	// There doesn't need to be a callback specified, but if there is one, and it's wrong,
 	// that is still an error
-	if (end - curr > 1) {
+	if (end - curr > 0) {
 		gchar *endptr;
 		event->callback = g_ascii_strtoull(curr, &endptr, 10);
 		
@@ -158,37 +158,8 @@ static status_t _evs_server_noop(client_t *client, event_handler_t *handler, eve
 	return CLIENT_GOOD;
 }
 
-/**
- * Send a message to the channel a user is subscribed to.
- *
- * CURRENTLY DISABLED UNTIL I GET SOME BETTER IDEAS.
- *
- * Syntax: "send:1477:some random message string"
- */
-/**
-static status_t _evs_server_send(client_t *client, event_t *event, GString *response) {
-	gchar *room = _slice(message);
-	
-	if (room == NULL) {
-		return CLIENT_BAD_COMMAND;
-	}
-	
-	DEBUGF("event_send: %s; message: %s", room, message->buffer->str);
-	
-	status_t status = pub_message(room, message);
-	free(room);
-	
-	// We don't send anything back for a send...that's handled transparently for us
-	g_string_truncate(message->buffer, 0);
-	
-	return status;
-	
-	return CLIENT_GOOD;
-}
-*/
-
 static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
-	DEBUGF("event_subscribe: %s", event->data);
+	DEBUGF("event_subscribe: %s; callback: %u", event->data, event->callback);
 	
 	gchar *event_path = evs_server_format_path(event->data, NULL);
 	
@@ -457,7 +428,6 @@ gboolean evs_server_init() {
 	evs_server_on("/qio/sub", _evs_server_subscribe, NULL, NULL, FALSE);
 	evs_server_on("/qio/unsub", _evs_server_unsubscribe, NULL, NULL, FALSE);
 	evs_server_on("/qio/noop", _evs_server_noop, NULL, NULL, FALSE);
-	// evs_server_on("/send", _evs_server_send, NULL, NULL, FALSE);
 	
 	return TRUE;
 }
