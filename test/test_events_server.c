@@ -446,7 +446,7 @@ START_TEST(test_evs_handler_noop_callback) {
 	g_string_assign(client->message->buffer, "/qio/noop:123:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Noop recieved");
-	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=", "Callback with no data");
+	test_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=", "Callback with no data");
 	
 	u_client_free(client);
 }
@@ -458,7 +458,7 @@ START_TEST(test_evs_handler_ping) {
 	g_string_assign(client->message->buffer, "/qio/ping:123:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Data sent back");
-	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=test", "Ping sent back correct data");
+	test_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=test", "Ping sent back correct data");
 	
 	u_client_free(client);
 }
@@ -470,7 +470,7 @@ START_TEST(test_evs_handler_ping_no_data) {
 	g_string_assign(client->message->buffer, "/qio/ping:123:plain=");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Data sent back");
-	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=", "Ping sent back correct data");
+	test_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=", "Ping sent back correct data");
 	
 	u_client_free(client);
 }
@@ -482,7 +482,7 @@ START_TEST(test_evs_handler_subscribe) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/doesnt/exist");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/doesnt/exist", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/doesnt/exist", "Bad event");
 	
 	u_client_free(client);
 }
@@ -494,7 +494,7 @@ START_TEST(test_evs_handler_subscribe_to_bad_format) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=0");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/0", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/0", "Bad event");
 	
 	u_client_free(client);
 }
@@ -511,7 +511,7 @@ START_TEST(test_evs_handler_subscribe_too_many_subs) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_MAX_SUBSCRIPTIONS":/qio/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_MAX_SUBSCRIPTIONS":/qio/noop", "Bad event");
 	
 	u_client_free(client);
 }
@@ -526,7 +526,7 @@ START_TEST(test_evs_handler_subscribe_already_subscribed) {
 	
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_ALREADY_SUBSCRIBED":/qio/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_ALREADY_SUBSCRIBED":/qio/noop", "Bad event");
 	
 	u_client_free(client);
 }
@@ -541,7 +541,7 @@ START_TEST(test_evs_handler_unsubscribe) {
 	
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Unsubscribed");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain=", "Unsubscribed");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=", "Unsubscribed");
 	
 	u_client_free(client);
 }
@@ -552,7 +552,7 @@ START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
 	
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/qio/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/qio/noop", "Bad event");
 	
 	u_client_free(client);
 }
@@ -563,7 +563,7 @@ START_TEST(test_evs_handler_unsubscribe_bad_event) {
 	
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=0");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/0", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/0", "Bad event");
 	
 	u_client_free(client);
 }
@@ -594,7 +594,7 @@ START_TEST(test_evs_server_default_callbacks_2) {
 	g_string_append(client->message->buffer, "/qio/ping:123:plain=test");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent");
-	test_str_eq(client->message->buffer->str, "/callback/123:0:plain=test", "Correct data sent");
+	test_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=test", "Correct data sent");
 	
 	u_client_free(client);
 }

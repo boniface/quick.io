@@ -452,7 +452,7 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 	if (event_path == NULL) {
 		return;
 	}
-
+	
 	// Construct the event path the client subscribed to
 	gchar *ep = evs_server_format_path(event_path, extra);
 	
@@ -467,6 +467,7 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 		// No error condition when sending a callback, and since we do the error check here,
 		// there's no need to do any other error checks
 		if (evs_client_format_message(NULL, callback, 0, extra, d_plain, data, message) == CLIENT_GOOD) {
+			
 			_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
 			emsg->type = _mt_client;
 			emsg->message = message;

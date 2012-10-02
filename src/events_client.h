@@ -16,7 +16,7 @@
 /**
  * The message format for a callback.
  */
-#define F_CALLBACK_PATH "/callback/%" G_GUINT32_FORMAT
+#define F_CALLBACK_PATH "/qio/callback/%" G_GUINT32_FORMAT
 
 /**
  * Gets a string for the event type.

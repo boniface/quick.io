@@ -7,7 +7,7 @@
 #define TEST_EPOLL_WAIT 100
 
 #define PING "/qio/ping:123:plain=pingeth"
-#define PING_RESPONSE "\x81""\x1d""/callback/123:0:plain=pingeth"
+#define PING_RESPONSE "\x81""\x21""/qio/callback/123:0:plain=pingeth"
 #define PING_DOUBLE_RESPONSE PING_RESPONSE PING_RESPONSE
 
 #define INVALID_SUBSCRIPTION "/qio/sub:0:plain=/this/doesnt/exist"

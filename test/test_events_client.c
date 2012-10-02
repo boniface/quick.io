@@ -6,10 +6,10 @@
 #include "test.h"
 
 #define PUB_EVENT "\x81""\x1d""/test/event:0:plain=something"
-#define INVALID_EVENT "\x81""\x27""/callback/1:0:plain=invalid:/test/event"
-#define INVALID_EVENT_EXTRA "\x81""\x36""/callback/1:0:plain=invalid:/test/event/test/something"
+#define INVALID_EVENT "\x81""\x2b""/qio/callback/1:0:plain=invalid:/test/event"
+#define INVALID_EVENT_EXTRA "\x81""\x3a""/qio/callback/1:0:plain=invalid:/test/event/test/something"
 
-#define ASYNC_CALLBACK "\x81""\x19""/callback/654987:0:plain="
+#define ASYNC_CALLBACK "\x81""\x1d""/qio/callback/654987:0:plain="
 
 void _test_evs_client_setup() {
 	utils_stats_setup();
@@ -158,7 +158,7 @@ START_TEST(test_evs_client_format_message_with_callback) {
 	status_t status = evs_client_format_message(NULL, 1, 0, extra, d_plain, "ßäū€öł", buffer);
 	
 	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/callback/1:0:plain=ßäū€öł", "Message formatted correctly");
+	test_str_eq(buffer->str, "/qio/callback/1:0:plain=ßäū€öł", "Message formatted correctly");
 	
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -176,7 +176,7 @@ START_TEST(test_evs_client_format_message_with_server_callback) {
 	status_t status = evs_client_format_message(NULL, 1, 123, extra, d_plain, "ßäū€öł", buffer);
 	
 	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/callback/1:123:plain=ßäū€öł", "Message formatted correctly");
+	test_str_eq(buffer->str, "/qio/callback/1:123:plain=ßäū€öł", "Message formatted correctly");
 	
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -210,7 +210,7 @@ START_TEST(test_evs_client_format_message_not_subscribed_callback) {
 	status_t status = evs_client_format_message(handler, 123, 0, extra, d_plain, "abcd", buffer);
 	
 	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/callback/123:0:plain=abcd", "Message formatted correctly");
+	test_str_eq(buffer->str, "/qio/callback/123:0:plain=abcd", "Message formatted correctly");
 	
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
