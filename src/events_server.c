@@ -286,8 +286,6 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
 }
 
 status_t evs_server_handle(client_t *client) {
-	DEBUGF("Message: %s", client->message->buffer->str);
-	
 	event_t event;
 	event_handler_t *handler = NULL;
 	status_t status = _event_new(client->message, &handler, &event);
