@@ -52,6 +52,17 @@
 #define ERRORF(format, ...) _LOGF("ERROR", format, __VA_ARGS__)
 
 /**
+ * A fatal error, after which nothing can continue.
+ */
+#define FATAL(out) _LOG("FATAL", out); exit(1)
+
+/**
+ * A formatted fatal error, after which nothing can continue.
+ */
+#define FATALF(format, ...) _LOGF("FATAL", format, __VA_ARGS__); exit(1)
+
+
+/**
  * Handles segmentation faults with nice backtraces.
  */
 void debug_handle_signals(void);

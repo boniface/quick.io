@@ -38,7 +38,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	
 	// Replace what we just took in the message, for responses
 	g_string_free(message->buffer, FALSE);
-	message->buffer = g_string_sized_new(0);
+	message->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
 	
 	// Make sure the event was given in the correct format:
 	// event:msgId:type=data

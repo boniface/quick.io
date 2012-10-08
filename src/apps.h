@@ -139,7 +139,7 @@ typedef struct app_s {
 	 * In order to run an application loop, or anything,
 	 * this function must be implemented.
 	 */
-	app_cb run;
+	app_on_cb run;
 	
 	/**
 	 * A reference to an application's `app_client_connect` function.

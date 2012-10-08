@@ -5,7 +5,7 @@ CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/http-parser
 LDFLAGS += -Wl,-E
 
 OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o
-TARGET = $(BUILDDIR)/server
+TARGET = $(BUILDDIR)/qio
 TESTING = 0
 
 .PHONY: default clean

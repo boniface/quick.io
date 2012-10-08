@@ -34,13 +34,13 @@
 #define ERROR(out) _LOG("ERROR", out)
 #define ERRORF(format, ...) _LOGF("ERROR", format, __VA_ARGS__)
 
-#define SUBSCRIBE_1477 "\x81\xa1""abcd""N""\x13""\n""\x0b""N""\x11""\x16""\x06""[""R""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""S""V"
-#define SUBSCRIBE_1465 "\x81\xa1""abcd""N""\x13""\n""\x0b""N""\x11""\x16""\x06""[""R""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""R""T"
-#define SUBSCRIBE_1469 "\x81\xa1""abcd""N""\x13""\n""\x0b""N""\x11""\x16""\x06""[""R""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""R""X"
+#define SUBSCRIBE_1477 "\x81\xa1""abcd""N""\x13""\n""\x0b""N""\x11""\x16""\x06""[""S""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""S""V"
+#define SUBSCRIBE_1465 "\x81\xa1""abcd""N""\x13""\n""\x0b""N""\x11""\x16""\x06""[""S""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""R""T"
+#define SUBSCRIBE_1469 "\x81\xa1""abcd""N""\x13""\n""\x0b""N""\x11""\x16""\x06""[""S""Y""\x14""\r""\x03""\n""\n""\\""M""\n""\x0c""\x13""M""\x17""\x0c""\x14""\x0f""\x01""\x17""N""S""W""R""X"
 
-#define UNSUBSCRIBE_1477 "\x81\xa3""abcd""N""\x13""\n""\x0b""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""U""T"
-#define UNSUBSCRIBE_1465 "\x81\xa3""abcd""N""\x13""\n""\x0b""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""V"
-#define UNSUBSCRIBE_1469 "\x81\xa3""abcd""N""\x13""\n""\x0b""N""\x17""\r""\x17""\x14""\x00""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""Z"
+#define UNSUBSCRIBE_1477 "\x81\xa3""abcd""N""\x13""\n""\x0b""N""\x17""\r""\x17""\x14""\x00""Y""U""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""U""T"
+#define UNSUBSCRIBE_1465 "\x81\xa3""abcd""N""\x13""\n""\x0b""N""\x17""\r""\x17""\x14""\x00""Y""U""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""V"
+#define UNSUBSCRIBE_1469 "\x81\xa3""abcd""N""\x13""\n""\x0b""N""\x17""\r""\x17""\x14""\x00""Y""U""[""\x12""\x0f""\x05""\x08""\x0c""^""K""\x08""\n""\x11""K""\x15""\n""\x16""\t""\x03""\x11""L""U""U""T""Z"
 
 static GHashTable *clients;
 struct event_base *_base;

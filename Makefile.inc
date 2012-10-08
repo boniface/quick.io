@@ -32,8 +32,7 @@ endif
 
 # If we should include gprof stuffs
 ifdef PROFILE
-	CFLAGS += -pg -DCOMPILE_PROFILE=1
-	LDFLAGS += -pg
+	CFLAGS += -g -DCOMPILE_PROFILE=1
 endif
 
 #From: http://stackoverflow.com/questions/3432542/how-can-i-get-more-accurate-results-from-gcov
@@ -43,8 +42,8 @@ ifdef TESTING
 	CFLAGS += -fno-inline -fno-default-inline --coverage -DTESTING=1
 endif
 
-# Don't optimize when debugging, profiling, testing, etc
+# Don't optimize when debugging, testing, etc
 # Gives better information about coverage and everything
 ifndef OPTIMIZE
-	CFLAGS += -O2
+	CFLAGS += -O3
 endif

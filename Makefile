@@ -21,7 +21,7 @@ docs:
 	doxygen
 
 run: debug
-	./$(DIR_BUILD_DEBUG)/server
+	./$(DIR_BUILD_DEBUG)/qio
 
 build_dir:
 	mkdir -p $(BUILDDIR)
@@ -29,6 +29,7 @@ build_dir:
 build: build_dir
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
+	$(MAKE) -C example/node/ clean all
 	$(MAKE) -C src
 	$(MAKE) -C app
 

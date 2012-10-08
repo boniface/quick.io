@@ -6,10 +6,6 @@
 		body \
 	}
 
-#define APP_PREFORK 0
-#define APP_POSTFORK 1
-#define APP_RUN 2
-
 /**
  * The callbacks that we're going to be using
  */
@@ -76,7 +72,9 @@ static gpointer _app_run(gpointer void_app) {
 	g_mutex_lock(&(app->ready));
 	
 	if (app->run) {
-		app->run();
+		if (!app->run(on)) {
+			FATALF("App \"%s\" exited", app->name);
+		}
 	}
 	
 	return NULL;

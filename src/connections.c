@@ -39,7 +39,7 @@ static void _conns_message_new(client_t *client) {
 	
 	// Replace any slots in the message that might have been freed
 	if (message == NULL) {
-		message = g_try_malloc0(sizeof(*message));
+		message = g_malloc0(sizeof(*message));
 	}
 	
 	if (message->socket_buffer == NULL) {
