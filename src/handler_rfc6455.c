@@ -59,10 +59,10 @@
  */
 static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	message_t *message = client->message;
-	char *buff = message->socket_buffer->str;
+	char *sbuff = message->socket_buffer->str;
 	
 	// Advance the buffer past the header, we can't read it
-	buff += header_len;
+	sbuff += header_len;
 	
 	// It's possible we have more on the socket buffer than this message, so only
 	// read the message.  It's also possible the buffer doesn't contain the whole
@@ -72,15 +72,19 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	// Transform the 32bit int to a char array for simpler use (read: offsets)
 	char *mask = (char*)(&message->mask);
 	
-	// For quicker access
-	GString *ob = message->buffer;
-	
 	// The mask location depends on how much we have already read
-	gsize mask_loc = ob->len;
+	gsize position = message->buffer->len;
 	
-	// Run through the remainder of the string and throw it to the buffer
-	for (gsize i = 0; i < remaining; i++) {
-		g_string_append_c(ob, (char)(*(buff + i) ^ mask[mask_loc++ % 4]));
+	// +1 for the NULL byte
+	gsize required_len = message->buffer->len + remaining;
+	
+	// Access the string directly, it's a bit faster
+	// But make sure its internal length is set correctly and that there's enough space
+	g_string_set_size(message->buffer, required_len);
+	
+	gchar *ob = message->buffer->str;
+	for (gsize i = 0; i < remaining; i++, position++) {
+		ob[position] = (char)(*(sbuff + i) ^ mask[position & 3]);
 	}
 	
 	// Update the current command's mask and length for any future reads
