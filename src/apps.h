@@ -205,7 +205,7 @@ void apps_client_close(client_t *client);
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const guint32 callback);
+status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const callback_t callback);
 
 /**
  * Inform all the apps when a client has added a subscription.

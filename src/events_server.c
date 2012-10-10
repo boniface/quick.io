@@ -17,6 +17,15 @@ static GHashTable* _events_by_handler;
 static GMutex _events_lock;
 
 /**
+ * Since callbacks can be created from many threads, we have to lock them. Also, since it's
+ * highly unlikely that tons of threads are going to be creating tons of callbacks all the
+ * time (and even if they are, the model we're going after is 1 process per core), it's
+ * simpler just to use a single lock until we can warrant the resource overhead of a lock
+ * per client, or something similar. 
+ */
+static GMutex _callbacks_lock;
+
+/**
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
@@ -139,9 +148,45 @@ static void _event_free(event_t *event) {
 	}
 }
 
-/**
- * The "ping:" command
- */
+static void _evs_server_callback_free(struct client_cb_s cb) {
+	// Get rid of the callback's data, that's over
+	// No need to alert any errors here: those are all written in the _new() function
+	if (cb.data != NULL && cb.free_fn != NULL) {
+		cb.free_fn(cb.data);
+	}
+}
+
+static status_t _evs_server_callback(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	if (event->extra->len != 1) {
+		return CLIENT_BAD;
+	}
+	
+	callback_t compacted = g_ascii_strtoull(g_ptr_array_index(event->extra, 0), NULL, 10);
+	guint8 slot = compacted >> 8;
+	guint8 id = compacted & 0xFF;
+	
+	g_mutex_lock(&_callbacks_lock);
+	
+	// If a callback came through that was evicted, ignore it
+	if (client->callbacks[slot].id != id) {
+		g_mutex_unlock(&_callbacks_lock);
+		return CLIENT_GOOD;
+	}
+	
+	// Get a copy of the callback so we can unlock faster
+	struct client_cb_s cb = client->callbacks[slot];
+	
+	// Mark the callback as empty
+	client->callbacks[slot].fn = NULL;
+	
+	g_mutex_unlock(&_callbacks_lock);
+	
+	status_t status = cb.fn(cb.data, event);
+	_evs_server_callback_free(cb);
+	
+	return status;
+}
+
 static status_t _evs_server_ping(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	// This command just needs to send back whatever text we recieved
 	// Only do this if a callback is given (the logic in the handler takes
@@ -150,9 +195,6 @@ static status_t _evs_server_ping(client_t *client, event_handler_t *handler, eve
 	return CLIENT_GOOD;
 }
 
-/**
- * Does nothing, just says "good" back.
- */
 static status_t _evs_server_noop(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	g_string_set_size(response, 0);
 	return CLIENT_GOOD;
@@ -417,14 +459,74 @@ gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra)
 	return path;
 }
 
+status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t callback) {
+	return CLIENT_INVALID_SUBSCRIPTION;
+}
+
+callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn) {
+	g_mutex_lock(&_callbacks_lock);
+	
+	if (fn == NULL) {
+		ERROR("No callback function passed into evs_server_callback_new(). You probably didn't mean that.");
+		
+		if (data != NULL && free_fn != NULL) {
+			free_fn(data);
+		}
+		
+		return 0;
+	}
+	
+	// Attempt to find an empty place to put the callback
+	guint8 i = 0;
+	for ( ; i < MAX_CALLBACKS; i++) {
+		if (client->callbacks[i].fn == NULL) {
+			break;
+		}
+	}
+	
+	// Could not find an open callback slot, just evict at random
+	if (i >= MAX_CALLBACKS) {
+		i = (guint8)g_random_int_range(0, MAX_CALLBACKS);
+		_evs_server_callback_free(client->callbacks[i]);
+		
+		#warning send an evict callback
+	}
+	
+	client->callbacks[i].id++;
+	client->callbacks[i].fn = fn;
+	client->callbacks[i].data = data;
+	client->callbacks[i].free_fn = free_fn;
+	
+	// Callbacks might overlap on the client: the callback might be active on the client
+	// when we kill it, and there's a chance the client could send it to the server,
+	// so to make sure we don't fire the wrong callback, we keep an ID in the callback
+	// and incremement to indicate that it's new. Thus, when a callback comes in from
+	// the client and we deconstruct it, if the ID doesn't match, we just discard it and
+	// move on.
+	guint16 id = (i << 8) | client->callbacks[i].id;
+	
+	g_mutex_unlock(&_callbacks_lock);
+	
+	return id;
+}
+
+void evs_server_client_close(client_t *client) {
+	// for (callback_t i = 0; i < MAX_CALLBACKS; i++) {
+	// 	if (client->callbacks[i].callback != NULL) {
+	// 		_evs_server_callback_free(client, i);
+	// 	}
+	// }
+}
+
 gboolean evs_server_init() {
 	_events_by_path = g_hash_table_new(g_str_hash, g_str_equal);
 	_events_by_handler = g_hash_table_new(NULL, NULL);
 	
+	evs_server_on("/qio/callback", _evs_server_callback, evs_no_subscribe, NULL, TRUE);
+	evs_server_on("/qio/noop", _evs_server_noop, NULL, NULL, FALSE);
 	evs_server_on("/qio/ping", _evs_server_ping, NULL, NULL, FALSE);
 	evs_server_on("/qio/sub", _evs_server_subscribe, NULL, NULL, FALSE);
 	evs_server_on("/qio/unsub", _evs_server_unsubscribe, NULL, NULL, FALSE);
-	evs_server_on("/qio/noop", _evs_server_noop, NULL, NULL, FALSE);
 	
 	return TRUE;
 }

@@ -146,7 +146,7 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
  *
  * @param path If this is not NULL, then it MUST be free()'d
  */
-static status_t _evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, gchar **path) {
+static status_t _evs_client_format_message(const event_handler_t *handler, const callback_t callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer, gchar **path) {
 	// A way of getting the path back to the caller
 	gchar *final_path;
 	
@@ -252,7 +252,7 @@ void evs_client_client_ready(client_t *client) {
 	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
 }
 
-status_t evs_client_sub_client(const gchar *event_path, client_t *client, const guint32 callback) {
+status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t callback) {
 	// Attempt to get the subscription to check if it exists
 	evs_client_sub_t *sub = _get_subscription(event_path, TRUE);
 	
@@ -407,7 +407,7 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	return CLIENT_GOOD;
 }
 
-status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer) {
+status_t evs_client_format_message(const event_handler_t *handler, const callback_t callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer) {
 	return _evs_client_format_message(handler, callback, server_callback, extra, type, data, buffer, NULL);
 }
 
@@ -446,7 +446,7 @@ void evs_client_cleanup() {
 	g_mutex_unlock(&_clean_lock);
 }
 
-void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback) {
+void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t callback) {
 	gchar *event_path = evs_server_path_from_handler(handler);
 	
 	if (event_path == NULL) {
@@ -484,7 +484,7 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 	g_free(ep);
 }
 
-void evs_client_send_callback(client_t *client, const enum data_t type, const gchar *data, const guint32 callback) {
+void evs_client_send_callback(client_t *client, const callback_t callback, const enum data_t type, const gchar *data, const callback_t server_callback) {
 	// Umm, that would be stupid...
 	if (callback == 0) {
 		return;
@@ -493,7 +493,7 @@ void evs_client_send_callback(client_t *client, const enum data_t type, const gc
 	GString *message = g_string_sized_new(100);
 	// No error condition when sending a callback, and since we do the error check here,
 	// there's no need to do any other error checks
-	if (evs_client_format_message(NULL, callback, 0, NULL, type, data, message) == CLIENT_GOOD) {
+	if (evs_client_format_message(NULL, callback, server_callback, NULL, type, data, message) == CLIENT_GOOD) {
 		_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
 		emsg->type = _mt_client;
 		emsg->message = message;

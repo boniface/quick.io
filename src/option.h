@@ -121,6 +121,11 @@ APP_EXPORT gchar* option_bind_address();
 gchar* option_config_file();
 
 /**
+ * The maximum number of callbacks a client may have at a single time.
+ */
+guint64 option_max_callbacks();
+
+/**
  * The maximum length a message may be.
  */
 guint64 option_max_message_size();

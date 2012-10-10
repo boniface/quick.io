@@ -230,9 +230,6 @@ struct client_s {
 	
 	/**
 	 * Which events the client is currently subscribed to.
-	 * @attention This is an array of strings (pointers to the keys in the events
-	 * hash table); as such, values MAY NEVER be free'd.
-	 * @warning NOT thread safe.
 	 */
 	GPtrArray *subs;
 	
@@ -242,10 +239,15 @@ struct client_s {
 	message_t *message;
 	
 	/**
+	 * The callbacks registered on the client.
+	 */
+	struct client_cb_s callbacks[MAX_CALLBACKS];
+	
+	/**
 	 * The number of references the client has.
 	 */
 	volatile gsize ref_count;
-} STRUCT_PACKED;
+};
 
 /**
  * Handle a connection from a client. Once it's handled, update the client
@@ -267,7 +269,8 @@ status_t client_message(client_t *client);
  * Write a specific message to a client.
  *
  * @param client The client being handled.
- * @param message The messages to send to the client. If this paramter is null, it will attempt to extract the message from the client.
+ * @param message The messages to send to the client. If this paramter is null, it will
+ * attempt to extract the message from the client.
  */
 status_t client_write(client_t *client, message_t *message);
 

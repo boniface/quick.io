@@ -7,7 +7,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define CLIENTS 20000
+#define CLIENTS 1200
 #define ADDRESS "127.0.0.1"
 
 #define HANDSHAKE "GET /qio HTTP/1.1\n" \

@@ -25,6 +25,11 @@ typedef struct evs_client_sub_s evs_client_sub_t;
 typedef struct event_handler_s event_handler_t;
 
 /**
+ * Defined in events_server.h
+ */
+typedef struct client_cb_s client_cb_t;
+
+/**
  * Defined in client.h
  */
 typedef struct client_s client_t;
@@ -39,8 +44,8 @@ typedef guint16 status_t;
 
 // Some out-of-order guys for dependencies
 #include "qsys.h"
-#include "client.h"
 #include "events_server.h"
+#include "client.h"
 #include "events_client.h"
 
 #include "apps.h"

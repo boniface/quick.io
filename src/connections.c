@@ -147,6 +147,7 @@ void conns_client_close(client_t *client) {
 	conns_message_free(client);
 	apps_client_close(client);
 	evs_client_client_close(client);
+	evs_server_client_close(client);
 	qsys_close(client);
 	
 	// Remove our last reference, this MUST be done last so that any free operation

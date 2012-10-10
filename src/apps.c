@@ -188,7 +188,7 @@ void apps_client_close(client_t *client) {
 	)
 }
 
-status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const guint32 callback) {
+status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const callback_t callback) {
 	if (sub->handler->on_subscribe) {
 		return sub->handler->on_subscribe(client, sub->handler, sub->extra, callback);
 	}

@@ -600,6 +600,81 @@ START_TEST(test_evs_server_default_callbacks_2) {
 }
 END_TEST
 
+START_TEST(test_evs_server_server_callback_sane_0) {
+	client_t *client = u_client_create(NULL);
+	
+	status_t _on(void *data, const event_t *event) {
+		return CLIENT_GOOD;
+	}
+	
+	test(evs_server_callback_new(client, _on, NULL, NULL) > 0, "Callback ID sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_sane_1) {
+	client_t *client = u_client_create(NULL);
+	
+	status_t _on(void *data, const event_t *event) {
+		return CLIENT_GOOD;
+	}
+	
+	for (guint i = 0; i < MAX_CALLBACKS+2; i++) {
+		test(evs_server_callback_new(client, _on, NULL, NULL) > 0, "Callback ID sent");
+	}
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_evict_0) {
+	client_t *client = u_client_create(NULL);
+	
+	callback_t cbs[MAX_CALLBACKS+2];
+	
+	guint16 frees = 0;
+	void _free(void *data) {
+		free(data);
+		frees++;
+	}
+	
+	guint16 calls = 0;
+	status_t _on(void *data, const event_t *event) {
+		calls++;
+		return CLIENT_GOOD;
+	}
+	
+	// 1: Get a few callbacks evicted
+	for (guint i = 0; i < G_N_ELEMENTS(cbs); i++) {
+		void *t = g_malloc(sizeof(*t));
+		cbs[i] = evs_server_callback_new(client, _on, t, _free);
+	}
+	
+	// 2: Find one of them, just to make sure
+	client_cb_t *cb;
+	for (guint i = 0; i < MAX_CALLBACKS; i++) {
+		if (client->callbacks[i].id > 1) {
+			cb = &(client->callbacks[i]);
+			break;
+		}
+	}
+	
+	test(cb != NULL, "Found callback");
+	
+	// 3: Fire all of the callbacks
+	for (guint i = 0; i < G_N_ELEMENTS(cbs); i++) {
+		g_string_printf(client->message->buffer, F_CALLBACK_PATH ":0:plain=", cbs[i]);
+		evs_server_handle(client);
+	}
+	
+	test_uint32_eq(calls, MAX_CALLBACKS, "Callbacks called");
+	test_uint32_eq(frees, G_N_ELEMENTS(cbs), "Everything free'd");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* events_server_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Events - Server");
@@ -670,6 +745,13 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_default_callbacks_0);
 	tcase_add_test(tc, test_evs_server_default_callbacks_1);
 	tcase_add_test(tc, test_evs_server_default_callbacks_2);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Server callbacks");
+	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_test(tc, test_evs_server_server_callback_sane_0);
+	tcase_add_test(tc, test_evs_server_server_callback_sane_1);
+	tcase_add_test(tc, test_evs_server_server_callback_evict_0);
 	suite_add_tcase(s, tc);
 	
 	return s;

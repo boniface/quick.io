@@ -88,7 +88,7 @@ void evs_client_client_ready(client_t* client);
  * subscriptions allowed.
  * @return CLIENT_ALREADY_SUBSCRIBED - Already subscribed to this event.
  */
-status_t evs_client_sub_client(const gchar *event_path, client_t *client, const guint32 callback);
+status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t callback);
 
 /**
  * The client has been closed and should be cleaned up.
@@ -159,7 +159,7 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const p
  * @return CLIENT_GOOD - If the message was prepared and formatted successfully.
  * @return CLIENT_UNKNOWN_EVENT - If the event could not be found, or no callback was given.
  */
-status_t evs_client_format_message(const event_handler_t *handler, const guint32 callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+status_t evs_client_format_message(const event_handler_t *handler, const callback_t callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
 
 /**
  * The client subscribed to an invalid event. The client should be sent an error message,
@@ -172,7 +172,7 @@ status_t evs_client_format_message(const event_handler_t *handler, const guint32
  * @param extra Any extra segments to add to the event path
  * @param callback The id of the callback the client sent with the event.
  */
-APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback);
+APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t callback);
 
 /**
  * Send a callback to a user. This is mainly used for async events that need to send stuff back.
@@ -180,11 +180,12 @@ APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t
  * @ingroup AppFunctions
  *
  * @param client The client to send the callback to
+ * @param callback The id of the callback the client is expecting
  * @param type The data type
  * @param data The data to send with the callback
- * @param callback The callback ID
+ * @param server_callback The callback to be sent back to the server
  */
-APP_EXPORT void evs_client_send_callback(client_t *client, const enum data_t type, const gchar *data, const guint32 callback);
+APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t callback, const enum data_t type, const gchar *data, const callback_t server_callback);
 
 /**
  * A cleanup routine for empty events.
@@ -192,7 +193,6 @@ APP_EXPORT void evs_client_send_callback(client_t *client, const enum data_t typ
  * @warning NOT thread safe.
  */
 void evs_client_cleanup();
-
 
 #ifdef TESTING
 #include "../test/test_events_client.h"

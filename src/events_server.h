@@ -31,7 +31,7 @@
 #define EVENT_RESPONSE_MAX_SUBSCRIPTIONS "too_many_subscriptions"
 
 /**
- * Response that the clietn is already subscribed to this event.
+ * Response that the client is already subscribed to this event.
  */
 #define EVENT_RESPONSE_ALREADY_SUBSCRIBED "already_subscribed"
 
@@ -42,6 +42,12 @@
 #define EVENT_RESPONSE_CANNOT_UNSUBSCRIBE "cannot_unsubscribe"
 
 /**
+ * The maximum number of callbacks that are supported on a client.
+ * This MUST NEVER be greater than 255.
+ */
+#define MAX_CALLBACKS 4
+
+/**
  * The list type used to hold extra path segments.
  * This is reference counted, so it MUST NEVER be g_ptr_array_free'd.
  *
@@ -49,6 +55,11 @@
  * @note Each item is a gchar*.
  */
 typedef GPtrArray* path_extra_t;
+
+/**
+ * The data type for callbacks.
+ */
+typedef guint32 callback_t;
 
 /**
  * The different types of data that an event can contain.
@@ -94,12 +105,12 @@ typedef struct event_s {
 	/**
 	 * The callback number the client sent.
 	 */
-	guint32 callback;
+	callback_t callback;
 	
 	/**
 	 * The callback the server wants to recieve for this event.
 	 */
-	guint32 server_callback;
+	callback_t server_callback;
 	
 	/** 
 	 * The type of data sitting in the data buffer.
@@ -141,7 +152,7 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const guint32 callback);
+typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t);
 /**
  * A callback for when a client subscribes to a specific event.
  * This is supplied to evs_server_on() and is called when a client subscribes
@@ -166,6 +177,51 @@ typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_
  * @param extra Any extra parameters that came in with the subscription
  */
 typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const path_extra_t extra);
+
+/**
+ * The function type that is called when a client sends a callback to the server.
+ *
+ * @param data The data that was passed into evs_server_new_callback()
+ * @param event The complete event object. If you want to keep anything in here for anything async,
+ * make a copy.
+ * 
+ * @return A status code for the callback.
+ */
+typedef status_t (*callback_fn)(void *data, const event_t *event);
+
+/**
+ * The function to be called to free the passed into evs_server_new_callback().
+ * @note Data may be freed at any time, even if the callback has not been called yet.
+ *
+ * @param data The data to be freed.
+ */
+typedef void (*callback_free_fn)(void *data);
+
+/**
+ * The information necessary for maintaining server callbacks.
+ */
+struct client_cb_s {
+	/**
+	 * The current ID of the callback.  Makes sure that callbacks don't overlap
+	 * when one has been evicted and its still active on the client.
+	 */
+	guint8 id;
+	
+	/**
+	 * The callback function
+	 */
+	callback_fn fn;
+	
+	/**
+	 * The data to be passed to the callback
+	 */
+	void *data;
+	
+	/**
+	 * The free function
+	 */
+	callback_free_fn free_fn;
+};
 
 /**
  * All of the handlers and callbacks for an event.
@@ -253,6 +309,36 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler);
  * @return The complete, formatted path, with any extra parameters. This MUST be g_free()'d
  */
 gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra);
+
+/**
+ * A shortcut function for not allowing clients to subscribe to an event.
+ *
+ * @ingroup AppFunctions
+ *
+ * @return CLIENT_INVALID_SUBSCRIPTION The client is not allowed to subscribe.
+ */
+APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t);
+
+/**
+ * Create a new callback on the client that the client can call back to.
+ *
+ * @ingroup AppFunctions
+ *
+ * @param client The client to add a callback to.
+ * @param fn The function to be called when the callback comes in.
+ * @param data The data to be passed to the callback.
+ * @param free_fn The function to be called to free the data passed in.  May be NULL.
+ * 
+ * @return The callback ID.
+ */
+APP_EXPORT callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn);
+
+/**
+ * Alert that a client has closed so that it can free all its stuffs.
+ *
+ * @param client The client that closed.
+ */
+void evs_server_client_close(client_t *client);
 
 /**
  * Init the event listening interface.
