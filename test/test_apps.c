@@ -6,6 +6,10 @@
 	"[quick.io-apps]\n" \
 	"test-bad = test_bad"
 
+#define BAD_RUN "[quick.io]\n" \
+	"[quick.io-apps]\n" \
+	"test-bad = test_bad_run"
+
 #define BAD_CONFIG_NONEXISTENT "[quick.io]\n" \
 	"[quick.io-apps]\n" \
 	"test-bad = /this/path/does/not/exist"
@@ -151,6 +155,21 @@ START_TEST(test_apps_cb_run) {
 }
 END_TEST
 
+START_TEST(test_apps_cb_run_fatal) {
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(BAD_RUN, 1, sizeof(BAD_RUN), f);
+	fclose(f);
+	
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+	
+	test(option_parse_args(argc, argv, NULL), "File ready");
+	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	
+	apps_run();
+}
+END_TEST
+
 START_TEST(test_apps_cb_client_connect) {
 	client_t *client = u_client_create(NULL);
 	
@@ -223,6 +242,7 @@ Suite* apps_suite() {
 	tcase_add_checked_fixture(tc, _apps_setup, _apps_teardown);
 	tcase_add_test(tc, test_apps_cb_register);
 	tcase_add_test(tc, test_apps_cb_run);
+	tcase_add_exit_test(tc, test_apps_cb_run_fatal, 32);
 	tcase_add_test(tc, test_apps_cb_client_connect);
 	tcase_add_test(tc, test_apps_cb_client_close);
 	tcase_add_test(tc, test_apps_cb_client_subscribe);

@@ -216,12 +216,7 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 		header_size += HEADER_LEN;
 		*frame_len = payload_len + header_size;
 		
-		frame = g_try_malloc0(*frame_len * sizeof(*frame));
-		
-		// If can't malloc...that's bad.
-		if (frame == NULL) {
-			return NULL;
-		}
+		frame = g_malloc0(*frame_len * sizeof(*frame));
 		
 		// The second frame: the first bit is always 0 (data going
 		// to the client is never masked), and since the length is
@@ -233,12 +228,7 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 		header_size += EXTENDED_HEADER_LEN;
 		*frame_len = payload_len + header_size;
 		
-		frame = g_try_malloc0(*frame_len * sizeof(*frame));
-		
-		// If can't malloc...that's bad.
-		if (frame == NULL) {
-			return NULL;
-		}
+		frame = g_malloc0(*frame_len * sizeof(*frame));
 		
 		// The second frame: the first bit is always 0 (data going
 		// to the client is never masked), and to indicate that we
@@ -371,7 +361,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 	}
 	
 	// If the client wasn't handled above, that was bad, we don't support it
-	return CLIENT_UNSUPPORTED_OPCODE;
+	return CLIENT_UNSUPPORTED;
 }
 
 #ifdef TESTING

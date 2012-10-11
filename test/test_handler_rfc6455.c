@@ -291,7 +291,7 @@ START_TEST(test_h_rfc6455_unsupported_opcode) {
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_UNSUPPORTED_OPCODE, sizeof(RFC6455_FRAME_UNSUPPORTED_OPCODE)-1);
 	
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_UNSUPPORTED_OPCODE, "Unsupported opcode!");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_UNSUPPORTED, "Unsupported opcode!");
 	
 	u_client_free(client);
 }

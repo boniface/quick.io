@@ -95,11 +95,7 @@ gboolean _qsys_init(gchar *address, guint16 port) {
 		return FALSE;
 	}
 		
-	_accept = g_try_malloc0(sizeof(*_accept));
-	if (_accept == NULL) {
-		ERROR("Client could not be malloc()'d");
-		return FALSE;
-	}
+	_accept = g_malloc0(sizeof(*_accept));
 	
 	// 1 -> a positive, int size must be given; ignored by new kernels
 	_epoll = epoll_create(1);

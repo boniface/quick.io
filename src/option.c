@@ -11,7 +11,6 @@ static GOptionEntry command_options[] = {
 // Config file options
 static gchar *_bind_address = "127.0.0.1";
 static gint _port = 5000;
-static guint8 _max_callbacks = 8;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
 static gint _processes = 8;
@@ -21,7 +20,6 @@ static config_file_entry_t _config_options[] = {
 	{"bind-address", e_string, &_bind_address},
 	{"port", e_int, &_port},
 	{"processes", e_int, &_processes},
-	{"max-callbacks", e_uint64, &_max_callbacks},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
 	{"timeout", e_int, &_timeout},
@@ -106,10 +104,6 @@ gint32 option_port() {
 	return _port;
 }
 
-guint64 option_max_callbacks() {
-	return _max_callbacks;
-}
-
 guint64 option_max_message_size() {
 	return _max_mess_size;
 }
@@ -179,13 +173,6 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 	// This is the same check used in malloc.c
 	if ((_max_subs & (_max_subs - 1)) != 0) {
 		ERROR("Option `max-subs` must be a power of 2.");
-		g_key_file_free(conf);
-		return FALSE;
-	}
-	
-	// The maximum callbacks MAY NOT be larger than 255, we only use a guint8 for it.
-	if (_max_callbacks > 0xFF) {
-		ERROR("Option `max-callbacks` may not be larger than 255.");
 		g_key_file_free(conf);
 		return FALSE;
 	}

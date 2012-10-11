@@ -81,14 +81,14 @@ void evs_client_client_ready(client_t* client);
  * 
  * @param event_path The name of the event the client should be subscribed to.
  * @param client The client to subscribe to event.
- * @param callback The callback to be issued if anything goes async.
+ * @param client_callback The callback to be issued if anything goes async.
  *
  * @return CLIENT_INVALID_SUBSCRIPTION - The event name doesn't exist.
  * @return CLIENT_TOO_MANY_SUBSCRIPTIONS - Already subscribed to the maximum number of
  * subscriptions allowed.
  * @return CLIENT_ALREADY_SUBSCRIBED - Already subscribed to this event.
  */
-status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t callback);
+status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback);
 
 /**
  * The client has been closed and should be cleaned up.
@@ -149,7 +149,7 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const p
  * Prepare a message to be sent to 1 individual user.
  *
  * @param handler The event handler; if NULL, will use the callback.
- * @param callback The callback to send to the user; 0 if no callback.
+ * @param client_callback The callback to send to the user; 0 if no callback.
  * @param server_callback What should be sent to the client, indicating the server wants a callback. 0 if no callback is wanted.
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
  * @param type The type of the data (json, plain, etc).  d_plain if none.
@@ -159,7 +159,7 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const p
  * @return CLIENT_GOOD - If the message was prepared and formatted successfully.
  * @return CLIENT_UNKNOWN_EVENT - If the event could not be found, or no callback was given.
  */
-status_t evs_client_format_message(const event_handler_t *handler, const callback_t callback, const guint32 server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+status_t evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const callback_t server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
 
 /**
  * The client subscribed to an invalid event. The client should be sent an error message,
@@ -170,9 +170,9 @@ status_t evs_client_format_message(const event_handler_t *handler, const callbac
  * @param client The client to be unsubscribed.
  * @param event_path The path to the event
  * @param extra Any extra segments to add to the event path
- * @param callback The id of the callback the client sent with the event.
+ * @param client_callback The id of the callback the client sent with the event.
  */
-APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t callback);
+APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback);
 
 /**
  * Send a callback to a user. This is mainly used for async events that need to send stuff back.
@@ -180,12 +180,22 @@ APP_EXPORT void evs_client_invalid_event(client_t *client, const event_handler_t
  * @ingroup AppFunctions
  *
  * @param client The client to send the callback to
- * @param callback The id of the callback the client is expecting
+ * @param client_callback The id of the callback the client is expecting
  * @param type The data type
  * @param data The data to send with the callback
  * @param server_callback The callback to be sent back to the server
  */
-APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t callback, const enum data_t type, const gchar *data, const callback_t server_callback);
+APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t client_callback, const enum data_t type, const gchar *data, const callback_t server_callback);
+
+/**
+ * Sends an error callback to the user.
+ *
+ * @ingroup AppFunctions
+ *
+ * @param client The client to send the callback to
+ * @param client_callback The id of the callback the client is expecting
+ */
+APP_EXPORT void evs_client_send_error_callback(client_t *client, const callback_t client_callback);
 
 /**
  * A cleanup routine for empty events.

@@ -68,8 +68,8 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	// Test the event data
 	test_str_eq(event.path, "/qio/noop", "Correct event name");
 	test_uint16_eq(event.extra->len, 0, "No extra segments");
-	test_uint32_eq(event.callback, 0, "No callback");
-	test(event.type == d_plain, "Plain data type set");
+	test_uint32_eq(event.client_callback, 0, "No callback");
+	test(event.data_type == d_plain, "Plain data type set");
 	test_str_eq(event.data, "", "No data set");
 	
 	// Test the side-effects
@@ -97,8 +97,8 @@ START_TEST(test_evs_event_creation_valid_single_digit_callback) {
 	// Test the event data
 	test_str_eq(event.path, "/qio/noop", "Correct event name");
 	test_uint16_eq(event.extra->len, 0, "No extra segments");
-	test_uint32_eq(event.callback, 1, "No callback");
-	test(event.type == d_plain, "Plain data type set");
+	test_uint32_eq(event.client_callback, 1, "No callback");
+	test(event.data_type == d_plain, "Plain data type set");
 	test_str_eq(event.data, "", "No data set");
 	
 	// Test the side-effects
@@ -122,7 +122,7 @@ START_TEST(test_evs_event_creation_valid_callback) {
 	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
-	test_uint32_eq(event.callback, 123, "Callback gotten!");
+	test_uint32_eq(event.client_callback, 123, "Callback gotten!");
 	test_str_eq(event.data, "", "No data set");
 	
 	_event_free(&event);
@@ -141,8 +141,8 @@ START_TEST(test_evs_event_creation_valid_json) {
 	g_string_assign(message->buffer, "/qio/noop:123:json={\"test\":1}");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
-	test_uint32_eq(event.callback, 123, "Callback gotten!");
-	test(event.type == d_json, "JSON data type set");
+	test_uint32_eq(event.client_callback, 123, "Callback gotten!");
+	test(event.data_type == d_json, "JSON data type set");
 	test_str_eq(event.data, "{\"test\":1}", "JSON data recieved");
 	
 	_event_free(&event);
@@ -161,8 +161,8 @@ START_TEST(test_evs_event_creation_no_data) {
 	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
-	test_uint32_eq(event.callback, 123, "Callback gotten!");
-	test(event.type == d_plain, "Plain data type set");
+	test_uint32_eq(event.client_callback, 123, "Callback gotten!");
+	test(event.data_type == d_plain, "Plain data type set");
 	test_str_eq(event.data, "", "No data set");
 	
 	_event_free(&event);
@@ -184,8 +184,8 @@ START_TEST(test_evs_event_creation_handle_children) {
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
 	test_ptr_eq(handler, expected, "Got correct handler");
-	test_uint32_eq(event.callback, 123, "Callback gotten!");
-	test(event.type == d_plain, "Plain data type set");
+	test_uint32_eq(event.client_callback, 123, "Callback gotten!");
+	test(event.data_type == d_plain, "Plain data type set");
 	test_str_eq(event.data, "test", "Plain data recieved");
 	
 	// Segment testing
@@ -243,7 +243,7 @@ START_TEST(test_evs_event_creation_invalid_callback_id) {
 	g_string_assign(message->buffer, "/qio/noop:abcd1234:=");
 	
 	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
-	test_uint32_eq(event.callback, 0, "Callback parsed");
+	test_uint32_eq(event.client_callback, 0, "Callback parsed");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -307,7 +307,7 @@ START_TEST(test_evs_event_creation_invalid_handler) {
 	
 	g_string_assign(message->buffer, "/:123:plain");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_INVALID_SUBSCRIPTION, "Invalid event");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_ERROR, "Invalid event");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -482,7 +482,7 @@ START_TEST(test_evs_handler_subscribe) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/doesnt/exist");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/doesnt/exist", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
 	
 	u_client_free(client);
 }
@@ -494,7 +494,7 @@ START_TEST(test_evs_handler_subscribe_to_bad_format) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=0");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_INVALID_SUBSCRIPTION":/0", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
 	
 	u_client_free(client);
 }
@@ -511,7 +511,7 @@ START_TEST(test_evs_handler_subscribe_too_many_subs) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_MAX_SUBSCRIPTIONS":/qio/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
 	
 	u_client_free(client);
 }
@@ -526,7 +526,19 @@ START_TEST(test_evs_handler_subscribe_already_subscribed) {
 	
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_ALREADY_SUBSCRIBED":/qio/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_handler_subscribe_rejected) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/doesnt/exist");
+	
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
 	
 	u_client_free(client);
 }
@@ -552,7 +564,7 @@ START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
 	
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/qio/noop", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
 	
 	u_client_free(client);
 }
@@ -563,7 +575,7 @@ START_TEST(test_evs_handler_unsubscribe_bad_event) {
 	
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=0");
 	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain="EVENT_RESPONSE_CANNOT_UNSUBSCRIBE":/0", "Bad event");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
 	
 	u_client_free(client);
 }
@@ -603,7 +615,7 @@ END_TEST
 START_TEST(test_evs_server_server_callback_sane_0) {
 	client_t *client = u_client_create(NULL);
 	
-	status_t _on(void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, const event_t *event) {
 		return CLIENT_GOOD;
 	}
 	
@@ -616,7 +628,7 @@ END_TEST
 START_TEST(test_evs_server_server_callback_sane_1) {
 	client_t *client = u_client_create(NULL);
 	
-	status_t _on(void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, const event_t *event) {
 		return CLIENT_GOOD;
 	}
 	
@@ -628,7 +640,7 @@ START_TEST(test_evs_server_server_callback_sane_1) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_evict_0) {
+START_TEST(test_evs_server_server_callback_evict) {
 	client_t *client = u_client_create(NULL);
 	
 	callback_t cbs[MAX_CALLBACKS+2];
@@ -640,7 +652,7 @@ START_TEST(test_evs_server_server_callback_evict_0) {
 	}
 	
 	guint16 calls = 0;
-	status_t _on(void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, const event_t *event) {
 		calls++;
 		return CLIENT_GOOD;
 	}
@@ -672,6 +684,107 @@ START_TEST(test_evs_server_server_callback_evict_0) {
 	test_uint32_eq(frees, G_N_ELEMENTS(cbs), "Everything free'd");
 	
 	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_no_callback) {
+	client_t *client = u_client_create(NULL);
+	
+	guint16 frees = 0;
+	void _free(void *data) {
+		free(data);
+		frees++;
+	}
+	
+	void *t = g_malloc(sizeof(*t));
+	callback_t callback = evs_server_callback_new(client, NULL, t, _free);
+	
+	test_uint32_eq(callback, 0, "Callback rejected");
+	test_uint32_eq(frees, 1, "Everything free'd");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_client_close) {
+	client_t *client = u_client_create(NULL);
+	
+	callback_t cbs[MAX_CALLBACKS];
+	
+	guint16 frees = 0;
+	void _free(void *data) {
+		free(data);
+		frees++;
+	}
+	
+	guint16 calls = 0;
+	status_t _on(client_t *client, void *data, const event_t *event) {
+		calls++;
+		return CLIENT_GOOD;
+	}
+	
+	// 1: Get a few callbacks evicted
+	for (guint i = 0; i < G_N_ELEMENTS(cbs); i++) {
+		void *t = g_malloc(sizeof(*t));
+		cbs[i] = evs_server_callback_new(client, _on, t, _free);
+		test(cbs[i] > 0, "Callback accepted");
+	}
+	
+	evs_server_client_close(client);
+	
+	test_uint32_eq(frees, G_N_ELEMENTS(cbs), "Everything free'd");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_bad_id) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->buffer, "/qio/callback/:1112:plain=");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback coming");
+	
+	test_str_eq(client->message->buffer->str, "/qio/callback/1112:0:plain=qio_error", "Correct response sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_subscribe_to_callback) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->buffer, "/qio/sub:0:plain=/qio/callback/");
+	test_status_eq(evs_server_handle(client), CLIENT_ERROR, "Rejected");
+	
+	test_str_eq(client->message->buffer->str, "", "No response sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_subscribe_to_bad_event) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->buffer, "/abcd/:1:plain=/asdf/");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Rejected");
+	
+	test_str_eq(client->message->buffer->str, "/qio/callback/1:0:plain=qio_error", "Error callback sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_fatal) {
+	client_t *client = u_client_create(NULL);
+	
+	status_t _on(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+		return CLIENT_ABORTED;
+	}
+	
+	evs_server_on("/test/fatal", _on, NULL, NULL, FALSE);
+	
+	g_string_assign(client->message->buffer, "/test/fatal:1:plain=/asdf/");
+	test_status_eq(evs_server_handle(client), CLIENT_ABORTED, "Aborted");
 }
 END_TEST
 
@@ -735,6 +848,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_handler_subscribe_to_bad_format);
 	tcase_add_test(tc, test_evs_handler_subscribe_too_many_subs);
 	tcase_add_test(tc, test_evs_handler_subscribe_already_subscribed);
+	tcase_add_test(tc, test_evs_handler_subscribe_rejected);
 	tcase_add_test(tc, test_evs_handler_unsubscribe);
 	tcase_add_test(tc, test_evs_handler_unsubscribe_not_subscribed);
 	tcase_add_test(tc, test_evs_handler_unsubscribe_bad_event);
@@ -751,7 +865,13 @@ Suite* events_server_suite() {
 	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
 	tcase_add_test(tc, test_evs_server_server_callback_sane_0);
 	tcase_add_test(tc, test_evs_server_server_callback_sane_1);
-	tcase_add_test(tc, test_evs_server_server_callback_evict_0);
+	tcase_add_test(tc, test_evs_server_server_callback_evict);
+	tcase_add_test(tc, test_evs_server_server_callback_no_callback);
+	tcase_add_test(tc, test_evs_server_server_callback_client_close);
+	tcase_add_test(tc, test_evs_server_server_callback_bad_id);
+	tcase_add_test(tc, test_evs_server_server_callback_subscribe_to_callback);
+	tcase_add_test(tc, test_evs_server_server_callback_subscribe_to_bad_event);
+	tcase_add_test(tc, test_evs_server_server_callback_fatal);
 	suite_add_tcase(s, tc);
 	
 	return s;

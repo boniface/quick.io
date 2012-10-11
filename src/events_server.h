@@ -21,31 +21,15 @@
 #define EVENT_DATA_DELIMITER "="
 
 /**
- * Response to the client that the subscription is invalid.
- */
-#define EVENT_RESPONSE_INVALID_SUBSCRIPTION "invalid"
-
-/**
- * Response that the client already has the maximum number of subscriptions.
- */
-#define EVENT_RESPONSE_MAX_SUBSCRIPTIONS "too_many_subscriptions"
-
-/**
- * Response that the client is already subscribed to this event.
- */
-#define EVENT_RESPONSE_ALREADY_SUBSCRIBED "already_subscribed"
-
-/**
- * Response that the client cannot be unsubscribed from the event.  Either way,
- * the client will not recieve this event.
- */
-#define EVENT_RESPONSE_CANNOT_UNSUBSCRIBE "cannot_unsubscribe"
-
-/**
  * The maximum number of callbacks that are supported on a client.
  * This MUST NEVER be greater than 255.
  */
 #define MAX_CALLBACKS 4
+
+/**
+ * Generates a server callback
+ */
+#define SERVER_CALLBACK(slot, id) ((slot << 8) | id)
 
 /**
  * The list type used to hold extra path segments.
@@ -105,7 +89,7 @@ typedef struct event_s {
 	/**
 	 * The callback number the client sent.
 	 */
-	callback_t callback;
+	callback_t client_callback;
 	
 	/**
 	 * The callback the server wants to recieve for this event.
@@ -115,7 +99,7 @@ typedef struct event_s {
 	/** 
 	 * The type of data sitting in the data buffer.
 	 */
-	enum data_t type;
+	enum data_t data_type;
 	
 	/**
 	 * The data string sent from the client.
@@ -132,8 +116,15 @@ typedef struct event_s {
  *
  * @param client The client that triggered the event.
  * @param event The event that the client sent to the server.
- * @param response The buffer that the handler should write his response to. If the handler
- * is going to write something to this buffer, it MUST return CLIENT_WRITE.
+ * @param response The buffer that the handler should write his response to. If there is a
+ * callback, then this is the data that will be sent. If there is no callback, then the 
+ * data will be ignored.
+ *
+ * @return CLIENT_GOOD Everything went well within the handler, and any data / callbacks
+ * should be sent.
+ * @return CLIENT_ERROR Something went wrong, just answer with a standard QIO error,
+ * or drop the request if there is no callback. With this return value, #response will
+ * be ignored.
  */
 typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event_t *event, GString *response);
 
@@ -146,13 +137,13 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  * @param client The client that subscribed to the event.
  * @param handler The event handler, so that references don't have to be stored in the app.
  * @param extra Any extra parameters that came in with the subscription
- * @param callback The callback to be issued if going async
+ * @param client_callback The callback to be issued if going async
  *
  * @return CLIENT_GOOD Everything is good, send the callback as normal.
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t);
+typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback);
 /**
  * A callback for when a client subscribes to a specific event.
  * This is supplied to evs_server_on() and is called when a client subscribes
@@ -187,7 +178,7 @@ typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const 
  * 
  * @return A status code for the callback.
  */
-typedef status_t (*callback_fn)(void *data, const event_t *event);
+typedef status_t (*callback_fn)(client_t *client, void *data, const event_t *event);
 
 /**
  * The function to be called to free the passed into evs_server_new_callback().
@@ -208,7 +199,9 @@ struct client_cb_s {
 	guint8 id;
 	
 	/**
-	 * The callback function
+	 * The callback function.
+	 * @attention When this is NULL, it indicates that the callback is not in use,
+	 * so when a callback is used, this MUST be set to NULL.
 	 */
 	callback_fn fn;
 	
@@ -317,7 +310,7 @@ gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra)
  *
  * @return CLIENT_INVALID_SUBSCRIPTION The client is not allowed to subscribe.
  */
-APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t);
+APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback);
 
 /**
  * Create a new callback on the client that the client can call back to.

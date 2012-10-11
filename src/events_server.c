@@ -66,12 +66,13 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	*end = '\0';
 	
 	// Attempt to find what handles this event
+	// ATTENTION: DO NOT DO THE HANDLER NULL CHECK HERE:
+	// it is imperative that the client_callback be found if there
+	// is one, so that we might return a proper error if there is a callback.
+	// Our mandate is that if there is a callback, we will send something to it, no matter
+	// what.
 	*handler = evs_server_get_handler(curr, &(event->extra));
 	
-	// If there isn't a handler, that's wrong
-	if (*handler == NULL) {
-		return CLIENT_INVALID_SUBSCRIPTION;
-	}
 	
 	// Time to parse out the message Id
 	curr = end + 1;
@@ -90,14 +91,19 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// that is still an error
 	if (end - curr > 0) {
 		gchar *endptr;
-		event->callback = g_ascii_strtoull(curr, &endptr, 10);
+		event->client_callback = g_ascii_strtoull(curr, &endptr, 10);
 		
-		if (event->callback == 0 && endptr == curr) {
+		if (event->client_callback == 0 && endptr == curr) {
 			DEBUG("Bad callback id");
 			return CLIENT_BAD_MESSAGE_FORMAT;
 		}
 	} else {
-		event->callback = 0;
+		event->client_callback = 0;
+	}
+	
+	// Since the callback has been parsed, we may no do the handler check
+	if (*handler == NULL) {
+		return CLIENT_ERROR;
 	}
 	
 	// And the data type
@@ -114,9 +120,9 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	*end = '\0';
 	
 	if (g_strcmp0(curr, "plain") == 0) {
-		event->type = d_plain;
+		event->data_type = d_plain;
 	} else if (g_strcmp0(curr, "json") == 0) {
-		event->type = d_json;
+		event->data_type = d_json;
 	} else {
 		DEBUG("No matching data type found");
 		return CLIENT_BAD_MESSAGE_FORMAT;
@@ -158,7 +164,7 @@ static void _evs_server_callback_free(struct client_cb_s cb) {
 
 static status_t _evs_server_callback(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 	if (event->extra->len != 1) {
-		return CLIENT_BAD;
+		return CLIENT_ERROR;
 	}
 	
 	callback_t compacted = g_ascii_strtoull(g_ptr_array_index(event->extra, 0), NULL, 10);
@@ -181,7 +187,7 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 	
 	g_mutex_unlock(&_callbacks_lock);
 	
-	status_t status = cb.fn(cb.data, event);
+	status_t status = cb.fn(client, cb.data, event);
 	_evs_server_callback_free(cb);
 	
 	return status;
@@ -201,34 +207,13 @@ static status_t _evs_server_noop(client_t *client, event_handler_t *handler, eve
 }
 
 static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
-	DEBUGF("event_subscribe: %s; callback: %u", event->data, event->callback);
+	DEBUGF("event_subscribe: %s; callback: %u", event->data, event->client_callback);
 	
 	gchar *event_path = evs_server_format_path(event->data, NULL);
-	
-	status_t status = evs_client_sub_client(event_path, client, event->callback);
-	
-	// Attempt to subscribe the client to the event
-	if (status == CLIENT_INVALID_SUBSCRIPTION) {
-		// The event was invalid, inform the client
-		g_string_append(response, EVENT_RESPONSE_INVALID_SUBSCRIPTION);
-		status = CLIENT_WRITE;
-	} else if (status == CLIENT_TOO_MANY_SUBSCRIPTIONS) {
-		// The client is subscribed to the maximum number of rooms already, may not add any more
-		g_string_append(response, EVENT_RESPONSE_MAX_SUBSCRIPTIONS);
-		status = CLIENT_WRITE;
-	} else if (status == CLIENT_ALREADY_SUBSCRIBED) {
-		// Why is he subscribing again?
-		g_string_append(response, EVENT_RESPONSE_ALREADY_SUBSCRIBED);
-		status = CLIENT_WRITE;
-	}
-	
-	if (status == CLIENT_WRITE) {
-		g_string_append_printf(response, ":%s", event_path);
-	}
-	
+	status_t status = evs_client_sub_client(event_path, client, event->client_callback);
 	g_free(event_path);
 	
-	// The event was valid, so there's nothing more to do
+	// We have fatal responses, everything is always good, with the option to respond
 	return status;
 }
 
@@ -236,15 +221,7 @@ static status_t _evs_server_unsubscribe(client_t *client, event_handler_t *handl
 	DEBUGF("event_unsubscribe: %s", event->data);
 	
 	gchar *event_path = evs_server_format_path(event->data, NULL);
-	
-	// So we break a rule: unsubscribe has to change the client for subscriptions, so allow it
 	status_t status = evs_client_unsub_client(event_path, client);
-	
-	if (status == CLIENT_CANNOT_UNSUBSCRIBE) {
-		g_string_printf(response, "%s:%s", EVENT_RESPONSE_CANNOT_UNSUBSCRIBE, event_path);
-		status = CLIENT_WRITE;
-	}
-	
 	g_free(event_path);
 	
 	return status;
@@ -336,41 +313,33 @@ status_t evs_server_handle(client_t *client) {
 	
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
-	if (status == CLIENT_GOOD) {
-		if (handler->fn != NULL) {
-			// The client->message->buffer is now empty, as free'd by _event_new
-			status = handler->fn(client, handler, &event, client->message->buffer);
-		}
-		
-		#warning Need to send back error to client if there's a callback
+	if (status == CLIENT_GOOD && handler->fn != NULL) {
+		// The client->message->buffer is now empty, as free'd by _event_new
+		status = handler->fn(client, handler, &event, client->message->buffer);
 	}
 	
-	// Prepare the event for writing back to the client
-	if (status == CLIENT_WRITE || (status == CLIENT_GOOD && event.callback > 0)) {
-		// If there is data, then it needs to be stolen from the buffer
-		// Otherwise, there could be all sorts of issues with formatting
-		// the buffer using what's already in the buffer
-		gchar *data;
-		if (client->message->buffer->len == 0) {
-			data = "";
-		} else {
-			data = client->message->buffer->str;
+	// If there's a callback, and we're not going async, we MUST send something
+	// back to the client
+	if (event.client_callback > 0) {
+		if (status == CLIENT_GOOD) {
+			gchar *data = client->message->buffer->str;
 			g_string_free(client->message->buffer, FALSE);
-			client->message->buffer = g_string_sized_new(100);
+			client->message->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+			
+			status = evs_client_format_message(handler, event.client_callback, event.server_callback, event.extra, event.data_type, data, client->message->buffer);
+			
+			g_free(data);
+		} else if (status == CLIENT_ERROR) {
+			status = evs_client_format_message(handler, event.client_callback, 0, NULL, d_plain, QIO_ERROR, client->message->buffer);
 		}
-		
-		#warning TODO: Server callbacks
-		status = evs_client_format_message(handler, event.callback, 0, event.extra, event.type, data, client->message->buffer);
 		
 		// If we get CLIENT_GOOD back from format_message, then we still need it to be
-		// CLIENT_WRITE, otherwise we want to send back the error message
+		// CLIENT_WRITE: we have to send a message
 		if (status == CLIENT_GOOD) {
 			status = CLIENT_WRITE;
-		}
-		
-		// len == 0 results in this being null, so it won't need free'd
-		if (*data != '\0') {
-			g_free(data);
+		} else {
+			// If anything else happens, then just kill the client, there's no use at this point
+			status = CLIENT_ABORTED;
 		}
 	}
 	
@@ -459,8 +428,8 @@ gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra)
 	return path;
 }
 
-status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t callback) {
-	return CLIENT_INVALID_SUBSCRIPTION;
+status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback) {
+	return CLIENT_ERROR;
 }
 
 callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn) {
@@ -488,8 +457,6 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	if (i >= MAX_CALLBACKS) {
 		i = (guint8)g_random_int_range(0, MAX_CALLBACKS);
 		_evs_server_callback_free(client->callbacks[i]);
-		
-		#warning send an evict callback
 	}
 	
 	client->callbacks[i].id++;
@@ -503,7 +470,7 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	// and incremement to indicate that it's new. Thus, when a callback comes in from
 	// the client and we deconstruct it, if the ID doesn't match, we just discard it and
 	// move on.
-	guint16 id = (i << 8) | client->callbacks[i].id;
+	guint16 id = SERVER_CALLBACK(i, client->callbacks[i].id);
 	
 	g_mutex_unlock(&_callbacks_lock);
 	
@@ -511,11 +478,11 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 }
 
 void evs_server_client_close(client_t *client) {
-	// for (callback_t i = 0; i < MAX_CALLBACKS; i++) {
-	// 	if (client->callbacks[i].callback != NULL) {
-	// 		_evs_server_callback_free(client, i);
-	// 	}
-	// }
+	for (callback_t i = 0; i < MAX_CALLBACKS; i++) {
+		if (client->callbacks[i].fn != NULL) {
+			_evs_server_callback_free(client->callbacks[i]);
+		}
+	}
 }
 
 gboolean evs_server_init() {

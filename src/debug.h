@@ -54,13 +54,12 @@
 /**
  * A fatal error, after which nothing can continue.
  */
-#define FATAL(out) _LOG("FATAL", out); exit(1)
+#define FATAL(out) _LOG("FATAL", out); exit(32)
 
 /**
  * A formatted fatal error, after which nothing can continue.
  */
-#define FATALF(format, ...) _LOGF("FATAL", format, __VA_ARGS__); exit(1)
-
+#define FATALF(format, ...) _LOGF("FATAL", format, __VA_ARGS__); exit(32)
 
 /**
  * Handles segmentation faults with nice backtraces.

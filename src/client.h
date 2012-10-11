@@ -24,92 +24,69 @@
 #define QIO_PATH "/qio"
 
 /**
- * Everything went as expected. Carry on.
+ * The data sent to a callback when there is an error.
+ * This has data_type: d_plain
+ */
+#define QIO_ERROR "qio_error"
+
+/**
+ * Everything went as expected. Send any callbacks, include any data in buffers, and move on.
  */
 #define CLIENT_GOOD 1 << 0
 
 /**
- * There is data in the response buffer that should be sent to the client callback.
- * This is only useful if there is a response in the buffer to send back to the client,
- * and the client has set a callback number.  Otherwise, you need to fire an event
- * to the client, not write a response to the client.
- */
-#define CLIENT_WRITE 1 << 1
-
-/**
- * Something happened that we need to wait for more from the client. Set a wait,
- * and notify us later.
- */
-#define CLIENT_WAIT 1 << 2
-
-/**
  * That bastard of a client aborted / should be aborted.
  */
-#define CLIENT_ABORTED 1 << 3
+#define CLIENT_ABORTED 1 << 1
 
 /**
- * The client sent a message without a mask. That is ALWAYS an error.
+ * A non-fatal error occurred while processing. This response trips the event handler
+ * to respond with an error event to callbacks.
  */
-#define CLIENT_NEED_MASK 1 << 4
-
-/**
- * The message the client sent is too long. That an error.
- */
-#define CLIENT_MESSAGE_TOO_LONG 1 << 5
-
-/**
- * The client sent us an event we're not handling. Send back an error, but don't
- * kill the client.
- */
-#define CLIENT_INVALID_SUBSCRIPTION 1 << 6
-
-/**
- * The client sent a bad message.
- */
-#define CLIENT_BAD_MESSAGE_FORMAT 1 << 7
-
-/**
- * The client sent a message with an unsupported opcode.  Kill him.
- */
-#define CLIENT_UNSUPPORTED_OPCODE 1 << 8
-
-/**
- * The client already has the maximum number of subscriptions and can't add any more.
- */
-#define CLIENT_TOO_MANY_SUBSCRIPTIONS 1 << 9
-
-/**
- * The client is already subscribed to this event
- */
-#define CLIENT_ALREADY_SUBSCRIBED 1 << 10
-
-/**
- * For some reason, the client cannot be removed from this event. He will, however,
- * recieve no messages from the event in the future.
- */
-#define CLIENT_CANNOT_UNSUBSCRIBE 1 << 11
-
-/**
- * The server is overloaded.
- */
-#define CLIENT_SERVER_OVERLOADED 1 << 12
-
-/**
- * The client is not supported by this handler / server.
- */
-#define CLIENT_UNSUPPORTED 1 << 13
+#define CLIENT_ERROR 1 << 2
 
 /**
  * An async operation is being performed. This should be treated like CLIENT_GOOD in
  * most cases, but it MUST NOT send back any information to the client. The function that returned
  * this status becomes responsible for that.
  */
-#define CLIENT_ASYNC 1 << 14
+#define CLIENT_ASYNC 1 << 3
+
+/**
+ * There is data in the response buffer that should be written back to the client.
+ */
+#define CLIENT_WRITE 1 << 4
+
+/**
+ * Something happened that we need to wait for more from the client. Set a wait,
+ * and notify us later.
+ */
+#define CLIENT_WAIT 1 << 5
+
+/**
+ * The client sent a message without a mask. That is ALWAYS an error.
+ */
+#define CLIENT_NEED_MASK 1 << 6
+
+/**
+ * The message the client sent is too long. That an error.
+ */
+#define CLIENT_MESSAGE_TOO_LONG 1 << 7
+
+/**
+ * The client sent a bad message.
+ */
+#define CLIENT_BAD_MESSAGE_FORMAT 1 << 8
+
+/**
+ * The client is not supported by this handler / server.
+ */
+#define CLIENT_UNSUPPORTED 1 << 9
 
 /**
  * Any event that means the client is just being stupid.
  */
-#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_UNSUPPORTED_OPCODE | CLIENT_BAD_MESSAGE_FORMAT | CLIENT_UNSUPPORTED)
+#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_MESSAGE_FORMAT | CLIENT_UNSUPPORTED)
 
 /**
  * The opcodes that we support.

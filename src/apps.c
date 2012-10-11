@@ -73,7 +73,7 @@ static gpointer _app_run(gpointer void_app) {
 	
 	if (app->run) {
 		if (!app->run(on)) {
-			FATALF("App \"%s\" exited", app->name);
+			FATALF("App \"%s\" exited with bad status", app->name);
 		}
 	}
 	
@@ -94,7 +94,7 @@ gboolean apps_run() {
 		gchar *path;
 		if (strspn(o_app->path, PATH_STARTERS) == 0) {
 			size_t len = strlen(o_app->path) + sizeof(PATH_CURR_DIR) + sizeof(APP_PATH);
-			path = g_try_malloc0((len * sizeof(*path)));
+			path = g_malloc0((len * sizeof(*path)));
 			snprintf(path, len, "%s"APP_PATH"%s", PATH_CURR_DIR, o_app->path);
 		} else {
 			path = g_strdup(o_app->path);
@@ -188,9 +188,9 @@ void apps_client_close(client_t *client) {
 	)
 }
 
-status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const callback_t callback) {
+status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const callback_t client_callback) {
 	if (sub->handler->on_subscribe) {
-		return sub->handler->on_subscribe(client, sub->handler, sub->extra, callback);
+		return sub->handler->on_subscribe(client, sub->handler, sub->extra, client_callback);
 	}
 	
 	return CLIENT_GOOD;

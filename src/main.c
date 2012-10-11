@@ -16,11 +16,7 @@ static gboolean _main_fork() {
 	gint32 processes = option_processes();
 	
 	// If this malloc fails, shit is fucked
-	_pids = g_try_malloc0(processes * sizeof(*_pids));
-	if (_pids == NULL) {
-		ERROR("Processes malloc() failed. Lol.");
-		return FALSE;
-	}
+	_pids = g_malloc0(processes * sizeof(*_pids));
 	
 	while (processes-- > 0) {
 		int pipefd[2];
