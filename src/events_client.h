@@ -122,7 +122,7 @@ void evs_client_send_messages();
  *
  * @ingroup AppFunctions
  *
- * @param event_path The event to check
+ * @param handler The handler to check subscriptions for.
  * @param extra Any extra parameters to add to the path.
  *
  * @return The number of people subscribed; 0 if event does not exist.
@@ -168,7 +168,7 @@ status_t evs_client_format_message(const event_handler_t *handler, const callbac
  * @ingroup AppFunctions
  *
  * @param client The client to be unsubscribed.
- * @param event_path The path to the event
+ * @param handler The handler for the event.
  * @param extra Any extra segments to add to the event path
  * @param client_callback The id of the callback the client sent with the event.
  */

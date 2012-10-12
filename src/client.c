@@ -128,8 +128,6 @@ status_t client_message(client_t* client) {
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
 		status = evs_server_handle(client);
-		
-		#warning Need to handle different client status messages from handlers appropriately
 	}
 	
 	return status;

@@ -130,7 +130,7 @@ typedef struct event_s {
  * @return CLIENT_GOOD Everything went well within the handler, and any data / callbacks
  * should be sent.
  * @return CLIENT_ERROR Something went wrong, just answer with a standard QIO error,
- * or drop the request if there is no callback. With this return value, #response will
+ * or drop the request if there is no callback. With this return value, `response` will
  * be ignored.
  */
 typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event_t *event, GString *response);
@@ -270,6 +270,10 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *e
  * Handle an event from a client.
  *
  * @param client The client that sent the event to handle.
+ *
+ * @return CLIENT_GOOD Everything went well with processing.
+ * @return CLIENT_WRITE Data should be sent back to the client.
+ * @return CLIENT_ARBORTED The client should be closed.
  */
 status_t evs_server_handle(client_t *client);
 
