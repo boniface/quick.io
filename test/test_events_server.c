@@ -1,9 +1,15 @@
 #include "test.h"
 
-void _test_event_creation_setup() {
+static void _test_events_setup() {
+	utils_stats_setup();
 	evs_server_init();
 	evs_client_init();
 	apps_run();
+	conns_init();
+}
+
+static void _test_events_teardown() {
+	utils_stats_teardown();
 }
 
 START_TEST(test_evs_server_format_path_0) {
@@ -615,7 +621,7 @@ END_TEST
 START_TEST(test_evs_server_server_callback_sane_0) {
 	client_t *client = u_client_create(NULL);
 	
-	status_t _on(client_t *client, void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, event_t *event) {
 		return CLIENT_GOOD;
 	}
 	
@@ -628,7 +634,7 @@ END_TEST
 START_TEST(test_evs_server_server_callback_sane_1) {
 	client_t *client = u_client_create(NULL);
 	
-	status_t _on(client_t *client, void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, event_t *event) {
 		return CLIENT_GOOD;
 	}
 	
@@ -652,7 +658,7 @@ START_TEST(test_evs_server_server_callback_evict) {
 	}
 	
 	guint16 calls = 0;
-	status_t _on(client_t *client, void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, event_t *event) {
 		calls++;
 		return CLIENT_GOOD;
 	}
@@ -718,7 +724,7 @@ START_TEST(test_evs_server_server_callback_client_close) {
 	}
 	
 	guint16 calls = 0;
-	status_t _on(client_t *client, void *data, const event_t *event) {
+	status_t _on(client_t *client, void *data, event_t *event) {
 		calls++;
 		return CLIENT_GOOD;
 	}
@@ -788,6 +794,255 @@ START_TEST(test_evs_server_server_callback_fatal) {
 }
 END_TEST
 
+START_TEST(test_evs_server_server_callback_id_overflow) {
+	client_t *client = u_client_create(NULL);
+	
+	void _free(void *data) {}
+	
+	status_t _on(client_t *client, void *data, event_t *event) {
+		return CLIENT_GOOD;
+	}
+	
+	void *t = g_malloc(sizeof(*t));
+	callback_t callback = evs_server_callback_new(client, _on, t, _free);
+	
+	// Make the callback slot absurd
+	callback |= 0xFF00;
+	
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH ":0:plain=", callback);
+	test_status_eq(evs_server_handle(client), CLIENT_ERROR, "Lame callback rejected");
+	
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH ":1:plain=", callback);
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Lame callback rejected");
+	test_str_eq(client->message->buffer->str, "/qio/callback/1:0:plain=qio_error", "Correct callback sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_chain) {
+	client_t *client = u_client_create(NULL);
+	
+	event_t event;
+	event_handler_t *handler = NULL;
+	
+	guint frees = 0;
+	void _free(void *data) {
+		frees++;
+		g_free(data);
+	}
+	
+	guint calls = 0;
+	status_t _on(client_t *client, void *data, event_t *event) {
+		calls++;
+		
+		void *t = g_malloc(sizeof(*t));
+		callback_t callback = evs_server_callback_new(client, _on, t, _free);
+		
+		test(callback > 0, "Created server callback");
+		
+		event->server_callback = callback;
+		
+		return CLIENT_GOOD;
+	}
+	
+	status_t _handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+		void *t = g_malloc(sizeof(*t));
+		callback_t callback = evs_server_callback_new(client, _on, t, _free);
+		
+		test(callback > 0, "Created server callback");
+		
+		event->server_callback = callback;
+		
+		return CLIENT_GOOD;
+	}
+	
+	evs_server_on("/test/server/cbs", _handler, NULL, NULL, FALSE);
+	
+	// ----------------------
+	// First callbacks
+	// ----------------------
+	
+	// Send event to the server, expect a server callback
+	g_string_assign(client->message->buffer, "/test/server/cbs:900:plain=");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent");
+	
+	// Check the message on the client
+	test(g_strstr_len(client->message->buffer->str, client->message->buffer->len, "/qio/callback/900") == client->message->buffer->str);
+	_event_new(client->message, &handler, &event);
+	
+	// Make sure we have a server callback
+	test(event.client_callback > 0, "Server callback sent");
+	_event_free(&event);
+	
+	// ----------------------
+	// Second callbacks
+	// ----------------------
+	
+	// Call the server callback
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH":901:plain=", event.client_callback);
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent to server");
+	
+	// Expect a server callback on the client
+	test(g_strstr_len(client->message->buffer->str, client->message->buffer->len, "/qio/callback/901") == client->message->buffer->str);
+	_event_new(client->message, &handler, &event);
+	
+	// Make sure we have a server callback
+	test(event.client_callback > 0, "Server callback sent");
+	_event_free(&event);
+	
+	// ----------------------
+	// Third callbacks
+	// ----------------------
+	
+	// Call the server callback
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH":902:plain=", event.client_callback);
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent to server");
+	
+	// Expect a server callback on the client
+	test(g_strstr_len(client->message->buffer->str, client->message->buffer->len, "/qio/callback/902") == client->message->buffer->str);
+	_event_new(client->message, &handler, &event);
+	
+	// Make sure we have a server callback
+	test(event.client_callback > 0, "Server callback sent");
+	_event_free(&event);
+	
+	// ----------------------
+	// Fourth callbacks
+	// ----------------------
+	
+	// Call the server callback
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH":0:plain=", event.client_callback);
+	
+	// In the last call, we didn't send a client callback, so there should be a server
+	// callback created, but we're not doing anything with it, so it should be discarded
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "No callback returned");
+	
+	test_uint32_eq(calls, 3, "Server callbacks");
+	test_uint32_eq(frees, 4, "Free'd callbacks");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_chain_async) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	
+	event_t event;
+	event_handler_t *handler = NULL;
+	callback_t server_callback;
+	callback_t client_callback;
+	
+	guint frees = 0;
+	void _free(void *data) {
+		frees++;
+		g_free(data);
+	}
+	
+	guint calls = 0;
+	status_t _on(client_t *client, void *data, event_t *event) {
+		calls++;
+		
+		void *t = g_malloc(sizeof(*t));
+		callback_t callback = evs_server_callback_new(client, _on, t, _free);
+		
+		test(callback > 0, "Created server callback");
+		
+		server_callback = callback;
+		client_callback = event->client_callback;
+		
+		return CLIENT_ASYNC;
+	}
+	
+	status_t _handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+		void *t = g_malloc(sizeof(*t));
+		server_callback = evs_server_callback_new(client, _on, t, _free);
+		
+		test(server_callback > 0, "Created server callback");
+		
+		client_callback = event->client_callback;
+		
+		return CLIENT_ASYNC;
+	}
+	
+	evs_server_on("/test/server/cbs", _handler, NULL, NULL, FALSE);
+	
+	// ----------------------
+	// First callbacks
+	// ----------------------
+	
+	g_string_assign(client->message->buffer, "/test/server/cbs:900:plain=");
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
+	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
+	evs_client_send_messages();
+	
+	gchar buff[512];
+	memset(&buff, 0, sizeof(buff));
+	read(socket, buff, sizeof(buff));
+	test_str_eq(buff, "\x81""\x1a""/qio/callback/900:1:plain=", "Callback sent");
+	
+	// Get the server callback to call
+	g_string_assign(client->message->buffer, buff+2);
+	_event_new(client->message, &handler, &event);
+	test(event.client_callback > 0, "Server callback sent");
+	_event_free(&event);
+	
+	// ----------------------
+	// Second callbacks
+	// ----------------------
+	
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH":901:plain=", event.client_callback);
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
+	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
+	evs_client_send_messages();
+	
+	memset(&buff, 0, sizeof(buff));
+	read(socket, buff, sizeof(buff));
+	test_str_eq(buff, "\x81""\x1a""/qio/callback/901:2:plain=", "Callback sent");
+	
+	// Get the server callback to call
+	g_string_assign(client->message->buffer, buff+2);
+	_event_new(client->message, &handler, &event);
+	test(event.client_callback > 0, "Server callback sent");
+	_event_free(&event);
+	
+	// ----------------------
+	// Third callbacks
+	// ----------------------
+	
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH":902:plain=", event.client_callback);
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
+	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
+	evs_client_send_messages();
+	
+	memset(&buff, 0, sizeof(buff));
+	read(socket, buff, sizeof(buff));
+	test_str_eq(buff, "\x81""\x1a""/qio/callback/902:3:plain=", "Callback sent");
+	
+	// Get the server callback to call
+	g_string_assign(client->message->buffer, buff+2);
+	_event_new(client->message, &handler, &event);
+	test(event.client_callback > 0, "Server callback sent");
+	_event_free(&event);
+	
+	// ----------------------
+	// Fourth callbacks
+	// ----------------------
+	
+	g_string_printf(client->message->buffer, F_CALLBACK_PATH":0:plain=", event.client_callback);
+	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
+	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
+	evs_client_send_messages();
+	
+	test_uint32_eq(calls, 3, "Server callbacks");
+	test_uint32_eq(frees, 4, "Free'd callbacks");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* events_server_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Events - Server");
@@ -801,7 +1056,7 @@ Suite* events_server_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Event Creation");
-	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_events_setup, _test_events_teardown);
 	tcase_add_test(tc, test_evs_event_creation_valid_minimal);
 	tcase_add_test(tc, test_evs_event_creation_valid_single_digit_callback);
 	tcase_add_test(tc, test_evs_event_creation_valid_callback);
@@ -818,7 +1073,7 @@ Suite* events_server_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Handler Creation");
-	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_events_setup, _test_events_teardown);
 	tcase_add_test(tc, test_evs_new_handler_bad_path_0);
 	tcase_add_test(tc, test_evs_new_handler_bad_path_1);
 	tcase_add_test(tc, test_evs_new_handler_bad_path_2);
@@ -827,7 +1082,7 @@ Suite* events_server_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Handler Getting");
-	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_events_setup, _test_events_teardown);
 	tcase_add_test(tc, test_evs_get_handler_0);
 	tcase_add_test(tc, test_evs_get_handler_1);
 	tcase_add_test(tc, test_evs_get_handler_2);
@@ -839,7 +1094,7 @@ Suite* events_server_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Default Event Handlers");
-	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_events_setup, _test_events_teardown);
 	tcase_add_test(tc, test_evs_handler_noop);
 	tcase_add_test(tc, test_evs_handler_noop_callback);
 	tcase_add_test(tc, test_evs_handler_ping);
@@ -855,14 +1110,14 @@ Suite* events_server_suite() {
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Default callbacks");
-	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_events_setup, _test_events_teardown);
 	tcase_add_test(tc, test_evs_server_default_callbacks_0);
 	tcase_add_test(tc, test_evs_server_default_callbacks_1);
 	tcase_add_test(tc, test_evs_server_default_callbacks_2);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Server callbacks");
-	tcase_add_checked_fixture(tc, _test_event_creation_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_events_setup, _test_events_teardown);
 	tcase_add_test(tc, test_evs_server_server_callback_sane_0);
 	tcase_add_test(tc, test_evs_server_server_callback_sane_1);
 	tcase_add_test(tc, test_evs_server_server_callback_evict);
@@ -872,6 +1127,9 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_server_callback_subscribe_to_callback);
 	tcase_add_test(tc, test_evs_server_server_callback_subscribe_to_bad_event);
 	tcase_add_test(tc, test_evs_server_server_callback_fatal);
+	tcase_add_test(tc, test_evs_server_server_callback_id_overflow);
+	tcase_add_test(tc, test_evs_server_server_callback_chain);
+	tcase_add_test(tc, test_evs_server_server_callback_chain_async);
 	suite_add_tcase(s, tc);
 	
 	return s;

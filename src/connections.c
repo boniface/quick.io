@@ -32,14 +32,14 @@ static event_handler_t *_balance_handler;
 static GMutex _balances_lock;
 
 /**
- * Create a new message struct in the client
+ * Create a new message struct in the clien
  */
 static void _conns_message_new(client_t *client) {
 	message_t *message = client->message;
 	
 	// Replace any slots in the message that might have been freed
 	if (message == NULL) {
-		message = g_malloc0(sizeof(*message));
+		message = g_slice_alloc0(sizeof(*message));
 	}
 	
 	if (message->socket_buffer == NULL) {
@@ -307,7 +307,7 @@ void conns_message_free(client_t *client) {
 	
 	g_string_free(client->message->buffer, TRUE);
 	g_string_free(client->message->socket_buffer, TRUE);
-	free(client->message);
+	g_slice_free1(sizeof(*(client->message)), client->message);
 	client->message = NULL;
 }
 

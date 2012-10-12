@@ -10,7 +10,7 @@
 
 ```bash
 # For compiling
-sudo aptitude install build-essential libglib2.0-dev libsoup2.4-dev libmemcached-dev
+sudo aptitude install build-essential libglib2.0-dev libmemcached-dev
 
 # For testing
 sudo aptitude install check gawk

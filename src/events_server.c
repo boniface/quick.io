@@ -68,11 +68,10 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// Attempt to find what handles this event
 	// ATTENTION: DO NOT DO THE HANDLER NULL CHECK HERE:
 	// it is imperative that the client_callback be found if there
-	// is one, so that we might return a proper error if there is a callback.
+	// is one, so that we might return a proper error.
 	// Our mandate is that if there is a callback, we will send something to it, no matter
 	// what.
 	*handler = evs_server_get_handler(curr, &(event->extra));
-	
 	
 	// Time to parse out the message Id
 	curr = end + 1;
@@ -101,7 +100,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 		event->client_callback = 0;
 	}
 	
-	// Since the callback has been parsed, we may no do the handler check
+	// Since the callback has been parsed, we may now do the handler check
 	if (*handler == NULL) {
 		return CLIENT_ERROR;
 	}
@@ -156,7 +155,6 @@ static void _event_free(event_t *event) {
 
 static void _evs_server_callback_free(struct client_cb_s cb) {
 	// Get rid of the callback's data, that's over
-	// No need to alert any errors here: those are all written in the _new() function
 	if (cb.data != NULL && cb.free_fn != NULL) {
 		cb.free_fn(cb.data);
 	}
@@ -168,15 +166,15 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 	}
 	
 	callback_t compacted = g_ascii_strtoull(g_ptr_array_index(event->extra, 0), NULL, 10);
-	guint8 slot = compacted >> 8;
-	guint8 id = compacted & 0xFF;
+	guint8 slot, id;
+	SERVER_CALLBACK_PARTS(client, compacted, slot, id);
 	
 	g_mutex_lock(&_callbacks_lock);
 	
 	// If a callback came through that was evicted, ignore it
 	if (client->callbacks[slot].id != id) {
 		g_mutex_unlock(&_callbacks_lock);
-		return CLIENT_GOOD;
+		return CLIENT_ERROR;
 	}
 	
 	// Get a copy of the callback so we can unlock faster
@@ -320,7 +318,11 @@ status_t evs_server_handle(client_t *client) {
 	
 	// If there's a callback, and we're not going async, we MUST send something
 	// back to the client
-	if (event.client_callback > 0) {
+	if (status == CLIENT_ASYNC) {
+		// CLIENT_ASYNC is ALWAYS good, and we're not sending anything: the handler
+		// has taken full control at this point
+		status = CLIENT_GOOD;
+	} else if (event.client_callback > 0) {
 		if (status == CLIENT_GOOD) {
 			gchar *data = client->message->buffer->str;
 			g_string_free(client->message->buffer, FALSE);
@@ -333,14 +335,16 @@ status_t evs_server_handle(client_t *client) {
 			status = evs_client_format_message(handler, event.client_callback, 0, NULL, d_plain, QIO_ERROR, client->message->buffer);
 		}
 		
-		// If we get CLIENT_GOOD back from format_message, then we still need it to be
-		// CLIENT_WRITE: we have to send a message
 		if (status == CLIENT_GOOD) {
+			// If everything went right in message formatting, then send it back to the client
 			status = CLIENT_WRITE;
 		} else {
 			// If anything else happens, then just kill the client, there's no use at this point
 			status = CLIENT_ABORTED;
 		}
+	} else if (event.server_callback > 0) {
+		// There's no client callback, but they attempted to send back a server callback...weird
+		evs_server_callback_free(client, event.server_callback);
 	}
 	
 	_event_free(&event);
@@ -447,15 +451,15 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	
 	// Attempt to find an empty place to put the callback
 	guint8 i = 0;
-	for ( ; i < MAX_CALLBACKS; i++) {
+	for ( ; i < G_N_ELEMENTS(client->callbacks); i++) {
 		if (client->callbacks[i].fn == NULL) {
 			break;
 		}
 	}
 	
 	// Could not find an open callback slot, just evict at random
-	if (i >= MAX_CALLBACKS) {
-		i = (guint8)g_random_int_range(0, MAX_CALLBACKS);
+	if (i >= G_N_ELEMENTS(client->callbacks)) {
+		i = (guint8)g_random_int_range(0, G_N_ELEMENTS(client->callbacks));
 		_evs_server_callback_free(client->callbacks[i]);
 	}
 	
@@ -477,8 +481,18 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	return id;
 }
 
+void evs_server_callback_free(client_t *client, callback_t server_callback) {
+	// Make sure we're not just killing a callback at random
+	guint8 slot, id;
+	SERVER_CALLBACK_PARTS(client, server_callback, slot, id);
+	
+	if (client->callbacks[slot].id == id) {
+		_evs_server_callback_free(client->callbacks[slot]);
+	}
+}
+
 void evs_server_client_close(client_t *client) {
-	for (callback_t i = 0; i < MAX_CALLBACKS; i++) {
+	for (callback_t i = 0; i < G_N_ELEMENTS(client->callbacks); i++) {
 		if (client->callbacks[i].fn != NULL) {
 			_evs_server_callback_free(client->callbacks[i]);
 		}

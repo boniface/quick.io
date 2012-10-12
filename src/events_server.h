@@ -32,6 +32,13 @@
 #define SERVER_CALLBACK(slot, id) ((slot << 8) | id)
 
 /**
+ * Decomposes a server callback into slot and id
+ */
+#define SERVER_CALLBACK_PARTS(client, server_callback, slot, id) \
+	slot = (server_callback >> 8) % G_N_ELEMENTS(client->callbacks); \
+	id = server_callback & 0xFF;
+
+/**
  * The list type used to hold extra path segments.
  * This is reference counted, so it MUST NEVER be g_ptr_array_free'd.
  *
@@ -178,7 +185,7 @@ typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const 
  * 
  * @return A status code for the callback.
  */
-typedef status_t (*callback_fn)(client_t *client, void *data, const event_t *event);
+typedef status_t (*callback_fn)(client_t *client, void *data, event_t *event);
 
 /**
  * The function to be called to free the passed into evs_server_new_callback().
@@ -325,6 +332,16 @@ APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *ha
  * @return The callback ID.
  */
 APP_EXPORT callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn);
+
+/**
+ * Free a previously-created server callback.
+ *
+ * @ingroup AppFunctions
+ *
+ * @param client The client to add a callback to.
+ * @param server_callback The id of the callback to remove.
+ */
+APP_EXPORT void evs_server_callback_free(client_t *client, callback_t server_callback);
 
 /**
  * Alert that a client has closed so that it can free all its stuffs.

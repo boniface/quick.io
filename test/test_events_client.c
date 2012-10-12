@@ -512,7 +512,8 @@ START_TEST(test_evs_client_pub_message) {
 }
 END_TEST
 
-START_TEST(test_evs_client_send_messages_closed_client) {
+START_TEST(test_evs_client_send_messages_closed_client_broadcast) {
+	// Client created without a socket == closed
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	
@@ -520,13 +521,33 @@ START_TEST(test_evs_client_send_messages_closed_client) {
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	test(handler != NULL, "Got handler");
 	
-	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
-	test_status_eq(status, CLIENT_GOOD, "Message published");
+	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something"), CLIENT_GOOD, "Message published");
+	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something1"), CLIENT_GOOD, "Message published");
+	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something2"), CLIENT_GOOD, "Message published");
+	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something3"), CLIENT_GOOD, "Message published");
 	
 	evs_client_send_messages();
 	
 	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
 	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
+	test_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
+}
+END_TEST
+
+START_TEST(test_evs_client_send_messages_closed_client_single) {
+	// Client created without a socket == closed
+	client_t *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+	
+	evs_client_send_callback(client, 1, d_plain, "test", 0);
+	evs_client_send_callback(client, 1, d_plain, "test1", 0);
+	evs_client_send_callback(client, 1, d_plain, "test2", 0);
+	evs_client_send_callback(client, 1, d_plain, "test3", 0);
+	evs_client_send_callback(client, 1, d_plain, "test4", 0);
+	evs_client_send_callback(client, 1, d_plain, "test5", 0);
+	
+	evs_client_send_messages();
+	test_size_eq(utils_stats()->evs_client_send_single_closes, 6, "Client closed");
 }
 END_TEST
 
@@ -548,7 +569,7 @@ START_TEST(test_evs_client_send_messages_no_client_handler) {
 	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
 	
 	test_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
-	test_size_eq(utils_stats()->evs_client_pub_closes, 1, "Client closed");
+	test_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
 }
 END_TEST
 
@@ -571,7 +592,7 @@ START_TEST(test_evs_client_send_messages_clear_subscription) {
 	evs_client_send_messages();
 	
 	test_size_eq(utils_stats()->evs_client_pubd_messages, 0, "1 message sent");
-	test_size_eq(utils_stats()->evs_client_pub_closes, 0, "Client closed");
+	test_size_eq(utils_stats()->evs_client_send_pub_closes, 0, "Client closed");
 }
 END_TEST
 
@@ -739,7 +760,8 @@ Suite* events_client_suite() {
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
 	tcase_add_test(tc, test_evs_client_send_messages_empty);
 	tcase_add_test(tc, test_evs_client_pub_message);
-	tcase_add_test(tc, test_evs_client_send_messages_closed_client);
+	tcase_add_test(tc, test_evs_client_send_messages_closed_client_broadcast);
+	tcase_add_test(tc, test_evs_client_send_messages_closed_client_single);
 	tcase_add_test(tc, test_evs_client_send_messages_no_client_handler);
 	tcase_add_test(tc, test_evs_client_send_messages_clear_subscription);
 	tcase_add_test(tc, test_evs_client_send_messages_no_handler);

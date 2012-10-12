@@ -231,7 +231,7 @@ static void _evs_client_pub_message(evs_client_sub_t *sub, _async_message_s *mes
 	
 	// Clean up dead clients
 	for (gsize i = 0; i < dead_clients->len; i++) {
-		UTILS_STATS_INC(evs_client_pub_closes);
+		UTILS_STATS_INC(evs_client_send_pub_closes);
 		conns_client_close(g_ptr_array_index(dead_clients, i));
 	}
 	
@@ -326,14 +326,14 @@ void evs_client_client_close(client_t *client) {
 }
 
 void evs_client_send_messages() {
-	_async_message_s *message;
+	_async_message_s *amsg;
 	
 	void _broadcast() {
 		// Find if the subscription we want to send to still exists
-		evs_client_sub_t *sub = _get_subscription(message->event_path, FALSE /* DON'T TOUCH */);
+		evs_client_sub_t *sub = _get_subscription(amsg->event_path, FALSE /* DON'T TOUCH */);
 		
 		if (sub != NULL) {
-			_evs_client_pub_message(sub, message);
+			_evs_client_pub_message(sub, amsg);
 		}
 	}
 	
@@ -341,14 +341,20 @@ void evs_client_send_messages() {
 		UTILS_STATS_INC(evs_client_async_messages);
 		
 		message_t m;
-		m.type = message->message_opcode;
-		m.buffer = message->message;
+		m.type = amsg->message_opcode;
+		m.buffer = amsg->message;
 		
-		client_write(message->client, &m);
+		if (client_write(amsg->client, &m) != CLIENT_GOOD) {
+			// conns_client_close calls client_unref, so don't let it be called again
+			// in the loop
+			UTILS_STATS_INC(evs_client_send_single_closes);
+			conns_client_close(amsg->client);
+			amsg->client = NULL;
+		}
 	}
 	
-	while ((message = g_async_queue_try_pop(_messages)) != NULL) {
-		switch (message->type) {
+	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
+		switch (amsg->type) {
 			case _mt_broadcast:
 				_broadcast();
 				break;
@@ -358,16 +364,16 @@ void evs_client_send_messages() {
 				break;
 		}
 		
-		if (message->client != NULL) {
-			client_unref(message->client);
+		if (amsg->client != NULL) {
+			client_unref(amsg->client);
 		}
 		
-		if (message->event_path != NULL) {
-			g_free(message->event_path);
+		if (amsg->event_path != NULL) {
+			g_free(amsg->event_path);
 		}
 		
-		g_string_free(message->message, TRUE);
-		g_slice_free1(sizeof(*message), message);
+		g_string_free(amsg->message, TRUE);
+		g_slice_free1(sizeof(*amsg), amsg);
 	}
 }
 
@@ -388,12 +394,12 @@ status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t
 	//  1) Publish event to /test/event
 	//  2) All clients unsubscribe from /test/event
 	//  3) We attempt to publish with an invalid pointer (segfault!)
-	_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
-	emsg->type = _mt_broadcast;
-	emsg->event_path = event_path;
-	emsg->message = message;
-	emsg->message_opcode = op_text;
-	g_async_queue_push(_messages, emsg);
+	_async_message_s *amsg = g_slice_alloc0(sizeof(*amsg));
+	amsg->type = _mt_broadcast;
+	amsg->event_path = event_path;
+	amsg->message = message;
+	amsg->message_opcode = op_text;
+	g_async_queue_push(_messages, amsg);
 	
 	return CLIENT_GOOD;
 }
@@ -451,9 +457,7 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 	evs_client_unsub_client(ep, client);
 	
 	// Send a message to the client if there is a callback, otherwise ignore
-	if (client_callback != 0) {
-		evs_client_send_error_callback(client, client_callback);
-	}
+	evs_client_send_error_callback(client, client_callback);
 	
 	g_free(ep);
 }
@@ -461,6 +465,11 @@ void evs_client_invalid_event(client_t *client, const event_handler_t *handler, 
 void evs_client_send_callback(client_t *client, const callback_t client_callback, const enum data_t type, const gchar *data, const callback_t server_callback) {
 	// Umm, that would be stupid...
 	if (client_callback == 0) {
+		// But they created a callback for the client...wat?
+		if (server_callback != 0) {
+			evs_server_callback_free(client, server_callback);
+		}
+		
 		return;
 	}
 	
@@ -468,15 +477,15 @@ void evs_client_send_callback(client_t *client, const callback_t client_callback
 	// No error condition when sending a callback, and since we do the error check here,
 	// there's no need to do any other error checks
 	if (evs_client_format_message(NULL, client_callback, server_callback, NULL, type, data, message) == CLIENT_GOOD) {
-		_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
-		emsg->type = _mt_client;
-		emsg->message = message;
-		emsg->message_opcode = op_text;
+		_async_message_s *amsg = g_slice_alloc0(sizeof(*amsg));
+		amsg->type = _mt_client;
+		amsg->message = message;
+		amsg->message_opcode = op_text;
 		
-		emsg->client = client;
+		amsg->client = client;
 		client_ref(client);
 		
-		g_async_queue_push(_messages, emsg);
+		g_async_queue_push(_messages, amsg);
 	}
 }
 void evs_client_send_error_callback(client_t *client, const callback_t client_callback) {
@@ -489,15 +498,15 @@ void evs_client_send_error_callback(client_t *client, const callback_t client_ca
 	// No error condition when sending a callback, and since we do the error check here,
 	// there's no need to do any other error checks
 	if (evs_client_format_message(NULL, client_callback, 0, NULL, d_plain, QIO_ERROR, message) == CLIENT_GOOD) {
-		_async_message_s *emsg = g_slice_alloc0(sizeof(*emsg));
-		emsg->type = _mt_client;
-		emsg->message = message;
-		emsg->message_opcode = op_text;
+		_async_message_s *amsg = g_slice_alloc0(sizeof(*amsg));
+		amsg->type = _mt_client;
+		amsg->message = message;
+		amsg->message_opcode = op_text;
 		
-		emsg->client = client;
+		amsg->client = client;
 		client_ref(client);
 		
-		g_async_queue_push(_messages, emsg);
+		g_async_queue_push(_messages, amsg);
 	}
 }
 

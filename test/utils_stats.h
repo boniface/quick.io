@@ -110,7 +110,12 @@ typedef struct test_stats_s {
 	/**
 	 * The number of clients closed during message publishing.
 	 */
-	gsize evs_client_pub_closes;
+	gsize evs_client_send_pub_closes;
+	
+	/**
+	 * The number of clients closed during message publishing.
+	 */
+	gsize evs_client_send_single_closes;
 } test_stats_t;
 
 /**
