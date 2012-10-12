@@ -29,7 +29,6 @@ build_dir:
 build: build_dir
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
-	$(MAKE) -C example/node/ clean all
 	$(MAKE) -C src
 	$(MAKE) -C app
 
