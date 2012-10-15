@@ -4,6 +4,9 @@
 # Not directory-specific
 HEADERS = $(wildcard *.h)
 
+# Because we need it for check...
+ARCH := $(shell getconf LONG_BIT)
+
 export ROOT ?= $(shell pwd)
 DIR_BUILD = build
 DIR_BUILD_DEBUG = build_debug

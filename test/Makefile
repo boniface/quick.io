@@ -3,7 +3,7 @@ include ../src/Makefile
 
 CFLAGS += -I../src -DTESTING=1
 LDFLAGS += --coverage
-LIBCHECK = /usr/lib/libcheck.a
+LIBCHECK = ../ext/check/libcheck$(ARCH).a
 OBJECTS = $(BUILDDIR)/test.o $(BUILDDIR)/utils.o $(BUILDDIR)/utils_locks.o $(BUILDDIR)/utils_stats.o
 QIO_OBJECTS = $(filter-out $(OBJECTS), $(wildcard $(BUILDDIR)/*.o))
 TEST_OUTPUT_XML = 0

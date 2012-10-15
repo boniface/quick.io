@@ -1,7 +1,7 @@
 include ../Makefile.inc
 
 # Hide everything by default, unless annotated with APP_EXPORT
-CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/http-parser
+CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/http-parser -I../ext/check
 LDFLAGS += -Wl,-E
 
 OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o

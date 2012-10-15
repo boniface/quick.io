@@ -3,8 +3,7 @@
 ## Requirements
 
 * glib >= 2.32
-* check (only for running unit tests)
-* doxygen (for generating docs)
+* doxygen + sphinx (for generating docs)
 
 ### Debian-based systems
 
@@ -13,7 +12,7 @@
 sudo aptitude install build-essential libglib2.0-dev libmemcached-dev
 
 # For testing
-sudo aptitude install check gawk
+sudo aptitude install gawk
 ```
 
 ## Testing

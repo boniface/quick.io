@@ -4,21 +4,21 @@
  * @file test.h
  */
 #pragma once
-#include <check.h>
 #include <fcntl.h>
 #include <mcheck.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include "check.h"
 #include "qio.h"
 #include "utils.h"
 
 /**
  * Test that the assertion is true.
- * This is a basic wrapper around fail_unless().
+ * This is a basic wrapper around ck_assert_msg().
  */
-#define test fail_unless
+#define test ck_assert_msg
 
 /**
  * Test that an assertion is false.
@@ -72,7 +72,7 @@
 #define test_str_eq(test, should_be, description) { \
 	_test_setup(char*, test, should_be); \
 	_msg("Assertion '%s'=='%s' failed", actual, expect, description); \
-	_fail_unless(strcmp(actual, expect) == 0, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(strcmp(actual, expect) == 0, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two strings are equal.
@@ -94,7 +94,7 @@
 #define test_bin_eq(test, should_be, length, description) { \
 	_test_setup(char*, test, should_be); \
 	_msg("The binary blobs do not match: '%X'!='%X'", (*actual) & 0xFF, (*expect) & 0xFF, description); \
-	_fail_unless(memcmp(actual, expect, length) == 0, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(memcmp(actual, expect, length) == 0, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two strings are equal.
@@ -116,7 +116,7 @@
 #define test_char_eq(test, should_be, description) { \
 	_test_setup(gchar, test, should_be); \
 	_msg("Assertion (character) %d==%d failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two chars are equal.
@@ -137,7 +137,7 @@
 #define test_int16_eq(test, should_be, description) { \
 	_test_setup(gint16, test, should_be); \
 	_msg("Assertion %"G_GINT16_FORMAT"==%"G_GINT16_FORMAT" failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two int16s are equal.
@@ -158,7 +158,7 @@
 #define test_uint16_eq(test, should_be, description) { \
 	_test_setup(guint16, test, should_be); \
 	_msg("Assertion %"G_GUINT16_FORMAT"==%"G_GUINT16_FORMAT" failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two uint16s are equal.
@@ -179,7 +179,7 @@
 #define test_int32_eq(test, should_be, description) { \
 	_test_setup(gint32, test, should_be); \
 	_msg("Assertion %"G_GINT32_FORMAT"==%"G_GINT32_FORMAT" failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two int32s are equal.
@@ -200,7 +200,7 @@
 #define test_uint32_eq(test, should_be, description) { \
 	_test_setup(guint32, test, should_be); \
 	_msg("Assertion %"G_GUINT32_FORMAT"==%"G_GUINT32_FORMAT" failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two uint32s are equal.
@@ -221,7 +221,7 @@
 #define test_int64_eq(test, should_be, description) { \
 	_test_setup(gint64, test, should_be); \
 	_msg("Assertion %"G_GINT64_FORMAT"==%"G_GINT64_FORMAT" failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two int64s are equal.
@@ -242,7 +242,7 @@
 #define test_uint64_eq(test, should_be, description) { \
 	_test_setup(guint64, test, should_be); \
 	_msg("Assertion %"G_GUINT64_FORMAT"==%"G_GUINT64_FORMAT" failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two uint64s are equal.
@@ -263,7 +263,7 @@
 #define test_size_eq(test, should_be, description) { \
 	_test_setup(size_t, test, should_be); \
 	_msg("Assertion %zd==%zd failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two size_t's are equal.
@@ -284,7 +284,7 @@
 #define test_status_eq(test, should_be, description) { \
 	_test_setup(status_t, test, should_be); \
 	_msg("Assertion %s==%s failed", test_status_to_str(actual), test_status_to_str(expect), description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two status_t's match.
@@ -305,7 +305,7 @@
 #define test_ptr_eq(test, should_be, description) { \
 	_test_setup(void*, test, should_be); \
 	_msg("Assertion %p==%p failed", actual, expect, description); \
-	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
+	ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
 /**
  * Tests if the two pointers are equal.
