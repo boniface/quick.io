@@ -47,6 +47,13 @@ void _qsys_accept() {
 			continue;
 		}
 		
+		int opt = 1;
+		if (setsockopt(_accept_socket, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt)) == -1) {
+			ERROR("Could not set socket keep alive");
+			_qsys_close(client_socket);
+			continue;
+		}
+		
 		client_t *client = g_slice_alloc0(sizeof(*client));
 		client->socket = client_socket;
 		

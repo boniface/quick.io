@@ -197,7 +197,7 @@ START_TEST(test_apps_cb_client_subscribe) {
 	sub->extra = NULL;
 	sub->handler = g_malloc0(sizeof(*(sub->handler)));
 	
-	apps_evs_client_subscribe(client, sub);
+	apps_evs_client_subscribe(client, sub->event_path, sub->extra);
 	test_size_eq(utils_stats()->apps_client_subscribe, 2, "Single client subscribed, 2 apps fired");
 	
 	g_free(sub->handler);
@@ -213,7 +213,7 @@ START_TEST(test_apps_cb_client_unsubscribe) {
 	sub->extra = NULL;
 	sub->handler = g_malloc0(sizeof(*(sub->handler)));
 	
-	apps_evs_client_unsubscribe(client, sub);
+	apps_evs_client_unsubscribe(client, sub->handler, sub->event_path, sub->extra);
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 2, "Single client unsubscribed, 2 apps fired");
 	
 	g_free(sub->handler);

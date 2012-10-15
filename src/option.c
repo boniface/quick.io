@@ -10,18 +10,18 @@ static GOptionEntry command_options[] = {
 
 // Config file options
 static gchar *_bind_address = "127.0.0.1";
-static gint _port = 5000;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
+static gint _port = 5000;
 static gint _processes = 8;
 static gint _timeout = 5;
 
 static config_file_entry_t _config_options[] = {
 	{"bind-address", e_string, &_bind_address},
-	{"port", e_int, &_port},
-	{"processes", e_int, &_processes},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
+	{"port", e_int, &_port},
+	{"processes", e_int, &_processes},
 	{"timeout", e_int, &_timeout},
 };
 
@@ -100,16 +100,16 @@ gchar* option_config_file() {
 	return _config_file;
 }
 
-gint32 option_port() {
-	return _port;
-}
-
 guint64 option_max_message_size() {
 	return _max_mess_size;
 }
 
 guint64 option_max_subscriptions() {
 	return _max_subs;
+}
+
+gint32 option_port() {
+	return _port;
 }
 
 gint32 option_processes() {

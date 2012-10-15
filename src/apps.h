@@ -197,7 +197,8 @@ void apps_client_close(client_t *client);
  * Ask the app if the given subscription is okay.
  *
  * @param client The client that subscribed
- * @param sub The subscription
+ * @param handler The handler being subscribed to
+ * @param extra The extra path segments for the event
  * @param client_callback The callback to be notified when verification is complete. Only to be used
  * when returning CLIENT_ASYNC.
  *
@@ -205,7 +206,7 @@ void apps_client_close(client_t *client);
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const callback_t client_callback);
+status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t *handler, path_extra_t extra, const callback_t client_callback);
 
 /**
  * Inform all the apps when a client has added a subscription.
@@ -216,7 +217,7 @@ status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_
  * @return True if the client subscribed to a valid event, false otherwise, indicating the
  * subscription should be canceled.
  */
-gboolean apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub);
+gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t extra);
 
 /**
  * Inform all the apps when a client has dropped a subscription.
@@ -224,7 +225,7 @@ gboolean apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub
  * @param client The client that unsubscribed.
  * @param sub The subscription the client dropped.
  */
-void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub);
+void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const char *event_path, path_extra_t extra);
 
 /**
  * Routes all queued events to the callbacks inside the apps.

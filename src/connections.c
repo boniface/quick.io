@@ -6,11 +6,6 @@
 static GHashTable *_client_timeouts;
 
 /**
- * The number of ticks a client is allowed to be waited on.
- */
-static gint32 _client_timeout_ticks;
-
-/**
  * All of the clients currently connected.
  * Functions as a set.
  */
@@ -255,7 +250,6 @@ void conns_client_data(client_t *client) {
 gboolean conns_init() {
 	// Just hashing clients directly, as a set
 	_client_timeouts = g_hash_table_new(NULL, NULL);
-	_client_timeout_ticks = option_timeout();
 	_clients = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	
@@ -277,15 +271,15 @@ void conns_client_timeout_set(client_t *client) {
 		return;
 	}
 	
-	client->timer = _client_timeout_ticks;
+	client->timer = option_timeout();
 	g_hash_table_add(_client_timeouts, client);
 }
 
 void conns_maintenance_tick() {
 	static guint ticks = 0;
 	
-	// Send out messages
-	evs_client_send_messages();
+	// Send out everything that couldn't be done synchronously
+	evs_client_send_async_messages();
 	
 	// Check if there are any outstanding rebalance requests
 	_conns_balance();

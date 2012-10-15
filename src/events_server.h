@@ -150,7 +150,7 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback);
+typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t extra, const callback_t client_callback);
 /**
  * A callback for when a client subscribes to a specific event.
  * This is supplied to evs_server_on() and is called when a client subscribes
@@ -260,7 +260,8 @@ struct event_handler_s {
  * Get all of the event info for the event.
  *
  * @param event_path The event path.
- * @param[out] extra Where any extra path segments are put. Will not be updated if NULL. MUST be g_list_free_full(extra, g_free)'d.
+ * @param[out] extra Where any extra path segments are put. Will not be updated if NULL. MUST
+ * be g_list_free_full(extra, g_free)'d.
  *
  * @return The event handler. If null, extra will also be NULL.
  */

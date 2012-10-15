@@ -188,30 +188,30 @@ void apps_client_close(client_t *client) {
 	)
 }
 
-status_t apps_evs_client_check_subscribe(client_t *client, const evs_client_sub_t *sub, const callback_t client_callback) {
-	if (sub->handler->on_subscribe) {
-		return sub->handler->on_subscribe(client, sub->handler, sub->extra, client_callback);
+status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t *handler, path_extra_t extra, const callback_t client_callback) {
+	if (handler->on_subscribe) {
+		return handler->on_subscribe(client, handler, extra, client_callback);
 	}
 	
 	return CLIENT_GOOD;
 }
 
-gboolean apps_evs_client_subscribe(client_t *client, const evs_client_sub_t *sub) {
+gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t extra) {
 	// Notify all the general listeners that a subscription happened.
 	APP_FOREACH(
 		on_subscribe_cb cb = app->subscribe;
 		
 		if (cb != NULL) {
-			cb(client, sub->event_path, sub->extra);
+			cb(client, event_path, extra);
 		}
 	)
 	
 	return TRUE;
 }
 
-void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub) {
-	if (sub->handler->on_unsubscribe != NULL) {
-		sub->handler->on_unsubscribe(client, sub->handler, sub->extra);
+void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const gchar *event_path, path_extra_t extra) {
+	if (handler->on_unsubscribe != NULL) {
+		handler->on_unsubscribe(client, handler, extra);
 	}
 	
 	// Notify all the general listeners that an unsubscription happened.
@@ -219,7 +219,7 @@ void apps_evs_client_unsubscribe(client_t *client, const evs_client_sub_t *sub) 
 		on_subscribe_cb cb = app->unsubscribe;
 		
 		if (cb != NULL) {
-			cb(client, sub->event_path, sub->extra);
+			cb(client, event_path, extra);
 		}
 	)
 }

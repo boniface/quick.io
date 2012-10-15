@@ -976,7 +976,7 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	g_string_assign(client->message->buffer, "/test/server/cbs:900:plain=");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
 	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_messages();
+	evs_client_send_async_messages();
 	
 	gchar buff[512];
 	memset(&buff, 0, sizeof(buff));
@@ -996,7 +996,7 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH":901:plain=", event.client_callback);
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
 	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_messages();
+	evs_client_send_async_messages();
 	
 	memset(&buff, 0, sizeof(buff));
 	read(socket, buff, sizeof(buff));
@@ -1015,7 +1015,7 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH":902:plain=", event.client_callback);
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
 	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_messages();
+	evs_client_send_async_messages();
 	
 	memset(&buff, 0, sizeof(buff));
 	read(socket, buff, sizeof(buff));
@@ -1034,10 +1034,30 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH":0:plain=", event.client_callback);
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
 	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_messages();
+	evs_client_send_async_messages();
 	
 	test_uint32_eq(calls, 3, "Server callbacks");
 	test_uint32_eq(frees, 4, "Free'd callbacks");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_server_server_callback_bad_status) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	
+	status_t _on(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+		event->server_callback = 123;
+		return 99;
+	}
+	
+	evs_server_on("/bad_status", _on, NULL, NULL, TRUE);
+	
+	// NO client callback, trigger server_callback handler
+	g_string_assign(client->message->buffer, "/bad_status:0:plain=/asdf/");
+	test_status_eq(evs_server_handle(client), CLIENT_ABORTED, "Aborted");
 	
 	u_client_free(client);
 }
@@ -1130,6 +1150,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_server_callback_id_overflow);
 	tcase_add_test(tc, test_evs_server_server_callback_chain);
 	tcase_add_test(tc, test_evs_server_server_callback_chain_async);
+	tcase_add_test(tc, test_evs_server_server_callback_bad_status);
 	suite_add_tcase(s, tc);
 	
 	return s;

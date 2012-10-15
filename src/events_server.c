@@ -345,6 +345,12 @@ status_t evs_server_handle(client_t *client) {
 	} else if (event.server_callback > 0) {
 		// There's no client callback, but they attempted to send back a server callback...weird
 		evs_server_callback_free(client, event.server_callback);
+		
+		// This should technically never happen, but just in case, we don't want things going
+		// wrong above us
+		if (status != CLIENT_GOOD) {
+			status = CLIENT_ABORTED;
+		}
 	}
 	
 	_event_free(&event);
