@@ -216,6 +216,12 @@ struct client_s {
 	message_t *message;
 	
 	/**
+	 * Extra data that is stored on the client.  This exists until ref_count == 0.
+	 * This table is lazy-allocated, so it MIGHT be NULL.
+	 */
+	GHashTable *external_data;
+	
+	/**
 	 * The callbacks registered on the client.
 	 */
 	struct client_cb_s callbacks[MAX_CALLBACKS];
@@ -275,6 +281,41 @@ APP_EXPORT void client_ref(client_t *client);
  * invalid, and you MAY NEVER use it again.
  */
 APP_EXPORT void client_unref(client_t *client);
+
+/**
+ * Sets a piece of information on a client. All strings will be duplicated before being
+ * stored. To remove a key, simply call `client_set(client, "some_key", NULL)`. All values
+ * will be available as long as the client exists (ie. as long as a reference to the client
+ * exists).
+ *
+ * @note This information is visible to all apps.
+ * 
+ * @param client The client to store the information on.
+ * @param key The key to set.
+ * @param value The value to set.
+ */
+APP_EXPORT void client_set(client_t *client, const gchar *key, const gchar *value);
+
+/**
+ * Gets a piece of information on a client.
+ *
+ * @param client The client to get the information from.
+ * @param key The key to get.
+ *
+ * @return A copy of the value, or NULL if not found. If the value is returned, it MUST be
+ * g_free()'d.
+ */
+APP_EXPORT gchar* client_get(client_t *client, const gchar *key);
+
+/**
+ * Determines if a piece of information exists on a client.
+ *
+ * @param client The client to check the information on.
+ * @param key The key to check.
+ *
+ * @return TRUE if the information if there, FALSE otherwise;
+ */
+APP_EXPORT gboolean client_has(client_t *client, const gchar *key);
 
 #ifdef TESTING
 #include "../test/test_client.h"

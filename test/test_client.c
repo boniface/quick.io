@@ -250,6 +250,52 @@ START_TEST(test_client_refcount_3) {
 }
 END_TEST
 
+START_TEST(test_client_external_data_sane) {
+	client_t *client = u_client_create(NULL);
+	
+	test_ptr_eq(client_get(client, "test"), NULL, "No data set");
+	test_not(client_has(client, "test"), "Not set");
+	
+	client_set(client, "test", "test");
+	
+	gchar *val = client_get(client, "test");
+	test_str_eq(val, "test", "Correct value");
+	g_free(val);
+	test(client_has(client, "test"), "Not set");
+	
+	client_ref(client);
+	client_unref(client);
+	
+	val = client_get(client, "test");
+	test_str_eq(val, "test", "Correct value");
+	g_free(val);
+	test(client_has(client, "test"), "Not set");
+}
+END_TEST
+
+START_TEST(test_client_external_data_overwrite) {
+	client_t *client = u_client_create(NULL);
+	
+	client_set(client, "test", "test");
+	client_set(client, "test", "test2");
+	client_set(client, "test", "test3");
+	
+	gchar *val = client_get(client, "test");
+	test_str_eq(val, "test3", "Correct value");
+	g_free(val);
+}
+END_TEST
+
+START_TEST(test_client_external_data_delete) {
+	client_t *client = u_client_create(NULL);
+	
+	client_set(client, "test", "test");
+	client_set(client, "test", NULL);
+	
+	test_not(client_has(client, "test"), "Key removed");
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -285,6 +331,13 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_refcount_1);
 	tcase_add_test(tc, test_client_refcount_2);
 	tcase_add_test(tc, test_client_refcount_3);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("External Data");
+	tcase_add_checked_fixture(tc, _test_refcount_setup, NULL);
+	tcase_add_test(tc, test_client_external_data_sane);
+	tcase_add_test(tc, test_client_external_data_overwrite);
+	tcase_add_test(tc, test_client_external_data_delete);
 	suite_add_tcase(s, tc);
 	
 	return s;

@@ -384,7 +384,7 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 	test_status_eq(evs_client_sub_client("/test/async", client, 1), CLIENT_ASYNC, "Async");
 	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 	
-	for (int i = 0; i <= option_max_subscriptions(); i++) {
+	for (guint32 i = 0; i <= option_max_subscriptions(); i++) {
 		gchar ep[128];
 		snprintf(ep, sizeof(ep), "/test/event/%d", i);
 		evs_client_sub_client(ep, client, 1);
