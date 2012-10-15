@@ -88,25 +88,21 @@ END_TEST
 START_TEST(test_conns_balance_0) {
 	conns_balance(100, "test");
 	
-	test_int64_eq(_balances->len, 1, "One balance request");
+	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 }
 END_TEST
 
 START_TEST(test_conns_balance_1) {
-	DEBUG("1");
 	conns_balance(100, "test");
-	DEBUG("2");
 	
 	int socket = 0;
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 	conns_client_new(client);
-	DEBUG("3");
 	
-	test_int64_eq(_balances->len, 1, "One balance request");
+	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 	_conns_balance();
-	DEBUG("4");
-	test_int64_eq(_balances->len, 0, "Requests cleared");
+	test_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
 	
 	char buff[sizeof(MOVE)+128];
 	memset(buff, 0, sizeof(buff));
@@ -129,9 +125,9 @@ START_TEST(test_conns_balance_2) {
 	client2->handler = h_rfc6455;
 	conns_client_new(client2);
 	
-	test_int64_eq(_balances->len, 2, "Two requests");
+	test_int64_eq(g_async_queue_length(_balances), 2, "Two requests");
 	_conns_balance();
-	test_int64_eq(_balances->len, 0, "Requests cleared");
+	test_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
 	
 	char buff1[sizeof(MOVE)+128];
 	char buff2[sizeof(MOVE2)+128];

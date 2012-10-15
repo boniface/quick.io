@@ -14,17 +14,12 @@ static GHashTable *_clients;
 /**
  * A list of all the balance requests.
  */
-static GArray *_balances;
+static GAsyncQueue *_balances;
 
 /**
  * The handler for balance events.
  */
 static event_handler_t *_balance_handler;
-
-/**
- * For locking the _balances array for incoming balance requests from different threads.
- */
-static GMutex _balances_lock;
 
 /**
  * Create a new message struct in the clien
@@ -64,23 +59,15 @@ static void _conns_client_timeout_clean() {
 	}
 }
 
-static void _new_balances() {
-	g_mutex_lock(&_balances_lock);
-	_balances = g_array_new(FALSE, FALSE, sizeof(conns_balance_request_t));
-	g_mutex_unlock(&_balances_lock);
-}
-
 /**
  * Go through any balance requests and fulfill them.
  */
 static void _conns_balance() {
-	if (_balances->len == 0) {
+	// Stop any unnecessary allocation of memory
+	if (g_async_queue_length(_balances) == 0) {
 		return;
 	}
-	
-	GArray *reqs = _balances;
-	_new_balances();
-	
+
 	GHashTableIter iter;
 	client_t *client;
 	g_hash_table_iter_init(&iter, _clients);
@@ -89,37 +76,35 @@ static void _conns_balance() {
 	message.type = op_text;
 	message.buffer = g_string_sized_new(100);
 	
-	guint i = reqs->len;
-	while (i-- > 0) {
-		conns_balance_request_t req = g_array_index(reqs, conns_balance_request_t, i);
-		evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req.to, message.buffer);
+	conns_balance_request_t *req;
+	while ((req = g_async_queue_try_pop(_balances)) != NULL) {
+		evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req->to, message.buffer);
 		
-		DEBUGF("Balancing: %d to %s", req.count, req.to);
+		DEBUGF("Balancing: %d to %s", req->count, req->to);
 		
 		guint cnt = 0;
-		while (cnt++ < req.count && g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client)) {
+		while (cnt++ < req->count && g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
 			if (message.buffer->len > 0) {
 				client_write(client, &message);
 			}
+			
 			g_hash_table_iter_remove(&iter);
 			conns_client_close(client);
 		}
 		
-		g_free(req.to);
+		g_free(req->to);
+		g_slice_free1(sizeof(*req), req);
 	}
 	
 	g_string_free(message.buffer, TRUE);
-	g_array_free(reqs, TRUE);
 }
 
 void conns_balance(guint count, gchar *to) {
-	conns_balance_request_t req;
-	req.count = count;
-	req.to = g_strdup(to);
+	conns_balance_request_t *req = g_slice_alloc0(sizeof(*req));
+	req->count = count;
+	req->to = g_strdup(to);
 	
-	g_mutex_lock(&_balances_lock);
-	g_array_append_val(_balances, req);
-	g_mutex_unlock(&_balances_lock);
+	g_async_queue_push(_balances, req);
 }
 
 void conns_client_new(client_t *client) {
@@ -252,8 +237,7 @@ gboolean conns_init() {
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_clients = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
-	
-	_new_balances();
+	_balances = g_async_queue_new();
 	
 	return TRUE;
 }
