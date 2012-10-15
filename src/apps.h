@@ -212,10 +212,11 @@ status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t
  * Inform all the apps when a client has added a subscription.
  * 
  * @param client The client that subscribed.
- * @param sub The subscription the client added.
+ * @param event_path The path to the event that was subscribed to.
+ * @param extra The extra segments on the event.
  *
- * @return True if the client subscribed to a valid event, false otherwise, indicating the
- * subscription should be canceled.
+ * @return True if the client subscribed to a valid event, false otherwise,
+ * indicating the subscription should be canceled.
  */
 gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t extra);
 
@@ -223,7 +224,9 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
  * Inform all the apps when a client has dropped a subscription.
  * 
  * @param client The client that unsubscribed.
- * @param sub The subscription the client dropped.
+ * @param handler The event handler the client dropped.
+ * @param event_path The event path the client dropped.
+ * @param extra The extra path segments.
  */
 void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const char *event_path, path_extra_t extra);
 

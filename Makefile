@@ -4,7 +4,7 @@ GCOVR_ARGS = -p -r . --exclude='src/debug.*' --exclude='test.*' --exclude='src/h
 GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/ 
 GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
-.PHONY: all build clean debug test
+.PHONY: all build clean debug docs test
 
 all: debug
 
@@ -17,7 +17,7 @@ profile:
 	$(MAKE) build PROFILE=1
 
 docs:
-	mkdir -p build/docs
+	$(MAKE) -C docs html
 	doxygen
 
 run: debug
@@ -39,6 +39,7 @@ clean:
 	rm -rf $(DIR_BUILD_TEST)
 	rm -f test*.xml
 	$(MAKE) -C app clean
+	$(MAKE) -C docs clean
 	$(MAKE) -C ext clean
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean

@@ -1,0 +1,31 @@
+Server Architecture
+*******************
+
+Quick.IO is broken into 5 components:
+
+Connections as Clients
+======================
+
+A single connection to the server is treated as an individual client. A single client may hold many subscriptions, many server-callbacks, and incomplete messages (coming off the wire). Each client and all its state exists only as long as the connection from the client is maintained; if that connection is ever closed, all state on the client is lost. The general philosophy is: to the server, a client is just some event subscriptions and server-callbacks, as soon as that client is gone, all of the data is useless and cannot be associated with any other client. That being said, clients can maintain a list of subscriptions and re-subscribe to everything on reconnect.
+
+All clients, as far as the server is concerned, are stateless connections that can be hurled from server to server at any given moment without any ill effect. Client applications should be designed such that a server disconnect doesn't mean the end for the client: once reconnected, the client should resume its normal operation as though everything is going as planned.
+
+Client Handlers
+===============
+
+Though Quick.IO is primarily a WebSocket server, it allows other types of clients to connect, be they mobile devices, other servers, or even `a badger <http://www.strangehorizons.com/2004/20040405/badger.shtml>`_. Each client may speak to the server in different ways, depending on how they're feeling, the alignment of the planets, or the laziness of their programmer; thus, Quick.IO has a concept of handlers. Each client has an associated handler, and it is responsible for framing the message to the client so that, when the client receives the message, it is capable of decoding and processing it.
+
+Applications
+============
+
+Applications are the core of what runs on the server. Aside from the framework for supporting events, subscriptions, and clients, applications doing the heavy lifting with the clients. Applications may be written in C/C++, Python, Javascript, or any other language that has a C/C++ interface. In the source, there are (incomplete) example apps for running Python and NodeJS applications.
+
+Client Events
+=============
+
+Client events are events that are sent *from* the server *to* the client. The functions inside the server dealing with this are all prefixed with evs_client_*.
+
+Server Events
+=============
+
+Server events are events that are sent *from* the client *to* the server. THe function inside the server dealing with this are all prefixed with evs_server_*.
