@@ -296,6 +296,22 @@ START_TEST(test_client_external_data_delete) {
 }
 END_TEST
 
+START_TEST(test_client_external_data_client_unref_0) {
+	client_t *client = u_client_create(NULL);
+	client_unref(client);
+}
+END_TEST
+
+START_TEST(test_client_external_data_client_unref_1) {
+	client_t *client = u_client_create(NULL);
+	
+	client_set(client, "test", "test");
+	test(client_has(client, "test"), "Key set");
+	
+	client_unref(client);
+}
+END_TEST
+
 Suite* client_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Client");
@@ -338,6 +354,8 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_external_data_sane);
 	tcase_add_test(tc, test_client_external_data_overwrite);
 	tcase_add_test(tc, test_client_external_data_delete);
+	tcase_add_test(tc, test_client_external_data_client_unref_0);
+	tcase_add_test(tc, test_client_external_data_client_unref_1);
 	suite_add_tcase(s, tc);
 	
 	return s;
