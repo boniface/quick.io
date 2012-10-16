@@ -7,6 +7,10 @@
 #define RECORD_FORMAT "{" \
 	"\"time\":%" G_GSIZE_FORMAT "," \
 	"\"clients\":%" G_GSIZE_FORMAT "," \
+	"\"clients_new\":%" G_GSIZE_FORMAT "," \
+	"\"clients_closed\":%" G_GSIZE_FORMAT "," \
+	"\"clients_balanced\":%" G_GSIZE_FORMAT "," \
+	"\"client_timeouts\":%" G_GSIZE_FORMAT "," \
 	"\"messages_sent\":%" G_GSIZE_FORMAT "," \
 	"\"messages_received\":%" G_GSIZE_FORMAT "},"
 
@@ -108,6 +112,10 @@ void stats_request(qsys_socket_t sock) {
 		g_string_append_printf(_buffer, RECORD_FORMAT,
 			curr->time,
 			curr->clients,
+			curr->clients_new,
+			curr->clients_closed,
+			curr->clients_balanced,
+			curr->client_timeouts,
 			curr->messages_sent,
 			curr->messages_received
 		);
