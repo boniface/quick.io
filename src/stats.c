@@ -74,7 +74,8 @@ void stats_tick() {
 		stats_t sum;
 		memset(&sum, 0, sizeof(sum));
 		for (guint64 i = 0; i < option_stats_flush(); i++) {
-			#define X(type, name) sum.name += (_historical + i)->name;
+			// Everything is `gsize`, so it's safe to treat the pointer as an int
+			#define X(type, name) sum.name += (gsize)g_atomic_pointer_get(&((_historical + i)->name));
 				STATS_S_FIELDS_RESETABLE
 			#undef X
 		}
