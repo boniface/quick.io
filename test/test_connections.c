@@ -15,6 +15,7 @@ void _test_conns_setup() {
 	evs_server_init();
 	conns_init();
 	apps_run();
+	test(stats_init());
 }
 
 START_TEST(test_conns_message_clean_0) {

@@ -4,9 +4,6 @@
  */
 
 #pragma once
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 // The specific utils files shouldn't require anything, they're utilities that
 // operate independently of everything.  Don't include "test.h" here, or circular
@@ -17,16 +14,6 @@
  * The name of the shared memory region.
  */
 #define TEST_SHM_NAME "/qio.test.stats"
-
-/**
- * Flags to open the memory region with
- */
-#define TEST_SHM_FLAGS (O_RDWR | O_CREAT)
-
-/**
- * Permissions to put on the memory region.
- */
-#define TEST_SHM_MASK 0644
 
 /**
  * The data used for recording stats.
@@ -41,11 +28,6 @@ typedef struct test_stats_s {
 	 * The number of messages that clients sent.
 	 */
 	gsize conns_messages;
-	
-	/**
-	 * The number of timeouts that were encountered.
-	 */
-	gsize conns_timeouts;
 	
 	/**
 	 * The number of bad clients forcibly closed.

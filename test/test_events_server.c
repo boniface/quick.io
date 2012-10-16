@@ -6,6 +6,7 @@ static void _test_events_setup() {
 	evs_client_init();
 	apps_run();
 	conns_init();
+	test(stats_init());
 }
 
 static void _test_events_teardown() {

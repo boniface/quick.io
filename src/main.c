@@ -1,5 +1,5 @@
 #include <libgen.h> // For dirname()
-#include <sys/types.h> // For wait()
+#include <sys/select.h>
 #include <sys/wait.h> // For wait()
 
 #include "qio.h"
@@ -19,13 +19,6 @@ static gboolean _main_fork() {
 	_pids = g_malloc0(processes * sizeof(*_pids));
 	
 	while (processes-- > 0) {
-		int pipefd[2];
-		
-		if (pipe(pipefd) == -1) {
-			ERRORF("Could not create pipefd on fork #%d", processes);
-			return FALSE;
-		}
-		
 		// Start the child! Hooray!
 		pid_t pid = fork();
 		
@@ -59,6 +52,17 @@ static gboolean _main_fork() {
 	}
 	
 	return TRUE;
+}
+
+static void _main_check_children() {
+	if (errno == EINTR) {
+		int status = 0;
+		pid_t pid = waitpid(-1, &status, WNOHANG);
+		if (pid != 0 && WIFEXITED(status)) {
+			ERRORF("Child pid=%d died with status=%d", pid, WEXITSTATUS(status));
+			main_cull_children();
+		}
+	}
 }
 
 void main_cull_children() {
@@ -118,6 +122,19 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
+	if (stats_init()) {
+		DEBUG("Stats handler inited");
+	} else {
+		ERROR("Could not init stats handler.");
+		return 1;
+	}
+	
+	qsys_socket_t stats_sock = qsys_listen(option_bind_address(), option_stats_port());
+	if (stats_sock == -1) {
+		ERROR("Could not listen on stats interface.");
+		return 1;
+	}
+	
 	if (_main_fork()) {
 		DEBUG("Children forked");
 	} else {
@@ -125,23 +142,32 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	printf("READY\n");
+	printf("QIO READY\n");
 	fflush(stdout);
 	
-	// The main thread just sits here, waiting
-	// The children processes will never get here
-	gint32 count = option_processes();
-	while (count-- > 0) {
-		int status = 0;
-		pid_t pid = wait(&status);
+	// The main thread of the parent process manages all of the stats, the stats web interface,
+	// and child process monitoring. The child processes will never get here.
+	
+	while (TRUE) {
+		fd_set rfds;
+		FD_ZERO(&rfds);
+		FD_SET(stats_sock, &rfds);
 		
-		if (WIFEXITED(status)) {
-			ERRORF("Child pid=%d died with status=%d", pid, WEXITSTATUS(status));
-		} else if (WIFSIGNALED(status)) {
-			ERRORF("Child pid=%d was killed by signal %d", pid, WTERMSIG(status));
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		
+		int ready = select(stats_sock + 1, &rfds, NULL, NULL, &tv);
+		if (ready == -1) {
+			_main_check_children();
+		} else if (ready) {
+			qsys_socket_t client;
+			while ((client = accept(stats_sock, NULL, NULL)) != -1) {
+				stats_request(client);
+				close(client);
+			}
 		} else {
-			// The process didn't exit, so keep counting
-			count++;
+			stats_tick();
 		}
 	}
 	

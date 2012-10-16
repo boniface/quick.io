@@ -8,6 +8,22 @@
 #include "qio.h"
 
 /**
+ * Events epoll should wait for.
+ */
+#define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET
+
+/**
+ * The maximum number of events to return per epoll round.
+ */
+#define EPOLL_MAX_EVENTS 100
+
+/**
+ * How long the epoll should wait for events.
+ * -1 just to wait forever until something happens.
+ */
+#define EPOLL_WAIT -1
+
+/**
  * The number of connections the operating system can queue.
  */
 #define LISTEN_BACKLOG 1000
@@ -18,15 +34,6 @@
  * @attention THIS MUST NEVER BE > 1000.
  */
 #define MAINTENANCE_TICK 100
-
-/**
- * Functions that MUST be implemented by system-specific functions.
- * 
- * @defgroup SysSpecific System-specific types and functions
- *
- * These functions are system-specific; as such, they must abstract away all
- * system-related peculiarities.
- */
 
 /**
  * Convert milliseconds to microseconds.  Just so it's easier to read.
@@ -50,17 +57,21 @@
 #define SEC_TO_USEC(secs) MS_TO_USEC(secs * 1000)
 
 /**
- * The system-specific socket type.  Feel free to overwrite this if it is incorrect.
- * @ingroup SysSpecific
+ * The socket type, because I don't want to remember it's an int.
  */
-// typedef int qsys_socket;
-
-#include "qsys/epoll.h"
+typedef int qsys_socket_t;
 
 /**
  * Sets up the socket interface for listening, and runs the main loop of the process.
  */
 void qsys_main_loop();
+
+/**
+ * Listens on a socket, returns -1 on error.
+ *
+ * @return -1 if fails, the FD otherwise.
+ */
+qsys_socket_t qsys_listen(gchar *address, guint16 port);
 
 /**
  * Reads from the client into the buffer.
@@ -91,65 +102,6 @@ gssize qsys_write(client_t *client, gchar *buff, gsize buff_len);
  * @param client The client to destroy.
  */
 void qsys_close(client_t *client);
-
-/**
- * Initialize any internal data structures necessary for the event loop. This should also
- * set up everything that is needed in order to accept connections.
- *
- * @ingroup SysSpecific
- *
- * @param address The address to listen on.
- * @param port The port to listen on.
- *
- * @return If the socket is being listened on
- */
-gboolean _qsys_init(gchar *address, guint16 port);
-
-/**
- * Runs 1 sys-call for the event loop, the main loop is run in qsys_run().
- * This function MUST dispatch the individual events back to conns_*.
- *
- * @ingroup SysSpecific
- */
-void _qsys_dispatch();
-
-/**
- * Reads from the socket into the buffer.
- *
- * @ingroup SysSpecific
- *
- * @note Adheres to standard unix socket return values.
- * @see http://linux.die.net/man/2/read
- */
-gssize _qsys_read(qsys_socket socket, gchar *buff, gsize buff_len);
-
-/**
- * Writes a buffer to a client.
- *
- * @ingroup SysSpecific
- *
- * @note Adheres to standard unix socket return values.
- * @see http://linux.die.net/man/2/send
- */
-gssize _qsys_write(qsys_socket socket, gchar *buff, gsize buff_len);
-
-/**
- * Closes a socket.  The socket MUST be removed from the event loop.
- *
- * @ingroup SysSpecific
- *
- * @param socket The socket to close.
- */
-void _qsys_close(qsys_socket socket);
-
-/**
- * Sets up the maintenance timer.  This MUST be fired every MAINTENANCE_TICK.
- *
- * @ingroup SysSpecific
- *
- * @return If the setup succeeded.
- */
-gboolean _qsys_init_maintenance();
 
 #ifdef TESTING
 #include "../test/test_qsys.h"

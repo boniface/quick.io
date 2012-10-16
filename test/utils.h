@@ -73,6 +73,13 @@ void u_main_teardown(pid_t pid);
 int u_connect();
 
 /**
+ * Connect to the statistics HTTP server.
+ *
+ * @return The connected socket, or 0 on failure (easier for `test()`).
+ */
+int u_stats_connect();
+
+/**
  * Connect to a running server instance, and complete an RFC6455 handshake.
  *
  * @return The socket connected to the server.

@@ -50,7 +50,7 @@ static void _conns_client_timeout_clean() {
 	while (g_hash_table_iter_next(&iter, (void*)&client, (void*)&ignored)) {
 		client->timer--;
 		if (client->timer == -1) {
-			UTILS_STATS_INC(conns_timeouts);
+			STATS_INC(client_timeouts);
 			
 			DEBUGF("Timer on client expired: %d", client->socket);
 			conns_client_close(client);
@@ -88,6 +88,8 @@ static void _conns_balance() {
 				client_write(client, &message);
 			}
 			
+			STATS_INC(clients_balanced);
+			
 			g_hash_table_iter_remove(&iter);
 			conns_client_close(client);
 		}
@@ -117,6 +119,9 @@ void conns_client_new(client_t *client) {
 	
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
+	
+	STATS_INC(clients_new);
+	STATS_INC(clients);
 }
 
 void conns_client_close(client_t *client) {
@@ -134,6 +139,9 @@ void conns_client_close(client_t *client) {
 	// doesn't interfere with the setting
 	g_hash_table_remove(_clients, client);
 	client_unref(client);
+	
+	STATS_INC(clients_closed);
+	STATS_DEC(clients);
 }
 
 void conns_client_hup(client_t *client) {

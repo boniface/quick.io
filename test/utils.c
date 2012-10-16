@@ -65,11 +65,12 @@ void u_main_setup(pid_t *pid) {
 			// The server needs some time to get started
 			usleep(MS_TO_USEC(20));
 			
-			// Wait for the server to emit "READY", then we can run our tests
-			char buff[6];
+			// Wait for the server to emit "QIO READY", then we can run our tests
+			char buff[11];
 			memset(&buff, 0, sizeof(buff));
 			if (read(out[0], buff, sizeof(buff)) > 0) {
-				test_str_eq(buff, "READY\n", "Server inited");
+				DEBUGF("%s", buff);
+				test_str_eq(buff, "QIO READY\n", "Server inited");
 			}
 			
 			close(out[0]);
@@ -81,7 +82,7 @@ void u_main_setup(pid_t *pid) {
 	} else {
 		close(out[0]);
 		
-		// Setup the child's stdout to be readable for the "READY" command
+		// Setup the child's stdout to be readable for the "QIO READY" command
 		dup2(out[1], STDOUT_FILENO);
 		
 		char *args[] = {"."};
@@ -103,6 +104,28 @@ int u_connect() {
 	addy.sin_family = AF_INET;
 	addy.sin_addr.s_addr = inet_addr(option_bind_address());
 	addy.sin_port = htons(option_port());
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		ERRORF("Could not create socket: %s", strerror(errno));
+		return 0;
+	}
+
+	if (connect(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
+		ERRORF("Could not connect: %s", strerror(errno));
+		return 0;
+	}
+	
+	return sock;
+}
+
+int u_stats_connect() {
+	int sock;
+	
+	struct sockaddr_in addy;
+	memset(&addy, 0, sizeof(addy));
+	addy.sin_family = AF_INET;
+	addy.sin_addr.s_addr = inet_addr(option_bind_address());
+	addy.sin_port = htons(option_stats_port());
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		ERRORF("Could not create socket: %s", strerror(errno));

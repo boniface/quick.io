@@ -186,7 +186,7 @@ struct client_s {
 	/**
 	 * The underlying socket for this client.
 	 */
-	qsys_socket socket;
+	qsys_socket_t socket;
 	
 	/**
 	 * A timer for killing stupid clients.

@@ -137,17 +137,42 @@ guint64 option_max_subscriptions();
  *
  * @return The port specified in the config.
  */
-APP_EXPORT gint32 option_port();
+APP_EXPORT gint option_port();
 
 /**
  * Gets the number of processes that should be spawned.
  */
-gint32 option_processes();
+gint option_processes();
+
+/**
+ * Gets the stats-flush time.
+ */
+guint64 option_stats_flush();
+
+/**
+ * Gets the graphite address
+ */
+gchar* option_stats_graphite_address();
+
+/**
+ * Gets the graphite port
+ */
+gint option_stats_graphite_port();
+
+/**
+ * Gets the graphite prefix for the stats
+ */
+gchar* option_stats_graphite_prefix();
+
+/**
+ * The port to listen on for stats.
+ */
+gint option_stats_port();
 
 /**
  * Gets the client timeout.
  */
-gint32 option_timeout();
+gint option_timeout();
 
 /**
  * Loads the config file and populates all the options.

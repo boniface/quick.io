@@ -133,6 +133,7 @@ status_t client_message(client_t* client) {
 	
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
+		STATS_INC(messages_received);
 		status = evs_server_handle(client);
 	}
 	
@@ -167,6 +168,8 @@ status_t client_write(client_t *client, message_t *message) {
 	if (frame == NULL) {
 		return CLIENT_ABORTED;
 	}
+	
+	STATS_INC(messages_sent);
 	
 	status_t status = client_write_frame(client, frame, frame_len);
 	free(frame);

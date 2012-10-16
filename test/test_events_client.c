@@ -18,6 +18,7 @@ void _test_evs_client_setup() {
 	evs_server_init();
 	conns_init();
 	apps_run();
+	test(stats_init());
 }
 
 void _test_evs_client_teardown() {

@@ -23,12 +23,14 @@
 static void _test_message_setup() {
 	evs_server_init();
 	apps_run();
+	test(stats_init());
 }
 
 static void _test_refcount_setup() {
 	evs_server_init();
 	conns_init();
 	apps_run();
+	test(stats_init());
 }
 
 START_TEST(test_client_incomplete_handshake_0) {

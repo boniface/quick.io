@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
 	srunner_add_suite(sr, monkey_suite());
 	srunner_add_suite(sr, option_suite());
 	srunner_add_suite(sr, qsys_suite());
+	srunner_add_suite(sr, stats_suite());
 
 	srunner_run_all(sr, CK_NORMAL);
 	number_failed += srunner_ntests_failed(sr);

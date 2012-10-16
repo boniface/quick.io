@@ -14,6 +14,11 @@ static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
 static gint _port = 5000;
 static gint _processes = 8;
+static guint64 _stats_flush = 10;
+static gchar *_stats_graphite_address = NULL;
+static gint _stats_graphite_port = 2003;
+static gint _stats_port = 41153;
+static gchar *_stats_graphite_prefix = "qio";
 static gint _timeout = 5;
 
 static config_file_entry_t _config_options[] = {
@@ -22,6 +27,11 @@ static config_file_entry_t _config_options[] = {
 	{"max-subs", e_uint64, &_max_subs},
 	{"port", e_int, &_port},
 	{"processes", e_int, &_processes},
+	{"stats-flush", e_uint64, &_stats_flush},
+	{"stats-graphite-address", e_string, &_stats_graphite_address},
+	{"stats-graphite-port", e_int, &_stats_graphite_port},
+	{"stats-graphite-prefix", e_string, &_stats_graphite_prefix},
+	{"stats-port", e_int, &_stats_port},
 	{"timeout", e_int, &_timeout},
 };
 
@@ -108,15 +118,35 @@ guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 
-gint32 option_port() {
+gint option_port() {
 	return _port;
 }
 
-gint32 option_processes() {
+gint option_processes() {
 	return _processes;
 }
 
-gint32 option_timeout() {
+guint64 option_stats_flush() {
+	return _stats_flush;
+}
+
+gchar* option_stats_graphite_address() {
+	return _stats_graphite_address;
+}
+
+gint option_stats_graphite_port() {
+	return _stats_graphite_port;
+}
+
+gchar* option_stats_graphite_prefix() {
+	return _stats_graphite_prefix;
+}
+
+gint option_stats_port() {
+	return _stats_port;
+}
+
+gint option_timeout() {
 	return _timeout;
 }
 
