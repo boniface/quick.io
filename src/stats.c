@@ -4,15 +4,11 @@
 	"Content-Type: application/json\r\n" \
 	"Expires: -1\r\n\r\n"
 
-#define RECORD_FORMAT "{" \
-	"\"time\":%" G_GSIZE_FORMAT "," \
-	"\"clients\":%" G_GSIZE_FORMAT "," \
-	"\"clients_new\":%" G_GSIZE_FORMAT "," \
-	"\"clients_closed\":%" G_GSIZE_FORMAT "," \
-	"\"clients_balanced\":%" G_GSIZE_FORMAT "," \
-	"\"client_timeouts\":%" G_GSIZE_FORMAT "," \
-	"\"messages_sent\":%" G_GSIZE_FORMAT "," \
-	"\"messages_received\":%" G_GSIZE_FORMAT "},"
+const gchar *RECORD_FORMAT = "{"
+		#define X(type, name, iter) "\"" #name "\":%" G_GSIZE_FORMAT X_json_i_##iter()
+			STATS_S_FIELDS
+		#undef X
+	"},";
 
 /** 
  * The FD pointing to the shared memory.
@@ -61,7 +57,7 @@ void stats_tick() {
 	curr->clients = stats->clients;
 	
 	// Copy over the current stats to the history
-	#define X(type, name) curr->name = g_atomic_pointer_and(&(stats->name), 0);
+	#define X(type, name, last) curr->name = g_atomic_pointer_and(&(stats->name), 0);
 		STATS_S_FIELDS_RESETABLE
 	#undef X
 	
@@ -75,7 +71,7 @@ void stats_tick() {
 		memset(&sum, 0, sizeof(sum));
 		for (guint64 i = 0; i < option_stats_flush(); i++) {
 			// Everything is `gsize`, so it's safe to treat the pointer as an int
-			#define X(type, name) sum.name += (gsize)g_atomic_pointer_get(&((_historical + i)->name));
+			#define X(type, name, last) sum.name += (gsize)g_atomic_pointer_get(&((_historical + i)->name));
 				STATS_S_FIELDS_RESETABLE
 			#undef X
 		}
@@ -84,7 +80,7 @@ void stats_tick() {
 		sum.clients = stats->clients;
 		
 		// Construct the graphite message
-		#define X(type, name) \
+		#define X(type, name, last) \
 			g_string_append_printf(_buffer, "%s.%s.%s %" G_GSIZE_FORMAT " %" G_GSIZE_FORMAT "\n", \
 				option_stats_graphite_prefix(), \
 				_hostname, \

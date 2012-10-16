@@ -26,18 +26,18 @@
  * The list of all stats that are reset on every tick.
  */
 #define STATS_S_FIELDS_RESETABLE \
-	X(gsize, clients_new) /** The number of new client connections. */ \
-	X(gsize, clients_closed) /** The number of client disconnects. */ \
-	X(gsize, clients_balanced) /** The number of clients balanced. */ \
-	X(gsize, client_timeouts) /** The number of clients that timed out. */ \
-	X(gsize, messages_sent) /** The number of messages sent in this tick.  */ \
-	X(gsize, messages_received) /** The number of messages received in this tick. */
+	X(gsize, clients_new, ) /** The number of new client connections. */ \
+	X(gsize, clients_closed, ) /** The number of client disconnects. */ \
+	X(gsize, clients_balanced, ) /** The number of clients balanced. */ \
+	X(gsize, client_timeouts, ) /** The number of clients that timed out. */ \
+	X(gsize, messages_sent, ) /** The number of messages sent in this tick.  */ \
+	X(gsize, messages_received, last) /** The number of messages received in this tick. */
 
 /**
  * The fields that can be sent to graphite.
  */
 #define STATS_S_GRAPHITE \
-	X(gsize, clients) /** The number of clients connected. */ \
+	X(gsize, clients, ) /** The number of clients connected. */ \
 	STATS_S_FIELDS_RESETABLE
 
 /**
@@ -46,7 +46,7 @@
  * @important All types MUST be `gsize`
  */
 #define STATS_S_FIELDS \
-	X(gsize, time) /** The time at which these stats were grabbed. */ \
+	X(gsize, time, ) /** The time at which these stats were grabbed. */ \
 	STATS_S_GRAPHITE
 
 /**
@@ -56,7 +56,7 @@
  */
 typedef struct stats_s {
 
-	#define X(type, name) type name;
+	#define X(type, name, last) type name;
 		STATS_S_FIELDS
 	#undef X
 

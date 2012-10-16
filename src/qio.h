@@ -51,6 +51,7 @@ typedef guint16 status_t;
 #include "../test/utils_locks.h"
 
 // Some out-of-order guys for dependencies
+#include "x_macro.h"
 #include "qsys.h"
 #include "stats.h"
 #include "events_server.h"

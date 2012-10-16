@@ -57,7 +57,7 @@ START_TEST(test_stats_sane_tick_graphite) {
 	gchar **messages = g_strsplit(buff, "\n", -1);
 	
 	guint64 field_count = 0;
-	#define X(type, name) field_count++;
+	#define X(type, name, last) field_count++;
 		STATS_S_GRAPHITE
 	#undef X
 	
