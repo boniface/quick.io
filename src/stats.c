@@ -88,6 +88,10 @@ void stats_flush() {
 	_flush();
 }
 
+gsize stats_clients() {
+	return (gsize)g_atomic_pointer_get(&(stats.clients));
+}
+
 gboolean stats_init() {
 	// Since graphite is optional, only emit a warning if anything fails
 	if (option_stats_graphite_address() != NULL) {

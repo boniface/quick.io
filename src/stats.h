@@ -53,8 +53,9 @@ typedef struct stats_s {
 typedef void (*stats_app_append_cb)(gchar *prefix, gchar *key, gsize val);
 
 /**
- * The stats counters.
- * @note Globally accessible, across all processes.
+ * The stats counters. Be VERY careful with this, and ONLY use g_atomic* functions with it.
+ *
+ * @note Globally accessible.
  */
 stats_t stats;
 
@@ -62,6 +63,15 @@ stats_t stats;
  * Flushes all the stats to graphite.
  */
 void stats_flush();
+
+/**
+ * Gets the number of clients currently connected.
+ *
+ * @ingroup AppFunctions
+ *
+ * @return The number of clients connected.
+ */
+APP_EXPORT gsize stats_clients();
 
 /**
  * Sets up the shared memory used across all the processes for stats recording
