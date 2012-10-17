@@ -17,7 +17,6 @@ static gint _processes = 8;
 static guint64 _stats_flush = 10;
 static gchar *_stats_graphite_address = NULL;
 static gint _stats_graphite_port = 2003;
-static gint _stats_port = 41153;
 static gchar *_stats_graphite_prefix = "qio";
 static gint _timeout = 5;
 
@@ -31,7 +30,6 @@ static config_file_entry_t _config_options[] = {
 	{"stats-graphite-address", e_string, &_stats_graphite_address},
 	{"stats-graphite-port", e_int, &_stats_graphite_port},
 	{"stats-graphite-prefix", e_string, &_stats_graphite_prefix},
-	{"stats-port", e_int, &_stats_port},
 	{"timeout", e_int, &_timeout},
 };
 
@@ -140,10 +138,6 @@ gint option_stats_graphite_port() {
 
 gchar* option_stats_graphite_prefix() {
 	return _stats_graphite_prefix;
-}
-
-gint option_stats_port() {
-	return _stats_port;
 }
 
 gint option_timeout() {

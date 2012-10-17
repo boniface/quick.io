@@ -71,6 +71,21 @@ typedef void (*app_cb_client)(client_t *client);
 typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_handler_cb on_subscribe, on_unsubscribe_handler_cb on_unsubscribe, gboolean handle_children);
 
 /**
+ * The callback function for adding stats to be sent to graphite.
+ *
+ * @param key The graphite key to be added
+ * @param val The number to be added
+ */
+typedef void (*apps_stats_cb)(gchar *key, gsize val);
+
+/**
+ * The function in the app that takes the apps_stats_cb.
+ *
+ * @cb The function to be called to add stats to send to graphite.
+ */
+typedef void (*apps_stats_app_cb)(apps_stats_cb cb);
+
+/**
  * A module callback that takes an "on" function.
  *
  * @param on The function to call to register event handlers.
@@ -169,7 +184,7 @@ typedef struct app_s {
 	 * A reference to an application's `app_register_events` function.
 	 * Tells the application to register its events with events_server.
 	 */
-	app_cb register_events;
+	apps_stats_app_cb stats_flush;
 } app_t;
 
 /**
@@ -231,9 +246,11 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
 void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const char *event_path, path_extra_t extra);
 
 /**
- * Routes all queued events to the callbacks inside the apps.
+ * Triggers the stats callback in all the apps.
+ *
+ * @param app_append The callback function for adding stats to the current set.
  */
-void apps_route_events(app_t app);
+void apps_stats_gather(stats_app_append_cb app_append);
 
 #ifdef TESTING
 #include "../test/test_apps.h"

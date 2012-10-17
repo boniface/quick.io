@@ -34,6 +34,7 @@ static _app_callbacks_t callbacks[] = {
 	{offsetof(app_t, client_close), "app_client_close"},
 	{offsetof(app_t, subscribe), "app_evs_client_subscribe"},
 	{offsetof(app_t, unsubscribe), "app_evs_client_unsubscribe"},
+	{offsetof(app_t, stats_flush), "app_stats_flush"},
 };
 
 /**
@@ -71,7 +72,7 @@ static gpointer _app_run(gpointer void_app) {
 	
 	g_mutex_lock(&(app->ready));
 	
-	if (app->run) {
+	if (app->run != NULL) {
 		if (!app->run(on)) {
 			FATALF("App \"%s\" exited with bad status", app->name);
 		}
@@ -117,11 +118,18 @@ gboolean apps_run() {
 		// We allocated, so save it
 		g_ptr_array_add(_apps, app);
 		
+		// Format the prefix, setting it to NULL if there is no prefix
+		gchar *prefix = evs_server_format_path(o_app->prefix, NULL);
+		if (strlen(prefix) == 1) {
+			g_free(prefix);
+			prefix = NULL;
+		}
+		
 		// Some basics that we'll definitely need
 		app->module = module;
 		app->id = i;
 		app->name = o_app->config_group;
-		app->event_prefix = o_app->prefix;
+		app->event_prefix = prefix;
 		
 		// Find the absolute path to the directory holding the module
 		// There is no error checking here: after g_module_open, the path must exist
@@ -220,6 +228,20 @@ void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handle
 		
 		if (cb != NULL) {
 			cb(client, event_path, extra);
+		}
+	)
+}
+
+void apps_stats_gather(stats_app_append_cb app_append) {
+	APP_FOREACH(
+		apps_stats_app_cb cb = app->stats_flush;
+		
+		if (cb != NULL) {
+			void _append(gchar *key, gsize val) {
+				app_append(app->event_prefix, key, val);
+			}
+			
+			cb(_append);
 		}
 	)
 }

@@ -1,5 +1,4 @@
 #include <libgen.h> // For dirname()
-#include <sys/select.h>
 #include <sys/wait.h> // For wait()
 
 #include "qio.h"
@@ -52,17 +51,6 @@ static gboolean _main_fork() {
 	}
 	
 	return TRUE;
-}
-
-static void _main_check_children() {
-	if (errno == EINTR) {
-		int status = 0;
-		pid_t pid = waitpid(-1, &status, WNOHANG);
-		if (pid != 0 && WIFEXITED(status)) {
-			ERRORF("Child pid=%d died with status=%d", pid, WEXITSTATUS(status));
-			main_cull_children();
-		}
-	}
 }
 
 void main_cull_children() {
@@ -129,12 +117,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	qsys_socket_t stats_sock = qsys_listen(option_bind_address(), option_stats_port());
-	if (stats_sock == -1) {
-		ERROR("Could not listen on stats interface.");
-		return 1;
-	}
-	
 	if (_main_fork()) {
 		DEBUG("Children forked");
 	} else {
@@ -149,25 +131,12 @@ int main(int argc, char *argv[]) {
 	// and child process monitoring. The child processes will never get here.
 	
 	while (TRUE) {
-		fd_set rfds;
-		FD_ZERO(&rfds);
-		FD_SET(stats_sock, &rfds);
-		
-		struct timeval tv;
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		
-		int ready = select(stats_sock + 1, &rfds, NULL, NULL, &tv);
-		if (ready == -1) {
-			_main_check_children();
-		} else if (ready) {
-			qsys_socket_t client;
-			while ((client = accept(stats_sock, NULL, NULL)) != -1) {
-				stats_request(client);
-				close(client);
-			}
-		} else {
-			stats_tick();
+		int status = 0;
+		pid_t pid = wait(&status);
+		if (pid != 0 && WIFEXITED(status)) {
+			ERRORF("Child pid=%d died with status=%d", pid, WEXITSTATUS(status));
+			main_cull_children();
+			exit(2);
 		}
 	}
 	

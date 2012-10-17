@@ -8,46 +8,26 @@
 #include "qio.h"
 
 /**
- * The file name for the shared memory.
+ * The maximum size the graphite buffer is allowed to be before flushing.
  */
-#define SHM_NAME "/qio.stats"
-
-/**
- * Flags to open the memory region with
- */
-#define SHM_FLAGS (O_RDWR | O_CREAT)
-
-/**
- * Permissions to put on the memory region.
- */
-#define SHM_MASK 0644
+#define STATS_MAX_BUFFER_SIZE 512
 
 /**
  * The list of all stats that are reset on every tick.
  */
-#define STATS_S_FIELDS_RESETABLE \
-	X(gsize, clients_new, ) /** The number of new client connections. */ \
-	X(gsize, clients_closed, ) /** The number of client disconnects. */ \
-	X(gsize, clients_balanced, ) /** The number of clients balanced. */ \
-	X(gsize, client_timeouts, ) /** The number of clients that timed out. */ \
-	X(gsize, messages_sent, ) /** The number of messages sent in this tick.  */ \
-	X(gsize, messages_received, last) /** The number of messages received in this tick. */
+#define STATS_S_COUNTERS \
+	X(clients_new) /** The number of new client connections. */ \
+	X(clients_closed) /** The number of client disconnects. */ \
+	X(clients_balanced) /** The number of clients balanced. */ \
+	X(client_timeouts) /** The number of clients that timed out. */ \
+	X(messages_sent) /** The number of messages sent in this tick.  */ \
+	X(messages_received) /** The number of messages received in this tick. */
 
 /**
  * The fields that can be sent to graphite.
  */
-#define STATS_S_GRAPHITE \
-	X(gsize, clients, ) /** The number of clients connected. */ \
-	STATS_S_FIELDS_RESETABLE
-
-/**
- * The total definition of the stats.
- *
- * @important All types MUST be `gsize`
- */
-#define STATS_S_FIELDS \
-	X(gsize, time, ) /** The time at which these stats were grabbed. */ \
-	STATS_S_GRAPHITE
+#define STATS_S_VALUES \
+	X(clients) /** The number of clients connected. */ \
 
 /**
  * The statistics that are recorded.
@@ -55,30 +35,33 @@
  * @important Each member of the struct MUST be a size_t, or this won't work.
  */
 typedef struct stats_s {
-
-	#define X(type, name, last) type name;
-		STATS_S_FIELDS
+	
+	#define X(name) gsize name;
+		STATS_S_VALUES
+		STATS_S_COUNTERS
 	#undef X
 
 } stats_t;
 
 /**
- * The shared memory region.
+ * The callback type sent to apps for easy appending to the current set of stats.
+ *
+ * @param prefix The prefix to be added to the key: this should be NULL if there is no prefix
+ * @param key The key the application sent
+ * @param the value the application sent
+ */
+typedef void (*stats_app_append_cb)(gchar *prefix, gchar *key, gsize val);
+
+/**
+ * The stats counters.
  * @note Globally accessible, across all processes.
  */
-stats_t *stats;
+stats_t stats;
 
 /**
- * Records stats for the last second. Should be hit every second.
+ * Flushes all the stats to graphite.
  */
-void stats_tick();
-
-/**
- * Respond to a stats request on the web interface.
- *
- * @param client The client making the request.
- */
-void stats_request(qsys_socket_t sock);
+void stats_flush();
 
 /**
  * Sets up the shared memory used across all the processes for stats recording
@@ -88,12 +71,12 @@ gboolean stats_init();
 /**
  * Increment a counter found in stats_t.
  */
-#define STATS_INC(counter) g_atomic_pointer_add(&(stats->counter), 1);
+#define STATS_INC(counter) g_atomic_pointer_add(&(stats.counter), 1);
 
 /**
  * Decrement a counter found in stats_t
  */
-#define STATS_DEC(counter) g_atomic_pointer_add(&(stats->counter), -1);
+#define STATS_DEC(counter) g_atomic_pointer_add(&(stats.counter), -1);
 
 #ifdef TESTING
 #include "../test/test_stats.h"

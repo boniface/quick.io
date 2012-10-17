@@ -118,28 +118,6 @@ int u_connect() {
 	return sock;
 }
 
-int u_stats_connect() {
-	int sock;
-	
-	struct sockaddr_in addy;
-	memset(&addy, 0, sizeof(addy));
-	addy.sin_family = AF_INET;
-	addy.sin_addr.s_addr = inet_addr(option_bind_address());
-	addy.sin_port = htons(option_stats_port());
-
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		ERRORF("Could not create socket: %s", strerror(errno));
-		return 0;
-	}
-
-	if (connect(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
-		ERRORF("Could not connect: %s", strerror(errno));
-		return 0;
-	}
-	
-	return sock;
-}
-
 int u_ws_connect() {
 	int sock = u_connect();
 	

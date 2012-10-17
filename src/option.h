@@ -165,11 +165,6 @@ gint option_stats_graphite_port();
 gchar* option_stats_graphite_prefix();
 
 /**
- * The port to listen on for stats.
- */
-gint option_stats_port();
-
-/**
  * Gets the client timeout.
  */
 gint option_timeout();

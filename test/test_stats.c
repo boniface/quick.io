@@ -1,8 +1,11 @@
 #include "test.h"
 
 static void _stats_setup() {
+	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
+	test(evs_server_init());
+	test(apps_run());
 	test(stats_init());
 }
 
@@ -10,22 +13,20 @@ START_TEST(test_stats_sane_tick) {
 	STATS_INC(clients);
 	STATS_INC(clients_new);
 	
-	test_size_eq(stats->clients, 1, "Clients set");
-	test_size_eq(stats->clients_new, 1, "Connections set");
+	test_size_eq(stats.clients, 1, "Clients set");
+	test_size_eq(stats.clients_new, 1, "Connections set");
 	
-	stats_tick();
+	stats_flush();
 	
-	test_size_eq(stats->clients, 1, "Clients not reset");
-	test_size_eq(stats->clients_new, 0, "Connections reset");
+	test_size_eq(stats.clients, 1, "Clients not reset");
+	test_size_eq(stats.clients_new, 0, "Connections reset");
 }
 END_TEST
 
 static gpointer _stats_tick(gpointer nothing) {
-	usleep(MS_TO_USEC(50));
+	usleep(MS_TO_USEC(100));
 	
-	for (guint64 i = 0; i <= option_stats_flush(); i++) {
-		stats_tick();
-	}
+	stats_flush();
 	
 	return NULL;
 }
@@ -52,16 +53,23 @@ START_TEST(test_stats_sane_tick_graphite) {
 	
 	gchar buff[8192];
 	memset(&buff, 0, sizeof(buff));
-	recvfrom(sock, buff, sizeof(buff)-1, 0, NULL, 0);
+	
+	for (int i = 0; i < 3; i++) {
+		gchar b[4096];
+		memset(&b, 0, sizeof(b));
+		recvfrom(sock, b, sizeof(b)-1, 0, NULL, 0);
+		strcat(buff, b);
+	}
 	
 	gchar **messages = g_strsplit(buff, "\n", -1);
 	
-	guint64 field_count = 0;
-	#define X(type, name, last) field_count++;
-		STATS_S_GRAPHITE
+	guint64 field_count = 7 * option_apps_count(); // For the stats in app/test
+	#define X(name) field_count++;
+		STATS_S_COUNTERS
+		STATS_S_VALUES
 	#undef X
 	
-	guint messages_len = g_strv_length(messages)-1;
+	guint messages_len = g_strv_length(messages)-1 ;
 	
 	// Empty string as the last result, but still valid
 	test_uint64_eq(messages_len, field_count, "Got all the fields");

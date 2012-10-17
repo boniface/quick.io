@@ -4,6 +4,8 @@
 #include "test.h"
 
 int main(int argc, char *argv[]) {
+	debug_handle_signals();
+	
 	// Setup the cross-process locking mechanism
 	if (!test_lock_init()) {
 		ERROR("Could not setup inter-process locking.  Failing.");

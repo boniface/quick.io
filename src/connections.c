@@ -50,6 +50,7 @@ static void _conns_client_timeout_clean() {
 	while (g_hash_table_iter_next(&iter, (void*)&client, (void*)&ignored)) {
 		client->timer--;
 		if (client->timer == -1) {
+			UTILS_STATS_INC(conns_timeouts);
 			STATS_INC(client_timeouts);
 			
 			DEBUGF("Timer on client expired: %d", client->socket);
@@ -269,6 +270,7 @@ void conns_client_timeout_set(client_t *client) {
 
 void conns_maintenance_tick() {
 	static guint ticks = 0;
+	static guint seconds = 0;
 	
 	// Send out everything that couldn't be done synchronously
 	evs_client_send_async_messages();
@@ -282,6 +284,14 @@ void conns_maintenance_tick() {
 		
 		// Run through all the clients in CLIENT_WAIT and clean up the bad ones
 		_conns_client_timeout_clean();
+		
+		seconds++;
+	}
+	
+	// Do a flush after the first tick of server start
+	if (seconds == option_stats_flush()) {
+		stats_flush();
+		seconds = 0;
 	}
 }
 

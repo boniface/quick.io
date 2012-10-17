@@ -12,15 +12,9 @@
 
 #define INVALID_SUBSCRIPTION "/qio/sub:0:plain=/this/doesnt/exist"
 
-#define STATS_EMPTY_RESPONSE "HTTP/1.0 200 OK\r\n" \
-	"Content-Type: application/json\r\n" \
-	"Expires: -1\r\n\r\n" \
-	"[{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0},{\"time\":0,\"clients\":0,\"clients_new\":0,\"clients_closed\":0,\"clients_balanced\":0,\"client_timeouts\":0,\"messages_sent\":0,\"messages_received\":0}]"
-
 static pid_t _server;
 
 static void _qsys_setup() {
-	test(stats_init());
 	u_main_setup(&_server);
 }
 
@@ -65,7 +59,7 @@ START_TEST(test_qsys_timeout) {
 	usleep(SEC_TO_USEC(option_timeout() + 1) + MS_TO_USEC(TEST_EPOLL_WAIT));
 	
 	test_size_eq(utils_stats()->conns_messages, 0, "Server didn't process message");
-	test_size_eq(stats->client_timeouts, 1, "Client timed out");
+	test_size_eq(utils_stats()->conns_timeouts, 1, "Client timed out");
 }
 END_TEST
 
@@ -335,20 +329,6 @@ START_TEST(test_qsys_invalid_subscription) {
 }
 END_TEST
 
-START_TEST(test_qsys_stats) {
-	int sock = u_stats_connect();
-	test(sock, "Connection established");
-	
-	gchar buff[8192];
-	memset(&buff, 0, sizeof(buff));
-	read(sock, buff, sizeof(buff)-1);
-	
-	test_str_eq(buff, STATS_EMPTY_RESPONSE, "Correct stats response");
-	
-	close(sock);
-}
-END_TEST
-
 Suite* qsys_suite() {
 	TCase *tc;
 	Suite *s = suite_create("QSys");
@@ -369,12 +349,6 @@ Suite* qsys_suite() {
 	tcase_add_test(tc, test_qsys_two_partial_messages);
 	tcase_add_test(tc, test_qsys_flash_policy);
 	tcase_add_test(tc, test_qsys_invalid_subscription);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Connections");
-	tcase_add_checked_fixture(tc, _qsys_setup, _qsys_teardown);
-	tcase_set_timeout(tc, option_timeout() + 4);
-	tcase_add_test(tc, test_qsys_stats);
 	suite_add_tcase(s, tc);
 	
 	return s;
