@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "check.h"
+#include "check/check.h"
 #include "qio.h"
 #include "utils.h"
 

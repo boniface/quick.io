@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <gmodule.h>
-#include <http_parser.h>
 #include <libgen.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -17,6 +16,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "http-parser/http_parser.h"
 
 #define STRUCT_PACKED __attribute__((__packed__))
 
