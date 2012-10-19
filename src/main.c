@@ -43,7 +43,7 @@ static gboolean _main_fork() {
 			
 			qsys_main_loop();
 			ERRORF("A CHILD EXITED THE EVENT LOOP: #%d", processes);
-			exit(1);
+			exit(33);
 		} else {
 			// Save the process id for later culling
 			*(_pids + processes) = pid;

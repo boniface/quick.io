@@ -19,18 +19,18 @@
 		
 		// +1 -> skip this function
 		backtrace_symbols_fd(array + 1, size, 2);
-		exit(1);
+		exit(11);
 	}
 	
 	static void _sigint_handler(int sig) {
 		DEBUG("SIGINT: Dying");
-		exit(1);
+		exit(50);
 	}
 	
 	static void _sigterm_handler(int sig) {
 		DEBUG("SIGTERM: Killing the children");
 		main_cull_children();
-		exit(1);
+		exit(51);
 	}
 #endif
 

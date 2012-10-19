@@ -19,8 +19,6 @@
 
 #include "http-parser/http_parser.h"
 
-#define STRUCT_PACKED __attribute__((__packed__))
-
 #include "module.h"
 
 /**

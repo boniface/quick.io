@@ -66,7 +66,7 @@ typedef struct _async_message_s {
 	 * opcode field.
 	 */
 	opcode_t message_opcode;
-} STRUCT_PACKED _async_message_s;
+} _async_message_s;
 
 /**
  * All of the subscriptions registered on the server.

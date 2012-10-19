@@ -135,7 +135,7 @@ typedef struct message_s {
 	 * Buffer of data procesed from socket_buffer (demasked).
 	 */
 	GString *buffer;
-} STRUCT_PACKED message_t;
+} message_t;
 
 /**
  * The websocket handlers.
