@@ -29,10 +29,16 @@
 #define MAX_BUFFER_SIZE_MULTIPLIER 2
 
 /**
- * The number of loops to run before cleaning up.
- * We only want to do this once per second, or so.
+ * The number of loops to run between timeouts.
+ * We only want to do this once per second.
  */
-#define CONNS_MAINTENANCE_CLEANUP ((gint)(1000 / MAINTENANCE_TICK))
+#define CONNS_MAINTENANCE_TIMEOUTS ((gint)(1000 / MAINTENANCE_TICK))
+
+/**
+ * The number of loops to run before cleaning up.
+ * We only want to do this once every 5 seconds or so
+ */
+#define CONNS_MAINTENANCE_CLEANUP ((gint)(5000 / MAINTENANCE_TICK))
 
 /**
  * The balance request.

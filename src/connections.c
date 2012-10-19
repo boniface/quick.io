@@ -278,14 +278,16 @@ void conns_maintenance_tick() {
 	// Check if there are any outstanding rebalance requests
 	_conns_balance();
 	
-	if (ticks++ % CONNS_MAINTENANCE_CLEANUP == 0) {
-		// Clean up any client subscriptions
-		evs_client_cleanup();
-		
+	if (ticks++ % CONNS_MAINTENANCE_TIMEOUTS == 0) {
 		// Run through all the clients in CLIENT_WAIT and clean up the bad ones
 		_conns_client_timeout_clean();
 		
 		seconds++;
+	}
+	
+	if (ticks % CONNS_MAINTENANCE_CLEANUP == 0) {
+		// Clean up any client subscriptions
+		evs_client_cleanup();
 	}
 	
 	// Do a flush after the first tick of server start
