@@ -169,14 +169,14 @@ status_t client_write(client_t *client, message_t *message) {
 		return CLIENT_ABORTED;
 	}
 	
-	STATS_INC(messages_sent);
-	
 	status_t status = client_write_frame(client, frame, frame_len);
 	free(frame);
 	return status;
 }
 
 status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
+	STATS_INC(messages_sent);
+	
 	// Frames will ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right
 	if (frame_len > 0 && qsys_write(client, frame, frame_len) == (gssize)frame_len) {
