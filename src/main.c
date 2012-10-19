@@ -53,6 +53,12 @@ static gboolean _main_fork() {
 	return TRUE;
 }
 
+static void _sigterm_handler(int sig) {
+	WARN("SIGTERM: Killing the children");
+	main_cull_children();
+	exit(51);
+}
+
 void main_cull_children() {
 	DEBUG("All children are being culled...");
 
@@ -68,6 +74,8 @@ int init_main(int argc, char *argv[]) {
 #else
 int main(int argc, char *argv[]) {
 #endif
+	signal(SIGTERM, _sigterm_handler);
+	
 	debug_handle_signals();
 	
 	GError *error = NULL;
