@@ -27,7 +27,7 @@
  * The fields that can be sent to graphite.
  */
 #define STATS_S_VALUES \
-	X(clients, "clients.count") /** The number of clients connected. */ \
+	X(clients, "clients.connected") /** The number of clients connected. */ \
 
 /**
  * The statistics that are recorded.
