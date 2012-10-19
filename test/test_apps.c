@@ -167,6 +167,10 @@ START_TEST(test_apps_cb_run_fatal) {
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
 	
 	apps_run();
+	
+	// Wait for the app to exit: there won't be a 10 second wait: the exit will
+	// cause this to die
+	usleep(SEC_TO_USEC(10));
 }
 END_TEST
 
