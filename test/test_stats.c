@@ -64,7 +64,7 @@ START_TEST(test_stats_sane_tick_graphite) {
 	gchar **messages = g_strsplit(buff, "\n", -1);
 	
 	guint64 field_count = 7 * option_apps_count(); // For the stats in app/test
-	#define X(name) field_count++;
+	#define X(slot, name) field_count++;
 		STATS_S_COUNTERS
 		STATS_S_VALUES
 	#undef X

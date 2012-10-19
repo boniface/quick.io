@@ -74,12 +74,12 @@ void stats_flush() {
 	}
 	
 	// Just get the non-resetable stats
-	#define X(name) _append(NULL, #name, (gsize)g_atomic_pointer_get(&(stats.name)));
+	#define X(slot, name) _append(NULL, name, (gsize)g_atomic_pointer_get(&(stats.slot)));
 		STATS_S_VALUES
 	#undef X
 	
 	// Copy over the current stats, resetting the counters
-	#define X(name) _append(NULL, #name, g_atomic_pointer_and(&(stats.name), 0));
+	#define X(slot, name) _append(NULL, name, g_atomic_pointer_and(&(stats.slot), 0));
 		STATS_S_COUNTERS
 	#undef X
 	

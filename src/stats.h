@@ -16,18 +16,18 @@
  * The list of all stats that are reset on every tick.
  */
 #define STATS_S_COUNTERS \
-	X(clients_new) /** The number of new client connections. */ \
-	X(clients_closed) /** The number of client disconnects. */ \
-	X(clients_balanced) /** The number of clients balanced. */ \
-	X(client_timeouts) /** The number of clients that timed out. */ \
-	X(messages_sent) /** The number of messages sent in this tick.  */ \
-	X(messages_received) /** The number of messages received in this tick. */
+	X(clients_new, "clients.new") /** The number of new client connections. */ \
+	X(clients_closed, "clients.closed") /** The number of client disconnects. */ \
+	X(clients_balanced, "clients.balanced") /** The number of clients balanced. */ \
+	X(client_timeouts, "clients.timeouts") /** The number of clients that timed out. */ \
+	X(messages_sent, "messages.sent") /** The number of messages sent in this tick.  */ \
+	X(messages_received, "messages.received") /** The number of messages received in this tick. */
 
 /**
  * The fields that can be sent to graphite.
  */
 #define STATS_S_VALUES \
-	X(clients) /** The number of clients connected. */ \
+	X(clients, "clients.count") /** The number of clients connected. */ \
 
 /**
  * The statistics that are recorded.
@@ -36,7 +36,7 @@
  */
 typedef struct stats_s {
 	
-	#define X(name) gsize name;
+	#define X(slot, name) gsize slot;
 		STATS_S_VALUES
 		STATS_S_COUNTERS
 	#undef X
