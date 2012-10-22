@@ -33,11 +33,13 @@ status_t client_handshake(client_t *client) {
 	// The path is just a string we hurl around
 	// And we have to keep state while it's parsing up everything so we can populate everything
 	
-	GHashTable *headers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+	gchar *headers_dup = g_strdup(buffer->str);
+	GHashTable *headers = g_hash_table_new(g_str_hash, g_str_equal);
 	gchar *path = NULL;
 	
 	int on_path(http_parser *parser, const char *at, gsize len) {
-		path = g_strndup(at, len);
+		path = headers_dup + ((gsize)at - (gsize)(buffer->str));
+		*(path + len) = '\0';
 		return 0;
 	}
 	
@@ -53,7 +55,12 @@ status_t client_handshake(client_t *client) {
 	
 	int on_value(http_parser *parser, const char *at, gsize len) {
 		if (h_len > 0) {
-			g_hash_table_insert(headers, g_strndup(h_key, h_len), g_strndup(at, len));
+			gchar *header = headers_dup + ((gsize)h_key - (gsize)(buffer->str));
+			gchar *value = headers_dup + ((gsize)at - (gsize)(buffer->str));
+			*(header + h_len) = '\0';
+			*(value + len) = '\0';
+			
+			g_hash_table_insert(headers, header, value);
 		}
 		
 		h_len = 0;
@@ -89,12 +96,7 @@ status_t client_handshake(client_t *client) {
 		status = CLIENT_ABORTED;
 	}
 	
-	// If the path couldn't even be read from the headers...yikes
-	if (path != NULL) {
-		g_free(path);
-	}
-	
-	// Done reading headers
+	g_free(headers_dup);
 	g_hash_table_unref(headers);
 	
 	// We read the header, no matter what was returned, it's our job to clear it
