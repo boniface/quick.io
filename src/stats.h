@@ -16,12 +16,12 @@
  * The list of all stats that are reset on every tick.
  */
 #define STATS_S_COUNTERS \
-	X(clients_new, "clients.new") /** The number of new client connections. */ \
-	X(clients_closed, "clients.closed") /** The number of client disconnects. */ \
-	X(clients_balanced, "clients.balanced") /** The number of clients balanced. */ \
-	X(client_timeouts, "clients.timeouts") /** The number of clients that timed out. */ \
-	X(messages_sent, "messages.sent") /** The number of messages sent in this tick.  */ \
-	X(messages_received, "messages.received") /** The number of messages received in this tick. */
+	X(clients_new, "clients.new.count") /** The number of new client connections. */ \
+	X(clients_closed, "clients.closed.count") /** The number of client disconnects. */ \
+	X(clients_balanced, "clients.balanced.count") /** The number of clients balanced. */ \
+	X(client_timeouts, "clients.timeouts.count") /** The number of clients that timed out. */ \
+	X(messages_sent, "messages.sent.count") /** The number of messages sent in this tick.  */ \
+	X(messages_received, "messages.received.count") /** The number of messages received in this tick. */
 
 /**
  * The fields that can be sent to graphite.
