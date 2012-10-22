@@ -222,11 +222,16 @@ gssize qsys_read(client_t *client, gchar *buff, gsize buff_size) {
 }
 
 gssize qsys_write(client_t *client, gchar *buff, gsize buff_size) {
-	return send(client->socket, buff, buff_size, MSG_NOSIGNAL);
+	if (client->socket != 0) {
+		return send(client->socket, buff, buff_size, MSG_NOSIGNAL);
+	}
+	
+	return -1;
 }
 
 void qsys_close(client_t *client) {
 	close(client->socket);
+	client->socket = 0;
 }
 
 #ifdef TESTING
