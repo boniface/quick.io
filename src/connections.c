@@ -270,7 +270,6 @@ void conns_client_timeout_set(client_t *client) {
 
 void conns_maintenance_tick() {
 	static guint ticks = 0;
-	static guint seconds = 0;
 	
 	// Send out everything that couldn't be done synchronously
 	evs_client_send_async_messages();
@@ -279,21 +278,11 @@ void conns_maintenance_tick() {
 	_conns_balance();
 	
 	if (ticks++ % CONNS_MAINTENANCE_TIMEOUTS == 0) {
-		// Run through all the clients in CLIENT_WAIT and clean up the bad ones
 		_conns_client_timeout_clean();
-		
-		seconds++;
 	}
 	
 	if (ticks % CONNS_MAINTENANCE_CLEANUP == 0) {
-		// Clean up any client subscriptions
 		evs_client_cleanup();
-	}
-	
-	// Do a flush after the first tick of server start
-	if (seconds == option_stats_flush()) {
-		stats_flush();
-		seconds = 0;
 	}
 }
 

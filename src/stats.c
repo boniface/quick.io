@@ -3,7 +3,7 @@
 /**
  * The message format to be sent to graphite, when there is an app prefix
  */
-#define GRAPHITE_FORMAT "%s.%s:%d%s.%s %" G_GSIZE_FORMAT " %" G_GSIZE_FORMAT "\n"
+#define GRAPHITE_FORMAT "%s.%s:%d%s.%s %" G_GSIZE_FORMAT " %" G_GINT64_FORMAT "\n"
 
 /**
  * This is single-threaded, so let's give ourselves some working space
@@ -47,15 +47,14 @@ void stats_flush() {
 	}
 	
 	// Two special cases that are not reset from the stats object
-	GTimeVal time;
-	g_get_current_time(&time);
+	gint64 time = g_get_real_time() / 1000000;
 	
 	void _append(gchar *prefix, gchar *key, gsize val) {
 		if (prefix == NULL) {
 			prefix = "";
 		}
 		
-		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), _hostname, option_port(), prefix, key, val, time.tv_sec);
+		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), _hostname, option_port(), prefix, key, val, time);
 		
 		// It's legal for the paths to graphite to be in the form qio.host/app/prefix.key,
 		// so clean that up

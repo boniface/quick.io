@@ -13,7 +13,10 @@ static client_t *_accept;
 static int _accept_socket;
 
 // The timer used for maintenance
-static int _timer;
+static int _timers[2];
+
+#define TIMER_MAINT 0
+#define TIMER_STATS 1
 
 /**
  * Adds an epoll listener on the specified fd.
@@ -58,19 +61,33 @@ static gboolean _qsys_init(gchar *address, guint16 port) {
 	return TRUE;
 }
 
-static gboolean _qsys_init_maintenance() {
-	_timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+static gboolean _qsys_init_timers() {
+	struct timespec waits[2] = {
+		{0, MAINTENANCE_TICK},
+		{option_stats_flush(), 0}
+	};
 	
-	if (_timer == -1) {
-		return FALSE;
+	for (gsize i = 0; i < G_N_ELEMENTS(waits); i++) {
+		_timers[i] = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+	
+		if (_timers[i] == -1) {
+			return FALSE;
+		}
+		
+		struct itimerspec spec;
+		memset(&spec, 0, sizeof(spec));
+		spec.it_value.tv_sec = waits[i].tv_sec;
+		spec.it_value.tv_nsec = MS_TO_NSEC(waits[i].tv_nsec);
+		spec.it_interval.tv_sec = waits[i].tv_sec;
+		spec.it_interval.tv_nsec = MS_TO_NSEC(waits[i].tv_nsec);
+		timerfd_settime(_timers[i], 0, &spec, NULL);
+		
+		if (!_epoll_add(_timers[i], (void*)i)) {
+			return FALSE;
+		}
 	}
 	
-	struct itimerspec spec;
-	memset(&spec, 0, sizeof(spec));
-	spec.it_value.tv_nsec = MS_TO_NSEC(MAINTENANCE_TICK);
-	spec.it_interval.tv_nsec = MS_TO_NSEC(MAINTENANCE_TICK);
-	timerfd_settime(_timer, 0, &spec, NULL);
-	return _epoll_add(_timer, NULL);
+	return TRUE;
 }
 
 static void _qsys_accept() {
@@ -115,7 +132,7 @@ static void _qsys_dispatch() {
 	struct epoll_event events[EPOLL_MAX_EVENTS];
 	
 	// If the maintenance tick should be run this round
-	gboolean tick = FALSE;
+	gboolean maintenance = FALSE;
 	
 	int num_evs = epoll_wait(_epoll, events, EPOLL_MAX_EVENTS, EPOLL_WAIT);
 	
@@ -136,8 +153,16 @@ static void _qsys_dispatch() {
 		client_t *client = ev.data.ptr;
 		guint32 events = ev.events;
 		
-		if (client == NULL) {
-			tick = TRUE;
+		if ((gsize)client <= G_N_ELEMENTS(_timers)+1) {
+			if ((gsize)client == TIMER_STATS) {
+				stats_flush();
+			} else {
+				maintenance = TRUE;
+			}
+			
+			// Have to read the timer for it to continue to fire on an interval
+			char buff[8];
+			read(_timers[(gsize)client], buff, sizeof(buff));
 		} else if (client == _accept) {
 			_qsys_accept();
 		} else if (events & EPOLLRDHUP) {
@@ -150,12 +175,8 @@ static void _qsys_dispatch() {
 	
 	// Run this after everything else so that if any clients made themselves good
 	// in this round, we're not trampling them out
-	if (tick) {
+	if (maintenance) {
 		conns_maintenance_tick();
-		
-		// Have to read the timer for it to continue to fire on an interval
-		char buff[8];
-		read(_timer, buff, sizeof(buff));
 	}
 }
 
@@ -167,10 +188,10 @@ void qsys_main_loop() {
 		return;
 	}
 	
-	if (_qsys_init_maintenance()) {
-		DEBUG("Maintenance timer inited");
+	if (_qsys_init_timers()) {
+		DEBUG("Timers inited");
 	} else {
-		ERROR("Coud not init maintenance timer");
+		ERROR("Coud not init timers");
 		return;
 	}
 	
