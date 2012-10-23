@@ -50,6 +50,11 @@ typedef struct test_stats_s {
 	gsize conns_messages;
 	
 	/**
+	 * The number of handshakes seen by the server.
+	 */
+	gsize conns_handshakes;
+	
+	/**
 	 * The number of bad clients forcibly closed.
 	 */
 	gsize conns_bad_clients;

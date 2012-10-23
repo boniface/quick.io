@@ -19,6 +19,7 @@ status_t client_handshake(client_t *client) {
 	// We use the \n\n check below to make sure that, if we didn't get a full XML
 	// request, we're waiting for the finish.  No need to duplicate that logic here.
 	if (h_flash_policy_handles(buffer->str)) {
+		g_string_truncate(client->message->socket_buffer, 0);
 		return h_flash_policy_handshake(client);
 	}
 	

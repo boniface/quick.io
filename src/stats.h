@@ -19,7 +19,9 @@
 	X(clients_new, "clients.new.count") /** The number of new client connections. */ \
 	X(clients_closed, "clients.closed.count") /** The number of client disconnects. */ \
 	X(clients_balanced, "clients.balanced.count") /** The number of clients balanced. */ \
+	X(clients_ratelimited, "clients.ratelimited.count") /** The number of clients that were rate limited and closed. */ \
 	X(client_timeouts, "clients.timeouts.count") /** The number of clients that timed out. */ \
+	X(client_handshakes, "clients.handshakes.count") /** The number of successful handshakes. */ \
 	X(messages_sent, "messages.sent.count") /** The number of messages sent in this tick.  */ \
 	X(messages_received, "messages.received.count") /** The number of messages received in this tick. */
 

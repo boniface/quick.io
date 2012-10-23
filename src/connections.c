@@ -171,6 +171,7 @@ void conns_client_data(client_t *client) {
 		// If the client needs to enhance his calm, kill the connection.
 		if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
 			UTILS_STATS_INC(conns_bad_clients);
+			STATS_INC(clients_ratelimited);
 			
 			DEBUG("Client needs to enhance his calm");
 			conns_client_close(client);
@@ -181,18 +182,20 @@ void conns_client_data(client_t *client) {
 	// While there is still something on the socket buffer to process
 	while (client->message->socket_buffer->len > 0) {
 		status_t status;
+		
 		if (client->state == cstate_initing) {
+			UTILS_STATS_INC(conns_handshakes);
 			DEBUG("Client handshake");
 			status = client_handshake(client);
 			
 			// Headers are sent without encoding, don't use the client wrapper
 			if (status & CLIENT_WRITE) {
+				STATS_INC(client_handshakes);
+				
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 				
 				// The handshake is complete, we're done here.
 				client->state = cstate_running;
-				
-				// Set the user into a room
 				evs_client_client_ready(client);
 			}
 		} else {

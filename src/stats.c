@@ -35,7 +35,7 @@ static void _flush() {
 	}
 	
 	if (sendto(_graphite, _buffer->str, _buffer->len, 0, &_graphite_addr, sizeof(_graphite_addr)) == -1) {
-			WARNF("Error sending stats to graphite: %s", strerror(errno));
+		WARNF("Error sending stats to graphite: %s", strerror(errno));
 	}
 	
 	g_string_truncate(_buffer, 0);

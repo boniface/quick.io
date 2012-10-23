@@ -297,7 +297,7 @@ START_TEST(test_qsys_flash_policy) {
 	test_size_eq(read(sock, buff, sizeof(buff)-1), sizeof(buff)-1, "XML recieved");
 	test_str_eq(buff, H_FLASH_POLICY_RESPONSE, "Correct XML sent");
 	
-	test_size_eq(utils_stats()->conns_messages, 1, "Only handshake sent");
+	test_size_eq(utils_stats()->conns_handshakes, 1, "Only handshake sent");
 	test_size_eq(utils_stats()->conns_bad_clients, 1, "Client killed");
 	test_size_eq(utils_stats()->conns_client_wait, 0, "No waiting");
 }
