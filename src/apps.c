@@ -237,7 +237,7 @@ void apps_stats_gather(stats_app_append_cb app_append) {
 		apps_stats_app_cb cb = app->stats_flush;
 		
 		if (cb != NULL) {
-			void _append(gchar *key, gsize val) {
+			void _append(gchar *key, double val) {
 				app_append(app->event_prefix, key, val);
 			}
 			

@@ -3,7 +3,7 @@
 /**
  * The message format to be sent to graphite, when there is an app prefix
  */
-#define GRAPHITE_FORMAT "%s.%s:%d%s.%s %" G_GSIZE_FORMAT " %" G_GINT64_FORMAT "\n"
+#define GRAPHITE_FORMAT "%s.%s:%d%s.%s %0.4f %" G_GINT64_FORMAT "\n"
 
 /**
  * This is single-threaded, so let's give ourselves some working space
@@ -49,7 +49,7 @@ void stats_flush() {
 	// Two special cases that are not reset from the stats object
 	gint64 time = g_get_real_time() / 1000000;
 	
-	void _append(gchar *prefix, gchar *key, gsize val) {
+	void _append(gchar *prefix, gchar *key, double val) {
 		if (prefix == NULL) {
 			prefix = "";
 		}
@@ -77,8 +77,10 @@ void stats_flush() {
 		STATS_S_VALUES
 	#undef X
 	
-	// Copy over the current stats, resetting the counters
-	#define X(slot, name) _append(NULL, name, g_atomic_pointer_and(&(stats.slot), 0));
+	// The counters have a few different stats we calculate, so we need this holder
+	double val;
+	
+	#define X(slot, name) val = g_atomic_pointer_and(&(stats.slot), 0); _append(NULL, name ".count", val); _append(NULL, name ".mean", val / option_stats_flush());
 		STATS_S_COUNTERS
 	#undef X
 	

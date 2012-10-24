@@ -54,7 +54,7 @@ START_TEST(test_stats_sane_tick_graphite) {
 	gchar buff[8192];
 	memset(&buff, 0, sizeof(buff));
 	
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		gchar b[4096];
 		memset(&b, 0, sizeof(b));
 		recvfrom(sock, b, sizeof(b)-1, 0, NULL, 0);
@@ -64,8 +64,10 @@ START_TEST(test_stats_sane_tick_graphite) {
 	gchar **messages = g_strsplit(buff, "\n", -1);
 	
 	guint64 field_count = 7 * option_apps_count(); // For the stats in app/test
-	#define X(slot, name) field_count++;
+	#define X(slot, name) field_count += 2;
 		STATS_S_COUNTERS
+	#undef X
+	#define X(slot, name) field_count++;
 		STATS_S_VALUES
 	#undef X
 	
@@ -75,7 +77,7 @@ START_TEST(test_stats_sane_tick_graphite) {
 	test_uint64_eq(messages_len, field_count, "Got all the fields");
 	
 	// BAHAHAHAHAHA, use regex to match lines.  OHHHH man, this is awesome
-	GRegex* pattern = g_regex_new("qio\\..* \\d+ \\d+", G_REGEX_OPTIMIZE, 0, NULL);
+	GRegex* pattern = g_regex_new("qio\\..* \\d+\\.\\d* \\d+", G_REGEX_OPTIMIZE, 0, NULL);
 	
 	for (uint i = 0; i < messages_len; i++) {
 		test(g_regex_match(pattern, *(messages + i), 0, NULL), "Matches");

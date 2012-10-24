@@ -76,7 +76,7 @@ typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, 
  * @param key The graphite key to be added
  * @param val The number to be added
  */
-typedef void (*apps_stats_cb)(gchar *key, gsize val);
+typedef void (*apps_stats_cb)(gchar *key, double val);
 
 /**
  * The function in the app that takes the apps_stats_cb.
