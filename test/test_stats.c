@@ -6,19 +6,22 @@ static void _stats_setup() {
 	option_parse_config_file(NULL, NULL, 0, NULL);
 	test(evs_server_init());
 	test(apps_run());
-	test(stats_init());
 }
 
 START_TEST(test_stats_sane_tick) {
+	test(stats_init());
+	
 	STATS_INC(clients);
 	STATS_INC(clients_new);
 	
 	test_size_eq(stats.clients, 1, "Clients set");
+	test_size_eq(stats_clients(), 1, "Clients accessor works");
 	test_size_eq(stats.clients_new, 1, "Connections set");
 	
 	stats_flush();
 	
 	test_size_eq(stats.clients, 1, "Clients not reset");
+	test_size_eq(stats_clients(), 1, "Clients accessor works");
 	test_size_eq(stats.clients_new, 0, "Connections reset");
 }
 END_TEST
@@ -38,7 +41,7 @@ START_TEST(test_stats_sane_tick_graphite) {
 	struct addrinfo hints, *res;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_socktype = SOCK_STREAM;
 	
 	gchar port[6];
 	snprintf(port, sizeof(port), "%d", option_stats_graphite_port());
@@ -46,20 +49,25 @@ START_TEST(test_stats_sane_tick_graphite) {
 	test(getaddrinfo(option_stats_graphite_address(), port, &hints, &res) == 0);
 	int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 	test(sock != -1);
+	
+	int on = 1;
+	test(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) != -1);
+	
 	test(bind(sock, res->ai_addr, res->ai_addrlen) != -1);
+	test(listen(sock, 100) != -1);
+	
+	freeaddrinfo(res);
+	
+	test(stats_init());
 	
 	// Put the tick into a new thread so that the recvfrom will get something
 	g_thread_new("stats_ticker", _stats_tick, NULL);
 	
+	int client = accept(sock, NULL, NULL);
+	
 	gchar buff[8192];
 	memset(&buff, 0, sizeof(buff));
-	
-	for (int i = 0; i < 4; i++) {
-		gchar b[4096];
-		memset(&b, 0, sizeof(b));
-		recvfrom(sock, b, sizeof(b)-1, 0, NULL, 0);
-		strcat(buff, b);
-	}
+	read(client, buff, sizeof(buff)-1);
 	
 	gchar **messages = g_strsplit(buff, "\n", -1);
 	

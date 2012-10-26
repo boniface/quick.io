@@ -154,15 +154,15 @@ static void _qsys_dispatch() {
 		guint32 events = ev.events;
 		
 		if ((gsize)client <= G_N_ELEMENTS(_timers)+1) {
+			// Have to read the timer for it to continue to fire on an interval
+			char buff[8];
+			read(_timers[(gsize)client], buff, sizeof(buff));
+			
 			if ((gsize)client == TIMER_STATS) {
 				stats_flush();
 			} else {
 				maintenance = TRUE;
 			}
-			
-			// Have to read the timer for it to continue to fire on an interval
-			char buff[8];
-			read(_timers[(gsize)client], buff, sizeof(buff));
 		} else if (client == _accept) {
 			_qsys_accept();
 		} else if (events & EPOLLRDHUP) {

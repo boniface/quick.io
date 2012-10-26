@@ -5,7 +5,7 @@ pound: pound.c
 
 http-parser:
 	$(MAKE) -C http-parser
+	$(MAKE) -C persistent-socket
 
 clean:
-	$(MAKE) -C http-parser clean
 	rm -f pound

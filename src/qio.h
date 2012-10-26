@@ -7,17 +7,13 @@
 #include <gmodule.h>
 #include <libgen.h>
 #include <netdb.h>
-#include <netinet/in.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "http-parser/http_parser.h"
+#include "persistent-socket/persistent_socket.h"
 
 #include "module.h"
 

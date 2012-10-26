@@ -4,7 +4,7 @@ include ../Makefile.inc
 CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/
 LDFLAGS += -Wl,-E
 
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o
+OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/persistent_socket.o
 TARGET = $(BUILDDIR)/qio
 TESTING = 0
 
@@ -22,6 +22,9 @@ endif
 
 $(BUILDDIR)/http_parser.o:
 	$(MAKE) -C ../ext http-parser
+	
+$(BUILDDIR)/persistent_socket.o:
+	$(MAKE) -C ../ext persistent-socket
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
 	@echo "\n\n"-------- Compiling $< --------
