@@ -52,6 +52,7 @@ The `handler_function` parameter is a function that will be called when the even
 1. Return CLIENT_GOOD, indicating that the client should be subscribed immediately.
 2. Return CLIENT_ERROR, indicating that an error should be sent back to the client. This is indistinguishable from the error sent back when the event does not exist.
 3. Return CLIENT_ASYNC, indicating that no response should be sent back because verification of the event will be processed asynchronously. When issuing this value, it becomes the responsibility of the application to issue the callback to the client. Remember: clients MUST always receive a callback if they ask for one.
+4. Return CLIENT_ABORTED, indicating the the client should be terminated immediately.
 
 `on_unsubscribe_callback` is called when a client unsubscribes from an event. This is just a notification that the client left, and it cannot be stopped.
 
@@ -98,3 +99,56 @@ Enough talk, let's see what we can do here!
 .. literalinclude:: app_skeleton.c
 	:language: c
 	:linenos:
+
+Creating Server Callbacks
+=========================
+
+Client callbacks are simple enough to understand, but what about when you want to be able to have a callback on the server? The easiest way to see these is to look at some code:
+
+.. code-block:: c
+	
+	// Whatever data needs to be passed to callback handler
+	struct callback_data {
+		int id;
+		gchar *name;
+		float percent;
+	};
+	
+	status_t _callback(client_t *client, void *data, event_t *event) {
+		return CLIENT_GOOD;
+	}
+	
+	void _free(void *data) {
+		struct callback_data *d = data;
+		g_free(d->name);
+		g_slice_free1(sizeof(*d), d);
+	}
+	
+	status_t handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+		struct callback_data *d = g_slice_alloc0(sizeof(*d));
+		event->server_callback = evs_server_callback_new(client, _callback, d, _free);
+		
+		// Set some data to be sent to the client
+		event->data_type = d_json;
+		g_string_assign(response, "{\"key1\": \"value\", \"key2\": 2393}");
+		
+		return CLIENT_GOOD;
+	}
+	
+	... snip ...
+	
+	on("/event", handler, NULL, NULL, FALSE);
+	
+	... snip ...
+
+The event flow will be as follows:
+
+1. An event comes in and is sent to handler()
+2. Handler creates a new server callback, passing it the function to be called, the data to be given to the function, and a free function
+3. Handler assigns the returned id the the server_callback field of the event
+4. Handler sets some data to be sent
+5. The client receives the event and triggers the server callback
+6. The _callback() function is called, given the client, its data, and the *new* event object
+7. Once _callback() is done, the event is free'd
+
+.. note:: A server callback might *never* be called: a client has a limited number of server callbacks it can have registered simultaneously, so if it exceeds the number its allowed, then old callbacks will be culled to make room for the new. Chances are this will never happen, but it is a possibility.

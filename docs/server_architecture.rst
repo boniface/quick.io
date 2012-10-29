@@ -13,7 +13,7 @@ All clients, as far as the server is concerned, are stateless connections that c
 Client Handlers
 ===============
 
-Though Quick.IO is primarily a WebSocket server, it allows other types of clients to connect, be they mobile devices, other servers, or even `a badger <http://www.strangehorizons.com/2004/20040405/badger.shtml>`_. Each client may speak to the server in different ways, depending on how they're feeling, the alignment of the planets, or the laziness of their programmer; thus, Quick.IO has a concept of handlers. Each client has an associated handler, and it is responsible for framing the message to the client so that, when the client receives the message, it is capable of decoding and processing it.
+Though Quick.IO is primarily a WebSocket server, it allows other types of clients to connect, be they mobile devices, other servers, or even `a badger <http://www.strangehorizons.com/2004/20040405/badger.shtml>`_. Each client may speak to the server in different ways, depending on how they're feeling, the alignment of the planets, or the laziness of their programmer; thus, Quick.IO has a concept of handlers. Each client has an associated handler, and it is responsible for decoding messages to the server and framing messages to the client so that, when the client receives the message, it is capable of decoding and processing it.
 
 Applications
 ============
@@ -28,4 +28,4 @@ Client events are events that are sent *from* the server *to* the client. The fu
 Server Events
 =============
 
-Server events are events that are sent *from* the client *to* the server. THe function inside the server dealing with this are all prefixed with evs_server_*.
+Server events are events that are sent *from* the client *to* the server. The functions inside the server dealing with this are all prefixed with evs_server_*.
