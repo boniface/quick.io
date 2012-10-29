@@ -161,12 +161,12 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const p
 status_t evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const callback_t server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
 
 /**
- * The client subscribed to an invalid event. The client should be sent an error message,
- * assuming a callback is specified, and unsubscribed from the event.
+ * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST be called to fire off the callback
+ * and subscribe (or not) the user to the event.
  *
  * @ingroup AppFunctions
  *
- * @param client The client to be unsubscribed.
+ * @param client The client to act on
  * @param handler The handler for the event.
  * @param extra Any extra segments to add to the event path
  * @param client_callback The id of the callback the client sent with the event.

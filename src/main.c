@@ -64,8 +64,8 @@ void main_cull_children() {
 
 	gint32 count = option_processes();
 	while (count-- > 0) {
-		DEBUGF("Killing: %d", count);
-		kill(*(_pids + count), SIGINT);
+		DEBUGF("Killing: %d", *(_pids + count));
+		kill(*(_pids + count), SIGTERM);
 	}
 }
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
 	} else {
-		ERROR(error->message);
+		ERROR(error != NULL ? error->message : "The arguments are not happy");
 		return 1;
 	}
 	
