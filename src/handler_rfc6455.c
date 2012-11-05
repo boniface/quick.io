@@ -149,7 +149,7 @@ static status_t _h_rfc6455_start(client_t *client) {
 	
 	// Don't accept the incoming data if it's too long
 	if (len > option_max_message_size()) {
-		return CLIENT_MESSAGE_TOO_LONG;
+		return CLIENT_FATAL;
 	}
 	
 	// Wait on more information if we didn't completely read the header
@@ -175,7 +175,7 @@ status_t h_rfc6455_handshake(client_t *client, GHashTable *headers) {
 	const char *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
 	
 	if (key == NULL) {
-		return CLIENT_UNSUPPORTED;
+		return CLIENT_FATAL;
 	}
 	
 	//build up the concated key, ready for hashing for the return header
@@ -321,7 +321,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 	//
 	// See: http://tools.ietf.org/html/rfc6455#section-5.1
 	if ((*(buff + 1) & MASK_BIT) == 0) {
-		return CLIENT_NEED_MASK;
+		return CLIENT_FATAL;
 	}
 	
 	// Remove everything but the OPCODE from the byte
@@ -343,10 +343,10 @@ status_t h_rfc6455_incoming(client_t *client) {
 		// that is set.
 		//
 		// This is way too complicated.  Seriously, why?
-		return CLIENT_ABORTED;
+		return CLIENT_FATAL;
 		// return _h_rfc6455_start(client);
 	} else if (opcode == OP_CLOSE) {
-		return CLIENT_ABORTED;
+		return CLIENT_FATAL;
 	} else if (opcode == OP_PING) {
 		client->message->type = op_pong;
 		
@@ -361,7 +361,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 	}
 	
 	// If the client wasn't handled above, that was bad, we don't support it
-	return CLIENT_UNSUPPORTED;
+	return CLIENT_FATAL;
 }
 
 #ifdef TESTING

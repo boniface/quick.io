@@ -18,7 +18,7 @@ status_t h_flash_policy_handshake(client_t *client) {
 	// UGHHHHHH
 	client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 	
-	return CLIENT_ABORTED;
+	return CLIENT_FATAL;
 }
 
 #ifdef TESTING

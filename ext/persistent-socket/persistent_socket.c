@@ -23,9 +23,9 @@
  * one works.
  */
 static void _connect(psocket *psocket) {
-	if (psocket->socket != 0) {
+	if (psocket->socket != -1) {
 		close(psocket->socket);
-		psocket->socket = 0;
+		psocket->socket = -1;
 	}
 	
 	psocket->curr_addr = psocket->curr_addr->ai_next;
@@ -68,7 +68,7 @@ int psocket_connect(char *host, int port, psocket **psocket) {
 	}
 	
 	*psocket = malloc(sizeof(*psocket));
-	(*psocket)->socket = 0;
+	(*psocket)->socket = -1;
 	(*psocket)->addrs = (*psocket)->curr_addr = res;
 	
 	_connect(*psocket);

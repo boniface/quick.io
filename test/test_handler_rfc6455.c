@@ -91,7 +91,7 @@ START_TEST(test_h_rfc6455_handshake_no_key) {
 	g_hash_table_insert(headers, "Upgrade", "websocket");
 	g_hash_table_insert(headers, "Connection", "Upgrade");
 	
-	test_status_eq(h_rfc6455_handshake(client, headers), CLIENT_UNSUPPORTED, "Client not supported");
+	test_status_eq(h_rfc6455_handshake(client, headers), CLIENT_FATAL, "Client not supported");
 	
 	g_hash_table_unref(headers);
 	u_client_free(client);
@@ -230,7 +230,7 @@ START_TEST(test_h_rfc6455_continuation_frame) {
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_CONTINUATION_NOTFINAL, sizeof(RFC6455_FRAME_CONTINUATION_NOTFINAL)-1);
 	
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_ABORTED, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_FATAL, "Parsed message okay");
 	
 	u_client_free(client);
 }
@@ -242,7 +242,7 @@ START_TEST(test_h_rfc6455_close) {
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_CLOSE, sizeof(RFC6455_FRAME_CLOSE)-1);
 	
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_ABORTED, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_FATAL, "Parsed message okay");
 	
 	u_client_free(client);
 }
@@ -279,7 +279,7 @@ START_TEST(test_h_rfc6455_no_mask) {
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_NO_MASK, sizeof(RFC6455_FRAME_NO_MASK)-1);
 	
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_NEED_MASK, "Parsed message okay");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_FATAL, "Parsed message okay");
 	
 	u_client_free(client);
 }
@@ -291,7 +291,7 @@ START_TEST(test_h_rfc6455_unsupported_opcode) {
 	// Send the first part of the message
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_FRAME_UNSUPPORTED_OPCODE, sizeof(RFC6455_FRAME_UNSUPPORTED_OPCODE)-1);
 	
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_UNSUPPORTED, "Unsupported opcode!");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_FATAL, "Unsupported opcode!");
 	
 	u_client_free(client);
 }
@@ -335,7 +335,7 @@ START_TEST(test_h_rfc6455_oversized_message) {
 	
 	g_string_overwrite_len(client->message->socket_buffer, 0, RFC6455_MESSAGE_OVERSIZED_MESSAGE, sizeof(RFC6455_MESSAGE_OVERSIZED_MESSAGE)-1);
 	
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_MESSAGE_TOO_LONG, "The message was too large");
+	test_status_eq(h_rfc6455_incoming(client), CLIENT_FATAL, "The message was too large");
 	
 	u_client_free(client);
 }

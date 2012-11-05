@@ -277,7 +277,7 @@ static void _evs_client_pub_message(evs_client_sub_t *sub, _async_message_s *mes
 			continue;
 		}
 		
-		if (client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_ABORTED) {
+		if (client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
 			g_ptr_array_add(dead_clients, client);
 		}
 	}

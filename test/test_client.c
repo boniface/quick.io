@@ -68,7 +68,7 @@ START_TEST(test_client_no_handlers_0) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, NO_HANDLER_HANDSHAKE_KEYS);
-	test_status_eq(client_handshake(client), CLIENT_UNSUPPORTED, "No handler found");
+	test_status_eq(client_handshake(client), CLIENT_FATAL, "No handler found");
 	
 	u_client_free(client);
 }
@@ -78,7 +78,7 @@ START_TEST(test_client_no_handlers_1) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, NO_HANDLER_HANDSHAKE_HORRIBLE);
-	test_status_eq(client_handshake(client), CLIENT_UNSUPPORTED, "Rejected headers");
+	test_status_eq(client_handshake(client), CLIENT_FATAL, "Rejected headers");
 	
 	u_client_free(client);
 }
@@ -88,7 +88,7 @@ START_TEST(test_client_bad_headers) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
-	test_status_eq(client_handshake(client), CLIENT_ABORTED, "Headers rejected");
+	test_status_eq(client_handshake(client), CLIENT_FATAL, "Headers rejected");
 	
 	u_client_free(client);
 }
@@ -98,7 +98,7 @@ START_TEST(test_client_bad_path) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, BAD_PATH);
-	test_status_eq(client_handshake(client), CLIENT_UNSUPPORTED, "Path rejected");
+	test_status_eq(client_handshake(client), CLIENT_FATAL, "Path rejected");
 	
 	u_client_free(client);
 }
@@ -108,7 +108,7 @@ START_TEST(test_client_message_no_handler_incoming) {
 	client_t *client = u_client_create(NULL);
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
-	test_status_eq(client_message(client), CLIENT_ABORTED, "Client rejected: no handler");
+	test_status_eq(client_message(client), CLIENT_FATAL, "Client rejected: no handler");
 	
 	u_client_free(client);
 }
@@ -119,7 +119,7 @@ START_TEST(test_client_message_no_handler_continue) {
 	client->message->remaining_length = 100;
 	
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
-	test_status_eq(client_message(client), CLIENT_ABORTED, "Client rejected: no handler");
+	test_status_eq(client_message(client), CLIENT_FATAL, "Client rejected: no handler");
 	
 	u_client_free(client);
 }
@@ -156,7 +156,7 @@ START_TEST(test_client_no_message) {
 	message_t *message = client->message;
 	client->message = NULL;
 	
-	test_status_eq(client_write(client, NULL), CLIENT_BAD_MESSAGE_FORMAT, "No message to write");
+	test_status_eq(client_write(client, NULL), CLIENT_FATAL, "No message to write");
 	
 	client->message = message;
 	u_client_free(client);
@@ -166,7 +166,7 @@ END_TEST
 START_TEST(test_client_no_handler) {
 	client_t *client = u_client_create(NULL);
 	
-	test_status_eq(client_write(client, NULL), CLIENT_ABORTED, "No handler");
+	test_status_eq(client_write(client, NULL), CLIENT_FATAL, "No handler");
 	
 	u_client_free(client);
 }
@@ -180,7 +180,7 @@ START_TEST(test_client_oversized_message) {
 	g_string_assign(client->message->buffer, really_long);
 	g_free(really_long);
 	
-	test_status_eq(client_write(client, NULL), CLIENT_ABORTED, "Message too long");
+	test_status_eq(client_write(client, NULL), CLIENT_FATAL, "Message too long");
 	
 	u_client_free(client);
 }

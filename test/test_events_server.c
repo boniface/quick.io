@@ -217,7 +217,7 @@ START_TEST(test_evs_event_creation_invalid) {
 	
 	g_string_assign(message->buffer, "::=");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -233,7 +233,7 @@ START_TEST(test_evs_event_creation_invalid_with_event) {
 	
 	g_string_assign(message->buffer, "/qio/noop::=");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -249,7 +249,7 @@ START_TEST(test_evs_event_creation_invalid_callback_id) {
 	
 	g_string_assign(message->buffer, "/qio/noop:abcd1234:=");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
 	test_uint32_eq(event.client_callback, 0, "Callback parsed");
 	
 	_event_free(&event);
@@ -266,7 +266,7 @@ START_TEST(test_evs_event_creation_invalid_callback) {
 	
 	g_string_assign(message->buffer, "/qio/noop:=");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -282,7 +282,7 @@ START_TEST(test_evs_event_creation_invalid_junk) {
 	
 	g_string_assign(message->buffer, "/qio/noop:\x11\x01\x12\xab\x00:=hi");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -298,7 +298,7 @@ START_TEST(test_evs_event_creation_invalid_data) {
 	
 	g_string_assign(message->buffer, "/qio/noop:123:plain");
 	
-	test_status_eq(_event_new(message, &handler, &event), CLIENT_BAD_MESSAGE_FORMAT, "Invalid message");
+	test_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
 	
 	_event_free(&event);
 	u_client_free(client);
@@ -785,13 +785,13 @@ START_TEST(test_evs_server_server_callback_fatal) {
 	client_t *client = u_client_create(NULL);
 	
 	status_t _on(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
-		return CLIENT_ABORTED;
+		return CLIENT_FATAL;
 	}
 	
 	evs_server_on("/test/fatal", _on, NULL, NULL, FALSE);
 	
 	g_string_assign(client->message->buffer, "/test/fatal:1:plain=/asdf/");
-	test_status_eq(evs_server_handle(client), CLIENT_ABORTED, "Aborted");
+	test_status_eq(evs_server_handle(client), CLIENT_FATAL, "Aborted");
 }
 END_TEST
 
@@ -1058,7 +1058,7 @@ START_TEST(test_evs_server_server_callback_bad_status) {
 	
 	// NO client callback, trigger server_callback handler
 	g_string_assign(client->message->buffer, "/bad_status:0:plain=/asdf/");
-	test_status_eq(evs_server_handle(client), CLIENT_ABORTED, "Aborted");
+	test_status_eq(evs_server_handle(client), CLIENT_FATAL, "Aborted");
 	
 	u_client_free(client);
 }

@@ -82,19 +82,19 @@ status_t client_handshake(client_t *client) {
 	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == buffer->len) {
 		// If the path is not /qio, it's not for us
 		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
-			status = CLIENT_UNSUPPORTED;
+			status = CLIENT_FATAL;
 		} else if (h_rfc6455_handles(path, headers)) {
 			client->handler = h_rfc6455;
 			status = h_rfc6455_handshake(client, headers);
 		} else {
 			// No handler was found, and the headers were parsed OK, so
 			// we just can't support this client
-			status = CLIENT_UNSUPPORTED;
+			status = CLIENT_FATAL;
 		}
 	} else {
 		// If we can't parse the headers, then the client is being an idiot
 		// So screw him, close the connection
-		status = CLIENT_ABORTED;
+		status = CLIENT_FATAL;
 	}
 	
 	g_free(headers_dup);
@@ -119,7 +119,7 @@ status_t client_message(client_t* client) {
 			case h_none:
 				// This should technically be impossible, nevertheless...
 				ERROR("Client went into message processing without a handler");
-				return CLIENT_ABORTED;
+				return CLIENT_FATAL;
 		}
 	} else {
 		switch (client->handler) {
@@ -130,7 +130,7 @@ status_t client_message(client_t* client) {
 			default:
 			case h_none:
 				ERROR("Client went into message processing without a handler");
-				return CLIENT_ABORTED;
+				return CLIENT_FATAL;
 		}
 	}
 	
@@ -147,7 +147,7 @@ status_t client_write(client_t *client, message_t *message) {
 	// Extract the message from the client, if necessary
 	if (message == NULL) {
 		if (client->message == NULL) {
-			return CLIENT_BAD_MESSAGE_FORMAT;
+			return CLIENT_FATAL;
 		}
 		
 		message = client->message;
@@ -165,11 +165,11 @@ status_t client_write(client_t *client, message_t *message) {
 			break;
 		
 		default:
-			return CLIENT_ABORTED;
+			return CLIENT_FATAL;
 	}
 	
 	if (frame == NULL) {
-		return CLIENT_ABORTED;
+		return CLIENT_FATAL;
 	}
 	
 	status_t status = client_write_frame(client, frame, frame_len);
@@ -185,7 +185,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	if (frame_len > 0 && qsys_write(client, frame, frame_len) == (gssize)frame_len) {
 		return CLIENT_GOOD;
 	} else {
-		return CLIENT_ABORTED;
+		return CLIENT_FATAL;
 	}
 }
 

@@ -206,7 +206,7 @@ void conns_client_data(client_t *client) {
 			
 			// Send back a framed response for the websocket
 			if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
-				status = CLIENT_ABORTED;
+				status = CLIENT_FATAL;
 			}
 		}
 		
@@ -228,7 +228,7 @@ void conns_client_data(client_t *client) {
 			break;
 			
 		// The client is misbehaving. Close him.
-		} else if (status & CLIENT_BAD) {
+		} else if (status == CLIENT_FATAL) {
 			UTILS_STATS_INC(conns_bad_clients);
 			
 			DEBUGF("Bad client, closing: status=%d", status);
@@ -312,12 +312,12 @@ void conns_message_clean(client_t *client, gboolean truncate_socket_buffer, gboo
 	message->type = 0;
 	message->mask = 0;
 	
-	if (truncate_buffer) {
-		g_string_truncate(message->buffer, 0);
-	}
-	
 	if (truncate_socket_buffer) {
 		g_string_truncate(message->socket_buffer, 0);
+	}
+	
+	if (truncate_buffer) {
+		g_string_truncate(message->buffer, 0);
 	}
 }
 

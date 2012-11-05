@@ -59,7 +59,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// If the first : in the string was the first character....
 	if (end == NULL || curr == end) {
 		DEBUG("Bad event specifier.");
-		return CLIENT_BAD_MESSAGE_FORMAT;
+		return CLIENT_FATAL;
 	}
 	
 	// Null terminate our event
@@ -79,7 +79,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	
 	if (end == NULL) {
 		DEBUG("Bad messageId");
-		return CLIENT_BAD_MESSAGE_FORMAT;
+		return CLIENT_FATAL;
 	}
 	
 	// Make the sub-string NULL terminated so this works
@@ -94,7 +94,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 		
 		if (event->client_callback == 0 && endptr == curr) {
 			DEBUG("Bad callback id");
-			return CLIENT_BAD_MESSAGE_FORMAT;
+			return CLIENT_FATAL;
 		}
 	} else {
 		event->client_callback = 0;
@@ -112,7 +112,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// There has to be something found for this to work
 	if (end == NULL) {
 		DEBUG("Bad message format: data type");
-		return CLIENT_BAD_MESSAGE_FORMAT;
+		return CLIENT_FATAL;
 	}
 	
 	// To allow the string compares to work -- overwrites the "="
@@ -124,7 +124,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 		event->data_type = d_json;
 	} else {
 		DEBUG("No matching data type found");
-		return CLIENT_BAD_MESSAGE_FORMAT;
+		return CLIENT_FATAL;
 	}
 	
 	// Don't allow memory to go rampant
@@ -340,7 +340,7 @@ status_t evs_server_handle(client_t *client) {
 			status = CLIENT_WRITE;
 		} else {
 			// If anything else happens, then just kill the client, there's no use at this point
-			status = CLIENT_ABORTED;
+			status = CLIENT_FATAL;
 		}
 	} else if (event.server_callback > 0) {
 		// There's no client callback, but they attempted to send back a server callback...weird
@@ -349,7 +349,7 @@ status_t evs_server_handle(client_t *client) {
 		// This should technically never happen, but just in case, we don't want things going
 		// wrong above us
 		if (status != CLIENT_GOOD) {
-			status = CLIENT_ABORTED;
+			status = CLIENT_FATAL;
 		}
 	}
 	
@@ -480,7 +480,7 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	// and incremement to indicate that it's new. Thus, when a callback comes in from
 	// the client and we deconstruct it, if the ID doesn't match, we just discard it and
 	// move on.
-	guint16 id = SERVER_CALLBACK(i, client->callbacks[i].id);
+	callback_t id = SERVER_CALLBACK(i, client->callbacks[i].id);
 	
 	g_mutex_unlock(&_callbacks_lock);
 	

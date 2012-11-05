@@ -11,7 +11,7 @@ START_TEST(test_h_flash_policy_handshake) {
 	status_t status = client_handshake(client);
 	
 	test_str_eq(client->message->buffer->str, H_FLASH_POLICY_RESPONSE, "Response sent");
-	test_status_eq(status, CLIENT_ABORTED, "Aborting");
+	test_status_eq(status, CLIENT_FATAL, "Aborting");
 	
 	u_client_free(client);
 }
@@ -30,7 +30,7 @@ START_TEST(test_h_flash_policy_partial_handshake) {
 	status = client_handshake(client);
 	
 	test_str_eq(client->message->buffer->str, H_FLASH_POLICY_RESPONSE, "Response sent");
-	test_status_eq(status, CLIENT_ABORTED, "Aborting");
+	test_status_eq(status, CLIENT_FATAL, "Aborting");
 	
 	u_client_free(client);
 }

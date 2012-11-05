@@ -35,9 +35,10 @@
 #define CLIENT_GOOD 1 << 0
 
 /**
- * That bastard of a client aborted / should be aborted.
+ * That bastard of a client aborted / should be aborted, or did something incredibly stupid, so
+ * he should just be killed.
  */
-#define CLIENT_ABORTED 1 << 1
+#define CLIENT_FATAL 1 << 1
 
 /**
  * A non-fatal error occurred while processing. This response trips the event handler
@@ -62,31 +63,6 @@
  * and notify us later.
  */
 #define CLIENT_WAIT 1 << 5
-
-/**
- * The client sent a message without a mask. That is ALWAYS an error.
- */
-#define CLIENT_NEED_MASK 1 << 6
-
-/**
- * The message the client sent is too long. That an error.
- */
-#define CLIENT_MESSAGE_TOO_LONG 1 << 7
-
-/**
- * The client sent a bad message.
- */
-#define CLIENT_BAD_MESSAGE_FORMAT 1 << 8
-
-/**
- * The client is not supported by this handler / server.
- */
-#define CLIENT_UNSUPPORTED 1 << 9
-
-/**
- * Any event that means the client is just being stupid.
- */
-#define CLIENT_BAD (CLIENT_ABORTED | CLIENT_NEED_MASK | CLIENT_MESSAGE_TOO_LONG | CLIENT_BAD_MESSAGE_FORMAT | CLIENT_UNSUPPORTED)
 
 /**
  * The opcodes that we support.

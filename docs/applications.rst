@@ -52,7 +52,7 @@ The `handler_function` parameter is a function that will be called when the even
 1. Return CLIENT_GOOD, indicating that the client should be subscribed immediately.
 2. Return CLIENT_ERROR, indicating that an error should be sent back to the client. This is indistinguishable from the error sent back when the event does not exist.
 3. Return CLIENT_ASYNC, indicating that no response should be sent back because verification of the event will be processed asynchronously. When issuing this value, it becomes the responsibility of the application to issue the callback to the client. Remember: clients MUST always receive a callback if they ask for one.
-4. Return CLIENT_ABORTED, indicating the the client should be terminated immediately.
+4. Return CLIENT_FATAL, indicating the the client should be terminated immediately.
 
 `on_unsubscribe_callback` is called when a client unsubscribes from an event. This is just a notification that the client left, and it cannot be stopped.
 
