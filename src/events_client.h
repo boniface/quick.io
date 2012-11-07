@@ -199,6 +199,11 @@ APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t clie
 APP_EXPORT void evs_client_send_error_callback(client_t *client, const callback_t client_callback);
 
 /**
+ * Send a heartbeat out to all users subscribed to the heartbeat event.
+ */
+void evs_client_heartbeat();
+
+/**
  * A cleanup routine for empty events.
  *
  * @warning NOT thread safe.

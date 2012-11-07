@@ -211,7 +211,6 @@ static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler
 	status_t status = evs_client_sub_client(event_path, client, event->client_callback);
 	g_free(event_path);
 	
-	// We have fatal responses, everything is always good, with the option to respond
 	return status;
 }
 

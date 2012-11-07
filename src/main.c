@@ -31,6 +31,7 @@ static gboolean _main_fork() {
 		if (pid == 0) {
 			// Done with these guys
 			free(_pids);
+			_pids = NULL;
 			
 			option_set_process(processes);
 			
@@ -38,7 +39,7 @@ static gboolean _main_fork() {
 				DEBUG("Apps running");
 			} else {
 				ERROR("Could not run the apps.");
-				return 1;
+				exit(33);
 			}
 			
 			qsys_main_loop();
@@ -63,7 +64,7 @@ void main_cull_children() {
 	DEBUG("All children are being culled...");
 
 	gint32 count = option_processes();
-	while (count-- > 0) {
+	while (_pids && count-- > 0) {
 		DEBUGF("Killing: %d", *(_pids + count));
 		kill(*(_pids + count), SIGTERM);
 	}
@@ -75,7 +76,6 @@ int init_main(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
 #endif
 	signal(SIGTERM, _sigterm_handler);
-	
 	debug_handle_signals();
 	
 	GError *error = NULL;
@@ -97,17 +97,17 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (evs_client_init()) {
-		DEBUG("Client events inited");
-	} else {
-		ERROR("Could not init client events.");
-		return 1;
-	}
-	
 	if (evs_server_init()) {
 		DEBUG("Server events inited");
 	} else {
 		ERROR("Could not init server events.");
+		return 1;
+	}
+	
+	if (evs_client_init()) {
+		DEBUG("Client events inited");
+	} else {
+		ERROR("Could not init client events.");
 		return 1;
 	}
 	

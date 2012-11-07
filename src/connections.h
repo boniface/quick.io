@@ -119,6 +119,15 @@ void conns_client_timeout_set(client_t *client);
 gboolean conns_init();
 
 /**
+ * Gets a hash-set containing all the clients currently connected to the server.
+ *
+ * @attention This MAY ONLY be used from the main server thread.
+ *
+ * @return The set of all clients currently connected.
+ */
+GHashTable* conns_clients();
+
+/**
  * Tick to run maintenance operations.
  * This does all sorts of internal cleanup, message flushing, and dead client clearing.
  */

@@ -120,6 +120,11 @@ APP_EXPORT gchar* option_bind_address();
  */
 gchar* option_config_file();
 
+/** 
+ * If heartbeats are enabled.
+ */
+gboolean option_heartbeat();
+
 /**
  * The maximum length a message may be.
  */

@@ -36,6 +36,11 @@
 #define MAINTENANCE_TICK 100
 
 /**
+ * The amount of time between hearbeats (in seconds).
+ */
+#define HEARTBEAT_TICK 60
+
+/**
  * Convert milliseconds to microseconds.  Just so it's easier to read.
  *
  * @param ms The number of milliseconds to put into microseconds.

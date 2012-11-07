@@ -9,13 +9,14 @@
 #define INVALID_EVENT "\x81""\x21""/qio/callback/1:0:plain=qio_error"
 
 #define ASYNC_CALLBACK "\x81""\x1d""/qio/callback/654987:0:plain="
+#define HEARTBEAT_EVENT "\x81""\x17""/qio/heartbeat:0:plain="
 
 void _test_evs_client_setup() {
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
-	evs_client_init();
 	evs_server_init();
+	evs_client_init();
 	conns_init();
 	apps_run();
 	test(stats_init());
@@ -229,6 +230,28 @@ START_TEST(test_evs_client_ready) {
 	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
 	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_heartbeat) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	
+	conns_client_new(client);
+	
+	evs_client_heartbeat();
+	evs_client_send_async_messages();
+	
+	char buff[512];
+	memset(buff, 0, sizeof(buff));
+	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
+	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
+	
+	test_size_eq(stats.messages_sent, 1, "1 heartbeat sent");
+	
+	close(socket);
 	u_client_free(client);
 }
 END_TEST
@@ -779,6 +802,11 @@ Suite* events_client_suite() {
 	tc = tcase_create("Client Ready");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
 	tcase_add_test(tc, test_evs_client_ready);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Heartbeat");
+	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
+	tcase_add_test(tc, test_evs_heartbeat);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Subscribe");

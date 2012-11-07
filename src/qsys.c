@@ -13,10 +13,11 @@ static client_t *_accept;
 static int _accept_socket;
 
 // The timer used for maintenance
-static int _timers[2];
+static int _timers[3];
 
 #define TIMER_MAINT 0
 #define TIMER_STATS 1
+#define TIMER_HEARTBEAT 2
 
 /**
  * Adds an epoll listener on the specified fd.
@@ -62,9 +63,10 @@ static gboolean _qsys_init(gchar *address, guint16 port) {
 }
 
 static gboolean _qsys_init_timers() {
-	struct timespec waits[2] = {
+	struct timespec waits[] = {
 		{0, MAINTENANCE_TICK},
-		{option_stats_flush(), 0}
+		{option_stats_flush(), 0},
+		{HEARTBEAT_TICK, 0}
 	};
 	
 	for (gsize i = 0; i < G_N_ELEMENTS(waits); i++) {
@@ -101,13 +103,6 @@ static void _qsys_accept() {
 		
 		if (fcntl(client_socket, F_SETFL, O_NONBLOCK) == -1) {
 			ERROR("Could not set client non-blocking");
-			close(client_socket);
-			continue;
-		}
-		
-		int opt = 1;
-		if (setsockopt(_accept_socket, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt)) == -1) {
-			ERROR("Could not set socket keep alive");
 			close(client_socket);
 			continue;
 		}
@@ -158,10 +153,17 @@ static void _qsys_dispatch() {
 			char buff[8];
 			read(_timers[(gsize)client], buff, sizeof(buff));
 			
-			if ((gsize)client == TIMER_STATS) {
-				stats_flush();
-			} else {
-				maintenance = TRUE;
+			switch ((gsize)client) {
+				case TIMER_HEARTBEAT:
+					evs_client_heartbeat();
+					break;
+				
+				case TIMER_STATS:
+					stats_flush();
+					break;
+				
+				default:
+					maintenance = TRUE;
 			}
 		} else if (client == _accept) {
 			_qsys_accept();

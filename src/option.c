@@ -173,7 +173,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 				*((gchar**)e.arg_data) = opt;
 			}
 		} else if (e.arg == e_string_array) {
-			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, error);
+			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, NULL);
 			if (opt != NULL) {
 				*((gchar***)e.arg_data) = opt;
 			}

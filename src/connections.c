@@ -1,15 +1,15 @@
 #include "qio.h"
 
 /**
- * All of the clients that have timeouts set on them.
- */
-static GHashTable *_client_timeouts;
-
-/**
- * All of the clients currently connected.
+ * All of the clients currently connected to the server.
  * Functions as a set.
  */
 static GHashTable *_clients;
+
+/**
+ * All of the clients that have timeouts set on them.
+ */
+static GHashTable *_client_timeouts;
 
 /**
  * A list of all the balance requests.
@@ -44,10 +44,10 @@ static void _conns_message_new(client_t *client) {
 }
 
 static void _conns_client_timeout_clean() {
-	client_t *client, *ignored;
+	client_t *client;
 	GHashTableIter iter;
 	g_hash_table_iter_init(&iter, _client_timeouts);
-	while (g_hash_table_iter_next(&iter, (void*)&client, (void*)&ignored)) {
+	while (g_hash_table_iter_next(&iter, (void*)&client, NULL)) {
 		client->timer--;
 		if (client->timer == -1) {
 			UTILS_STATS_INC(conns_timeouts);
@@ -246,12 +246,16 @@ void conns_client_data(client_t *client) {
 
 gboolean conns_init() {
 	// Just hashing clients directly, as a set
-	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_clients = g_hash_table_new(NULL, NULL);
+	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
 	
 	return TRUE;
+}
+
+GHashTable* conns_clients() {
+	return _clients;
 }
 
 void conns_client_timeout_clear(client_t *client) {

@@ -17,6 +17,12 @@ enum _async_message_types {
 	_mt_client,
 	
 	/**
+	 * A message indicating the client needs to heartbeat.
+	 * Requires:
+	 */
+	_mt_opt_heartbeat,
+	
+	/**
 	 * A subscription request, approved by the application, ready for the client
 	 */
 	_mt_subscribe,
@@ -84,24 +90,29 @@ static GAsyncQueue *_messages;
 static GMutex _clean_lock;
 
 /**
+ * The handler for heartbeat events.
+ */
+static event_handler_t *_heartbeat;
+
+/**
  * Creates a subscription from a handler and friends.
  */
 static evs_client_sub_t* _create_subscription(const gchar *event_path, event_handler_t *handler, path_extra_t extra) {
 	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
-
+	
 	// Keep around a reference to the key for passing around for easier
 	// persistence when the event names are freed from a message
 	sub->event_path = g_strdup(event_path);
-
+	
 	// Use the default hashing functions, only using memory locations anyway
 	// (*client->*client is what is being stored)
 	sub->clients = g_hash_table_new(NULL, NULL);
-
+	
 	// Because we'll need this for some future references, let's keep the
 	// handler around: this will also save us on future lookups for the same
 	// event
 	sub->handler = handler;
-
+	
 	// Save the extra elements on the path, we'll need those again later
 	g_ptr_array_ref(extra);
 	sub->extra = extra;
@@ -151,7 +162,6 @@ static evs_client_sub_t* _get_subscription(const gchar *event_path, const gboole
  * @see evs_client_sub_client
  */
 static status_t _evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback, const gboolean from_app) {
-
 	// Attempt to get the subscription to check if it exists
 	evs_client_sub_t *sub = _get_subscription(event_path, TRUE);
 	
@@ -239,15 +249,16 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 	
 	return CLIENT_GOOD;
 }
+
 /**
  * Publish a single message to multiple clients.
  *
- * @param sub The subscription to send the message to.
+ * @param clients The clients to broadcast the message to.
  * @param message The message to send to all the subscribers.
  */
-static void _evs_client_pub_message(evs_client_sub_t *sub, _async_message_s *message) {
+static void _evs_client_pub_message(GHashTable *clients, _async_message_s *amsg) {
 	UTILS_STATS_INC(evs_client_pubd_messages);
-
+	
 	GPtrArray *dead_clients = g_ptr_array_new();
 	
 	// For holding all the message types we might send
@@ -255,18 +266,20 @@ static void _evs_client_pub_message(evs_client_sub_t *sub, _async_message_s *mes
 	gsize msglen[h_len];
 	
 	msgs[h_rfc6455] = h_rfc6455_prepare_frame(
-		message->message_opcode,
+		amsg->message_opcode,
 		FALSE,
-		message->message->str,
-		message->message->len,
+		amsg->message->str,
+		amsg->message->len,
 		&msglen[h_rfc6455]
 	);
 	
+	DEBUGF("Publishing message: %s", amsg->message->str);
+	
 	// Go through all the clients and give them their messages
 	GHashTableIter iter;
-	client_t *client, *client2;
-	g_hash_table_iter_init(&iter, sub->clients);
-	while (g_hash_table_iter_next(&iter, (gpointer)&client, (gpointer)&client2)) {
+	client_t *client;
+	g_hash_table_iter_init(&iter, clients);
+	while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
 		enum handlers handler = client->handler;
 		
 		// This is very bad...
@@ -358,7 +371,7 @@ void evs_client_send_async_messages() {
 		evs_client_sub_t *sub = _get_subscription(amsg->event_path, FALSE /* DON'T TOUCH */);
 		
 		if (sub != NULL) {
-			_evs_client_pub_message(sub, amsg);
+			_evs_client_pub_message(sub->clients, amsg);
 		}
 	}
 	
@@ -378,6 +391,14 @@ void evs_client_send_async_messages() {
 		}
 	}
 	
+	void _opt_heartbeat() {
+		amsg->message = g_string_sized_new(100);
+		amsg->message_opcode = op_text;
+		
+		_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", amsg->message, NULL);
+		_evs_client_pub_message(conns_clients(), amsg);
+	}
+	
 	void _subscribe() {
 		if (_evs_client_sub_client(amsg->event_path, amsg->client, amsg->client_callback, TRUE) == CLIENT_GOOD) {
 			evs_client_send_callback(amsg->client, amsg->client_callback, d_plain, "", 0);
@@ -394,6 +415,10 @@ void evs_client_send_async_messages() {
 			
 			case _mt_client:
 				_single();
+				break;
+			
+			case _mt_opt_heartbeat:
+				_opt_heartbeat();
 				break;
 			
 			case _mt_subscribe:
@@ -453,6 +478,8 @@ gboolean evs_client_init() {
 	// they must be freed
 	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	_messages = g_async_queue_new();
+	
+	_heartbeat = evs_server_on("/qio/heartbeat", NULL, evs_no_subscribe, NULL, FALSE);
 	
 	return TRUE;
 }
@@ -547,6 +574,12 @@ void evs_client_send_error_callback(client_t *client, const callback_t client_ca
 		
 		g_async_queue_push(_messages, amsg);
 	}
+}
+
+void evs_client_heartbeat() {
+	_async_message_s *amsg = g_slice_alloc0(sizeof(*amsg));
+	amsg->type = _mt_opt_heartbeat;
+	g_async_queue_push(_messages, amsg);
 }
 
 guint evs_client_number_subscribed(const event_handler_t *handler, const path_extra_t extra) {
