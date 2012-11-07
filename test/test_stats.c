@@ -1,5 +1,10 @@
 #include "test.h"
 
+#define CONFIG_FILE "qio.ini"
+#define CONFIG_NO_GRAPHITE "[quick.io]\n" \
+	"stats-graphite-address = \n" \
+	"[quick.io-apps]\n"
+
 static void _stats_setup() {
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
@@ -96,6 +101,30 @@ START_TEST(test_stats_sane_tick_graphite) {
 }
 END_TEST
 
+START_TEST(test_stats_sane_tick_no_graphite) {
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(CONFIG_NO_GRAPHITE, 1, sizeof(CONFIG_NO_GRAPHITE), f);
+	fclose(f);
+	
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+	
+	test(option_parse_args(argc, argv, NULL), "File ready");
+	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	
+	test(stats_init());
+	test(_graphite == NULL);
+	
+	STATS_INC(clients_new);
+	
+	test_size_eq(stats.clients_new, 1, "Clients right");
+	
+	stats_flush();
+	
+	test_size_eq(stats.clients_new, 1, "Clients not reset");
+}
+END_TEST
+
 Suite* stats_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Stats");
@@ -104,6 +133,7 @@ Suite* stats_suite() {
 	tcase_add_checked_fixture(tc, _stats_setup, NULL);
 	tcase_add_test(tc, test_stats_sane_tick);
 	tcase_add_test(tc, test_stats_sane_tick_graphite);
+	tcase_add_test(tc, test_stats_sane_tick_no_graphite);
 	suite_add_tcase(s, tc);
 	
 	return s;
