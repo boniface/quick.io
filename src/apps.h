@@ -81,7 +81,7 @@ typedef void (*apps_stats_cb)(gchar *key, double val);
 /**
  * The function in the app that takes the apps_stats_cb.
  *
- * @cb The function to be called to add stats to send to graphite.
+ * @param cb The function to be called to add stats to send to graphite.
  */
 typedef void (*apps_stats_app_cb)(apps_stats_cb cb);
 

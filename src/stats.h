@@ -34,7 +34,7 @@
 /**
  * The statistics that are recorded.
  *
- * @important Each member of the struct MUST be a size_t, or this won't work.
+ * @warning Each member of the struct MUST be a size_t, or this won't work.
  */
 typedef struct stats_s {
 	
