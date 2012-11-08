@@ -19,7 +19,7 @@
 #include "persistent_socket.h"
 
 /**
- * Attempt to connect to again, looping through all the addresses available until
+ * Attempt to connect again, looping through all the addresses available until
  * one works.
  */
 static void _connect(psocket *psocket) {
@@ -46,6 +46,23 @@ static void _connect(psocket *psocket) {
 	}
 	
 	if (connect(sock, psocket->curr_addr->ai_addr, psocket->curr_addr->ai_addrlen) == -1 && errno != EINPROGRESS) {
+		close(sock);
+		return;
+	}
+	
+	// Detect a socket failure earlier -> set the socket buffer smaller to force the kernel
+	// to flush and send an error rather than be hopeful.
+	//
+	// This addresses the case:
+	//   1) A connecction is opened, and data is sent
+	//   2) A firewall in the middle drops the connection, no HUPs sent
+	//   3) The kernel faithfully tries to resend the data, but to no avail, until the OS's default buffer fills
+	//   4) We FINALLY get the notification of the error
+	//
+	// Here, set the buffer size to be that the max size of a UDP packet: this allows us to detect errors even faster
+	// (See: http://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet)
+	int buff_len = 512;
+	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &buff_len, sizeof(&buff_len)) == -1) {
 		close(sock);
 		return;
 	}
@@ -91,10 +108,10 @@ void psocket_send(psocket *psocket, char *msg, int len) {
 int psocket_read(psocket *psocket, char *buff, size_t len) {
 	int got = recv(psocket->socket, buff, len, 0);
 	
-	if (got <= 0) {
+	if (got <= 0 && errno != EAGAIN) {
 		_connect(psocket);
 		return 0;
 	}
 	
-	return got;
+	return got < 0 ? 0 : got;
 }
