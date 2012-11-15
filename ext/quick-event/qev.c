@@ -36,7 +36,7 @@ static inline int _qev_ssl_handshake(SSL *ctx, volatile qev_flags_t *flags) {
 		__sync_or_and_fetch(flags, QEV_CMASK_SSL_HANDSHAKING);
 		err = SSL_get_error(ctx, err);
 		if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
-			fprintf(stderr, "SSL_accept failed: %s\n", ERR_reason_error_string(err));
+			fprintf(stderr, "SSL_accept failed: %s\n", ERR_error_string(err, NULL));
 			return -1;
 		}
 	}
@@ -56,11 +56,30 @@ static DH* _qev_ssl_get_tmpdh(SSL *s, int is_export, int key_len) {
 }
 
 /**
- * Generates new Diffie-Hellman primes for this instance
+ * Setup elliptic curve Diffie–Hellman
  *
- * @return 1 on success, 0 on failure.
+ * @return If everything was setup correctly
  */
-static int _qev_setup_dh(SSL_CTX *ctx) {
+static gboolean _qev_setup_ecdh(SSL_CTX *ctx) {
+    EC_KEY *ecdh;
+    
+    if ((ecdh = EC_KEY_new_by_curve_name(QEV_ECDH_CURVE)) == NULL) {
+    	return FALSE;
+    }
+    
+    SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+    SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
+    EC_KEY_free(ecdh);
+	
+	return TRUE;
+}
+
+/**
+ * Set the public Diffie-Hellman params
+ *
+ * @return If everything was setup correctly
+ */
+static gboolean _qev_setup_dh(SSL_CTX *ctx) {
 	#define QEV_DH_SIZES_X(size) \
 		if ((_qev_dh ## size = DH_new()) == NULL) { \
 			return FALSE; \
@@ -70,7 +89,8 @@ static int _qev_setup_dh(SSL_CTX *ctx) {
 		
 		QEV_DH_SIZES
 	#undef QEV_DH_SIZES_X
-		
+    
+    SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE);
     SSL_CTX_set_tmp_dh_callback(ctx, _qev_ssl_get_tmpdh);
 	
 	return TRUE;
@@ -106,7 +126,9 @@ int qev_listen_ssl(char *ip_address, uint16_t port, char *cert_path, char *key_p
 		inited = 1;
 	}
 	
-	SSL_CTX *ctx = SSL_CTX_new(SSLv3_server_method());
+	// Provides more options using SSLv23 (SSLv2 disabled below)
+	// If just left as SSLv3, Flash can't connect.  Hooray.
+	SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
 	
 	if (ctx == NULL) {
 		fprintf(stderr, "qev_listen_ssl(): Could not create SSL context\n");
@@ -128,8 +150,18 @@ int qev_listen_ssl(char *ip_address, uint16_t port, char *cert_path, char *key_p
 		return -1;
 	}
 	
+	if (!SSL_CTX_set_cipher_list(ctx, QEV_SSL_CIPHERS)) {
+		fprintf(stderr, "qev_listen_ssl(): Could not set SSL ciphers\n");
+		return -1;
+	}
+	
 	if (!_qev_setup_dh(ctx)) {
 		fprintf(stderr, "qev_listen_ssl(): Could not setup Diffie-Hellman params\n");
+		return -1;
+	}
+	
+	if (!_qev_setup_ecdh(ctx)) {
+		fprintf(stderr, "qev_listen_ssl(): Could not setup ECDH params\n");
 		return -1;
 	}
 	

@@ -24,6 +24,16 @@
 #endif
 
 /**
+ * The ciphers that we'll accept
+ */
+#define QEV_SSL_CIPHERS "HIGH:!aNULL:!MD5"
+
+/**
+ * The curve used for Elliptic curve Diffie–Hellman
+ */
+#define QEV_ECDH_CURVE NID_X9_62_prime256v1
+
+/**
  * The part of the bitmask identifying an "listening" client type,
  * meaning that this client accepts connections on its socket.
  */
