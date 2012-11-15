@@ -109,11 +109,28 @@ guint16 option_apps_count();
 /**
  * Gets the address we're supposed to bind to.
  *
- * @ingroup AppFunctions
+ * @return The address specified in the config file.
+ */
+gchar* option_bind_address();
+/**
+ * Gets the SSL address we're supposed to bind to.
  *
  * @return The address specified in the config file.
  */
-APP_EXPORT gchar* option_bind_address();
+gchar* option_bind_address_ssl();
+
+/**
+ * Gets the port that we're supposed to run on.
+ *
+ * @return The port specified in the config.
+ */
+gint option_bind_port();
+/**
+ * Gets the SSL port that we're supposed to run on.
+ *
+ * @return The port specified in the config.
+ */
+gint option_bind_port_ssl();
 
 /**
  * Gets the config file being used.
@@ -136,23 +153,14 @@ guint64 option_max_message_size();
 guint64 option_max_subscriptions();
 
 /**
- * Gets the port that we're supposed to run on.
- *
- * @ingroup AppFunctions
- *
- * @return The port specified in the config.
+ * The path to the SSL cert chain. NULL if none provided.
  */
-APP_EXPORT gint option_port();
+gchar* option_ssl_cert_chain();
 
 /**
- * Gets the number of processes that should be spawned.
+ * The path to the SSL private key. NULL if none provided.
  */
-gint option_processes();
-
-/**
- * Gets the stats-flush time.
- */
-guint64 option_stats_flush();
+gchar* option_ssl_private_key();
 
 /**
  * Gets the graphite address
@@ -170,9 +178,20 @@ gint option_stats_graphite_port();
 gchar* option_stats_graphite_prefix();
 
 /**
+ * Gets the number of threads that should be spawned.
+ */
+gint option_threads();
+
+/**
  * Gets the client timeout.
  */
 gint option_timeout();
+
+/**
+ * Gets which user the server should run as. Returns NULL if 
+ * no user switching should be done.
+ */
+gchar* option_user();
 
 /**
  * Loads the config file and populates all the options.
@@ -194,17 +213,6 @@ APP_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_entr
  * @param[out] error Any error that might happen when parsing the command line args. 
  */
 gboolean option_parse_args(int argc, char *argv[], GError **error);
-
-/**
- * Sets the current process number and updates any internal configuration options that depend
- * on it. 
- *
- * @attention As this modifies global settings, this should be called ONLY from a child process.
- * @note This is NOT idempotent. 
- *
- * @param process The number of the process (0-x, x being the process number)
- */
-void option_set_process(guint32 process);
 
 #ifdef TESTING
 #include "../test/test_option.h"

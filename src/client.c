@@ -182,7 +182,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	
 	// Frames will ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right
-	if (frame_len > 0 && qsys_write(client, frame, frame_len) == (gssize)frame_len) {
+	if (frame_len > 0 && qev_write(client, frame, frame_len) == (gssize)frame_len) {
 		return CLIENT_GOOD;
 	} else {
 		return CLIENT_FATAL;
@@ -194,9 +194,7 @@ void client_ref(client_t *client) {
 }
 
 void client_unref(client_t *client) {
-	g_atomic_pointer_add(&(client->ref_count), -1);
-	
-	if (client->ref_count == 0) {
+	if (g_atomic_pointer_add(&(client->ref_count), -1) == 1) {
 		if (client->external_data != NULL) {
 			g_hash_table_unref(client->external_data);
 		}

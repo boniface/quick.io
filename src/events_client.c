@@ -303,7 +303,7 @@ static void _evs_client_pub_message(GHashTable *clients, _async_message_s *amsg)
 	// Clean up dead clients
 	for (gsize i = 0; i < dead_clients->len; i++) {
 		UTILS_STATS_INC(evs_client_send_pub_closes);
-		conns_client_close(g_ptr_array_index(dead_clients, i));
+		qev_close(g_ptr_array_index(dead_clients, i));
 	}
 	
 	g_ptr_array_free(dead_clients, TRUE);
@@ -383,10 +383,10 @@ void evs_client_send_async_messages() {
 		m.buffer = amsg->message;
 		
 		if (client_write(amsg->client, &m) != CLIENT_GOOD) {
-			// conns_client_close calls client_unref, so don't let it be called again
-			// in the loop
+			// qev_close causes conns_client_close to be called, which calls client_unref,
+			// so don't let it be called again in the loop
 			UTILS_STATS_INC(evs_client_send_single_closes);
-			conns_client_close(amsg->client);
+			qev_close(amsg->client);
 			amsg->client = NULL;
 		}
 	}

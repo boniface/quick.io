@@ -8,6 +8,11 @@
 #include "qio.h"
 
 /**
+ * The time between stats flushes (in seconds)
+ */
+#define STATS_INTERVAL 10
+
+/**
  * The maximum size the graphite buffer is allowed to be before flushing.
  */
 #define STATS_MAX_BUFFER_SIZE 512

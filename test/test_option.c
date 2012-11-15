@@ -14,10 +14,10 @@
 	"# The port that the server listens on\n" \
 	"#\n" \
 	"# type - int\n" \
-	"port = 5001\n" \
+	"bind-port = 5001\n" \
 	"\n" \
-	"# The number of processes to run to service clients\n" \
-	"processes = 100\n" \
+	"# The number of threads to run to service clients\n" \
+	"threads = 100\n" \
 	"\n" \
 	"# The maximum number of subscriptions a single client may have\n" \
 	"#\n" \
@@ -34,6 +34,7 @@
 	"#\n" \
 	"# type - int\n" \
 	"timeout = 15\n" \
+	"user = test\n" \
 	"[quick.io-apps]\n" \
 	"skeleton = skeleton\n" \
 	"test = test\n" \
@@ -110,11 +111,16 @@ START_TEST(test_option_all) {
 	
 	test_int32_eq(option_apps_count(), 3, "3 apps found");
 	test_str_eq(option_bind_address(), "0.0.0.0", "Bind address");
+	test_int32_eq(option_bind_port(), 5001, "Correct port");
+	test(option_bind_address_ssl() == NULL, "No bind address");
+	test_int32_eq(option_bind_port_ssl(), 443, "Correct port");
 	test_uint64_eq(option_max_message_size(), 4096, "Max message size");
-	test_int32_eq(option_port(), 5001, "Correct port");
 	test_uint64_eq(option_max_subscriptions(), 128, "Correct subscription count");
-	test_int32_eq(option_processes(), 100, "Tons of processes");
+	test(option_ssl_cert_chain() == NULL, "No cert chain");
+	test(option_ssl_private_key() == NULL, "No private key");
+	test_int32_eq(option_threads(), 100, "Tons of threads");
 	test_int32_eq(option_timeout(), 15, "Tons of timeout time");
+	test_str_eq(option_user(), "test", "Correct user");
 	
 	opt_app_t **apps = option_apps();
 	
@@ -182,33 +188,6 @@ START_TEST(test_option_string_array) {
 }
 END_TEST
 
-START_TEST(test_option_process_specific_0) {
-	test(option_parse_args(0, NULL, NULL), "File ready");
-	test(option_parse_config_file(NULL, NULL, 0, NULL), "Couldn't load file");
-	
-	test_int32_eq(option_port(), 5000, "Correct port");
-	
-	option_set_process(0);
-	
-	test_int32_eq(option_port(), 5000, "Correct port");
-}
-END_TEST
-
-START_TEST(test_option_process_specific_1) {
-	test(option_parse_args(0, NULL, NULL), "File ready");
-	test(option_parse_config_file(NULL, NULL, 0, NULL), "Couldn't load file");
-	
-	test_int32_eq(option_port(), 5000, "Correct port");
-	
-	option_set_process(1);
-	test_int32_eq(option_port(), 5001, "Correct port");
-	
-	// Make sure it's not idempotent
-	option_set_process(1);
-	test(option_port() != 5001, "Not idempotent");
-}
-END_TEST
-
 Suite* option_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Option");
@@ -230,12 +209,6 @@ Suite* option_suite() {
 	tcase_add_test(tc, test_option_empty);
 	tcase_add_test(tc, test_option_bad_subs);
 	tcase_add_test(tc, test_option_string_array);
-	suite_add_tcase(s, tc);
-	
-	tc = tcase_create("Process-specific settings");
-	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
-	tcase_add_test(tc, test_option_process_specific_0);
-	tcase_add_test(tc, test_option_process_specific_1);
 	suite_add_tcase(s, tc);
 	
 	return s;

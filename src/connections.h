@@ -80,23 +80,20 @@ void conns_client_new(client_t *client);
 /**
  * Closes and cleans up the client.
  *
+ * @attention This is ONLY to be used as a callback for quick-event
+ *
  * @param client The client to close and free.
  */
 void conns_client_close(client_t *client);
 
 /**
- * A notification that a client HUP'd (hung up).
- *
- * @param client The client that abandonded us.
- */
-void conns_client_hup(client_t *client);
-
-/**
  * There is data waiting in a client.
  *
  * @param client The client that has messages waiting.
+ *
+ * @return If the client should be closed.
  */
-void conns_client_data(client_t *client);
+gboolean conns_client_data(client_t *client);
 
 /**
  * Clears any timeout that has been set on a client.

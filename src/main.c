@@ -1,82 +1,26 @@
-#include <libgen.h> // For dirname()
-#include <sys/wait.h> // For wait()
+#define QEV_CLIENT_NEW_FN conns_client_new
+#define QEV_CLIENT_CLOSE_FN conns_client_close
+#define QEV_CLIENT_READ_FN conns_client_data
+#define QEV_TIMERS \
+	QEV_TIMER(conns_maintenance_tick, 0, MAINTENANCE_TICK) \
+	QEV_TIMER(stats_flush, STATS_INTERVAL, 0) \
+	QEV_TIMER(evs_client_heartbeat, 60, 0)
 
 #include "qio.h"
-
-/**
- * Allow access to the pids from the test framework
- */
-static pid_t *_pids;
-
-/**
- * Fork all of the children processes.
- */
-static gboolean _main_fork() {
-	gint32 processes = option_processes();
-	
-	// If this malloc fails, shit is fucked
-	_pids = g_malloc0(processes * sizeof(*_pids));
-	
-	while (processes-- > 0) {
-		// Start the child! Hooray!
-		pid_t pid = fork();
-		
-		// If the fork failed, just exit.
-		if (pid == -1) {
-			ERRORF("Forking children failed at fork #%d", processes);
-			return FALSE;
-		}
-		
-		// The child is pid == 0
-		if (pid == 0) {
-			// Done with these guys
-			free(_pids);
-			_pids = NULL;
-			
-			option_set_process(processes);
-			
-			if (apps_run()) {
-				DEBUG("Apps running");
-			} else {
-				ERROR("Could not run the apps.");
-				exit(33);
-			}
-			
-			qsys_main_loop();
-			ERRORF("A CHILD EXITED THE EVENT LOOP: #%d", processes);
-			exit(33);
-		} else {
-			// Save the process id for later culling
-			*(_pids + processes) = pid;
-		}
-	}
-	
-	return TRUE;
-}
-
-static void _sigterm_handler(int sig) {
-	WARN("SIGTERM: Killing the children");
-	main_cull_children();
-	exit(51);
-}
-
-void main_cull_children() {
-	DEBUG("All children are being culled...");
-
-	gint32 count = option_processes();
-	while (_pids && count-- > 0) {
-		DEBUGF("Killing: %d", *(_pids + count));
-		kill(*(_pids + count), SIGTERM);
-	}
-}
 
 #ifdef TESTING
 int init_main(int argc, char *argv[]) {
 #else
 int main(int argc, char *argv[]) {
 #endif
-	signal(SIGTERM, _sigterm_handler);
 	debug_handle_signals();
+	
+	if (qev_init() == 0) {
+		DEBUG("Quick-event inited");
+	} else {
+		ERROR("Could not init quick-event");
+		return 1;
+	}
 	
 	GError *error = NULL;
 	if (option_parse_args(argc, argv, &error)) {
@@ -125,28 +69,58 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if (_main_fork()) {
-		DEBUG("Children forked");
+	if (apps_run()) {
+		DEBUG("Apps running");
 	} else {
-		ERROR("Could not fork children.");
+		ERROR("Could not run the apps.");
 		return 1;
 	}
 	
-	printf("QIO READY\n");
-	fflush(stdout);
+	if (option_bind_address() == NULL && option_bind_address_ssl() == NULL) {
+		ERROR("Neither bind-address nor bind-address-ssl was specified. Can't run a server without listening for connections.  Exiting.");
+		return 1;
+	}
 	
-	// The main thread of the parent process manages all of the stats, the stats web interface,
-	// and child process monitoring. The child processes will never get here.
-	
-	while (TRUE) {
-		int status = 0;
-		pid_t pid = wait(&status);
-		if (pid != 0 && WIFEXITED(status)) {
-			ERRORF("Child pid=%d died with status=%d", pid, WEXITSTATUS(status));
-			main_cull_children();
-			exit(2);
+	if (option_bind_address() != NULL) {
+		if (qev_listen(option_bind_address(), option_bind_port()) == 0) {
+			DEBUGF("Listening on: %s:%d", option_bind_address(), option_bind_port());
+		} else {
+			ERRORF("Could not listen on %s:%d", option_bind_address(), option_bind_port());
+			return 1;
 		}
 	}
+	
+	if (option_bind_address_ssl() != NULL) {
+		if (qev_listen_ssl(option_bind_address_ssl(), option_bind_port_ssl(), option_ssl_cert_chain(), option_ssl_private_key()) == 0) {
+			DEBUGF("SSL Listening on: %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+		} else {
+			ERRORF("SSL could not run on %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+			return 1;
+		}
+	}
+	
+	if (option_user() != NULL) {
+		if (qev_chuser(option_user()) == 0) {
+			DEBUGF("Changed to user %s", option_user());
+		} else {
+			ERRORF("Could not change to user %s", option_user());
+			return 1;
+		}
+	}
+	
+	#if defined(TESTING) || defined(COMPILE_DEBUG)
+		printf("QIO READY\n");
+		fflush(stdout);
+	#endif
+	
+	// The main thread also runs in qev, so start at 1, not 0
+	for (gint i = 1; i < option_threads(); i++) {
+		char buff[16];
+		snprintf(buff, sizeof(buff), "qio_th_%d", i);
+		g_thread_new(buff, qev_run_thread, NULL);
+	}
+	
+	qev_run();
 	
 	return 1;
 }
@@ -154,3 +128,5 @@ int main(int argc, char *argv[]) {
 #ifdef TESTING
 #include "../test/test_main.c"
 #endif
+
+#include "../ext/quick-event/qev.c"

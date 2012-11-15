@@ -1,6 +1,6 @@
 #include <libgen.h>
-#include <mcheck.h>
 
+#include "check.h"
 #include "test.h"
 
 int main(int argc, char *argv[]) {
@@ -33,7 +33,6 @@ int main(int argc, char *argv[]) {
 	srunner_add_suite(sr, main_suite());
 	srunner_add_suite(sr, monkey_suite());
 	srunner_add_suite(sr, option_suite());
-	srunner_add_suite(sr, qsys_suite());
 	srunner_add_suite(sr, stats_suite());
 
 	srunner_run_all(sr, CK_NORMAL);

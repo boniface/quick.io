@@ -3,7 +3,7 @@
 /**
  * The message format to be sent to graphite, when there is an app prefix
  */
-#define GRAPHITE_FORMAT "%s.%s:%d%s.%s %0.4f %" G_GINT64_FORMAT "\n"
+#define GRAPHITE_FORMAT "%s.%s%s.%s %0.4f %" G_GINT64_FORMAT "\n"
 
 /**
  * This is single-threaded, so let's give ourselves some working space
@@ -34,7 +34,7 @@ void stats_flush() {
 			prefix = "";
 		}
 		
-		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), _hostname, option_port(), prefix, key, val, time);
+		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), _hostname, prefix, key, val, time);
 		
 		// It's legal for the paths to graphite to be in the form qio.host/app/prefix.key,
 		// so clean that up
@@ -56,7 +56,7 @@ void stats_flush() {
 	// The counters have a few different stats we calculate, so we need this holder
 	double val;
 	
-	#define X(slot, name) val = g_atomic_pointer_and(&(stats.slot), 0); _append(NULL, name ".count", val); _append(NULL, name ".mean", val / option_stats_flush());
+	#define X(slot, name) val = g_atomic_pointer_and(&(stats.slot), 0); _append(NULL, name ".count", val); _append(NULL, name ".mean", val / STATS_INTERVAL);
 		STATS_S_COUNTERS
 	#undef X
 	

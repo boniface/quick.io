@@ -25,7 +25,7 @@ client_t* u_client_create(int *socket) {
 	if (socket != NULL) {
 		int sockets[2];
 		socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
-		client->socket = sockets[0];
+		client->qevclient.socket = sockets[0];
 		*socket = sockets[1];
 	}
 	
@@ -35,8 +35,8 @@ client_t* u_client_create(int *socket) {
 }
 
 void u_client_free(client_t *client) {
-	if (client->socket != 0) {
-		close(client->socket);
+	if (client->qevclient.socket != 0) {
+		close(client->qevclient.socket);
 	}
 
 	g_string_free(client->message->socket_buffer, TRUE);
@@ -103,7 +103,7 @@ int u_connect() {
 	memset(&addy, 0, sizeof(addy));
 	addy.sin_family = AF_INET;
 	addy.sin_addr.s_addr = inet_addr(option_bind_address());
-	addy.sin_port = htons(option_port());
+	addy.sin_port = htons(option_bind_port());
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		ERRORF("Could not create socket: %s", strerror(errno));

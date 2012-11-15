@@ -133,6 +133,9 @@ Suite* stats_suite() {
 	tcase_add_checked_fixture(tc, _stats_setup, NULL);
 	tcase_add_test(tc, test_stats_sane_tick);
 	tcase_add_test(tc, test_stats_sane_tick_graphite);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Sanity (no fixtures)");
 	tcase_add_test(tc, test_stats_sane_tick_no_graphite);
 	suite_add_tcase(s, tc);
 	

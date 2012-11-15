@@ -160,9 +160,9 @@ enum client_state {
  */
 struct client_s {
 	/**
-	 * The underlying socket for this client.
+	 * The quick-event data
 	 */
-	qsys_socket_t socket;
+	struct qev_client qevclient;
 	
 	/**
 	 * A timer for killing stupid clients.

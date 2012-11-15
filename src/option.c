@@ -9,28 +9,36 @@ static GOptionEntry command_options[] = {
 };
 
 // Config file options
-static gchar *_bind_address = "127.0.0.1";
+static gchar *_bind_address = NULL;
+static gchar *_bind_address_ssl = NULL;
+static gint _bind_port = 80;
+static gint _bind_port_ssl = 443;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
-static gint _port = 5000;
-static gint _processes = 8;
-static guint64 _stats_flush = 10;
 static gchar *_stats_graphite_address = NULL;
 static gint _stats_graphite_port = 2003;
 static gchar *_stats_graphite_prefix = "qio";
+static gchar *_ssl_private_key = NULL;
+static gchar *_ssl_cert_chain = NULL;
+static gint _threads = 2;
 static gint _timeout = 5;
+static gchar *_user = NULL;
 
 static config_file_entry_t _config_options[] = {
 	{"bind-address", e_string, &_bind_address},
+	{"bind-address-ssl", e_string, &_bind_address_ssl},
+	{"bind-port", e_int, &_bind_port},
+	{"bind-port-ssl", e_int, &_bind_port_ssl},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
-	{"port", e_int, &_port},
-	{"processes", e_int, &_processes},
-	{"stats-flush", e_uint64, &_stats_flush},
 	{"stats-graphite-address", e_string, &_stats_graphite_address},
 	{"stats-graphite-port", e_int, &_stats_graphite_port},
 	{"stats-graphite-prefix", e_string, &_stats_graphite_prefix},
+	{"ssl-private-key", e_string, &_ssl_private_key},
+	{"ssl-cert-chain", e_string, &_ssl_cert_chain},
+	{"threads", e_int, &_threads},
 	{"timeout", e_int, &_timeout},
+	{"user", e_string, &_user},
 };
 
 // The processed list of apps and their prefixes
@@ -104,6 +112,18 @@ gchar* option_bind_address() {
 	return _bind_address;
 }
 
+gchar* option_bind_address_ssl() {
+	return _bind_address_ssl;
+}
+
+gint option_bind_port() {
+	return _bind_port;
+}
+
+gint option_bind_port_ssl() {
+	return _bind_port_ssl;
+}
+
 gchar* option_config_file() {
 	return _config_file;
 }
@@ -116,16 +136,12 @@ guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 
-gint option_port() {
-	return _port;
+gchar* option_ssl_cert_chain() {
+	return _ssl_cert_chain;
 }
 
-gint option_processes() {
-	return _processes;
-}
-
-guint64 option_stats_flush() {
-	return _stats_flush;
+gchar* option_ssl_private_key() {
+	return _ssl_private_key;
 }
 
 gchar* option_stats_graphite_address() {
@@ -140,8 +156,16 @@ gchar* option_stats_graphite_prefix() {
 	return _stats_graphite_prefix;
 }
 
+gint option_threads() {
+	return _threads;
+}
+
 gint option_timeout() {
 	return _timeout;
+}
+
+gchar* option_user() {
+	return _user;
 }
 
 gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error) {
@@ -169,7 +193,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		
 		if (e.arg == e_string) {
 			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);
-			if (opt != NULL) {
+			if (opt != NULL && strlen(opt) > 0) {
 				*((gchar**)e.arg_data) = opt;
 			}
 		} else if (e.arg == e_string_array) {
@@ -234,10 +258,6 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	g_option_context_free(context);
 	
 	return success;
-}
-
-void option_set_process(guint32 process) {
-	_port += process;
 }
 
 #ifdef TESTING

@@ -12,10 +12,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "http-parser/http_parser.h"
-#include "persistent-socket/persistent_socket.h"
-
-#include "module.h"
+/**
+ * The number of milliseconds between maintenance ticks
+ */
+#define MAINTENANCE_TICK 100
 
 /**
  * Defined in events_client.h
@@ -42,11 +42,20 @@ typedef struct client_s client_t;
  */
 typedef guint16 status_t;
 
+#define QEV_CLIENT_T client_t
+#define QEV_CLIENT_SLOT qevclient
+#define QEV_CLIENT_NEVER_FREE
+
+#include "quick-event/qev.h"
+#include "http-parser/http_parser.h"
+#include "persistent-socket/persistent_socket.h"
+
+#include "module.h"
+
 #include "../test/utils_stats.h"
 #include "../test/utils_locks.h"
 
 // Some out-of-order guys for dependencies
-#include "qsys.h"
 #include "stats.h"
 #include "events_server.h"
 #include "client.h"

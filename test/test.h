@@ -15,6 +15,10 @@
 #include "qio.h"
 #include "utils.h"
 
+#define MS_TO_USEC(ms) (ms * 1000)
+#define MS_TO_NSEC(ms) (MS_TO_USEC(ms) * 1000)
+#define SEC_TO_USEC(secs) MS_TO_USEC(secs * 1000)
+
 /**
  * Test that the assertion is true.
  * This is a basic wrapper around _ck_assert_msg().

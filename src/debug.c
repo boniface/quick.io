@@ -7,6 +7,11 @@
 #define BACKTRACE_SIZE 100
 
 #if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE)
+	static void _sigint_handler(int sig) {
+		DEBUG("SIGINT: Dying");
+		exit(50);
+	}
+	
 	static void _sigsev_handler(int sig) {
 		void *array[BACKTRACE_SIZE];
 		size_t size;
@@ -22,15 +27,15 @@
 		exit(11);
 	}
 	
-	static void _sigint_handler(int sig) {
-		DEBUG("SIGINT: Dying");
-		exit(50);
+	static void _sigterm_handler(int sig) {
+		exit(51);
 	}
 #endif
 
 void debug_handle_signals() {
 	#if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE)
-		signal(SIGSEGV, _sigsev_handler);
 		signal(SIGINT, _sigint_handler);
+		signal(SIGSEGV, _sigsev_handler);
+		signal(SIGTERM, _sigterm_handler);
 	#endif
 }

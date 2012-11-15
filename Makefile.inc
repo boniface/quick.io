@@ -19,7 +19,7 @@ QIOINI = $(QIOINI_DEFAULT)
 export BUILDDIR ?= $(ROOT)/$(DIR_BUILD)
 
 CC = gcc
-LIBS += glib-2.0 gmodule-2.0
+LIBS += glib-2.0 gmodule-2.0 openssl
 LIBS_VERSIONS = glib-2.0 >= 2.32 gmodule-2.0 >= 2.32
 
 # The flags

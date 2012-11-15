@@ -12,6 +12,7 @@
 #define MOVE2 "\x81\x17""/qio/move:0:plain=test2"
 
 void _test_conns_setup() {
+	qev_init();
 	evs_server_init();
 	conns_init();
 	apps_run();

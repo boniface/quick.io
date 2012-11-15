@@ -12,6 +12,7 @@
 #define HEARTBEAT_EVENT "\x81""\x17""/qio/heartbeat:0:plain="
 
 void _test_evs_client_setup() {
+	qev_init();
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
@@ -606,10 +607,11 @@ START_TEST(test_evs_client_send_async_messages_closed_client_broadcast) {
 	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something3"), CLIENT_GOOD, "Message published");
 	
 	evs_client_send_async_messages();
+	qev_debug_flush();
 	
 	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
 	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
-	test_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
+	test_size_eq(utils_stats()->evs_client_send_pub_closes, 4, "Client closed in each pub");
 }
 END_TEST
 
@@ -641,6 +643,7 @@ START_TEST(test_evs_client_send_async_messages_no_client_handler) {
 	test_status_eq(status, CLIENT_GOOD, "Message published");
 	
 	evs_client_send_async_messages();
+	qev_debug_flush();
 	
 	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
 	

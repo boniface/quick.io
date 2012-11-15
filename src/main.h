@@ -11,11 +11,6 @@
  * <p>For app-specific functions, check out the @ref AppFunctions page.</p>
  */
 
-/**
- * Cull all of the children forked by main.
- */
-void main_cull_children();
-
 #ifdef TESTING
 /**
  * Only available when testing: inits the server.

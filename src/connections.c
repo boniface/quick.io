@@ -53,8 +53,8 @@ static void _conns_client_timeout_clean() {
 			UTILS_STATS_INC(conns_timeouts);
 			STATS_INC(client_timeouts);
 			
-			DEBUGF("Timer on client expired: %d", client->socket);
-			conns_client_close(client);
+			DEBUGF("Timer on client expired: %p", &client->qevclient);
+			qev_close(client);
 			g_hash_table_iter_remove(&iter);
 		}
 	}
@@ -92,7 +92,7 @@ static void _conns_balance() {
 			STATS_INC(clients_balanced);
 			
 			g_hash_table_iter_remove(&iter);
-			conns_client_close(client);
+			qev_close(client);
 		}
 		
 		g_free(req->to);
@@ -126,7 +126,7 @@ void conns_client_new(client_t *client) {
 }
 
 void conns_client_close(client_t *client) {
-	DEBUGF("A client closed: %d", client->socket);
+	DEBUGF("A client closed: %p", &client->qevclient);
 	
 	client->state = cstate_dead;
 	conns_client_timeout_clear(client);
@@ -134,7 +134,6 @@ void conns_client_close(client_t *client) {
 	apps_client_close(client);
 	evs_client_client_close(client);
 	evs_server_client_close(client);
-	qsys_close(client);
 	
 	// Remove our last reference, this MUST be done last so that any free operation
 	// doesn't interfere with the setting
@@ -145,16 +144,7 @@ void conns_client_close(client_t *client) {
 	STATS_DEC(clients);
 }
 
-void conns_client_hup(client_t *client) {
-	UTILS_STATS_INC(conns_hups);
-		
-	DEBUGF("Client HUP: %d", client->socket);
-	
-	// The underlying socket was closed
-	conns_client_close(client);
-}
-
-void conns_client_data(client_t *client) {
+gboolean conns_client_data(client_t *client) {
 	// Where data from the client's socket will be stored
 	gchar buffer[option_max_message_size()];
 	
@@ -164,7 +154,7 @@ void conns_client_data(client_t *client) {
 	// Read the message the client sent, unless it's too large,
 	// then kill the client
 	gssize len;
-	while ((len = qsys_read(client, buffer, sizeof(buffer))) > 0) {
+	while ((len = qev_read(client, buffer, sizeof(buffer))) > 0) {
 		// Put the buffer into our string
 		g_string_append_len(client->message->socket_buffer, buffer, len);
 		
@@ -174,8 +164,7 @@ void conns_client_data(client_t *client) {
 			STATS_INC(clients_ratelimited);
 			
 			DEBUG("Client needs to enhance his calm");
-			conns_client_close(client);
-			return;
+			return FALSE;
 		}
 	}
 	
@@ -232,7 +221,7 @@ void conns_client_data(client_t *client) {
 			UTILS_STATS_INC(conns_bad_clients);
 			
 			DEBUGF("Bad client, closing: status=%d", status);
-			conns_client_close(client);
+			qev_close(client);
 			client = NULL;
 			
 			break;
@@ -242,6 +231,8 @@ void conns_client_data(client_t *client) {
 	if (client != NULL && client->message->socket_buffer->len == 0 && client->message->remaining_length == 0) {
 		conns_message_free(client);
 	}
+	
+	return TRUE;
 }
 
 gboolean conns_init() {
