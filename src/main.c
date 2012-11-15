@@ -99,6 +99,16 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
+	if (option_support_flash()) {
+		// This is hardcoded: this is what flash expects, and it's not going to change
+		// Maybe I shouldn't say that...it might change :(
+		if (qev_listen("0.0.0.0", 843) == 0) {
+			DEBUG("Flash policy file support enabled");
+		} else {
+			WARN("Could not enable flash policy file support.");
+		}
+	}
+	
 	if (option_user() != NULL) {
 		if (qev_chuser(option_user()) == 0) {
 			DEBUGF("Changed to user %s", option_user());

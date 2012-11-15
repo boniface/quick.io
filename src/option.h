@@ -178,6 +178,11 @@ gint option_stats_graphite_port();
 gchar* option_stats_graphite_prefix();
 
 /**
+ * If flash support should be enabled on port 843.
+ */
+gint option_support_flash();
+
+/**
  * Gets the number of threads that should be spawned.
  */
 gint option_threads();

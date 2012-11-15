@@ -118,6 +118,7 @@ START_TEST(test_option_all) {
 	test_uint64_eq(option_max_subscriptions(), 128, "Correct subscription count");
 	test(option_ssl_cert_chain() == NULL, "No cert chain");
 	test(option_ssl_private_key() == NULL, "No private key");
+	test(option_support_flash(), "Flash supported");
 	test_int32_eq(option_threads(), 100, "Tons of threads");
 	test_int32_eq(option_timeout(), 15, "Tons of timeout time");
 	test_str_eq(option_user(), "test", "Correct user");

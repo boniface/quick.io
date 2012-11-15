@@ -15,11 +15,12 @@ static gint _bind_port = 80;
 static gint _bind_port_ssl = 443;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
+static gchar *_ssl_private_key = NULL;
+static gchar *_ssl_cert_chain = NULL;
 static gchar *_stats_graphite_address = NULL;
 static gint _stats_graphite_port = 2003;
 static gchar *_stats_graphite_prefix = "qio";
-static gchar *_ssl_private_key = NULL;
-static gchar *_ssl_cert_chain = NULL;
+static gint _support_flash = 1;
 static gint _threads = 2;
 static gint _timeout = 5;
 static gchar *_user = NULL;
@@ -31,11 +32,12 @@ static config_file_entry_t _config_options[] = {
 	{"bind-port-ssl", e_int, &_bind_port_ssl},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
+	{"ssl-private-key", e_string, &_ssl_private_key},
+	{"ssl-cert-chain", e_string, &_ssl_cert_chain},
 	{"stats-graphite-address", e_string, &_stats_graphite_address},
 	{"stats-graphite-port", e_int, &_stats_graphite_port},
 	{"stats-graphite-prefix", e_string, &_stats_graphite_prefix},
-	{"ssl-private-key", e_string, &_ssl_private_key},
-	{"ssl-cert-chain", e_string, &_ssl_cert_chain},
+	{"support-flash", e_int, &_support_flash},
 	{"threads", e_int, &_threads},
 	{"timeout", e_int, &_timeout},
 	{"user", e_string, &_user},
@@ -154,6 +156,10 @@ gint option_stats_graphite_port() {
 
 gchar* option_stats_graphite_prefix() {
 	return _stats_graphite_prefix;
+}
+
+gint option_support_flash() {
+	return _support_flash;
 }
 
 gint option_threads() {
