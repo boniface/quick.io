@@ -10,18 +10,12 @@ TEST_OUTPUT_XML = 0
 
 .PHONY: clean test
 
-client_statuses.inc: ../src/client.h
-	$(CC) $(CFLAGS) -E -Wp,-dM $< | grep 'define CLIENT_' | grep -v 'CLIENT_BAD ' | gawk '{ printf "case %d: return \"%s\";", lshift(1,$$5), $$2 }' > client_statuses.inc
-
-test: client_statuses.inc $(OBJECTS)
+test: $(OBJECTS)
 	@echo "\n\n"-------- Compiling test suite --------
 	@$(CC) $(OBJECTS) $(LIBCHECK) $(QIO_OBJECTS) -o $(BUILDDIR)/test $(LDFLAGS)
 	
 	@echo "\n\n"-------- Running test suite --------
 	@$(BUILDDIR)/test
-
-clean:
-	rm -f client_statuses.inc
 
 $(BUILDDIR)/%.o: %.c test.h
 	@echo "\n\n"-------- Compiling $< --------

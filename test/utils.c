@@ -2,7 +2,12 @@
 
 char* test_status_to_str(status_t status) {
 	switch (status) {
-		#include "client_statuses.inc"
+		case 1 << 0: return "CLIENT_GOOD";
+		case 1 << 1: return "CLIENT_FATAL";
+		case 1 << 2: return "CLIENT_ERROR";
+		case 1 << 3: return "CLIENT_ASYNC";
+		case 1 << 4: return "CLIENT_WRITE";
+		case 1 << 5: return "CLIENT_WAIT";
 	}
 	return "UNKNOWN";
 }
