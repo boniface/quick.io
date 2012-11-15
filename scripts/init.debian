@@ -39,7 +39,7 @@ stop() {
 
 status() {
 	pgrep -F $PIDFILE > /dev/null
-	if [ -z $? ]; then 
+	if [ $? -eq 0 ]; then
 		PID=`cat $PIDFILE`
 		echo "Quick.IO is running with pid $PID"
 	else
