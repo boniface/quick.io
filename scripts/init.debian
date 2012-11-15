@@ -12,18 +12,14 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/bin/qio
 NAME=qio
 DESC=Quick.IO
-
-# Overridable by /etc/defaults file
 PIDFILE=/var/run/quickio.pid
-USERID=nobody
-GROUPID=nogroup
 CONFIG_FILE=/etc/quickio/quickio.ini
-
-test -x $DAEMON || exit 0
 
 if [ -f /etc/default/quickio ]; then
 	. /etc/default/quickio
 fi
+
+test -x $DAEMON || exit 0
 
 _print_status() {
 	if [ -z $? ]; then
@@ -34,7 +30,7 @@ _print_status() {
 }
 
 start() {
-	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE --chuid $USERID:$GROUPID -b --exec $DAEMON -- --config-file=$CONFIG_FILE
+	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $DAEMON -- --config-file=$CONFIG_FILE
 }
 
 stop() {
