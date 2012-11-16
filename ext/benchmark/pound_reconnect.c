@@ -19,12 +19,6 @@
 	"Origin: http://example.com\n" \
 	"Sec-WebSocket-Version: 13\n\n"
 
-#define HANDSHAKE_RESPONSE "HTTP/1.1 101 Switching Protocols\r\n" \
-	"Upgrade: websocket\r\n" \
-	"Connection: Upgrade\r\n" \
-	"Access-Control-Allow-Origin: *\r\n" \
-	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
-
 #define _LOG(level, out) fprintf(stderr, level " : %s:%d : %s\n", __FILE__, __LINE__, out)
 #define _LOGF(level, format, ...) fprintf(stderr, level " : %s:%d : " format "\n", __FILE__, __LINE__, __VA_ARGS__)
 
