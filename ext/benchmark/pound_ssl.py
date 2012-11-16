@@ -25,13 +25,16 @@ def reconnects_count():
 gevent.spawn(reconnects_count)
 
 while True:
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	ss = ssl.wrap_socket(s)
+	try:
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		ss = ssl.wrap_socket(s)
 
-	ss.connect(('localhost', 443))
-	ss.write(HANDSHAKE)
-	ss.read()
-	
-	reconnects += 1
+		ss.connect(('localhost', 443))
+		ss.write(HANDSHAKE)
+		ss.read()
+		
+		reconnects += 1
+	except:
+		pass
 	
 	gevent.sleep(.1)
