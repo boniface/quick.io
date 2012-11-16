@@ -1,6 +1,6 @@
 /**
  * The public Diffie-Hellman parameters
- * @file qev.h
+ * @file qev_dh.h
  *
  * Generated using: 
  *     openssl dhparam -out dh4096.pem 4096

@@ -67,7 +67,7 @@ int psocket_connect(char *host, int port, psocket **psocket) {
 		return -1;
 	}
 	
-	*psocket = malloc(sizeof(*psocket));
+	*psocket = malloc(sizeof(**psocket));
 	(*psocket)->socket = -1;
 	(*psocket)->addrs = (*psocket)->curr_addr = res;
 	

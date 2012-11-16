@@ -7,8 +7,9 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define CLIENTS 1200
+#define CLIENTS 20000
 #define ADDRESS "127.0.0.1"
+#define PORT 81
 
 #define HANDSHAKE "GET /qio HTTP/1.1\n" \
 	"Host: server.example.com\n" \
@@ -134,7 +135,7 @@ int main(int argc, char **argv) {
 	struct sockaddr_in serv_addr;
 	memset(&serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(5000);
+	serv_addr.sin_port = htons(PORT);
 	inet_pton(AF_INET, ADDRESS, &serv_addr.sin_addr);
 	
 	for (int i = 0; i < CLIENTS; i++) {

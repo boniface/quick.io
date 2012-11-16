@@ -100,8 +100,12 @@ void qev_wqueue_tick(qev_wqueue_t *wq, tick_id_t id) {
 		// Replace the queue currently in our way with a new queue
 		// We'll empty out the old queue once we're unlocked
 		wq->curr_queue = (wq->curr_queue + 1) % G_N_ELEMENTS(wq->queue);
-		q = wq->queue[wq->curr_queue];
-		wq->queue[wq->curr_queue] = g_queue_new();
+		
+		// Don't hit anything unless necessary
+		if (g_queue_get_length(wq->queue[wq->curr_queue]) > 0) {
+			q = wq->queue[wq->curr_queue];
+			wq->queue[wq->curr_queue] = g_queue_new();
+		}
 	}
 	
 	g_mutex_unlock(&wq->lock);
@@ -112,7 +116,7 @@ void qev_wqueue_tick(qev_wqueue_t *wq, tick_id_t id) {
 			wq->free_fn(item);
 		}
 		
-		g_queue_clear(q);
+		g_queue_free(q);
 	}
 }
 
