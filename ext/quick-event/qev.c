@@ -188,6 +188,7 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 		return -1;
 	}
 	
+	SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
 	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
 	
 	QEV_CSLOT(client, ssl_ctx) = ctx;
