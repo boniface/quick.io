@@ -5,7 +5,7 @@
 #include "qio.h"
 
 #define BACKTRACE_SIZE 100
-#define DEBUGGING defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE) || defined(COMPILE_PROFILE)
+#define DEBUGGING defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE) || defined(TESTING)
 
 /**
  * The log file that we're currently writing to
@@ -67,7 +67,7 @@ static void _log(const gchar *log_domain, GLogLevelFlags log_level, const gchar 
 }
 
 gboolean log_init() {
-	#if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE)
+	#if DEBUGGING
 		signal(SIGINT, _sigint_handler);
 		signal(SIGSEGV, _sigsev_handler);
 		signal(SIGTERM, _sigterm_handler);
