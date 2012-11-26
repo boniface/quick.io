@@ -103,7 +103,7 @@ START_TEST(test_option_all) {
 	test_int32_eq(option_timeout(), 15, "Tons of timeout time");
 	test_str_eq(option_user(), "test", "Correct user");
 	
-	opt_app_t **apps = option_apps();
+	const opt_app_t **apps = option_apps();
 	
 	test_str_eq((*apps)->config_group, "skeleton", "First is skeleton");
 	test_str_eq((*apps)->path, "skeleton", "Skeleton has simple path");

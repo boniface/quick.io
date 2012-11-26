@@ -75,7 +75,7 @@
  * @param description The description of the test, to be printed with failure information
  */
 #define test_str_eq(test, should_be, description) { \
-	_test_setup(char*, test, should_be); \
+	_test_setup(const char*, test, should_be); \
 	_msg("Assertion '%s'=='%s' failed", actual, expect, description); \
 	_ck_assert_msg(strcmp(actual, expect) == 0, __FILE__, __LINE__, msg, NULL);}
 
