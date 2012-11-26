@@ -141,7 +141,7 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 	
 	if (bind(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
 		close(sock);
-		ERROR("Could not listen on %s:%d", ip_address, port);
+		perror("qev_listen()->bind()");
 		return -1;
 	}
 	

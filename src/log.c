@@ -25,7 +25,7 @@ static FILE *_log_file = NULL;
 		// Get void*'s for all entries on the stack
 		size = backtrace(array, BACKTRACE_SIZE);
 		
-		fprintf(_log_file, "Error: segfault\n");
+		fprintf(stderr, "Error: segfault\n");
 		
 		// +1 -> skip this function
 		backtrace_symbols_fd(array + 1, size, 2);
@@ -67,6 +67,9 @@ static void _log(const gchar *log_domain, GLogLevelFlags log_level, const gchar 
 }
 
 gboolean log_init() {
+	// OpenSSL sends SIGPIPE which kills the server == bad
+	signal(SIGPIPE, SIG_IGN);
+	
 	#if DEBUGGING
 		signal(SIGINT, _sigint_handler);
 		signal(SIGSEGV, _sigsev_handler);
