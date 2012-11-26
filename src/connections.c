@@ -294,7 +294,10 @@ void conns_clients_unlock() {
 void conns_client_timeout_clear(client_t *client) {
 	if (client->timer != -1) {
 		client->timer = -1;
+		
+		g_mutex_lock(&_client_timeouts_lock);
 		g_hash_table_remove(_client_timeouts, client);
+		g_mutex_unlock(&_client_timeouts_lock);
 	}
 }
 
