@@ -63,9 +63,9 @@ typedef guint16 status_t;
 
 #include "apps.h"
 #include "connections.h"
-#include "debug.h"
 #include "handler_rfc6455.h"
 #include "handler_flash_policy.h"
+#include "log.h"
 #include "main.h"
 #include "monkey.h"
 #include "option.h"

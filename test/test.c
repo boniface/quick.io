@@ -4,7 +4,10 @@
 #include "test.h"
 
 int main(int argc, char *argv[]) {
-	debug_handle_signals();
+	if (!log_init()) {
+		ERROR("Could not init log");
+		return 1;
+	}
 	
 	// Setup the cross-process locking mechanism
 	if (!test_lock_init()) {

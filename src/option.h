@@ -99,104 +99,106 @@ typedef struct opt_app_s {
  * An array of null-terminated strings, containing the names of the apps from the
  * configuration file.
  */
-opt_app_t** option_apps();
+const opt_app_t** option_apps();
 
 /**
  * The number of apps specififed.
  */
-guint16 option_apps_count();
+const guint16 option_apps_count();
 
 /**
  * Gets the address we're supposed to bind to.
  *
  * @return The address specified in the config file.
  */
-gchar* option_bind_address();
+const gchar* option_bind_address();
+
 /**
  * Gets the SSL address we're supposed to bind to.
  *
  * @return The address specified in the config file.
  */
-gchar* option_bind_address_ssl();
+const gchar* option_bind_address_ssl();
 
 /**
  * Gets the port that we're supposed to run on.
  *
  * @return The port specified in the config.
  */
-gint option_bind_port();
+const gint option_bind_port();
+
 /**
  * Gets the SSL port that we're supposed to run on.
  *
  * @return The port specified in the config.
  */
-gint option_bind_port_ssl();
+const gint option_bind_port_ssl();
 
 /**
  * Gets the config file being used.
  */
-gchar* option_config_file();
+const gchar* option_config_file();
 
-/** 
- * If heartbeats are enabled.
+/**
+ * The path to the log file.
  */
-gboolean option_heartbeat();
+const gchar* option_log_file();
 
 /**
  * The maximum length a message may be.
  */
-guint64 option_max_message_size();
+const guint64 option_max_message_size();
 
 /**
  * The number of rooms a client may be subscribed to.
  */
-guint64 option_max_subscriptions();
+const guint64 option_max_subscriptions();
 
 /**
  * The path to the SSL cert chain. NULL if none provided.
  */
-gchar* option_ssl_cert_chain();
+const gchar* option_ssl_cert_chain();
 
 /**
  * The path to the SSL private key. NULL if none provided.
  */
-gchar* option_ssl_private_key();
+const gchar* option_ssl_private_key();
 
 /**
  * Gets the graphite address
  */
-gchar* option_stats_graphite_address();
+const gchar* option_stats_graphite_address();
 
 /**
  * Gets the graphite port
  */
-gint option_stats_graphite_port();
+const gint option_stats_graphite_port();
 
 /**
  * Gets the graphite prefix for the stats
  */
-gchar* option_stats_graphite_prefix();
+const gchar* option_stats_graphite_prefix();
 
 /**
  * If flash support should be enabled on port 843.
  */
-gint option_support_flash();
+const gint option_support_flash();
 
 /**
  * Gets the number of threads that should be spawned.
  */
-gint option_threads();
+const gint option_threads();
 
 /**
  * Gets the client timeout.
  */
-gint option_timeout();
+const gint option_timeout();
 
 /**
  * Gets which user the server should run as. Returns NULL if 
  * no user switching should be done.
  */
-gchar* option_user();
+const gchar* option_user();
 
 /**
  * Loads the config file and populates all the options.

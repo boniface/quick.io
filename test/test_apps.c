@@ -246,7 +246,7 @@ Suite* apps_suite() {
 	tcase_add_checked_fixture(tc, _apps_setup, _apps_teardown);
 	tcase_add_test(tc, test_apps_cb_register);
 	tcase_add_test(tc, test_apps_cb_run);
-	tcase_add_exit_test(tc, test_apps_cb_run_fatal, 32);
+	tcase_add_test_raise_signal(tc, test_apps_cb_run_fatal, SIGTRAP);
 	tcase_add_test(tc, test_apps_cb_client_connect);
 	tcase_add_test(tc, test_apps_cb_client_close);
 	tcase_add_test(tc, test_apps_cb_client_subscribe);

@@ -5,34 +5,13 @@
 #define CONFIG_FILE "qio.ini"
 
 #define QIOINI "[quick.io]\n" \
-	"# The address the main server should listen on\n" \
-	"# Use 0.0.0.0 to listen everywhere.\n" \
-	"#\n" \
-	"# type - string\n" \
 	"bind-address = 0.0.0.0\n" \
-	"\n" \
-	"# The port that the server listens on\n" \
-	"#\n" \
-	"# type - int\n" \
 	"bind-port = 5001\n" \
-	"\n" \
-	"# The number of threads to run to service clients\n" \
+	"log-file = /var/log/qio.log\n" \
 	"threads = 100\n" \
-	"\n" \
-	"# The maximum number of subscriptions a single client may have\n" \
-	"#\n" \
-	"# type - uint64\n" \
 	"max-subs = 128\n" \
-	"\n" \
-	"# The maximum length of a message from a client\n" \
-	"# This number should be a power of 2 for maximum efficiency.\n" \
-	"#\n" \
-	"# type - uint64\n" \
 	"max-message-len = 4096\n" \
-	"\n" \
-	"# The time a misbehaving client has to finish a request before he is killed\n" \
-	"#\n" \
-	"# type - int\n" \
+	"support-flash = 1\n" \
 	"timeout = 15\n" \
 	"user = test\n" \
 	"[quick.io-apps]\n" \
@@ -114,6 +93,7 @@ START_TEST(test_option_all) {
 	test_int32_eq(option_bind_port(), 5001, "Correct port");
 	test(option_bind_address_ssl() == NULL, "No bind address");
 	test_int32_eq(option_bind_port_ssl(), 443, "Correct port");
+	test_str_eq(option_log_file(), "/var/log/qio.log", "Correct port");
 	test_uint64_eq(option_max_message_size(), 4096, "Max message size");
 	test_uint64_eq(option_max_subscriptions(), 128, "Correct subscription count");
 	test(option_ssl_cert_chain() == NULL, "No cert chain");

@@ -27,20 +27,20 @@ void _test_evs_client_teardown() {
 	utils_stats_teardown();
 }
 
-START_TEST(test_evs_client_get_subscription_no_clients) {
-	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
+START_TEST(test_evs_client_subscription_get_no_clients) {
+	evs_client_sub_t *sub = _subscription_get("/test/event", FALSE);
 	test_ptr_eq(sub, NULL, "Not created when no clients");
 }
 END_TEST
 
-START_TEST(test_evs_client_get_subscription_not_valid) {
-	evs_client_sub_t *sub = _get_subscription("/what/is/that", FALSE);
+START_TEST(test_evs_client_subscription_get_not_valid) {
+	evs_client_sub_t *sub = _subscription_get("/what/is/that", FALSE);
 	test_ptr_eq(sub, NULL, "Not created when no clients");
 }
 END_TEST
 
-START_TEST(test_evs_client_get_subscription_and_create) {
-	evs_client_sub_t *sub = _get_subscription("/test/event", TRUE);
+START_TEST(test_evs_client_subscription_get_and_create) {
+	evs_client_sub_t *sub = _subscription_get("/test/event", TRUE);
 	
 	test_str_eq(sub->event_path, "/test/event", "Not created when no clients");
 	test(sub->handler != NULL, "Handler is set");
@@ -52,8 +52,8 @@ START_TEST(test_evs_client_get_subscription_and_create) {
 }
 END_TEST
 
-START_TEST(test_evs_client_get_subscription_and_create_invalid) {
-	evs_client_sub_t *sub = _get_subscription("/test/not/an/event", TRUE);
+START_TEST(test_evs_client_subscription_get_and_create_invalid) {
+	evs_client_sub_t *sub = _subscription_get("/test/not/an/event", TRUE);
 	test(sub == NULL, "Bad event, not created");
 }
 END_TEST
@@ -257,6 +257,27 @@ START_TEST(test_evs_heartbeat) {
 }
 END_TEST
 
+START_TEST(test_evs_heartbeat_yield) {
+	int socket = 0;
+	
+	for (int i = 0; i < CONNS_YIELD; i++) {
+		client_t *client = u_client_create(&socket);
+		client->handler = h_rfc6455;
+		conns_client_new(client);
+	}
+	
+	evs_client_heartbeat();
+	evs_client_send_async_messages();
+	
+	char buff[512];
+	memset(buff, 0, sizeof(buff));
+	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
+	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
+	
+	test_size_eq(stats.messages_sent, CONNS_YIELD, "Heartbeats sent");
+}
+END_TEST
+
 START_TEST(test_evs_client_subscribe_bad_subscription) {
 	client_t *client = u_client_create(NULL);
 	
@@ -295,7 +316,7 @@ START_TEST(test_evs_client_subscribe_already_subscribed) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_ERROR, "Subscription not found");
 	
-	evs_client_sub_t *sub = _get_subscription("/test/event/test", FALSE);
+	evs_client_sub_t *sub = _subscription_get("/test/event/test", FALSE);
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In subscription");
 	
@@ -455,13 +476,34 @@ END_TEST
 START_TEST(test_evs_client_unsubscribe_not_subscribed) {
 	client_t *client = u_client_create(NULL);
 	
-	test(_get_subscription("/test/event/test", TRUE) != NULL, "Subscription created");
+	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE);
+	test(sub != NULL, "Subscription created");
+	g_mutex_unlock(&sub->lock);
+	
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_ERROR, "Subscribed");
 	
 	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
 	
 	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_subscription_cleanup_0) {
+	// Just make sure the test completes without segfaulting
+	_subscription_cleanup("/not/gonna/happen");
+}
+END_TEST
+
+START_TEST(test_evs_client_subscription_cleanup_1) {
+	// Just make sure the test completes without segfaulting
+	client_t *client = u_client_create(NULL);
+	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE);
+	g_hash_table_add(sub->clients, client);
+	
+	g_mutex_unlock(&sub->lock);
+	
+	_subscription_cleanup("/test/event/test");
 }
 END_TEST
 
@@ -528,15 +570,9 @@ START_TEST(test_evs_client_clean) {
 	
 	test_ptr_eq(client->subs, NULL, "No subscriptions");
 	
-	evs_client_sub_t *sub;
-	sub = _get_subscription("/test/event/test1", FALSE);
-	test_size_eq(g_hash_table_size(sub->clients), 0, "No more clients subscribed 1");
-	
-	sub = _get_subscription("/test/event/test2", FALSE);
-	test_size_eq(g_hash_table_size(sub->clients), 0, "No more clients subscribed 2");
-	
-	sub = _get_subscription("/test/event/test3", FALSE);
-	test_size_eq(g_hash_table_size(sub->clients), 0, "No more clients subscribed 3");
+	test_ptr_eq(_subscription_get("/test/event/test1", FALSE), NULL, "No more clients subscribed 1");
+	test_ptr_eq(_subscription_get("/test/event/test2", FALSE), NULL, "No more clients subscribed 2");
+	test_ptr_eq(_subscription_get("/test/event/test3", FALSE), NULL, "No more clients subscribed 3");
 	
 	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Unsubscribes sent to client close");
@@ -609,8 +645,7 @@ START_TEST(test_evs_client_send_async_messages_closed_client_broadcast) {
 	evs_client_send_async_messages();
 	qev_debug_flush();
 	
-	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
-	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
+	test_ptr_eq(_subscription_get("/test/event", FALSE), NULL, "Client closed, sub freed");
 	test_size_eq(utils_stats()->evs_client_send_pub_closes, 4, "Client closed in each pub");
 }
 END_TEST
@@ -645,10 +680,8 @@ START_TEST(test_evs_client_send_async_messages_no_client_handler) {
 	evs_client_send_async_messages();
 	qev_debug_flush();
 	
-	evs_client_sub_t *sub = _get_subscription("/test/event", FALSE);
-	
 	// Client not allocated with a socket, so will be closed
-	test_size_eq(g_hash_table_size(sub->clients), 0, "Client closed");
+	test_ptr_eq(_subscription_get("/test/event", FALSE), NULL, "Client closed");
 	
 	test_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
 	test_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
@@ -667,13 +700,10 @@ START_TEST(test_evs_client_send_async_messages_clear_subscription) {
 	
 	conns_client_close(client);
 	
-	// Get rid of the empty subscription
-	evs_client_cleanup();
-	
 	// Attempt to publish to an empty subscription
 	evs_client_send_async_messages();
 	
-	test_size_eq(utils_stats()->evs_client_pubd_messages, 0, "1 message sent");
+	test_size_eq(utils_stats()->evs_client_pubd_messages, 0, "No messages sent");
 	test_size_eq(utils_stats()->evs_client_send_pub_closes, 0, "Client closed");
 }
 END_TEST
@@ -783,10 +813,10 @@ Suite* events_client_suite() {
 	
 	tc = tcase_create("getSubscription");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
-	tcase_add_test(tc, test_evs_client_get_subscription_no_clients);
-	tcase_add_test(tc, test_evs_client_get_subscription_not_valid);
-	tcase_add_test(tc, test_evs_client_get_subscription_and_create);
-	tcase_add_test(tc, test_evs_client_get_subscription_and_create_invalid);
+	tcase_add_test(tc, test_evs_client_subscription_get_no_clients);
+	tcase_add_test(tc, test_evs_client_subscription_get_not_valid);
+	tcase_add_test(tc, test_evs_client_subscription_get_and_create);
+	tcase_add_test(tc, test_evs_client_subscription_get_and_create_invalid);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Format Message");
@@ -810,6 +840,7 @@ Suite* events_client_suite() {
 	tc = tcase_create("Heartbeat");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
 	tcase_add_test(tc, test_evs_heartbeat);
+	tcase_add_test(tc, test_evs_heartbeat_yield);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Subscribe");
@@ -830,6 +861,8 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_client_unsubscribe);
 	tcase_add_test(tc, test_evs_client_unsubscribe_bad_subscription);
 	tcase_add_test(tc, test_evs_client_unsubscribe_not_subscribed);
+	tcase_add_test(tc, test_evs_client_subscription_cleanup_0);
+	tcase_add_test(tc, test_evs_client_subscription_cleanup_1);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Subscribe + Unsubscribe");

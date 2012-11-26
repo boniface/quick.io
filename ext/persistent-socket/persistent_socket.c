@@ -53,7 +53,7 @@ static void _connect(psocket *psocket) {
 	psocket->socket = sock;
 }
 
-int psocket_connect(char *host, int port, psocket **psocket) {
+int psocket_connect(const char *host, const int port, psocket **psocket) {
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;

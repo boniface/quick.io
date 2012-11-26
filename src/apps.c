@@ -74,7 +74,7 @@ static gpointer _app_run(gpointer void_app) {
 	
 	if (app->run != NULL) {
 		if (!app->run(on)) {
-			FATALF("App \"%s\" exited with bad status", app->name);
+			FATAL("App \"%s\" exited with bad status", app->name);
 		}
 	}
 	
@@ -82,12 +82,12 @@ static gpointer _app_run(gpointer void_app) {
 }
 
 gboolean apps_run() {
-	opt_app_t **apps = option_apps();
+	const opt_app_t **apps = option_apps();
 	_apps = g_ptr_array_new();
 	
 	guint16 app_count = option_apps_count();
 	for (guint16 i = 0; i < app_count; i++) {
-		opt_app_t *o_app = *(apps + i);
+		const opt_app_t *o_app = *(apps + i);
 		
 		// Check to see if an absolute path to a module was given
 		// If it was not, assuming looking in ./, so add that to the
@@ -108,7 +108,7 @@ gboolean apps_run() {
 		
 		// If we can't open the app, just quit
 		if (module == NULL) {
-			ERRORF("Could not open app (%s): %s", path, g_module_error());
+			ERROR("Could not open app (%s): %s", path, g_module_error());
 			return FALSE;
 		}
 		
@@ -156,7 +156,7 @@ gboolean apps_run() {
 		
 		// If the app didn't register any of the boilerplate stuff
 		if (app->_set_app_opts == NULL) {
-			ERRORF("App \"%s\" missing qio_set_app_opts()", app->name);
+			ERROR("App \"%s\" missing qio_set_app_opts()", app->name);
 			return FALSE;
 		}
 		

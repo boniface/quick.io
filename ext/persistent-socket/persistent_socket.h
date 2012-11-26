@@ -45,7 +45,7 @@ typedef struct {
  * @return 0 on success.
  * @return -1 on address lookup error.
  */
-int psocket_connect(char *host, int port, psocket **psocket);
+int psocket_connect(const char *host, const int port, psocket **psocket);
 
 /**
  * Closes a psocket connection.

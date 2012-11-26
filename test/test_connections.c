@@ -149,6 +149,27 @@ START_TEST(test_conns_balance_2) {
 }
 END_TEST
 
+START_TEST(test_conns_balance_yield) {
+	conns_balance(200, "test");
+	
+	int socket = 0;
+	for (int i = 0; i < 200; i++) {
+		client_t *client = u_client_create(&socket);
+		client->handler = h_rfc6455;
+		conns_client_new(client);
+	}
+	
+	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
+	_conns_balance();
+	test_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
+	
+	char buff[sizeof(MOVE)+128];
+	memset(buff, 0, sizeof(buff));
+	test_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
+	test_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
+}
+END_TEST
+
 Suite* conns_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Connections");
@@ -165,6 +186,7 @@ Suite* conns_suite() {
 	tcase_add_test(tc, test_conns_balance_0);
 	tcase_add_test(tc, test_conns_balance_1);
 	tcase_add_test(tc, test_conns_balance_2);
+	tcase_add_test(tc, test_conns_balance_yield);
 	suite_add_tcase(s, tc);
 	
 	return s;

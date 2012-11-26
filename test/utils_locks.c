@@ -11,7 +11,7 @@ gboolean test_lock_init() {
 	_sem = sem_open(SEM_NAME, O_CREAT, S_IRUSR|S_IWUSR, 1);
 	
 	if (_sem == SEM_FAILED) {
-		ERRORF("Error initing test_lock: %s", strerror(errno));
+		ERROR("Error initing test_lock: %s", strerror(errno));
 		return FALSE;
 	}
 	

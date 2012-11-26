@@ -19,6 +19,12 @@
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
+#define OPENSSL_THREAD_DEFINES
+#include <openssl/opensslconf.h>
+#ifndef OPENSSL_THREADS
+	#error OpenSSL thread support not enabled! Failing...
+#endif
+
 #ifndef QEV_CLIENT_T
 	#define QEV_CLIENT_T struct qev_client
 #endif
@@ -69,10 +75,16 @@ struct qev_client {
 	void *ssl_ctx;
 	
 	/**
-	 * To do atomic operations on the client, we need something of size int. So rather
-	 * than use a small data type, we're stuck with this.
+	 * For acquiring a lock on a client. Since only 1 thing can have the lock
+	 * at once, we're only using a char.
 	 */
-	volatile int _operations;
+	char _lock;
+	
+	/**
+	 * For assuring that only 1 thread will ever issue a read event on a client
+	 * at a time.
+	 */
+	int _read_operations;
 	
 	/**
 	 * A bitmask of flags for qev internal use.
@@ -132,7 +144,8 @@ void qev_dispatch();
  * @return 0 on success.
  * @return -1 on error.
  */
-int qev_listen(char *ip_address, uint16_t port);
+int qev_listen(const char *ip_address, const uint16_t port);
+
 /**
  * Instruct quick event to listen on an SSL socket for connections and route
  * them into the event handler.
@@ -145,10 +158,13 @@ int qev_listen(char *ip_address, uint16_t port);
  * @return 0 on success.
  * @return -1 on error.
  */
-int qev_listen_ssl(char *ip_address, uint16_t port, char *cert_path, char *key_path);
+int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert_path, const char *key_path);
 
 /**
  * Read data from the socket.
+ *
+ * @attention Since read events are only ever raised in a single thread,
+ * this function does no locking.
  *
  * @param client The client to read from
  * @param buff The buffer to read data in to
@@ -162,6 +178,10 @@ int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size);
 
 /**
  * Writes data to the socket.
+ *
+ * @attention This function acquires a lock on a client, and as the lock
+ * is not reentrant, it must not be held by the caller, or this will
+ * block forever.
  *
  * @param client The client to write to.
  * @param buff The buffer to send to the client
@@ -190,6 +210,26 @@ void qev_close(QEV_CLIENT_T *client);
 void qev_client_free(void *client);
 
 /**
+ * Acquire a lock on a client. This function will busy wait, while yielding its
+ * runtime, until it is able to acquire a lock on a client, so you probably
+ * shouldn't use this for things like long-block IO operations, or other
+ * things that take a while.
+ *
+ * @client The client to acquire the lock on.
+ */
+void qev_client_lock(QEV_CLIENT_T *client);
+
+/**
+ * Release a lock on a client.
+ *
+ * @note A client can be unlocked from anything thread, but chances are, that's
+ * a really bad idea.
+ *
+ * @param client The client to release the lock on.
+ */
+void qev_client_unlock(QEV_CLIENT_T *client);
+
+/**
  * Change to a different user. This function will refuse to run as root and return
  * and error if you try to.
  *
@@ -198,7 +238,7 @@ void qev_client_free(void *client);
  * @return 0 on success
  * @return -1 on error
  */
-int qev_chuser(char *username);
+int qev_chuser(const char *username);
 
 /**
  * A debugging hook: flushes all closed connections immediately, regardless of the

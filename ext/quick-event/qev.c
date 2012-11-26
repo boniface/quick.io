@@ -15,6 +15,11 @@
 static qev_wqueue_t *_closed;
 
 /**
+ * OpenSSL is thread safe only if we give it locks
+ */
+static GMutex *_ssl_locks;
+
+/**
  * Local DH params that can be reused
  */
 #define QEV_DH_SIZES_X(size) static DH * QEV_DH_NAME(size) = NULL;
@@ -44,6 +49,9 @@ static inline int _qev_ssl_handshake(SSL *ctx, volatile qev_flags_t *flags) {
 	return 0;
 }
 
+/**
+ * OpenSSL callback for getting the DH params for the given size.
+ */
 static DH* _qev_ssl_get_tmpdh(SSL *s, int is_export, int key_len) {
 	switch (key_len) {
 		#define QEV_DH_SIZES_X(size) \
@@ -96,16 +104,24 @@ static gboolean _qev_setup_dh(SSL_CTX *ctx) {
 	return TRUE;
 }
 
+static void _ssl_lock_fn(int mode, int lock_num, const char *file, int line) {
+	if (mode & CRYPTO_LOCK) {
+		g_mutex_lock((_ssl_locks + lock_num));
+	} else {
+		g_mutex_unlock((_ssl_locks + lock_num));
+	}
+}
+
 int qev_init() {
 	_closed = qev_wqueue_init(qev_client_free);
 	return qev_sys_init();
 }
 
-int qev_listen(char *ip_address, uint16_t port) {
+int qev_listen(const char *ip_address, const uint16_t port) {
 	return qev_sys_listen(ip_address, port, NULL);
 }
 
-int qev_listen_ssl(char *ip_address, uint16_t port, char *cert_path, char *key_path) {
+int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert_path, const char *key_path) {
 	QEV_CLIENT_T *client;
 	qev_socket_t sock = qev_sys_listen(ip_address, port, &client);
 	
@@ -122,6 +138,13 @@ int qev_listen_ssl(char *ip_address, uint16_t port, char *cert_path, char *key_p
 		
 		SSL_load_error_strings();
 		SSL_library_init();
+		
+		_ssl_locks = g_malloc(CRYPTO_num_locks() * sizeof(*_ssl_locks));
+		for (int i = 0; i < CRYPTO_num_locks(); i++) {
+			g_mutex_init((_ssl_locks + i));
+		}
+		
+		CRYPTO_set_locking_callback(_ssl_lock_fn);
 		
 		inited = 1;
 	}
@@ -186,7 +209,7 @@ void* qev_run_thread(void *arg) {
 	return NULL;
 }
 
-QEV_CLIENT_T* qev_create_client() {
+QEV_CLIENT_T* qev_client_create() {
 	return g_slice_alloc0(sizeof(QEV_CLIENT_T));
 }
 
@@ -196,7 +219,7 @@ void qev_client_read(QEV_CLIENT_T *client) {
 	// another thread is working on it, if it is 0, then it means we
 	// may work on it. In order to accomplish this without locking, we're 
 	// using GCC's atomic functions.
-	if (__sync_fetch_and_add(&QEV_CSLOT(client, _operations), 1) == 0) {
+	if (__sync_fetch_and_add(&QEV_CSLOT(client, _read_operations), 1) == 0) {
 		QEV_TEST_LOCK(qev_client_read_in);
 		do {
 			if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL_HANDSHAKING) {
@@ -212,7 +235,7 @@ void qev_client_read(QEV_CLIENT_T *client) {
 					break;
 				}
 			}
-		} while (__sync_sub_and_fetch(&QEV_CSLOT(client, _operations), 1) > 0 && !(QEV_CSLOT(client, _flags) & QEV_CMASK_CLOSING));
+		} while (__sync_sub_and_fetch(&QEV_CSLOT(client, _read_operations), 1) > 0 && !(QEV_CSLOT(client, _flags) & QEV_CMASK_CLOSING));
 	}
 }
 
@@ -236,6 +259,16 @@ void qev_client_free(void *c) {
 	#ifndef QEV_CLIENT_NEVER_FREE
 		g_slice_free1(sizeof(*client), client);
 	#endif
+}
+
+void qev_client_lock(QEV_CLIENT_T *client) {
+	while (!__sync_bool_compare_and_swap(&QEV_CSLOT(client, _lock), 0, 1)) {
+		g_thread_yield();
+	}
+}
+
+void qev_client_unlock(QEV_CLIENT_T *client) {
+	__sync_bool_compare_and_swap(&QEV_CSLOT(client, _lock), 1, 0);
 }
 
 void qev_debug_flush() {

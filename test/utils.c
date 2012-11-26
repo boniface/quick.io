@@ -74,7 +74,7 @@ void u_main_setup(pid_t *pid) {
 			char buff[11];
 			memset(&buff, 0, sizeof(buff));
 			if (read(out[0], buff, sizeof(buff)) > 0) {
-				DEBUGF("%s", buff);
+				DEBUG("%s", buff);
 				test_str_eq(buff, "QIO READY\n", "Server inited");
 			}
 			
@@ -111,12 +111,12 @@ int u_connect() {
 	addy.sin_port = htons(option_bind_port());
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		ERRORF("Could not create socket: %s", strerror(errno));
+		ERROR("Could not create socket: %s", strerror(errno));
 		return 0;
 	}
 
 	if (connect(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
-		ERRORF("Could not connect: %s", strerror(errno));
+		ERROR("Could not connect: %s", strerror(errno));
 		return 0;
 	}
 	

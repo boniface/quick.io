@@ -13,6 +13,7 @@ static gchar *_bind_address = NULL;
 static gchar *_bind_address_ssl = NULL;
 static gint _bind_port = 80;
 static gint _bind_port_ssl = 443;
+static gchar *_log_file = NULL;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
 static gchar *_ssl_private_key = NULL;
@@ -20,7 +21,7 @@ static gchar *_ssl_cert_chain = NULL;
 static gchar *_stats_graphite_address = NULL;
 static gint _stats_graphite_port = 2003;
 static gchar *_stats_graphite_prefix = "qio";
-static gint _support_flash = 1;
+static gint _support_flash = 0;
 static gint _threads = 2;
 static gint _timeout = 5;
 static gchar *_user = NULL;
@@ -30,6 +31,7 @@ static config_file_entry_t _config_options[] = {
 	{"bind-address-ssl", e_string, &_bind_address_ssl},
 	{"bind-port", e_int, &_bind_port},
 	{"bind-port-ssl", e_int, &_bind_port_ssl},
+	{"log-file", e_string, &_log_file},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
 	{"ssl-private-key", e_string, &_ssl_private_key},
@@ -102,75 +104,79 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 	return TRUE;
 }
 
-opt_app_t** option_apps() {
-	return _apps;
+const opt_app_t** option_apps() {
+	return (const opt_app_t**)_apps;
 }
 
-guint16 option_apps_count() {
+const guint16 option_apps_count() {
 	return _apps_count;
 }
 
-gchar* option_bind_address() {
+const gchar* option_bind_address() {
 	return _bind_address;
 }
 
-gchar* option_bind_address_ssl() {
+const gchar* option_bind_address_ssl() {
 	return _bind_address_ssl;
 }
 
-gint option_bind_port() {
+const gint option_bind_port() {
 	return _bind_port;
 }
 
-gint option_bind_port_ssl() {
+const gint option_bind_port_ssl() {
 	return _bind_port_ssl;
 }
 
-gchar* option_config_file() {
+const gchar* option_config_file() {
 	return _config_file;
 }
 
-guint64 option_max_message_size() {
+const gchar* option_log_file() {
+	return _log_file;
+}
+
+const guint64 option_max_message_size() {
 	return _max_mess_size;
 }
 
-guint64 option_max_subscriptions() {
+const guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 
-gchar* option_ssl_cert_chain() {
+const gchar* option_ssl_cert_chain() {
 	return _ssl_cert_chain;
 }
 
-gchar* option_ssl_private_key() {
+const gchar* option_ssl_private_key() {
 	return _ssl_private_key;
 }
 
-gchar* option_stats_graphite_address() {
+const gchar* option_stats_graphite_address() {
 	return _stats_graphite_address;
 }
 
-gint option_stats_graphite_port() {
+const gint option_stats_graphite_port() {
 	return _stats_graphite_port;
 }
 
-gchar* option_stats_graphite_prefix() {
+const gchar* option_stats_graphite_prefix() {
 	return _stats_graphite_prefix;
 }
 
-gint option_support_flash() {
+const gint option_support_flash() {
 	return _support_flash;
 }
 
-gint option_threads() {
+const gint option_threads() {
 	return _threads;
 }
 
-gint option_timeout() {
+const gint option_timeout() {
 	return _timeout;
 }
 
-gchar* option_user() {
+const gchar* option_user() {
 	return _user;
 }
 
@@ -178,7 +184,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 	GKeyFile *conf = g_key_file_new();
 	
 	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
-		ERRORF("Could not load config file: %s", _config_file);
+		ERROR("Could not load config file: %s", _config_file);
 		g_key_file_free(conf);
 		return FALSE;
 	}
@@ -254,7 +260,7 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	char path[PATH_MAX+1];
 	memset(&path, 0, sizeof(path));
 	if (realpath(_config_file, path) == NULL) {
-		ERRORF("Could not locate configuration file: %s", _config_file);
+		ERROR("Could not locate configuration file: %s", _config_file);
 		success = FALSE;
 	} else {
 		g_free(_config_file);

@@ -1,12 +1,5 @@
 #include "qio.h"
 
-/**
- * Hash tables aren't thread safe, so make sure only one thing is going on at a time.
- * No individual client locking here: we go for a 1 process per core model, so blocking everything
- * else is acceptable.
- */
-static GMutex _client_lock;
-
 status_t client_handshake(client_t *client) {
 	status_t status = CLIENT_GOOD;
 	GString *buffer = client->message->socket_buffer;
@@ -204,7 +197,7 @@ void client_unref(client_t *client) {
 }
 
 void client_set(client_t *client, const gchar *key, const gchar *value) {
-	g_mutex_lock(&_client_lock);
+	qev_client_lock(client);
 	
 	if (client->external_data == NULL) {
 		client->external_data = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
@@ -216,31 +209,31 @@ void client_set(client_t *client, const gchar *key, const gchar *value) {
 		g_hash_table_insert(client->external_data, g_strdup(key), g_strdup(value));
 	}
 	
-	g_mutex_unlock(&_client_lock);
+	qev_client_unlock(client);
 }
 
 gchar* client_get(client_t *client, const gchar *key) {
-	g_mutex_lock(&_client_lock);
+	qev_client_lock(client);
 	
 	gchar *value = NULL;
 	if (client->external_data != NULL) {
 		value = g_strdup(g_hash_table_lookup(client->external_data, key));
 	}
 	
-	g_mutex_unlock(&_client_lock);
+	qev_client_unlock(client);
 	
 	return value;
 }
 
 gboolean client_has(client_t *client, const gchar *key) {
-	g_mutex_lock(&_client_lock);
+	qev_client_lock(client);
 	
 	gboolean has = FALSE;
 	if (client->external_data != NULL) {
 		has = g_hash_table_contains(client->external_data, key);
 	}
 	
-	g_mutex_unlock(&_client_lock);
+	qev_client_unlock(client);
 	
 	return has;
 }

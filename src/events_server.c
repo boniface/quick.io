@@ -17,15 +17,6 @@ static GHashTable* _events_by_handler;
 static GMutex _events_lock;
 
 /**
- * Since callbacks can be created from many threads, we have to lock them. Also, since it's
- * highly unlikely that tons of threads are going to be creating tons of callbacks all the
- * time (and even if they are, the model we're going after is 1 process per core), it's
- * simpler just to use a single lock until we can warrant the resource overhead of a lock
- * per client, or something similar. 
- */
-static GMutex _callbacks_lock;
-
-/**
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
@@ -169,11 +160,11 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 	guint8 slot, id;
 	SERVER_CALLBACK_PARTS(client, compacted, slot, id);
 	
-	g_mutex_lock(&_callbacks_lock);
+	qev_client_lock(client);
 	
 	// If a callback came through that was evicted, ignore it
 	if (client->callbacks[slot].id != id) {
-		g_mutex_unlock(&_callbacks_lock);
+		qev_client_unlock(client);
 		return CLIENT_ERROR;
 	}
 	
@@ -183,7 +174,7 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 	// Mark the callback as empty
 	client->callbacks[slot].fn = NULL;
 	
-	g_mutex_unlock(&_callbacks_lock);
+	qev_client_unlock(client);
 	
 	status_t status = cb.fn(client, cb.data, event);
 	_evs_server_callback_free(cb);
@@ -205,7 +196,7 @@ static status_t _evs_server_noop(client_t *client, event_handler_t *handler, eve
 }
 
 static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
-	DEBUGF("event_subscribe: %s; callback: %u", event->data, event->client_callback);
+	DEBUG("event_subscribe: %s; callback: %u", event->data, event->client_callback);
 	
 	gchar *event_path = evs_server_format_path(event->data, NULL);
 	status_t status = evs_client_sub_client(event_path, client, event->client_callback);
@@ -215,7 +206,7 @@ static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler
 }
 
 static status_t _evs_server_unsubscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
-	DEBUGF("event_unsubscribe: %s", event->data);
+	DEBUG("event_unsubscribe: %s", event->data);
 	
 	gchar *event_path = evs_server_format_path(event->data, NULL);
 	status_t status = evs_client_unsub_client(event_path, client);
@@ -306,7 +297,7 @@ status_t evs_server_handle(client_t *client) {
 	event_handler_t *handler = NULL;
 	status_t status = _event_new(client->message, &handler, &event);
 	
-	DEBUGF("Event: %s", event.path);
+	DEBUG("Event: %s", event.path);
 	
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
@@ -359,13 +350,13 @@ status_t evs_server_handle(client_t *client) {
 event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
-		ERRORF("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
+		ERROR("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 	
 	// Don't allow events with EVENT_DATA_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DATA_DELIMITER) != NULL) {
-		ERRORF("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
+		ERROR("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 	
@@ -374,7 +365,7 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	g_mutex_lock(&_events_lock);
 	
 	if (g_hash_table_contains(_events_by_path, path)) {
-		ERRORF("Event handler is already registered: %s", path);
+		ERROR("Event handler is already registered: %s", path);
 		g_free(path);
 		return NULL;
 	}
@@ -442,7 +433,6 @@ status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, cons
 }
 
 callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn) {
-	g_mutex_lock(&_callbacks_lock);
 	
 	if (fn == NULL) {
 		ERROR("No callback function passed into evs_server_callback_new(). You probably didn't mean that.");
@@ -453,6 +443,8 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 		
 		return 0;
 	}
+	
+	qev_client_lock(client);
 	
 	// Attempt to find an empty place to put the callback
 	guint8 i = 0;
@@ -481,7 +473,7 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	// move on.
 	callback_t id = SERVER_CALLBACK(i, client->callbacks[i].id);
 	
-	g_mutex_unlock(&_callbacks_lock);
+	qev_client_unlock(client);
 	
 	return id;
 }

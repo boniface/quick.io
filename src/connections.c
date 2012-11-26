@@ -7,9 +7,19 @@
 static GHashTable *_clients;
 
 /**
+ * Hash tables no le thread safe :(
+ */
+static GMutex _clients_lock;
+
+/**
  * All of the clients that have timeouts set on them.
  */
 static GHashTable *_client_timeouts;
+
+/**
+ * We can only touch the timeouts from 1 thread
+ */
+static GMutex _client_timeouts_lock;
 
 /**
  * A list of all the balance requests.
@@ -46,6 +56,9 @@ static void _conns_message_new(client_t *client) {
 static void _conns_client_timeout_clean() {
 	client_t *client;
 	GHashTableIter iter;
+	
+	g_mutex_lock(&_client_timeouts_lock);
+	
 	g_hash_table_iter_init(&iter, _client_timeouts);
 	while (g_hash_table_iter_next(&iter, (void*)&client, NULL)) {
 		client->timer--;
@@ -53,11 +66,13 @@ static void _conns_client_timeout_clean() {
 			UTILS_STATS_INC(conns_timeouts);
 			STATS_INC(client_timeouts);
 			
-			DEBUGF("Timer on client expired: %p", &client->qevclient);
+			DEBUG("Timer on client expired: %p", &client->qevclient);
 			qev_close(client);
 			g_hash_table_iter_remove(&iter);
 		}
 	}
+	
+	g_mutex_unlock(&_client_timeouts_lock);
 }
 
 /**
@@ -68,20 +83,26 @@ static void _conns_balance() {
 	if (g_async_queue_length(_balances) == 0) {
 		return;
 	}
-
+	
 	GHashTableIter iter;
 	client_t *client;
-	g_hash_table_iter_init(&iter, _clients);
+	
+	// For keeping track of the number of clients balanced so that we can yield appropriately
+	guint total = 0;
 	
 	message_t message;
 	message.type = op_text;
 	message.buffer = g_string_sized_new(100);
 	
+	g_mutex_lock(&_clients_lock);
+	
+	g_hash_table_iter_init(&iter, _clients);
+	
 	conns_balance_request_t *req;
 	while ((req = g_async_queue_try_pop(_balances)) != NULL) {
 		evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req->to, message.buffer);
 		
-		DEBUGF("Balancing: %d to %s", req->count, req->to);
+		DEBUG("Balancing: %d to %s", req->count, req->to);
 		
 		guint cnt = 0;
 		while (cnt++ < req->count && g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
@@ -93,11 +114,21 @@ static void _conns_balance() {
 			
 			g_hash_table_iter_remove(&iter);
 			qev_close(client);
+			
+			if (++total == CONNS_YIELD) {
+				total = 0;
+				g_mutex_unlock(&_clients_lock);
+				g_thread_yield();
+				g_mutex_lock(&_clients_lock);
+				g_hash_table_iter_init(&iter, _clients);
+			}
 		}
 		
 		g_free(req->to);
 		g_slice_free1(sizeof(*req), req);
 	}
+	
+	g_mutex_unlock(&_clients_lock);
 	
 	g_string_free(message.buffer, TRUE);
 }
@@ -115,7 +146,10 @@ void conns_client_new(client_t *client) {
 	client->state = cstate_initing;
 	client->timer = -1;
 	
+	g_mutex_lock(&_clients_lock);
 	g_hash_table_add(_clients, client);
+	g_mutex_unlock(&_clients_lock);
+	
 	client_ref(client);
 	
 	apps_client_connect(client);
@@ -126,7 +160,7 @@ void conns_client_new(client_t *client) {
 }
 
 void conns_client_close(client_t *client) {
-	DEBUGF("A client closed: %p", &client->qevclient);
+	DEBUG("A client closed: %p", &client->qevclient);
 	
 	client->state = cstate_dead;
 	conns_client_timeout_clear(client);
@@ -137,7 +171,10 @@ void conns_client_close(client_t *client) {
 	
 	// Remove our last reference, this MUST be done last so that any free operation
 	// doesn't interfere with the setting
+	g_mutex_lock(&_clients_lock);
 	g_hash_table_remove(_clients, client);
+	g_mutex_unlock(&_clients_lock);
+	
 	client_unref(client);
 	
 	STATS_INC(clients_closed);
@@ -220,7 +257,7 @@ gboolean conns_client_data(client_t *client) {
 		} else if (status == CLIENT_FATAL) {
 			UTILS_STATS_INC(conns_bad_clients);
 			
-			DEBUGF("Bad client, closing: status=%d", status);
+			DEBUG("Bad client, closing: status=%d", status);
 			qev_close(client);
 			client = NULL;
 			
@@ -246,7 +283,12 @@ gboolean conns_init() {
 }
 
 GHashTable* conns_clients() {
+	g_mutex_lock(&_clients_lock);
 	return _clients;
+}
+
+void conns_clients_unlock() {
+	g_mutex_unlock(&_clients_lock);
 }
 
 void conns_client_timeout_clear(client_t *client) {
@@ -263,7 +305,10 @@ void conns_client_timeout_set(client_t *client) {
 	}
 	
 	client->timer = option_timeout();
+	
+	g_mutex_lock(&_client_timeouts_lock);
 	g_hash_table_add(_client_timeouts, client);
+	g_mutex_unlock(&_client_timeouts_lock);
 }
 
 void conns_maintenance_tick() {
@@ -277,10 +322,6 @@ void conns_maintenance_tick() {
 	
 	if (ticks++ % CONNS_MAINTENANCE_TIMEOUTS == 0) {
 		_conns_client_timeout_clean();
-	}
-	
-	if (ticks % CONNS_MAINTENANCE_CLEANUP == 0) {
-		evs_client_cleanup();
 	}
 }
 

@@ -84,7 +84,7 @@
  *
  * @return The underlying socket that was created.
  */
-qev_socket_t qev_sys_listen(char *ip_address, uint16_t port, QEV_CLIENT_T **client);
+qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client);
 
 /**
  * Tell qev that a client is read to be read. This function synchronizes itself
@@ -123,4 +123,4 @@ int qev_sys_init();
  *
  * @return A newly-allocated client.
  */
-QEV_CLIENT_T* qev_create_client();
+QEV_CLIENT_T* qev_client_create();

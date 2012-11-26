@@ -39,7 +39,7 @@ struct evs_client_sub_s {
 	/**
 	 * The name of the event.
 	 * This is a duplicated string that is referenced all over the place.
-	 * @attention MUST be free()'d when done.
+	 * @attention This is free'd when g_hash_table_remove is called.
 	 */
 	gchar *event_path;
 	
@@ -62,6 +62,11 @@ struct evs_client_sub_s {
 	 * evs_server_get_handler().
 	 */
 	event_handler_t *handler;
+	
+	/**
+	 * For protecting writes to the client list in this subscription
+	 */
+	GMutex lock;
 };
 
 /**

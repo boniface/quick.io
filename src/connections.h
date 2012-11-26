@@ -19,6 +19,11 @@
 #define STRING_HEADER_BUFFER_SIZE 200
 
 /**
+ * The number of clients to balance before yielding
+ */
+#define CONNS_YIELD 100
+
+/**
  * Quickly determine how large the intial buffer should be.
  */
 #define STRING_BUFFER(client) client->state == cstate_initing ? STRING_HEADER_BUFFER_SIZE : STRING_BUFFER_SIZE
@@ -33,12 +38,6 @@
  * We only want to do this once per second.
  */
 #define CONNS_MAINTENANCE_TIMEOUTS ((gint)(1000 / MAINTENANCE_TICK))
-
-/**
- * The number of loops to run before cleaning up.
- * We only want to do this once every 5 seconds or so
- */
-#define CONNS_MAINTENANCE_CLEANUP ((gint)(5000 / MAINTENANCE_TICK))
 
 /**
  * The balance request.
@@ -117,12 +116,17 @@ gboolean conns_init();
 
 /**
  * Gets a hash-set containing all the clients currently connected to the server.
- *
- * @attention This MAY ONLY be used from the main server thread.
+ * The hash-set will be locked, so you MUST call conns_clients_unlock() when you
+ * are done.
  *
  * @return The set of all clients currently connected.
  */
 GHashTable* conns_clients();
+
+/**
+ * Unlocks the table once you're done.
+ */
+void conns_clients_unlock();
 
 /**
  * Tick to run maintenance operations.

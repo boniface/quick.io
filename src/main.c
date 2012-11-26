@@ -13,8 +13,6 @@ int init_main(int argc, char *argv[]) {
 #else
 int main(int argc, char *argv[]) {
 #endif
-	debug_handle_signals();
-	
 	if (qev_init() == 0) {
 		DEBUG("Quick-event inited");
 	} else {
@@ -26,7 +24,7 @@ int main(int argc, char *argv[]) {
 	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
 	} else {
-		ERROR(error != NULL ? error->message : "The arguments are not happy");
+		ERROR("%s", error != NULL ? error->message : "The arguments are not happy");
 		return 1;
 	}
 	
@@ -37,7 +35,12 @@ int main(int argc, char *argv[]) {
 	if (option_parse_config_file(NULL, NULL, 0, &error)) {
 		DEBUG("Config file parsed");
 	} else {
-		ERROR(error->message);
+		ERROR("%s", error->message);
+		return 1;
+	}
+	
+	if (!log_init()) {
+		ERROR("Could not setup logging.");
 		return 1;
 	}
 	
@@ -83,18 +86,18 @@ int main(int argc, char *argv[]) {
 	
 	if (option_bind_address() != NULL) {
 		if (qev_listen(option_bind_address(), option_bind_port()) == 0) {
-			DEBUGF("Listening on: %s:%d", option_bind_address(), option_bind_port());
+			DEBUG("Listening on: %s:%d", option_bind_address(), option_bind_port());
 		} else {
-			ERRORF("Could not listen on %s:%d", option_bind_address(), option_bind_port());
+			ERROR("Could not listen on %s:%d", option_bind_address(), option_bind_port());
 			return 1;
 		}
 	}
 	
 	if (option_bind_address_ssl() != NULL) {
 		if (qev_listen_ssl(option_bind_address_ssl(), option_bind_port_ssl(), option_ssl_cert_chain(), option_ssl_private_key()) == 0) {
-			DEBUGF("SSL Listening on: %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+			DEBUG("SSL Listening on: %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
 		} else {
-			ERRORF("SSL could not run on %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+			ERROR("SSL could not run on %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
 			return 1;
 		}
 	}
@@ -111,9 +114,9 @@ int main(int argc, char *argv[]) {
 	
 	if (option_user() != NULL) {
 		if (qev_chuser(option_user()) == 0) {
-			DEBUGF("Changed to user %s", option_user());
+			DEBUG("Changed to user %s", option_user());
 		} else {
-			ERRORF("Could not change to user %s", option_user());
+			ERROR("Could not change to user %s", option_user());
 			return 1;
 		}
 	}

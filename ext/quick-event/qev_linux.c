@@ -32,6 +32,11 @@ typedef struct {
 	 * The timer's file descriptor
 	 */
 	int fd;
+	
+	/**
+	 * For assuring that only 1 thread will ever be running a timer at once
+	 */
+	int operations;
 } _timer_t;
 
 /**
@@ -90,7 +95,7 @@ static int _qev_accept(QEV_CLIENT_T *server) {
 			flags |= QEV_CMASK_SSL;
 		}
 		
-		QEV_CLIENT_T *client = qev_create_client();
+		QEV_CLIENT_T *client = qev_client_create();
 		QEV_CSLOT(client, socket) = client_sock;
 		QEV_CSLOT(client, ssl_ctx) = ctx;
 		QEV_CSLOT(client, _flags) = flags;
@@ -107,7 +112,7 @@ static int _qev_accept(QEV_CLIENT_T *server) {
 /**
  * Listen on an IP address + port
  */
-qev_socket_t qev_sys_listen(char *ip_address, uint16_t port, QEV_CLIENT_T **client) {
+qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client) {
 	qev_socket_t sock;
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -136,7 +141,7 @@ qev_socket_t qev_sys_listen(char *ip_address, uint16_t port, QEV_CLIENT_T **clie
 	
 	if (bind(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
 		close(sock);
-		perror("qev_listen()->bind()");
+		ERROR("Could not listen on %s:%d", ip_address, port);
 		return -1;
 	}
 	
@@ -146,7 +151,7 @@ qev_socket_t qev_sys_listen(char *ip_address, uint16_t port, QEV_CLIENT_T **clie
 		return -1;
 	}
 	
-	QEV_CLIENT_T *_client = qev_create_client();
+	QEV_CLIENT_T *_client = qev_client_create();
 	QEV_CSLOT(_client, socket) = sock;
 	QEV_CSLOT(_client, _flags) |= QEV_CMASK_LISTENING;
 	
@@ -187,7 +192,11 @@ void qev_dispatch() {
 				char buff[8];
 				read(_timers[(gsize)client].fd, buff, sizeof(buff));
 				
-				_timers[(gsize)client].fn();
+				if (__sync_fetch_and_add(&_timers[(gsize)client].operations, 1) == 0) {
+					do {
+						_timers[(gsize)client].fn();
+					} while (__sync_sub_and_fetch(&_timers[(gsize)client].operations, 1) > 0);
+				}
 			} else
 		#endif
 		
@@ -220,12 +229,20 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 		return -1;
 	}
 	
+	int ret;
+	
+	qev_client_lock(client);
+	
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
 		int sent = SSL_write(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
-		return sent <= 0 ? -1 : sent;
+		ret = sent <= 0 ? -1 : sent;
+	} else {
+		ret = send(QEV_CSLOT(client, socket), buff, buff_size, MSG_NOSIGNAL);
 	}
 	
-	return send(QEV_CSLOT(client, socket), buff, buff_size, MSG_NOSIGNAL);
+	qev_client_unlock(client);
+	
+	return ret;
 }
 
 void qev_sys_client_closed(QEV_CLIENT_T *client) {
@@ -277,7 +294,7 @@ int qev_sys_init() {
 	return 0;
 }
 
-int qev_chuser(char *username) {
+int qev_chuser(const char *username) {
 	struct passwd *user = getpwnam(username);
 	
 	if (user == NULL) {
