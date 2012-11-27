@@ -75,13 +75,6 @@ struct evs_client_sub_s {
 gboolean evs_client_init();
 
 /**
- * Set up internal structures for the client.
- *
- * @param client The client that just became ready.
- */
-void evs_client_client_ready(client_t* client);
-
-/**
  * Subscribes a client to an event.
  * 
  * @param event_path The name of the event the client should be subscribed to.
@@ -93,6 +86,13 @@ void evs_client_client_ready(client_t* client);
  * @return CLIENT_ERROR Subscribe miserably failed. 
  */
 status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback);
+
+/**
+ * Set up internal structures for the client.
+ *
+ * @param client The client that just became ready.
+ */
+void evs_client_client_ready(client_t* client);
 
 /**
  * The client has been closed and should be cleaned up.

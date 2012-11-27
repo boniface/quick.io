@@ -14,3 +14,4 @@ clean:
 	rm -f pound
 	rm -f benchmark_epoll
 	rm -f benchmark_libevent
+	rm -f *.pyc

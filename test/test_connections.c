@@ -87,6 +87,38 @@ START_TEST(test_conns_message_clean_3) {
 }
 END_TEST
 
+START_TEST(test_conns_clients_foreach) {
+	guint32 i = 0;
+	
+	// Remove a ton of clients to make sure the iterator keeps up
+	gboolean _callback(client_t *client) {
+		static gboolean remove = TRUE;
+		
+		if (remove) {
+			for (int i = 0; i < CONNS_YIELD/2; i++) {
+				_conns_clients_remove(g_ptr_array_index(_clients, 0));
+				_conns_clients_remove(g_ptr_array_index(_clients, _clients->len - 1));
+			}
+			
+			remove = FALSE;
+		}
+		
+		i++;
+		
+		return TRUE;
+	}
+	
+	for (int i = 0; i < CONNS_YIELD*2; i++) {
+		client_t *client = u_client_create(NULL);
+		client->handler = h_rfc6455;
+		conns_client_new(client);
+	}
+	
+	conns_clients_foreach(_callback);
+	test_uint32_eq(i, CONNS_YIELD+1, "Correct number of clients called");
+}
+END_TEST
+
 START_TEST(test_conns_balance_0) {
 	conns_balance(100, "test");
 	
@@ -175,10 +207,12 @@ Suite* conns_suite() {
 	Suite *s = suite_create("Connections");
 	
 	tc = tcase_create("Utilities");
+	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);
 	tcase_add_test(tc, test_conns_message_clean_0);
 	tcase_add_test(tc, test_conns_message_clean_1);
 	tcase_add_test(tc, test_conns_message_clean_2);
 	tcase_add_test(tc, test_conns_message_clean_3);
+	tcase_add_test(tc, test_conns_clients_foreach);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Balance");

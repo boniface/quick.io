@@ -198,6 +198,12 @@ struct client_s {
 	GHashTable *external_data;
 	
 	/**
+	 * The position in the clients table (this is index + 1 such that 0 indicates it's
+	 * not in the table).
+	 */
+	guint clients_pos;
+	
+	/**
 	 * The callbacks registered on the client.
 	 */
 	struct client_cb_s callbacks[MAX_CALLBACKS];

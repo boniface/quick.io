@@ -2,9 +2,8 @@
 
 /**
  * All of the clients currently connected to the server.
- * Functions as a set.
  */
-static GHashTable *_clients;
+static GPtrArray *_clients;
 
 /**
  * Hash tables no le thread safe :(
@@ -76,6 +75,22 @@ static void _conns_client_timeout_clean() {
 }
 
 /**
+ * Assumes you have a lock on _clients: removes the given client and updates
+ * the client that replaces him
+ */
+static void _conns_clients_remove(client_t *client) {
+	if (client->clients_pos > 0) {
+		g_ptr_array_remove_index_fast(_clients, client->clients_pos - 1);
+		
+		if (_clients->len > 0) {
+			((client_t*)g_ptr_array_index(_clients, client->clients_pos - 1))->clients_pos = client->clients_pos;
+		}
+		
+		client->clients_pos = 0;
+	}
+}
+
+/**
  * Go through any balance requests and fulfill them.
  */
 static void _conns_balance() {
@@ -84,19 +99,9 @@ static void _conns_balance() {
 		return;
 	}
 	
-	GHashTableIter iter;
-	client_t *client;
-	
-	// For keeping track of the number of clients balanced so that we can yield appropriately
-	guint total = 0;
-	
 	message_t message;
 	message.type = op_text;
 	message.buffer = g_string_sized_new(100);
-	
-	g_mutex_lock(&_clients_lock);
-	
-	g_hash_table_iter_init(&iter, _clients);
 	
 	conns_balance_request_t *req;
 	while ((req = g_async_queue_try_pop(_balances)) != NULL) {
@@ -105,30 +110,26 @@ static void _conns_balance() {
 		DEBUG("Balancing: %d to %s", req->count, req->to);
 		
 		guint cnt = 0;
-		while (cnt++ < req->count && g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
+		
+		gboolean _callback(client_t *client) {
+			if (cnt++ >= req->count) {
+				return FALSE;
+			}
+			
 			if (message.buffer->len > 0) {
 				client_write(client, &message);
 			}
 			
 			STATS_INC(clients_balanced);
+			_conns_clients_remove(client);
 			
-			g_hash_table_iter_remove(&iter);
-			qev_close(client);
-			
-			if (++total == CONNS_YIELD) {
-				total = 0;
-				g_mutex_unlock(&_clients_lock);
-				g_thread_yield();
-				g_mutex_lock(&_clients_lock);
-				g_hash_table_iter_init(&iter, _clients);
-			}
+			return TRUE;
 		}
 		
+		conns_clients_foreach(_callback);
 		g_free(req->to);
 		g_slice_free1(sizeof(*req), req);
 	}
-	
-	g_mutex_unlock(&_clients_lock);
 	
 	g_string_free(message.buffer, TRUE);
 }
@@ -147,7 +148,8 @@ void conns_client_new(client_t *client) {
 	client->timer = -1;
 	
 	g_mutex_lock(&_clients_lock);
-	g_hash_table_add(_clients, client);
+	g_ptr_array_add(_clients, client);
+	client->clients_pos = _clients->len;
 	g_mutex_unlock(&_clients_lock);
 	
 	client_ref(client);
@@ -169,10 +171,8 @@ void conns_client_close(client_t *client) {
 	evs_client_client_close(client);
 	evs_server_client_close(client);
 	
-	// Remove our last reference, this MUST be done last so that any free operation
-	// doesn't interfere with the setting
 	g_mutex_lock(&_clients_lock);
-	g_hash_table_remove(_clients, client);
+	_conns_clients_remove(client);
 	g_mutex_unlock(&_clients_lock);
 	
 	client_unref(client);
@@ -273,22 +273,12 @@ gboolean conns_client_data(client_t *client) {
 }
 
 gboolean conns_init() {
-	// Just hashing clients directly, as a set
-	_clients = g_hash_table_new(NULL, NULL);
+	_clients = g_ptr_array_new();
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
 	
 	return TRUE;
-}
-
-GHashTable* conns_clients() {
-	g_mutex_lock(&_clients_lock);
-	return _clients;
-}
-
-void conns_clients_unlock() {
-	g_mutex_unlock(&_clients_lock);
 }
 
 void conns_client_timeout_clear(client_t *client) {
@@ -326,6 +316,32 @@ void conns_maintenance_tick() {
 	if (ticks++ % CONNS_MAINTENANCE_TIMEOUTS == 0) {
 		_conns_client_timeout_clean();
 	}
+}
+
+void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
+	// For keeping track of the number of clients balanced so that we can yield appropriately
+	guint total = 0;
+	
+	g_mutex_lock(&_clients_lock);
+	guint i = _clients->len;
+	while (i > 0) {
+		if (!_callback(g_ptr_array_index(_clients, i - 1))) {
+			break;
+		}
+		
+		if (++total == CONNS_YIELD) {
+			total = 0;
+			g_mutex_unlock(&_clients_lock);
+			g_thread_yield();
+			g_mutex_lock(&_clients_lock);
+		}
+		
+		if (--i > _clients->len) {
+			i = _clients->len;
+		}
+	}
+	
+	g_mutex_unlock(&_clients_lock);
 }
 
 void conns_message_free(client_t *client) {

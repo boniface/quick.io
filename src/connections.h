@@ -115,24 +115,33 @@ void conns_client_timeout_set(client_t *client);
 gboolean conns_init();
 
 /**
- * Gets a hash-set containing all the clients currently connected to the server.
- * The hash-set will be locked, so you MUST call conns_clients_unlock() when you
- * are done.
- *
- * @return The set of all clients currently connected.
- */
-GHashTable* conns_clients();
-
-/**
- * Unlocks the table once you're done.
- */
-void conns_clients_unlock();
-
-/**
  * Tick to run maintenance operations.
  * This does all sorts of internal cleanup, message flushing, and dead client clearing.
  */
 void conns_maintenance_tick();
+
+/**
+ * Get a function callback on each client.
+ *
+ * @note Clients may be closed / removed from the clients table during this operation,
+ * and it is safe to do so as long as you use g_ptr_array_remove_index_fast()
+ *
+ * @internal Use: _conns_clients_remove()
+ *
+ * @param _callback The function to be called with the current client. Return FALSE any
+ * time to cancel the iteration
+ */
+void conns_clients_foreach(gboolean(*_callback)(client_t*));
+
+/**
+ * Release the lock on the clients, yield, and relock after the yield.
+ */
+void conns_clients_yield();
+
+/**
+ * Release the lock on the clients array.
+ */
+void conns_clients_unlock();
 
 /**
  * Clean up the client message buffers.

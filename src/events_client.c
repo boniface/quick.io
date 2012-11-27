@@ -311,12 +311,10 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * Publish a single message to multiple clients.
  *
  * @param message The message to send to all the subscribers.
- * @param clients A function to get a hash-set of clients: this function must acquire
- * a lock on the hash-set before returning.  NULL indicates no clients, and unlock() will not be
- * called.
- * @param unlock A function to release the lock on the hash-set
+ * @param iter A function that loops through all the clients and calls the passed in function
+ * on them.
  */
-static void _evs_client_pub_message(_async_message_s *amsg, GHashTable*(*clients)(), void(*unlock)()) {
+static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean(*)(client_t*))) {
 	GPtrArray *dead_clients = g_ptr_array_new();
 	
 	// For holding all the message types we might send
@@ -333,27 +331,20 @@ static void _evs_client_pub_message(_async_message_s *amsg, GHashTable*(*clients
 	
 	DEBUG("Publishing message: %s", amsg->message->str);
 	
-	// Go through all the clients and give them their messages
-	GHashTable *_clients = clients();
-	
-	if (_clients != NULL) {
-		UTILS_STATS_INC(evs_client_pubd_messages);
+	gboolean _write(client_t *client) {
+		enum handlers handler = client->handler;
 		
-		GHashTableIter iter;
-		client_t *client;
-		g_hash_table_iter_init(&iter, _clients);
-		while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
-			enum handlers handler = client->handler;
-			
-			if (handler == h_none || client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
-				// Don't remove the client directly: we're holding a lock, and there's a lot
-				// that goes into closing a client, so delay until we're done
-				g_ptr_array_add(dead_clients, client);
-			}
+		if (handler == h_none || client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
+			// Don't remove the client directly: we're holding a lock, and there's a lot
+			// that goes into closing a client, so delay until we're done
+			g_ptr_array_add(dead_clients, client);
 		}
 		
-		unlock();	
+		return TRUE;
 	}
+	
+	// Go through all the clients and give them their messages
+	iter(_write);
 	
 	// Clean up all the allocated frames
 	for (int i = 0; i < h_len; i++) {
@@ -367,11 +358,6 @@ static void _evs_client_pub_message(_async_message_s *amsg, GHashTable*(*clients
 	}
 	
 	g_ptr_array_free(dead_clients, TRUE);
-}
-
-void evs_client_client_ready(client_t *client) {
-	// Initialize our internal management from the client
-	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
 }
 
 status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback) {
@@ -406,6 +392,11 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	return CLIENT_GOOD;
 }
 
+void evs_client_client_ready(client_t *client) {
+	// Initialize our internal management from the client
+	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
+}
+
 void evs_client_client_close(client_t *client) {
 	// It's possible the client never behaved and was killed before
 	// its subscriptions were setup
@@ -428,16 +419,26 @@ void evs_client_send_async_messages() {
 	void _broadcast() {
 		evs_client_sub_t *sub;
 		
-		GHashTable* _get() {
+		void _iter(gboolean(*_write)(client_t*)) {
 			sub = _subscription_get(amsg->event_path, FALSE);
-			return sub != NULL ? sub->clients : NULL;
-		}
-		
-		void _unlock() {
+			
+			if (sub == NULL) {
+				return;
+			}
+			
+			UTILS_STATS_INC(evs_client_pubd_messages);
+			
+			GHashTableIter iter;
+			client_t *client;
+			g_hash_table_iter_init(&iter, sub->clients);
+			while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
+				_write(client);
+			}
+			
 			g_mutex_unlock(&sub->lock);
 		}
 		
-		_evs_client_pub_message(amsg, _get, _unlock);
+		_evs_client_pub_message(amsg, _iter);
 	}
 	
 	void _single() {
@@ -461,7 +462,7 @@ void evs_client_send_async_messages() {
 		amsg->message_opcode = op_text;
 		_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", amsg->message, NULL);
 		
-		_evs_client_pub_message(amsg, conns_clients, conns_clients_unlock);
+		_evs_client_pub_message(amsg, conns_clients_foreach);
 	}
 	
 	void _subscribe() {

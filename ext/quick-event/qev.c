@@ -131,11 +131,6 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 	
 	static int inited = 0;
 	if (!inited) {
-		if (!RAND_poll()) {
-			fprintf(stderr, "qev_listen_ssl(): No entropy for encryption\n");
-			return -1;
-		}
-		
 		SSL_load_error_strings();
 		SSL_library_init();
 		
@@ -188,6 +183,8 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 		return -1;
 	}
 	
+	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+	SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION);
 	SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
 	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
 	
@@ -252,6 +249,13 @@ void qev_close(QEV_CLIENT_T *client) {
 void qev_client_free(void *c) {
 	QEV_CLIENT_T *client = c;
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
+		int mode = SSL_get_shutdown(QEV_CSLOT(client, ssl_ctx));
+		mode |= SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN;
+		
+		SSL_set_shutdown(QEV_CSLOT(client, ssl_ctx), mode);
+		SSL_set_quiet_shutdown(QEV_CSLOT(client, ssl_ctx), 1);
+		SSL_shutdown(QEV_CSLOT(client, ssl_ctx));
+		
 		SSL_free(QEV_CSLOT(client, ssl_ctx));
 	}
 	

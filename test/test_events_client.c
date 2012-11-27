@@ -257,10 +257,18 @@ START_TEST(test_evs_heartbeat) {
 }
 END_TEST
 
+START_TEST(test_evs_heartbeat_no_clients) {
+	evs_client_heartbeat();
+	evs_client_send_async_messages();
+	
+	test_size_eq(stats.messages_sent, 0, "0 heartbeats sent");
+}
+END_TEST
+
 START_TEST(test_evs_heartbeat_yield) {
 	int socket = 0;
 	
-	for (int i = 0; i < CONNS_YIELD; i++) {
+	for (int i = 0; i < CONNS_YIELD*2; i++) {
 		client_t *client = u_client_create(&socket);
 		client->handler = h_rfc6455;
 		conns_client_new(client);
@@ -274,7 +282,7 @@ START_TEST(test_evs_heartbeat_yield) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.messages_sent, CONNS_YIELD, "Heartbeats sent");
+	test_size_eq(stats.messages_sent, CONNS_YIELD*2, "Heartbeats sent");
 }
 END_TEST
 
@@ -840,6 +848,7 @@ Suite* events_client_suite() {
 	tc = tcase_create("Heartbeat");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
 	tcase_add_test(tc, test_evs_heartbeat);
+	tcase_add_test(tc, test_evs_heartbeat_no_clients);
 	tcase_add_test(tc, test_evs_heartbeat_yield);
 	suite_add_tcase(s, tc);
 	
