@@ -49,12 +49,16 @@ static int _epoll;
 /**
  * Accept connections on the socket.
  */
-static int _qev_accept(QEV_CLIENT_T *server) {
+static void _qev_accept(QEV_CLIENT_T *server) {
 	// Loop until there are no errors accepting a socket and setting options
 	while (1) {
 		qev_socket_t client_sock = accept(QEV_CSLOT(server, socket), NULL, NULL);
 		if (client_sock == -1) {
-			return 0;
+			if (errno != EAGAIN && errno != EWOULDBLOCK) {
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Could not accept client: %s", strerror(errno));
+			}
+			
+			return;
 		}
 		
 		if (fcntl(client_sock, F_SETFL, O_NONBLOCK) == -1) {
