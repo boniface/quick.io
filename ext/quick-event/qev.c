@@ -195,7 +195,6 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 }
 
 void qev_run() {
-	g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "QEV RUNNING");
 	int id = qev_wqueue_register(_closed);
 	while (1) {
 		qev_dispatch();
