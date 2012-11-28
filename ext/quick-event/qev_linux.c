@@ -58,7 +58,7 @@ static int _qev_accept(QEV_CLIENT_T *server) {
 		}
 		
 		if (fcntl(client_sock, F_SETFL, O_NONBLOCK) == -1) {
-			perror("Could not set client non-blocking");
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "Could not set client non-blocking (fd %d)", client_sock);
 			close(client_sock);
 			continue;
 		}
@@ -71,7 +71,7 @@ static int _qev_accept(QEV_CLIENT_T *server) {
 			
 			int err;
 			if ((err = SSL_set_fd(ctx, client_sock)) == 0) {
-				fprintf(stderr, "SSL_set_fd failed: %s\n", ERR_reason_error_string(SSL_get_error(ctx, err)));
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_set_fd failed: %s", ERR_reason_error_string(SSL_get_error(ctx, err)));
 				close(client_sock);
 				SSL_free(ctx);
 				continue;
@@ -96,7 +96,7 @@ static int _qev_accept(QEV_CLIENT_T *server) {
 		ev.data.ptr = client;
 		
 		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, client_sock, &ev) == -1) {
-			perror("EPOLL_ADD()");
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "EPOLL_ADD(fd %d): %s", client_sock, strerror(errno));
 			
 			close(client_sock);
 			SSL_free(ctx);
@@ -115,7 +115,7 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 	qev_socket_t sock;
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror("qev_listen()->socket()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->socket(): %s", strerror(errno));
 		return -1;
 	}
 	
@@ -128,25 +128,25 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 	int on = 1;
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
 		close(sock);
-		perror("qev_listen()->setsockopt()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->setsockopt(): %s", strerror(errno));
 		return -1;
 	}
 	
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
 		close(sock);
-		perror("qev_listen()->fcntl()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->fcntl(): %s", strerror(errno));
 		return -1;
 	}
 	
 	if (bind(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
 		close(sock);
-		perror("qev_listen()->bind()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->bind(): %s", strerror(errno));
 		return -1;
 	}
 	
 	if (listen(sock, QEV_LISTEN_BACKLOG) == -1) {
 		close(sock);
-		perror("qev_listen()->listen()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->listen(): %s", strerror(errno));
 		return -1;
 	}
 	
@@ -159,7 +159,7 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 	ev.data.ptr = _client;
 	
 	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, sock, &ev) == -1) {
-		perror("EPOLL_ADD()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "EPOLL_ADD(): %s", strerror(errno));
 		
 		close(sock);
 		g_slice_free1(sizeof(*_client), _client);
@@ -182,7 +182,7 @@ void qev_dispatch() {
 	// It's possible that there just aren't any events, but still print an error
 	if (num_evs < 1) {
 		if (errno != EINTR) {
-			perror("epoll_wait()");
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "epoll_wait(): %s", strerror(errno));
 		}
 		return;
 	}
@@ -261,7 +261,7 @@ int qev_sys_init() {
 	// 1 -> a positive, int size must be given; ignored by new kernels
 	_epoll = epoll_create(1);
 	if (_epoll < 1) {
-		perror("epoll_create()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "epoll_create(): %s", strerror(errno));
 		return -1;
 	}
 	
@@ -283,7 +283,7 @@ int qev_sys_init() {
 		ev.data.ptr = (void*)i; \
 		_timers[i].fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK); \
 		if (_timers[i].fd == -1) { \
-			perror("timerfd_create()"); \
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "timerfd_create(): %s", strerror(errno)); \
 			return -1; \
 		} \
 		spec.it_value.tv_sec = sec; \
@@ -292,7 +292,7 @@ int qev_sys_init() {
 		spec.it_interval.tv_nsec = QEV_MS_TO_NSEC(ms); \
 		timerfd_settime(_timers[i].fd, 0, &spec, NULL); \
 		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _timers[i].fd, &ev) == -1) { \
-			perror("EPOLL_ADD()"); \
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "EPOLL_ADD(): %s", strerror(errno)); \
 			close(_timers[i].fd); \
 			return -1; \
 		} \
@@ -308,22 +308,22 @@ int qev_chuser(const char *username) {
 	struct passwd *user = getpwnam(username);
 	
 	if (user == NULL) {
-		perror("qev_chuser()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_chuser(): %s", strerror(errno));
 		return -1;
 	}
 	
 	if (user->pw_gid == 0 || user->pw_uid == 0) {
-		fprintf(stderr, "Cowardly refusing to run as root\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Cowardly refusing to run as root: %s", strerror(errno));
 		return -1;
 	}
 	
 	if (setgid(user->pw_gid) == -1) {
-		perror("qev_chuser()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_chuser(): %s", strerror(errno));
 		return -1;
 	}
 	
 	if (setuid(user->pw_uid) == -1) {
-		perror("qev_chuser()");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_chuser(): %s", strerror(errno));
 		return -1;
 	}
 	

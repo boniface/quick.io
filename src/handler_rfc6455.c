@@ -237,7 +237,7 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 		*(frame + 1) = SECOND_BYTE_16BIT_LEN;
 		*((guint16*)(frame + 2)) = GUINT16_TO_BE(payload_len);
 	} else {
-		ERROR("Msg len > 65535, not implemented");
+		CRITICAL("Msg len > 65535, not implemented");
 		return NULL;
 	}
 	

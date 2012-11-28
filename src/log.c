@@ -62,8 +62,24 @@ static void _sigusr1_handler(int sig) {
 	_reload_log_file();
 }
 
+static gchar* _get_level(GLogLevelFlags log_level) {
+	switch (log_level & G_LOG_LEVEL_MASK) {
+		case G_LOG_LEVEL_ERROR: return "FATAL";
+		case G_LOG_LEVEL_CRITICAL: return "CRITICAL";
+		case G_LOG_LEVEL_WARNING: return "WARNING";
+		case G_LOG_LEVEL_MESSAGE: return "MESSAGE";
+		case G_LOG_LEVEL_INFO: return "INFO";
+		case G_LOG_LEVEL_DEBUG: return "DEBUG";
+		default: return "LOG";
+	}
+}
+
 static void _log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
-	fprintf(_log_file, "%s\n", message);
+	if (log_domain == NULL) {
+		log_domain = "QIO";
+	}
+	
+	fprintf(_log_file, "%s : %s : %s\n", log_domain, _get_level(log_level), message);
 }
 
 gboolean log_init() {
@@ -79,7 +95,7 @@ gboolean log_init() {
 	g_log_set_default_handler(_log, NULL);
 	
 	if (!_reload_log_file()) {
-		ERROR("Could not open log file");
+		CRITICAL("Could not open log file");
 		return FALSE;
 	}
 	

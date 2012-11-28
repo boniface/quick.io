@@ -17,7 +17,7 @@ The application thread goes through phases in its lifetime: initialization and r
 Initialization
 --------------
 
-The thread will first be spooled up during server initialization: during this time, the thread will receive a call to `app_init()`. This function should setup all the application's internal structures, request its configuration be loaded, validate any configuration, and, if anything fails, `return FALSE`, thus causing the server to fail loading. It might also be helpful (for debugging) to spit out a message with `ERROR()` before failing. If everything goes well, however, the application should `return TRUE`, indicating that it is ready to run.
+The thread will first be spooled up during server initialization: during this time, the thread will receive a call to `app_init()`. This function should setup all the application's internal structures, request its configuration be loaded, validate any configuration, and, if anything fails, `return FALSE`, thus causing the server to fail loading. It might also be helpful (for debugging) to spit out a message with `CRITICAL()` before failing. If everything goes well, however, the application should `return TRUE`, indicating that it is ready to run.
 
 .. note:: `app_init()` is an optional function; if it's not implemented, it will be assumed that the application is set to run.
 

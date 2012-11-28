@@ -7,7 +7,7 @@
 #include "qio.h"
 
 #if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE) || defined(COMPILE_PROFILE)
-	#define DEBUG(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "DEBUG : %s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+	#define DEBUG(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 #else
 	/**
 	 * Output debug info to the console, only when not built for prod.
@@ -16,19 +16,19 @@
 #endif
 
 /**
- * Output warning to the console.
+ * Output warning
  */
-#define WARN(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "WARN : %s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+#define WARN(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
- * Output error to the console.
+ * Output critical, non-fatal error
  */
-#define ERROR(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, "ERROR : %s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+#define CRITICAL(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * A fatal error, after which nothing can continue.
  */
-#define FATAL(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, "FATAL : %s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+#define FATAL(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * Sets up all the log handlers and such.

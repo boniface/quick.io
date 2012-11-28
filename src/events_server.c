@@ -350,13 +350,13 @@ status_t evs_server_handle(client_t *client) {
 event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
 	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
-		ERROR("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
+		CRITICAL("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 	
 	// Don't allow events with EVENT_DATA_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DATA_DELIMITER) != NULL) {
-		ERROR("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
+		CRITICAL("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 	
@@ -365,7 +365,7 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	g_mutex_lock(&_events_lock);
 	
 	if (g_hash_table_contains(_events_by_path, path)) {
-		ERROR("Event handler is already registered: %s", path);
+		CRITICAL("Event handler is already registered: %s", path);
 		g_free(path);
 		return NULL;
 	}
@@ -435,7 +435,7 @@ status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, cons
 callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn) {
 	
 	if (fn == NULL) {
-		ERROR("No callback function passed into evs_server_callback_new(). You probably didn't mean that.");
+		CRITICAL("No callback function passed into evs_server_callback_new(). You probably didn't mean that.");
 		
 		if (data != NULL && free_fn != NULL) {
 			free_fn(data);

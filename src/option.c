@@ -184,7 +184,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 	GKeyFile *conf = g_key_file_new();
 	
 	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
-		ERROR("Could not load config file: %s", _config_file);
+		CRITICAL("Could not load config file: %s", _config_file);
 		g_key_file_free(conf);
 		return FALSE;
 	}
@@ -232,7 +232,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 	// Conversely: 01100000 - 1 = 1011111; 01100000 & 1011111 = 1000000
 	// This is the same check used in malloc.c
 	if ((_max_subs & (_max_subs - 1)) != 0) {
-		ERROR("Option `max-subs` must be a power of 2.");
+		CRITICAL("Option `max-subs` must be a power of 2.");
 		g_key_file_free(conf);
 		return FALSE;
 	}
@@ -260,7 +260,7 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	char path[PATH_MAX+1];
 	memset(&path, 0, sizeof(path));
 	if (realpath(_config_file, path) == NULL) {
-		ERROR("Could not locate configuration file: %s", _config_file);
+		CRITICAL("Could not locate configuration file: %s", _config_file);
 		success = FALSE;
 	} else {
 		g_free(_config_file);

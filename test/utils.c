@@ -111,12 +111,12 @@ int u_connect() {
 	addy.sin_port = htons(option_bind_port());
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		ERROR("Could not create socket: %s", strerror(errno));
+		CRITICAL("Could not create socket: %s", strerror(errno));
 		return 0;
 	}
 
 	if (connect(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
-		ERROR("Could not connect: %s", strerror(errno));
+		CRITICAL("Could not connect: %s", strerror(errno));
 		return 0;
 	}
 	

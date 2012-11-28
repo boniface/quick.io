@@ -41,7 +41,7 @@ static inline int _qev_ssl_handshake(SSL *ctx, volatile qev_flags_t *flags) {
 		__sync_or_and_fetch(flags, QEV_CMASK_SSL_HANDSHAKING);
 		err = SSL_get_error(ctx, err);
 		if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
-			fprintf(stderr, "SSL_accept failed: %s\n", ERR_error_string(err, NULL));
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_accept failed: %s", ERR_error_string(err, NULL));
 			return -1;
 		}
 	}
@@ -149,37 +149,37 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 	SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
 	
 	if (ctx == NULL) {
-		fprintf(stderr, "qev_listen_ssl(): Could not create SSL context\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not create SSL context");
 		return -1;
 	}
 	
 	if (!SSL_CTX_use_certificate_chain_file(ctx, cert_path)) {
-		fprintf(stderr, "qev_listen_ssl(): Could not load certificate\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not load certificate");
 		return -1;
 	}
 	
 	if (!SSL_CTX_use_PrivateKey_file(ctx, key_path, SSL_FILETYPE_PEM)) {
-		fprintf(stderr, "qev_listen_ssl(): Could not load private key\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not load private key");
 		return -1;
 	}
 	
 	if (!SSL_CTX_check_private_key(ctx)) {
-		fprintf(stderr, "qev_listen_ssl(): Could not validate private key\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not validate private key");
 		return -1;
 	}
 	
 	if (!SSL_CTX_set_cipher_list(ctx, QEV_SSL_CIPHERS)) {
-		fprintf(stderr, "qev_listen_ssl(): Could not set SSL ciphers\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not set SSL ciphers");
 		return -1;
 	}
 	
 	if (!_qev_setup_dh(ctx)) {
-		fprintf(stderr, "qev_listen_ssl(): Could not setup Diffie-Hellman params\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not setup Diffie-Hellman params");
 		return -1;
 	}
 	
 	if (!_qev_setup_ecdh(ctx)) {
-		fprintf(stderr, "qev_listen_ssl(): Could not setup ECDH params\n");
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen_ssl(): Could not setup ECDH params");
 		return -1;
 	}
 	
@@ -195,6 +195,7 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 }
 
 void qev_run() {
+	g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "QEV RUNNING");
 	int id = qev_wqueue_register(_closed);
 	while (1) {
 		qev_dispatch();

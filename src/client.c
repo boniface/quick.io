@@ -111,7 +111,7 @@ status_t client_message(client_t* client) {
 			default:
 			case h_none:
 				// This should technically be impossible, nevertheless...
-				ERROR("Client went into message processing without a handler");
+				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
 	} else {
@@ -122,7 +122,7 @@ status_t client_message(client_t* client) {
 			
 			default:
 			case h_none:
-				ERROR("Client went into message processing without a handler");
+				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
 	}

@@ -108,7 +108,7 @@ gboolean apps_run() {
 		
 		// If we can't open the app, just quit
 		if (module == NULL) {
-			ERROR("Could not open app (%s): %s", path, g_module_error());
+			CRITICAL("Could not open app (%s): %s", path, g_module_error());
 			return FALSE;
 		}
 		
@@ -156,7 +156,7 @@ gboolean apps_run() {
 		
 		// If the app didn't register any of the boilerplate stuff
 		if (app->_set_app_opts == NULL) {
-			ERROR("App \"%s\" missing qio_set_app_opts()", app->name);
+			CRITICAL("App \"%s\" missing qio_set_app_opts()", app->name);
 			return FALSE;
 		}
 		

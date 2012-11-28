@@ -24,6 +24,11 @@
 #endif
 
 /**
+ * The prefix that our messages are logged under
+ */
+#define QEV_DOMAIN "QEV"
+
+/**
  * The ciphers that we'll accept
  */
 #define QEV_SSL_CIPHERS "HIGH:!aNULL:!MD5"

@@ -5,13 +5,13 @@
 
 int main(int argc, char *argv[]) {
 	if (!log_init()) {
-		ERROR("Could not init log");
+		CRITICAL("Could not init log");
 		return 1;
 	}
 	
 	// Setup the cross-process locking mechanism
 	if (!test_lock_init()) {
-		ERROR("Could not setup inter-process locking.  Failing.");
+		CRITICAL("Could not setup inter-process locking.  Failing.");
 		return 1;
 	}
 

@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 	if (qev_init() == 0) {
 		DEBUG("Quick-event inited");
 	} else {
-		ERROR("Could not init quick-event");
+		CRITICAL("Could not init quick-event");
 		return 1;
 	}
 	
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 	if (option_parse_args(argc, argv, &error)) {
 		DEBUG("Options parsed");
 	} else {
-		ERROR("%s", error != NULL ? error->message : "The arguments are not happy");
+		CRITICAL("%s", error != NULL ? error->message : "The arguments are not happy");
 		return 1;
 	}
 	
@@ -35,52 +35,52 @@ int main(int argc, char *argv[]) {
 	if (option_parse_config_file(NULL, NULL, 0, &error)) {
 		DEBUG("Config file parsed");
 	} else {
-		ERROR("%s", error->message);
+		CRITICAL("%s", error->message);
 		return 1;
 	}
 	
 	if (!log_init()) {
-		ERROR("Could not setup logging.");
+		CRITICAL("Could not setup logging.");
 		return 1;
 	}
 	
 	if (evs_server_init()) {
 		DEBUG("Server events inited");
 	} else {
-		ERROR("Could not init server events.");
+		CRITICAL("Could not init server events.");
 		return 1;
 	}
 	
 	if (evs_client_init()) {
 		DEBUG("Client events inited");
 	} else {
-		ERROR("Could not init client events.");
+		CRITICAL("Could not init client events.");
 		return 1;
 	}
 	
 	if (conns_init()) {
 		DEBUG("Connections handler inited");
 	} else {
-		ERROR("Could not init connections handler.");
+		CRITICAL("Could not init connections handler.");
 		return 1;
 	}
 	
 	if (stats_init()) {
 		DEBUG("Stats handler inited");
 	} else {
-		ERROR("Could not init stats handler.");
+		CRITICAL("Could not init stats handler.");
 		return 1;
 	}
 	
 	if (apps_run()) {
 		DEBUG("Apps running");
 	} else {
-		ERROR("Could not run the apps.");
+		CRITICAL("Could not run the apps.");
 		return 1;
 	}
 	
 	if (option_bind_address() == NULL && option_bind_address_ssl() == NULL) {
-		ERROR("Neither bind-address nor bind-address-ssl was specified. Can't run a server without listening for connections.  Exiting.");
+		CRITICAL("Neither bind-address nor bind-address-ssl was specified. Can't run a server without listening for connections.  Exiting.");
 		return 1;
 	}
 	
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 		if (qev_listen(option_bind_address(), option_bind_port()) == 0) {
 			DEBUG("Listening on: %s:%d", option_bind_address(), option_bind_port());
 		} else {
-			ERROR("Could not listen on %s:%d", option_bind_address(), option_bind_port());
+			CRITICAL("Could not listen on %s:%d", option_bind_address(), option_bind_port());
 			return 1;
 		}
 	}
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 		if (qev_listen_ssl(option_bind_address_ssl(), option_bind_port_ssl(), option_ssl_cert_chain(), option_ssl_private_key()) == 0) {
 			DEBUG("SSL Listening on: %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
 		} else {
-			ERROR("SSL could not run on %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+			CRITICAL("SSL could not run on %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
 			return 1;
 		}
 	}
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
 		if (qev_chuser(option_user()) == 0) {
 			DEBUG("Changed to user %s", option_user());
 		} else {
-			ERROR("Could not change to user %s", option_user());
+			CRITICAL("Could not change to user %s", option_user());
 			return 1;
 		}
 	}
