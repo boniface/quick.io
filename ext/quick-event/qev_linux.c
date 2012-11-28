@@ -11,15 +11,6 @@
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET;
 
 /**
- * A shortcut for getting things into epoll
- */
-#define EPOLL_ADD(fd, ev) \
-	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, fd, &ev) == -1) { \
-		perror("EPOLL_ADD()"); \
-		return -1; \
-	}
-
-/**
  * Held inside _timers, for quick reference
  */
 typedef struct {
@@ -103,7 +94,15 @@ static int _qev_accept(QEV_CLIENT_T *server) {
 		struct epoll_event ev;
 		ev.events = EPOLL_READ_EVENTS;
 		ev.data.ptr = client;
-		EPOLL_ADD(client_sock, ev);
+		
+		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, client_sock, &ev) == -1) {
+			perror("EPOLL_ADD()");
+			
+			close(client_sock);
+			SSL_free(ctx);
+			g_slice_free1(sizeof(*client), client);
+			continue;
+		}
 		
 		QEV_CLIENT_NEW_FN(client);
 	}
@@ -158,7 +157,14 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
 	ev.data.ptr = _client;
-	EPOLL_ADD(sock, ev);
+	
+	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, sock, &ev) == -1) {
+		perror("EPOLL_ADD()");
+		
+		close(sock);
+		g_slice_free1(sizeof(*_client), _client);
+		return -1;
+	}
 	
 	if (client != NULL) {
 		*client = _client;
@@ -285,7 +291,11 @@ int qev_sys_init() {
 		spec.it_interval.tv_sec = sec; \
 		spec.it_interval.tv_nsec = QEV_MS_TO_NSEC(ms); \
 		timerfd_settime(_timers[i].fd, 0, &spec, NULL); \
-		EPOLL_ADD(_timers[i].fd, ev); \
+		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _timers[i].fd, &ev) == -1) { \
+			perror("EPOLL_ADD()"); \
+			close(_timers[i].fd); \
+			return -1; \
+		} \
 		i++;
 		
 		QEV_TIMERS
