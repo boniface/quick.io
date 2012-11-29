@@ -27,7 +27,7 @@ If you're going to have a crap-ton (yes, that is a metric) of clients connected,
 
 ```bash
 sudo sysctl -w net.ipv4.tcp_mem="202304 259072 392608"
-echo 2000000 | sudo tee /proc/sys/fs/file-max
+sudo sysctl -w fs.file-max=2000000
 ```
 
 Don't forget to update the number of files you're allowed to have open.
