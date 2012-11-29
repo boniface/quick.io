@@ -1,7 +1,7 @@
 include ../Makefile.inc
 
 # Hide everything by default, unless annotated with APP_EXPORT
-CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/ext/
+CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/lib/
 LDFLAGS += -Wl,-E
 
 OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/persistent_socket.o
@@ -21,10 +21,10 @@ $(TARGET): $(OBJECTS)
 endif
 
 $(BUILDDIR)/http_parser.o:
-	$(MAKE) -C ../ext http-parser
+	$(MAKE) -C ../lib deps
 	
 $(BUILDDIR)/persistent_socket.o:
-	$(MAKE) -C ../ext persistent-socket
+	$(MAKE) -C ../lib deps
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
 	@echo "\n\n"-------- Compiling $< --------

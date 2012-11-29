@@ -142,4 +142,4 @@ int main(int argc, char *argv[]) {
 #include "../test/test_main.c"
 #endif
 
-#include "../ext/quick-event/qev.c"
+#include "../lib/quick-event/qev.c"
