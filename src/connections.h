@@ -124,7 +124,14 @@ void conns_maintenance_tick();
  * Get a function callback on each client.
  *
  * @note Clients may be closed / removed from the clients table during this operation,
- * and it is safe to do so as long as you use g_ptr_array_remove_index_fast()
+ * and it is safe to do so as long as you use g_ptr_array_remove_index_fast().
+ *
+ * @attention It's possible you might see the same client twice, and you WILL NOT
+ * see clients added after the iteration begins: this function yields during its
+ * runtime, and since it runs from the end of the list of clients, any removed client
+ * will cause the last client in the list to move to the position of the removed
+ * client, so if you're between the two when the client is removed, you'll see the
+ * same client again.
  *
  * @internal Use: _conns_clients_remove()
  *

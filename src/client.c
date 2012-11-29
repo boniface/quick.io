@@ -178,6 +178,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	if (frame_len > 0 && qev_write(client, frame, frame_len) == (gssize)frame_len) {
 		return CLIENT_GOOD;
 	} else {
+		STATS_INC(client_failed_writes)
 		return CLIENT_FATAL;
 	}
 }

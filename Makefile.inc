@@ -48,5 +48,6 @@ endif
 # Don't optimize when debugging, testing, etc
 # Gives better information about coverage and everything
 ifndef OPTIMIZE
-	CFLAGS += -O3
+	CFLAGS += -O2
+	LDFLAGS += -O2
 endif

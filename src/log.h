@@ -16,6 +16,11 @@
 #endif
 
 /**
+ * General useful information
+ */
+#define INFO(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+
+/**
  * Output warning
  */
 #define WARN(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)

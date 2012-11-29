@@ -9,7 +9,7 @@
 
 #define TIMEOUT 100
 #define ADDRESS "127.0.0.1"
-#define PORT 81
+#define PORT 8080
 
 #define HANDSHAKE "GET /qio HTTP/1.1\n" \
 	"Host: server.example.com\n" \

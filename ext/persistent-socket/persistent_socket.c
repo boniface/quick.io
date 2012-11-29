@@ -16,6 +16,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <glib.h>
+
 #include "persistent_socket.h"
 
 /**
@@ -84,6 +86,7 @@ void psocket_close(psocket *psocket) {
 
 void psocket_send(psocket *psocket, char *msg, int len) {
 	if (send(psocket->socket, msg, len, MSG_NOSIGNAL) != len) {
+		g_log("PSOCKET", G_LOG_LEVEL_INFO, "psocket_send: %s", strerror(errno));
 		_connect(psocket);
 	}
 }

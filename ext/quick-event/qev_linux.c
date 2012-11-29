@@ -248,6 +248,10 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 		ret = sent <= 0 ? -1 : sent;
 	} else {
 		ret = send(QEV_CSLOT(client, socket), buff, buff_size, MSG_NOSIGNAL);
+		
+		if (ret == -1) {
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_INFO, "Client write error (fd %d): %s", QEV_CSLOT(client, socket), strerror(errno));
+		}
 	}
 	
 	qev_client_unlock(client);
