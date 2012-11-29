@@ -13,11 +13,6 @@
 #define STATS_INTERVAL 10
 
 /**
- * The maximum size the graphite buffer is allowed to be before flushing.
- */
-#define STATS_MAX_BUFFER_SIZE 512
-
-/**
  * The list of all stats that are reset on every tick.
  */
 #define STATS_S_COUNTERS \

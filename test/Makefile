@@ -1,7 +1,7 @@
 include ../Makefile.inc
 include ../src/Makefile
 
-CFLAGS += -I../src -DTESTING=1
+CFLAGS += -I../src -I../ext/check/ -DTESTING=1
 LDFLAGS += --coverage
 LIBCHECK = ../ext/check/libcheck$(ARCH).a
 OBJECTS = $(BUILDDIR)/test.o $(BUILDDIR)/utils.o $(BUILDDIR)/utils_locks.o $(BUILDDIR)/utils_stats.o
