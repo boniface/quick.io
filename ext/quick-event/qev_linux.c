@@ -214,6 +214,7 @@ void qev_dispatch() {
 			_qev_accept(client);
 		} else {
 			if (events & EPOLLRDHUP) {
+				STATS_INC(client_hups);
 				qev_close(client);
 			} else if (events & EPOLLIN) {
 				qev_client_read(client);

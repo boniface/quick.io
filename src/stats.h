@@ -23,6 +23,7 @@
 	X(client_timeouts, "clients.timeouts") /** The number of clients that timed out. */ \
 	X(client_handshakes, "clients.handshakes") /** The number of successful handshakes. */ \
 	X(client_failed_writes, "clients.failed_writes") /** The number of socket write errors */ \
+	X(client_hups, "clients.hups") /** The number of hups from epoll ***TEMP*** */ \
 	X(messages_sent, "messages.sent") /** The number of messages sent in this tick.  */ \
 	X(messages_received, "messages.received") /** The number of messages received in this tick. */
 
