@@ -79,7 +79,7 @@ static void _log(const gchar *log_domain, GLogLevelFlags log_level, const gchar 
 		log_domain = "QIO";
 	}
 	
-	fprintf(_log_file, "%s - %s [%ld] %s\n", log_domain, _get_level(log_level), g_get_real_time() / 1000000, message);
+	fprintf(_log_file, "%s - %s [%ld] %s\n", log_domain, _get_level(log_level), g_get_real_time(), message);
 }
 
 gboolean log_init() {
