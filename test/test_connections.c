@@ -112,6 +112,7 @@ START_TEST(test_conns_clients_foreach) {
 		client_t *client = u_client_create(NULL);
 		client->handler = h_rfc6455;
 		conns_client_new(client);
+		client->state = cstate_running;
 	}
 	
 	conns_clients_foreach(_callback);
@@ -133,6 +134,7 @@ START_TEST(test_conns_balance_1) {
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 	conns_client_new(client);
+	client->state = cstate_running;
 	
 	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 	_conns_balance();
@@ -153,11 +155,13 @@ START_TEST(test_conns_balance_2) {
 	client_t *client1 = u_client_create(&socket1);
 	client1->handler = h_rfc6455;
 	conns_client_new(client1);
+	client1->state = cstate_running;
 	
 	int socket2 = 0;
 	client_t *client2 = u_client_create(&socket2);
 	client2->handler = h_rfc6455;
 	conns_client_new(client2);
+	client2->state = cstate_running;
 	
 	test_int64_eq(g_async_queue_length(_balances), 2, "Two requests");
 	_conns_balance();
@@ -189,6 +193,7 @@ START_TEST(test_conns_balance_yield) {
 		client_t *client = u_client_create(&socket);
 		client->handler = h_rfc6455;
 		conns_client_new(client);
+		client->state = cstate_running;
 	}
 	
 	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");

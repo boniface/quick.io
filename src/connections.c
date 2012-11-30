@@ -319,13 +319,14 @@ void conns_maintenance_tick() {
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
-	// For keeping track of the number of clients balanced so that we can yield appropriately
+	// For keeping track of the number of iterations so that we can yield appropriately
 	guint total = 0;
 	
 	g_mutex_lock(&_clients_lock);
 	guint i = _clients->len;
 	while (i > 0) {
-		if (!_callback(g_ptr_array_index(_clients, i - 1))) {
+		client_t *client = g_ptr_array_index(_clients, i - 1);
+		if (client->state == cstate_running && !_callback(client)) {
 			break;
 		}
 		

@@ -239,8 +239,8 @@ START_TEST(test_evs_heartbeat) {
 	int socket = 0;
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
-	
 	conns_client_new(client);
+	client->state = cstate_running;
 	
 	evs_client_heartbeat();
 	evs_client_send_async_messages();
@@ -272,6 +272,7 @@ START_TEST(test_evs_heartbeat_yield) {
 		client_t *client = u_client_create(&socket);
 		client->handler = h_rfc6455;
 		conns_client_new(client);
+		client->state = cstate_running;
 	}
 	
 	evs_client_heartbeat();
