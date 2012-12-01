@@ -250,7 +250,7 @@ START_TEST(test_evs_heartbeat) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.messages_sent, 1, "1 heartbeat sent");
+	test_size_eq(stats.heartbeat, 1, "1 heartbeat sent");
 	
 	close(socket);
 	u_client_free(client);
@@ -258,10 +258,9 @@ START_TEST(test_evs_heartbeat) {
 END_TEST
 
 START_TEST(test_evs_heartbeat_no_clients) {
+	// No segfaults?
 	evs_client_heartbeat();
 	evs_client_send_async_messages();
-	
-	test_size_eq(stats.messages_sent, 0, "0 heartbeats sent");
 }
 END_TEST
 
@@ -283,7 +282,7 @@ START_TEST(test_evs_heartbeat_yield) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.messages_sent, CONNS_YIELD*2, "Heartbeats sent");
+	test_size_eq(stats.heartbeat, 1, "Heartbeats sent");
 }
 END_TEST
 

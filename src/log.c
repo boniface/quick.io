@@ -5,7 +5,7 @@
 #include "qio.h"
 
 #define BACKTRACE_SIZE 100
-#define DEBUGGING defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE) || defined(TESTING)
+#define DEBUGGING defined(COMPILE_DEBUG) || defined(TESTING)
 
 /**
  * The log file that we're currently writing to

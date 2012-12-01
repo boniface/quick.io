@@ -16,22 +16,51 @@
  * The list of all stats that are reset on every tick.
  */
 #define STATS_S_COUNTERS \
-	X(clients_new, "clients.new") /** The number of new client connections. */ \
-	X(clients_closed, "clients.closed") /** The number of client disconnects. */ \
-	X(clients_balanced, "clients.balanced") /** The number of clients balanced. */ \
-	X(clients_ratelimited, "clients.ratelimited") /** The number of clients that were rate limited and closed. */ \
-	X(client_timeouts, "clients.timeouts") /** The number of clients that timed out. */ \
-	X(client_handshakes, "clients.handshakes") /** The number of successful handshakes. */ \
-	X(client_failed_writes, "clients.failed_writes") /** The number of socket write errors */ \
-	X(client_hups, "clients.hups") /** The number of hups from epoll ***TEMP*** */ \
-	X(messages_sent, "messages.sent") /** The number of messages sent in this tick.  */ \
-	X(messages_received, "messages.received") /** The number of messages received in this tick. */
+	/** The number of new client connections. */ \
+	X(clients_new, "clients.new") \
+	\
+	/** The number of client disconnects. */ \
+	X(clients_closed, "clients.closed") \
+	\
+	/** The number of clients balanced. */ \
+	X(clients_balanced, "clients.balanced") \
+	\
+	/** The number of clients that were rate limited and closed. */ \
+	X(clients_ratelimited, "clients.ratelimited") \
+	\
+	/** The number of clients that timed out. */ \
+	X(client_timeouts, "clients.timeouts") \
+	\
+	/** The number of successful handshakes. */ \
+	X(client_handshakes, "clients.handshakes") \
+	\
+	/** The number of flash handshakes. */ \
+	X(client_handshakes_flash, "clients.handshakes_flash") \
+	\
+	/** The number of socket write errors */ \
+	X(client_failed_writes, "clients.failed_writes") \
+	\
+	/** The number of hups from epoll ***TEMP*** */ \
+	X(client_hups, "clients.hups") \
+	\
+	/** Indicates when a heartbeat is sent (see graphite's drawAsInfinite()) */ \
+	X(heartbeat, "heartbeat") \
+	\
+	/** The number of messages destined for 1 client */ \
+	X(messages_sent, "messages.sent") \
+	\
+	/** The number of messages sent in broadcast */ \
+	X(messages_broadcast, "messages.broadcast") \
+	\
+	/** The number of messages received in this tick. */ \
+	X(messages_received, "messages.received")
 
 /**
  * The fields that can be sent to graphite.
  */
 #define STATS_S_VALUES \
-	X(clients, "clients.connected") /** The number of clients connected. */ \
+	/** The number of clients connected. */ \
+	X(clients, "clients.connected")
 
 /**
  * The statistics that are recorded.

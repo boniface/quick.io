@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include "qio.h"
 
-#if defined(COMPILE_DEBUG) || defined(COMPILE_PROFILE) || defined(COMPILE_PROFILE)
+#if defined(COMPILE_DEBUG) || defined(TESTING)
 	#define DEBUG(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 #else
 	/**

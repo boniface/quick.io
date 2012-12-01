@@ -50,7 +50,6 @@ static int _epoll;
  * Accept connections on the socket.
  */
 static void _qev_accept(QEV_CLIENT_T *server) {
-	// Loop until there are no errors accepting a socket and setting options
 	while (1) {
 		qev_socket_t client_sock = accept(QEV_CSLOT(server, socket), NULL, NULL);
 		if (client_sock == -1) {
@@ -181,11 +180,9 @@ void qev_dispatch() {
 	// Where the OS will put events for us
 	struct epoll_event events[QEV_MAX_EVENTS];
 	
-	int num_evs = epoll_wait(_epoll, events, QEV_MAX_EVENTS, -1);
-	
-	// It's possible that there just aren't any events, but still print an error
+	int num_evs = epoll_wait(_epoll, events, QEV_MAX_EVENTS, QEV_EPOLL_TIMEOUT);
 	if (num_evs < 1) {
-		if (errno != EINTR) {
+		if (num_evs == -1 && errno != EINTR) {
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "epoll_wait(): %s", strerror(errno));
 		}
 		return;

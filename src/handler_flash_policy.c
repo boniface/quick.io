@@ -16,6 +16,7 @@ status_t h_flash_policy_handshake(client_t *client) {
 	// From here, we can just write to the client and abort him rather than have to have
 	// connections have weird conditions about it.
 	// UGHHHHHH
+	STATS_INC(client_handshakes_flash);
 	client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 	
 	return CLIENT_FATAL;

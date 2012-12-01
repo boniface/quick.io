@@ -151,7 +151,7 @@ APP_EXPORT test_stats_t* utils_stats();
  */
 
 #ifdef TESTING
-	#define UTILS_STATS_INC(slot) g_atomic_pointer_add(&(utils_stats()->slot), 1)
+	#define TEST_STATS_INC(slot) g_atomic_pointer_add(&(utils_stats()->slot), 1)
 #else
-	#define UTILS_STATS_INC(slot)
+	#define TEST_STATS_INC(slot)
 #endif

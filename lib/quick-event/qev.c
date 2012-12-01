@@ -112,6 +112,26 @@ static void _ssl_lock_fn(int mode, int lock_num, const char *file, int line) {
 	}
 }
 
+static void qev_client_free(void *c) {
+	QEV_CLIENT_T *client = c;
+	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
+		int mode = SSL_get_shutdown(QEV_CSLOT(client, ssl_ctx));
+		mode |= SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN;
+		
+		SSL_set_shutdown(QEV_CSLOT(client, ssl_ctx), mode);
+		SSL_set_quiet_shutdown(QEV_CSLOT(client, ssl_ctx), 1);
+		SSL_shutdown(QEV_CSLOT(client, ssl_ctx));
+		
+		SSL_free(QEV_CSLOT(client, ssl_ctx));
+	}
+	
+	QEV_CLIENT_CLOSE_FN(client);
+	
+	#ifndef QEV_CLIENT_NEVER_FREE
+		g_slice_free1(sizeof(*client), client);
+	#endif
+}
+
 int qev_init() {
 	_closed = qev_wqueue_init(qev_client_free);
 	return qev_sys_init();
@@ -244,26 +264,6 @@ void qev_close(QEV_CLIENT_T *client) {
 		qev_sys_client_closed(client);
 		qev_wqueue_add(_closed, client);
 	}
-}
-
-void qev_client_free(void *c) {
-	QEV_CLIENT_T *client = c;
-	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
-		int mode = SSL_get_shutdown(QEV_CSLOT(client, ssl_ctx));
-		mode |= SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN;
-		
-		SSL_set_shutdown(QEV_CSLOT(client, ssl_ctx), mode);
-		SSL_set_quiet_shutdown(QEV_CSLOT(client, ssl_ctx), 1);
-		SSL_shutdown(QEV_CSLOT(client, ssl_ctx));
-		
-		SSL_free(QEV_CSLOT(client, ssl_ctx));
-	}
-	
-	QEV_CLIENT_CLOSE_FN(client);
-	
-	#ifndef QEV_CLIENT_NEVER_FREE
-		g_slice_free1(sizeof(*client), client);
-	#endif
 }
 
 void qev_client_lock(QEV_CLIENT_T *client) {

@@ -120,6 +120,41 @@ START_TEST(test_conns_clients_foreach) {
 }
 END_TEST
 
+START_TEST(test_conns_clients_remove_0) {
+	for (guint i = 0; i < 10; i++) {
+		client_t *client = u_client_create(NULL);
+		client->handler = h_rfc6455;
+		conns_client_new(client);
+		client->state = cstate_running;
+		
+		test_uint64_eq(client->clients_pos, i + 1, "Correct position");
+	}
+	
+	for (guint i = 10; i > 0; i--) {
+		client_t *client = g_ptr_array_index(_clients, i - 1);
+		_conns_clients_remove(client);
+		
+		test_uint64_eq(client->clients_pos, 0, "Correct position");
+	}
+}
+END_TEST
+
+START_TEST(test_conns_clients_remove_1) {
+	client_t *client1 = u_client_create(NULL);
+	conns_client_new(client1);
+	
+	client_t *client2 = u_client_create(NULL);
+	conns_client_new(client2);
+	
+	client_t *client3 = u_client_create(NULL);
+	conns_client_new(client3);
+	
+	_conns_clients_remove(client2);
+	
+	test_uint64_eq(client3->clients_pos, 2, "Correct position");
+}
+END_TEST
+
 START_TEST(test_conns_balance_0) {
 	conns_balance(100, "test");
 	
@@ -218,6 +253,8 @@ Suite* conns_suite() {
 	tcase_add_test(tc, test_conns_message_clean_2);
 	tcase_add_test(tc, test_conns_message_clean_3);
 	tcase_add_test(tc, test_conns_clients_foreach);
+	tcase_add_test(tc, test_conns_clients_remove_0);
+	tcase_add_test(tc, test_conns_clients_remove_1);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Balance");

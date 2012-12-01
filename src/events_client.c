@@ -245,8 +245,6 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 	g_mutex_unlock(&sub->lock);
 	
 	// Give the client a reference to the key of the event he is subscribed to
-	// Locking: since the client can be accessed by async notifications, we need
-	// to lock him
 	g_ptr_array_add(client->subs, sub);
 	
 	qev_client_unlock(client);
@@ -353,7 +351,7 @@ static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean
 	
 	// Clean up dead clients
 	for (gsize i = 0; i < dead_clients->len; i++) {
-		UTILS_STATS_INC(evs_client_send_pub_closes);
+		TEST_STATS_INC(evs_client_send_pub_closes);
 		qev_close(g_ptr_array_index(dead_clients, i));
 	}
 	
@@ -426,12 +424,13 @@ void evs_client_send_async_messages() {
 				return;
 			}
 			
-			UTILS_STATS_INC(evs_client_pubd_messages);
+			TEST_STATS_INC(evs_client_pubd_messages);
 			
 			GHashTableIter iter;
 			client_t *client;
 			g_hash_table_iter_init(&iter, sub->clients);
 			while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
+				STATS_INC(messages_broadcast);
 				_write(client);
 			}
 			
@@ -442,7 +441,7 @@ void evs_client_send_async_messages() {
 	}
 	
 	void _single() {
-		UTILS_STATS_INC(evs_client_async_messages);
+		TEST_STATS_INC(evs_client_async_messages);
 		
 		message_t m;
 		m.type = amsg->message_opcode;
@@ -451,7 +450,7 @@ void evs_client_send_async_messages() {
 		if (client_write(amsg->client, &m) != CLIENT_GOOD) {
 			// qev_close causes conns_client_close to be called, which calls client_unref,
 			// so don't let it be called again in the loop
-			UTILS_STATS_INC(evs_client_send_single_closes);
+			TEST_STATS_INC(evs_client_send_single_closes);
 			qev_close(amsg->client);
 			amsg->client = NULL;
 		}
@@ -462,6 +461,7 @@ void evs_client_send_async_messages() {
 		amsg->message_opcode = op_text;
 		_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", amsg->message, NULL);
 		
+		STATS_INC(heartbeat);
 		_evs_client_pub_message(amsg, conns_clients_foreach);
 	}
 	

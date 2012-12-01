@@ -202,14 +202,6 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size);
 void qev_close(QEV_CLIENT_T *client);
 
 /**
- * Clean up the client, fire the callback to the server that client has closed, and free the
- * client's memory.
- *
- * @param client The client that closed.
- */
-void qev_client_free(void *client);
-
-/**
  * Acquire a lock on a client. This function will busy wait, while yielding its
  * runtime, until it is able to acquire a lock on a client, so you probably
  * shouldn't use this for things like long-block IO operations, or other

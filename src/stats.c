@@ -6,7 +6,7 @@
 #define GRAPHITE_FORMAT "%s.%s%s.%s %0.4f %" G_GINT64_FORMAT "\n"
 
 /**
- * This is single-threaded, so let's give ourselves some working space
+ * Timers only fire in 1 thread, so this is safe
  */
 static GString *_buffer;
 static GString *_builder;
@@ -26,7 +26,6 @@ void stats_flush() {
 		return;
 	}
 	
-	// Two special cases that are not reset from the stats object
 	gint64 time = g_get_real_time() / 1000000;
 	
 	void _append(gchar *prefix, gchar *key, double val) {

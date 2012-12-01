@@ -24,6 +24,14 @@
 #include <unistd.h>
 
 /**
+ * The amount of time to wait in epoll before giving up.
+ * This is necessary so that the close queue can be processed: if there aren't many events,
+ * the same thread will continually get all the events, and the others will block indefinitely,
+ * thus allowing the close queue to grow unbounded.
+ */
+#define QEV_EPOLL_TIMEOUT 100
+
+/**
  * Sockets on Linux are ints.
  */
 typedef int qev_socket_t;

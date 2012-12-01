@@ -6,7 +6,7 @@
 static GPtrArray *_clients;
 
 /**
- * Hash tables no le thread safe :(
+ * Why is nothing le thread safe :(
  */
 static GMutex _clients_lock;
 
@@ -60,9 +60,8 @@ static void _conns_client_timeout_clean() {
 	
 	g_hash_table_iter_init(&iter, _client_timeouts);
 	while (g_hash_table_iter_next(&iter, (void*)&client, NULL)) {
-		client->timer--;
-		if (client->timer == -1) {
-			UTILS_STATS_INC(conns_timeouts);
+		if (--client->timer == 0) {
+			TEST_STATS_INC(conns_timeouts);
 			STATS_INC(client_timeouts);
 			
 			DEBUG("Timer on client expired: %p", &client->qevclient);
@@ -82,7 +81,9 @@ static void _conns_clients_remove(client_t *client) {
 	if (client->clients_pos > 0) {
 		g_ptr_array_remove_index_fast(_clients, client->clients_pos - 1);
 		
-		if (_clients->len > 0) {
+		// If the array isn't empty and we're not the last element (neither case
+		// is safe to write back to)
+		if (_clients->len > 0 && _clients->len >= client->clients_pos) {
 			((client_t*)g_ptr_array_index(_clients, client->clients_pos - 1))->clients_pos = client->clients_pos;
 		}
 		
@@ -192,12 +193,11 @@ gboolean conns_client_data(client_t *client) {
 	// then kill the client
 	gssize len;
 	while ((len = qev_read(client, buffer, sizeof(buffer))) > 0) {
-		// Put the buffer into our string
 		g_string_append_len(client->message->socket_buffer, buffer, len);
 		
 		// If the client needs to enhance his calm, kill the connection.
 		if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
-			UTILS_STATS_INC(conns_bad_clients);
+			TEST_STATS_INC(conns_bad_clients);
 			STATS_INC(clients_ratelimited);
 			
 			DEBUG("Client needs to enhance his calm");
@@ -210,14 +210,13 @@ gboolean conns_client_data(client_t *client) {
 		status_t status;
 		
 		if (client->state == cstate_initing) {
-			UTILS_STATS_INC(conns_handshakes);
+			TEST_STATS_INC(conns_handshakes);
 			DEBUG("Client handshake");
 			status = client_handshake(client);
 			
 			// Headers are sent without encoding, don't use the client wrapper
 			if (status & CLIENT_WRITE) {
 				STATS_INC(client_handshakes);
-				
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 				
 				// The handshake is complete, we're done here.
@@ -225,37 +224,33 @@ gboolean conns_client_data(client_t *client) {
 				evs_client_client_ready(client);
 			}
 		} else {
-			UTILS_STATS_INC(conns_messages);
+			TEST_STATS_INC(conns_messages);
 			
 			DEBUG("Message from client");
 			status = client_message(client);
 			
-			// Send back a framed response for the websocket
 			if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
 				status = CLIENT_FATAL;
 			}
 		}
 		
-		// If the client becomes good, then clear the timer and let him live
 		if (status == CLIENT_GOOD) {
 			conns_client_timeout_clear(client);
 			
 			// Clean up the message buffer, since we just finished processing him
 			conns_message_clean(client, FALSE, TRUE);
 		
-		// The client gets 1 timer to make itself behave. If it doesn't in this
-		// time, then we summarily kill it.
+
 		} else if (status == CLIENT_WAIT) {
-			UTILS_STATS_INC(conns_client_wait);
+			TEST_STATS_INC(conns_client_wait);
 			
 			conns_client_timeout_set(client);
 			
 			// The buffer will still be set, we're waiting, so just exit
 			break;
 			
-		// The client is misbehaving. Close him.
 		} else if (status == CLIENT_FATAL) {
-			UTILS_STATS_INC(conns_bad_clients);
+			TEST_STATS_INC(conns_bad_clients);
 			
 			DEBUG("Bad client, closing: status=%d", status);
 			qev_close(client);
@@ -305,17 +300,9 @@ void conns_client_timeout_set(client_t *client) {
 }
 
 void conns_maintenance_tick() {
-	static guint ticks = 0;
-	
-	// Send out everything that couldn't be done synchronously
-	evs_client_send_async_messages();
-	
-	// Check if there are any outstanding rebalance requests
+	INFO("Connected: %u", _clients->len);
+	_conns_client_timeout_clean();
 	_conns_balance();
-	
-	if (ticks++ % CONNS_MAINTENANCE_TIMEOUTS == 0) {
-		_conns_client_timeout_clean();
-	}
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {

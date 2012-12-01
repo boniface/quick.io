@@ -34,12 +34,6 @@
 #define MAX_BUFFER_SIZE_MULTIPLIER 2
 
 /**
- * The number of loops to run between timeouts.
- * We only want to do this once per second.
- */
-#define CONNS_MAINTENANCE_TIMEOUTS ((gint)(1000 / MAINTENANCE_TICK))
-
-/**
  * The balance request.
  */
 typedef struct conns_balance_request_s {
