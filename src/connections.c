@@ -300,7 +300,6 @@ void conns_client_timeout_set(client_t *client) {
 }
 
 void conns_maintenance_tick() {
-	INFO("Connected: %u", _clients->len);
 	_conns_client_timeout_clean();
 	_conns_balance();
 }
