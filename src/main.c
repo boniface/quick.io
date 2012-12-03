@@ -3,7 +3,7 @@
 #define QEV_CLIENT_READ_FN conns_client_data
 #define QEV_TIMERS \
 	QEV_TIMER(conns_maintenance_tick, 1, 0) \
-	QEV_TIMER(evs_client_heartbeat, 15, 0) \
+	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_INTERVAL, 0) \
 	QEV_TIMER(evs_client_send_async_messages, 0, 100) \
 	QEV_TIMER(stats_flush, STATS_INTERVAL, 0)
 
