@@ -6,6 +6,8 @@
  * cases that you are looking for.
  */
 
+#define MESSAGE "\x81\x92""abcd""N""\x13""\n""\x0b""N""\x12""\n""\n""\x06""X""R""^""\x11""\x0e""\x02""\r""\x0f""_"
+
 #define PING "/ping:123:plain=pingeth"
 
 #define MOVE "\x81\x16""/qio/move:0:plain=test"
@@ -13,11 +15,24 @@
 
 void _test_conns_setup() {
 	qev_init();
+	utils_stats_setup();
 	evs_server_init();
 	conns_init();
 	apps_run();
 	test(stats_init());
 }
+
+START_TEST(test_conns_client_closed) {
+	client_t *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+	client->state = cstate_running;
+	
+	g_string_append(client->message->socket_buffer, MESSAGE);
+	conns_client_data(client);
+	
+	u_client_free(client);
+}
+END_TEST
 
 START_TEST(test_conns_message_clean_0) {
 	client_t *client = u_client_create(NULL);
@@ -245,6 +260,11 @@ END_TEST
 Suite* conns_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Connections");
+	
+	tc = tcase_create("Client Writing");
+	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);
+	tcase_add_test(tc, test_conns_client_closed);
+	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Utilities");
 	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);

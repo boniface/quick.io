@@ -32,6 +32,8 @@ client_t* u_client_create(int *socket) {
 		socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
 		client->qevclient.socket = sockets[0];
 		*socket = sockets[1];
+	} else {
+		client->qevclient.socket = -1;
 	}
 	
 	client_ref(client);
