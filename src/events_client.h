@@ -34,14 +34,7 @@
 /**
  * The time between heartbeat ticks.
  */
-#define HEARTBEAT_INTERVAL 15
-
-/**
- * The number of times per HEARTBEAT_INTERVAL heartbeats should be sent.
- * This helps spread out heartbeats across the interval so it's not being hammered
- * on the interval.
- */
-#define HEARTBEAT_NUM_TICKS 4
+#define HEARTBEAT_INTERVAL 60
 
 /**
  * The value that is stored in the hash table so that we can access

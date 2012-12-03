@@ -242,10 +242,7 @@ START_TEST(test_evs_heartbeat) {
 	conns_client_new(client);
 	client->state = cstate_running;
 	
-	for (int i = 0; i < HEARTBEAT_NUM_TICKS; i++) {
-		evs_client_heartbeat();
-	}
-	
+	evs_client_heartbeat();
 	evs_client_send_async_messages();
 	
 	char buff[512];
@@ -262,9 +259,7 @@ END_TEST
 
 START_TEST(test_evs_heartbeat_no_clients) {
 	// No segfaults?
-	for (int i = 0; i < HEARTBEAT_NUM_TICKS; i++) {
-		evs_client_heartbeat();
-	}
+	evs_client_heartbeat();
 	evs_client_send_async_messages();
 }
 END_TEST
@@ -279,9 +274,7 @@ START_TEST(test_evs_heartbeat_yield) {
 		client->state = cstate_running;
 	}
 	
-	for (int i = 0; i < HEARTBEAT_NUM_TICKS; i++) {
-		evs_client_heartbeat();
-	}
+	evs_client_heartbeat();
 	evs_client_send_async_messages();
 	
 	char buff[512];
@@ -300,10 +293,11 @@ START_TEST(test_evs_heartbeat_already_written) {
 	conns_client_new(client);
 	client->state = cstate_running;
 	
-	for (int i = 0; i < HEARTBEAT_NUM_TICKS-1; i++) {
-		evs_client_heartbeat();
-	}
+	evs_client_heartbeat();
 	evs_client_send_async_messages();
+	test_size_eq(stats.heartbeat, 1, "Got heartbeat");
+	
+	stats.heartbeat = 0;
 	
 	client_write_frame(client, "test", 4);
 	

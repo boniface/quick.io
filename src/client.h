@@ -172,7 +172,7 @@ struct client_s {
 	gint8 timer;
 	
 	/**
-	 * A timer for making sure that a client gets at least 1 message every 60 seconds.
+	 * If anything has been sent in this 60 seconds to the client.
 	 */
 	guint8 heartbeat;
 	
