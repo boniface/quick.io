@@ -242,7 +242,10 @@ START_TEST(test_evs_heartbeat) {
 	conns_client_new(client);
 	client->state = cstate_running;
 	
-	evs_client_heartbeat();
+	for (int i = 0; i < HEARTBEAT_NUM_TICKS; i++) {
+		evs_client_heartbeat();
+	}
+	
 	evs_client_send_async_messages();
 	
 	char buff[512];
@@ -250,7 +253,7 @@ START_TEST(test_evs_heartbeat) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.heartbeat, 1, "1 heartbeat sent");
+	test_size_eq(stats.heartbeat, 1, "Got 1 heartbeat");
 	
 	close(socket);
 	u_client_free(client);
@@ -259,7 +262,9 @@ END_TEST
 
 START_TEST(test_evs_heartbeat_no_clients) {
 	// No segfaults?
-	evs_client_heartbeat();
+	for (int i = 0; i < HEARTBEAT_NUM_TICKS; i++) {
+		evs_client_heartbeat();
+	}
 	evs_client_send_async_messages();
 }
 END_TEST
@@ -274,7 +279,9 @@ START_TEST(test_evs_heartbeat_yield) {
 		client->state = cstate_running;
 	}
 	
-	evs_client_heartbeat();
+	for (int i = 0; i < HEARTBEAT_NUM_TICKS; i++) {
+		evs_client_heartbeat();
+	}
 	evs_client_send_async_messages();
 	
 	char buff[512];
@@ -282,7 +289,31 @@ START_TEST(test_evs_heartbeat_yield) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.heartbeat, 1, "Heartbeats sent");
+	test_size_eq(stats.heartbeat, CONNS_YIELD*2, "Heartbeats sent");
+}
+END_TEST
+
+START_TEST(test_evs_heartbeat_already_written) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	conns_client_new(client);
+	client->state = cstate_running;
+	
+	for (int i = 0; i < HEARTBEAT_NUM_TICKS-1; i++) {
+		evs_client_heartbeat();
+	}
+	evs_client_send_async_messages();
+	
+	client_write_frame(client, "test", 4);
+	
+	evs_client_heartbeat();
+	evs_client_send_async_messages();
+	
+	test_size_eq(stats.heartbeat, 0, "Got no heartbeat");
+	
+	close(socket);
+	u_client_free(client);
 }
 END_TEST
 
@@ -850,6 +881,7 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_heartbeat);
 	tcase_add_test(tc, test_evs_heartbeat_no_clients);
 	tcase_add_test(tc, test_evs_heartbeat_yield);
+	tcase_add_test(tc, test_evs_heartbeat_already_written);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Subscribe");

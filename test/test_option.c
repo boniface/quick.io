@@ -25,6 +25,10 @@
 	"max-subs = 100\n" \
 	"[quick.io-apps]"
 
+#define QIOINI_BAD_TIMEOUT "[quick.io]\n" \
+	"timeout = 129\n" \
+	"[quick.io-apps]"
+
 #define QIOINI_STRING_ARRAY "[test-app]\n" \
 	"string-array = three;different;values"
 
@@ -145,6 +149,19 @@ START_TEST(test_option_bad_subs) {
 }
 END_TEST
 
+START_TEST(test_option_bad_timeout) {
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(QIOINI_BAD_TIMEOUT, 1, sizeof(QIOINI_BAD_TIMEOUT), f);
+	fclose(f);
+	
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+	
+	test(option_parse_args(argc, argv, NULL), "Options parsed");
+	test_not(option_parse_config_file(NULL, NULL, 0, NULL), "Bad max subs");
+}
+END_TEST
+
 START_TEST(test_option_string_array) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_STRING_ARRAY, 1, sizeof(QIOINI_STRING_ARRAY), f);
@@ -189,6 +206,7 @@ Suite* option_suite() {
 	tcase_add_test(tc, test_option_all);
 	tcase_add_test(tc, test_option_empty);
 	tcase_add_test(tc, test_option_bad_subs);
+	tcase_add_test(tc, test_option_bad_timeout);
 	tcase_add_test(tc, test_option_string_array);
 	suite_add_tcase(s, tc);
 	

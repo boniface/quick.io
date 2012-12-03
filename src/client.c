@@ -176,6 +176,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	// Frames MUST ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right
 	if (frame_len > 0 && qev_write(client, frame, frame_len) == (gssize)frame_len) {
+		client->heartbeat = 0;
 		return CLIENT_GOOD;
 	} else {
 		STATS_INC(client_failed_writes)

@@ -309,10 +309,12 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * Publish a single message to multiple clients.
  *
  * @param message The message to send to all the subscribers.
- * @param iter A function that loops through all the clients and calls the passed in function
- * on them.
+ * @param iter A function that loops through all the clients and calls the passed in
+ * function on them.
+ * @param heartbeat Rather than have tons of logic and anonymous functions in the handler,
+ * we just zip it up here.
  */
-static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean(*)(client_t*))) {
+static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean(*)(client_t*)), gboolean heartbeat) {
 	GPtrArray *dead_clients = g_ptr_array_new();
 	
 	// For holding all the message types we might send
@@ -331,6 +333,17 @@ static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean
 	
 	gboolean _write(client_t *client) {
 		enum handlers handler = client->handler;
+		
+		// This little bit of logic here saves on tons of anonmymous functions and
+		// confusing code: it feels a bit out of place, but it's far cleaner to have it
+		// here than in the heartbeat anonymous functions
+		if (heartbeat) {
+			if (++client->heartbeat != HEARTBEAT_NUM_TICKS) {
+				return TRUE;
+			}
+			
+			STATS_INC(heartbeat);
+		}
 		
 		if (handler == h_none || client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
 			// Don't remove the client directly: we're holding a lock, and there's a lot
@@ -414,10 +427,10 @@ void evs_client_client_close(client_t *client) {
 void evs_client_send_async_messages() {
 	_async_message_s *amsg;
 	
-	void _broadcast() {
+	void broadcast() {
 		evs_client_sub_t *sub;
 		
-		void _iter(gboolean(*_write)(client_t*)) {
+		void iter(gboolean(*_write)(client_t*)) {
 			sub = _subscription_get(amsg->event_path, FALSE);
 			
 			if (sub == NULL) {
@@ -437,10 +450,10 @@ void evs_client_send_async_messages() {
 			g_mutex_unlock(&sub->lock);
 		}
 		
-		_evs_client_pub_message(amsg, _iter);
+		_evs_client_pub_message(amsg, iter, FALSE);
 	}
 	
-	void _single() {
+	void single() {
 		TEST_STATS_INC(evs_client_async_messages);
 		
 		message_t m;
@@ -456,16 +469,14 @@ void evs_client_send_async_messages() {
 		}
 	}
 	
-	void _opt_heartbeat() {
+	void heartbeat() {
 		amsg->message = g_string_sized_new(100);
 		amsg->message_opcode = op_text;
 		_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", amsg->message, NULL);
-		
-		STATS_INC(heartbeat);
-		_evs_client_pub_message(amsg, conns_clients_foreach);
+		_evs_client_pub_message(amsg, conns_clients_foreach, TRUE);
 	}
 	
-	void _subscribe() {
+	void subscribe() {
 		if (_evs_client_sub_client(amsg->event_path, amsg->client, amsg->client_callback, TRUE) == CLIENT_GOOD) {
 			evs_client_send_callback(amsg->client, amsg->client_callback, d_plain, "", 0);
 		} else {
@@ -476,19 +487,19 @@ void evs_client_send_async_messages() {
 	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
 		switch (amsg->type) {
 			case _mt_broadcast:
-				_broadcast();
+				broadcast();
 				break;
 			
 			case _mt_client:
-				_single();
+				single();
 				break;
 			
 			case _mt_heartbeat:
-				_opt_heartbeat();
+				heartbeat();
 				break;
 			
 			case _mt_subscribe:
-				_subscribe();
+				subscribe();
 				break;
 		}
 		

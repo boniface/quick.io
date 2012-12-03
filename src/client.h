@@ -169,7 +169,12 @@ struct client_s {
 	 * This is the number of ticks a client may misbehave before he is killed.
 	 * A value of -1 indicates no timer is set.
 	 */
-	gint16 timer;
+	gint8 timer;
+	
+	/**
+	 * A timer for making sure that a client gets at least 1 message every 60 seconds.
+	 */
+	guint8 heartbeat;
 	
 	/**
 	 * If the client is still in the initing (handshake) process.

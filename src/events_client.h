@@ -32,6 +32,18 @@
 #define EVS_CLIENT_CLIENT_INTIAL_COUNT 4
 
 /**
+ * The time between heartbeat ticks.
+ */
+#define HEARTBEAT_INTERVAL 15
+
+/**
+ * The number of times per HEARTBEAT_INTERVAL heartbeats should be sent.
+ * This helps spread out heartbeats across the interval so it's not being hammered
+ * on the interval.
+ */
+#define HEARTBEAT_NUM_TICKS 4
+
+/**
  * The value that is stored in the hash table so that we can access
  * the pointer to the key for passing around to events.
  */

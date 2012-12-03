@@ -237,6 +237,13 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		return FALSE;
 	}
 	
+	// We only have a signed 8 bit number, so the timeout may not be too large
+	if (_timeout < 0 || _timeout > 127) {
+		CRITICAL("Option `timeout` must be greater than 0 and less than 127.");
+		g_key_file_free(conf);
+		return FALSE;
+	}
+
 	g_key_file_free(conf);
 	return TRUE;
 }
