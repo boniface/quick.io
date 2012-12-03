@@ -220,8 +220,6 @@ START_TEST(test_client_refcount_1) {
 	
 	test_size_eq(client->ref_count, 3, "Correct ref count");
 	
-	conns_client_close(client);
-	test_size_eq(client->state, cstate_dead, "Client closed");
 }
 END_TEST
 
@@ -244,11 +242,21 @@ START_TEST(test_client_refcount_3) {
 	conns_client_close(client);
 	test_size_eq(client->ref_count, 2, "Correct ref count");
 	
-	test_size_eq(client->state, cstate_dead, "Client dead");
-	
 	// Incrementing ref count after client is closed
 	client_ref(client);
 	test_size_eq(client->ref_count, 3, "Correct ref count");
+}
+END_TEST
+
+START_TEST(test_client_killed_closed) {
+	client_t *client = u_client_create(NULL);
+	client->state = cstate_running;
+	
+	conns_client_close(client);
+	test_size_eq(client->state, cstate_running, "Client closed");
+	
+	conns_client_killed(client);
+	test_size_eq(client->state, cstate_dead, "Client closed");
 }
 END_TEST
 
@@ -349,6 +357,7 @@ Suite* client_suite() {
 	tcase_add_test(tc, test_client_refcount_1);
 	tcase_add_test(tc, test_client_refcount_2);
 	tcase_add_test(tc, test_client_refcount_3);
+	tcase_add_test(tc, test_client_killed_closed);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("External Data");

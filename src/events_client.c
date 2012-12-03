@@ -334,7 +334,7 @@ static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean
 	gboolean _write(client_t *client) {
 		enum handlers handler = client->handler;
 		
-		// This little bit of logic here saves on tons of anonmymous functions and
+		// This little bit of logic here saves on tons of anonymous functions and
 		// confusing code: it feels a bit out of place, but it's far cleaner to have it
 		// here than in the heartbeat anonymous functions
 		if (heartbeat) {

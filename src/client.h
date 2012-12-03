@@ -177,7 +177,7 @@ struct client_s {
 	guint8 heartbeat;
 	
 	/**
-	 * If the client is still in the initing (handshake) process.
+	 * The state of the client.
 	 */
 	enum client_state state;
 	
@@ -205,6 +205,8 @@ struct client_s {
 	/**
 	 * The position in the clients table (this is index + 1 such that 0 indicates it's
 	 * not in the table).
+	 *
+	 * This is protected by _clients_lock in connections.c
 	 */
 	guint clients_pos;
 	

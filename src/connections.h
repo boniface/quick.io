@@ -80,6 +80,15 @@ void conns_client_new(client_t *client);
 void conns_client_close(client_t *client);
 
 /**
+ * A notification that a client has been killed.
+ *
+ * @attention This is ONLY to be used as a callback for quick-event
+ *
+ * @param client The client that was killed.
+ */
+void conns_client_killed(client_t *client);
+
+/**
  * There is data waiting in a client.
  *
  * @param client The client that has messages waiting.

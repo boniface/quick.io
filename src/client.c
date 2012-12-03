@@ -180,6 +180,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 		return CLIENT_GOOD;
 	} else {
 		STATS_INC(client_failed_writes)
+		DEBUG("%s", strerror(errno));
 		return CLIENT_FATAL;
 	}
 }

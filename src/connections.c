@@ -6,9 +6,15 @@
 static GPtrArray *_clients;
 
 /**
- * Why is nothing le thread safe :(
+ * In order to make make looping through clients possible while still accepting
+ * clients into the list, we're going to ABUSE (indeed, almost to death) a RW lock.
+ * Rather than representing RW, we're going to represent two things:
+ *   R = Safe to append to
+ *   W = Complete lock on the data structure
+ *
+ * Why is nothing le thread safe? :(
  */
-static GMutex _clients_lock;
+static GRWLock _clients_lock;
 
 /**
  * All of the clients that have timeouts set on them.
@@ -122,7 +128,7 @@ static void _conns_balance() {
 			}
 			
 			STATS_INC(clients_balanced);
-			_conns_clients_remove(client);
+			qev_close(client);
 			
 			return TRUE;
 		}
@@ -148,10 +154,10 @@ void conns_client_new(client_t *client) {
 	client->state = cstate_initing;
 	client->timer = -1;
 	
-	g_mutex_lock(&_clients_lock);
+	g_rw_lock_reader_lock(&_clients_lock);
 	g_ptr_array_add(_clients, client);
 	client->clients_pos = _clients->len;
-	g_mutex_unlock(&_clients_lock);
+	g_rw_lock_reader_unlock(&_clients_lock);
 	
 	client_ref(client);
 	
@@ -162,19 +168,22 @@ void conns_client_new(client_t *client) {
 	STATS_INC(clients);
 }
 
+void conns_client_killed(client_t *client) {
+	client->state = cstate_dead;
+}
+
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
 	
-	client->state = cstate_dead;
+	g_rw_lock_writer_lock(&_clients_lock);
+	_conns_clients_remove(client);
+	g_rw_lock_writer_unlock(&_clients_lock);
+	
 	conns_client_timeout_clear(client);
 	conns_message_free(client);
 	apps_client_close(client);
 	evs_client_client_close(client);
 	evs_server_client_close(client);
-	
-	g_mutex_lock(&_clients_lock);
-	_conns_clients_remove(client);
-	g_mutex_unlock(&_clients_lock);
 	
 	client_unref(client);
 	
@@ -308,7 +317,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 	// For keeping track of the number of iterations so that we can yield appropriately
 	guint total = 0;
 	
-	g_mutex_lock(&_clients_lock);
+	g_rw_lock_reader_lock(&_clients_lock);
 	guint i = _clients->len;
 	while (i > 0) {
 		client_t *client = g_ptr_array_index(_clients, i - 1);
@@ -318,9 +327,9 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 		
 		if (++total == CONNS_YIELD) {
 			total = 0;
-			g_mutex_unlock(&_clients_lock);
+			g_rw_lock_reader_unlock(&_clients_lock);
 			g_thread_yield();
-			g_mutex_lock(&_clients_lock);
+			g_rw_lock_reader_lock(&_clients_lock);
 		}
 		
 		if (--i > _clients->len) {
@@ -328,7 +337,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 		}
 	}
 	
-	g_mutex_unlock(&_clients_lock);
+	g_rw_lock_reader_unlock(&_clients_lock);
 }
 
 void conns_message_free(client_t *client) {

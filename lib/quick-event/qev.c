@@ -263,6 +263,10 @@ void qev_close(QEV_CLIENT_T *client) {
 	if (!(__sync_fetch_and_or(&QEV_CSLOT(client, _flags), QEV_CMASK_CLOSING) & QEV_CMASK_CLOSING)) {
 		qev_sys_client_closed(client);
 		qev_wqueue_add(_closed, client);
+		
+		#ifdef QEV_CLIENT_KILLED_FN
+			QEV_CLIENT_KILLED_FN(client);
+		#endif
 	}
 }
 

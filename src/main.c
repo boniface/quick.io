@@ -1,6 +1,8 @@
 #define QEV_CLIENT_NEW_FN conns_client_new
-#define QEV_CLIENT_CLOSE_FN conns_client_close
 #define QEV_CLIENT_READ_FN conns_client_data
+#define QEV_CLIENT_KILLED_FN conns_client_killed
+#define QEV_CLIENT_CLOSE_FN conns_client_close
+
 #define QEV_TIMERS \
 	QEV_TIMER(conns_maintenance_tick, 1, 0) \
 	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_INTERVAL, 0) \
