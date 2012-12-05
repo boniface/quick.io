@@ -5,7 +5,7 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-#define pause() asm volatile("pause")
+#define pause() asm volatile("pause" ::: "memory")
 
 qev_lock_t* qev_lock_new() {
 	return g_malloc0(sizeof(qev_lock_t));
