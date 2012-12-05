@@ -31,7 +31,7 @@ Event                Description
 /open                Fire when a new connection to the server is established, every time a connection is established
 /close               Fire whenever a connection to the server is lost or closed (even by a client)
 /error               Fire when there is an error connecting to the server (this is typically platform dependent)
-/qio/callback/{id}   Fired when the server is sending a callback to the client; the id paramater is the callback id.  This should call the registered callback function registered at this id.
+/qio/callback/{id}   Fired when the server is sending a callback to the client; the id parameter is the callback id.  This should call the registered callback function registered at this id.
 /qio/move            Fired when the server is forcing the client to balance to another QIO server.  The data in the event is the server to move to.  This should be transparent to anything running, if possible.
 ==================== =============================
 
