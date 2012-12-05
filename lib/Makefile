@@ -1,3 +1,3 @@
 deps:
-	$(MAKE) -C http-parser
-	$(MAKE) -C persistent-socket
+	@$(MAKE) -C http-parser
+	@$(MAKE) -C persistent-socket

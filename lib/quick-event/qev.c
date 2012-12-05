@@ -29,7 +29,7 @@ static GMutex *_ssl_locks;
 /**
  * SSL handshakes can take multiple read/write cycles
  */
-static inline int _qev_ssl_handshake(SSL *ctx, volatile qev_flags_t *flags) {
+static inline int _qev_ssl_handshake(SSL *ctx, qev_flags_t *flags) {
 	int err;
 	
 	// Had to break this into multiple lines...it was unreadable as one
@@ -112,7 +112,7 @@ static void _ssl_lock_fn(int mode, int lock_num, const char *file, int line) {
 	}
 }
 
-static void qev_client_free(void *c) {
+static void _qev_client_free(void *c) {
 	QEV_CLIENT_T *client = c;
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
 		int mode = SSL_get_shutdown(QEV_CSLOT(client, ssl_ctx));
@@ -133,7 +133,8 @@ static void qev_client_free(void *c) {
 }
 
 int qev_init() {
-	_closed = qev_wqueue_init(qev_client_free);
+	qev_time = g_get_real_time() / 1000000;
+	_closed = qev_wqueue_init(_qev_client_free);
 	return qev_sys_init();
 }
 
@@ -215,10 +216,17 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 }
 
 void qev_run() {
+	static int ticks = 0;
+	
 	int id = qev_wqueue_register(_closed);
 	while (1) {
 		qev_dispatch();
 		qev_wqueue_tick(_closed, id);
+		
+		if (g_atomic_int_add(&ticks, 1) == 5) {
+			ticks = 0;
+			qev_time = g_get_real_time() / 1000000;
+		}
 	}
 }
 
@@ -253,7 +261,7 @@ void qev_client_read(QEV_CLIENT_T *client) {
 					break;
 				}
 			}
-		} while (__sync_sub_and_fetch(&QEV_CSLOT(client, _read_operations), 1) > 0 && !(QEV_CSLOT(client, _flags) & QEV_CMASK_CLOSING));
+		} while (__sync_sub_and_fetch(&QEV_CSLOT(client, _read_operations), 1) > 0 && !(__sync_fetch_and_or(&QEV_CSLOT(client, _flags), 0) & QEV_CMASK_CLOSING));
 	}
 }
 
@@ -290,4 +298,5 @@ void qev_debug_flush() {
 	#error No platform setup for quick-event
 #endif
 
+#include "qev_lock.c"
 #include "qev_wqueue.c"

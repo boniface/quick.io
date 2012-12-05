@@ -21,10 +21,10 @@ $(TARGET): $(OBJECTS)
 endif
 
 $(BUILDDIR)/http_parser.o:
-	$(MAKE) -C ../lib deps
+	@$(MAKE) -C ../lib deps
 	
 $(BUILDDIR)/persistent_socket.o:
-	$(MAKE) -C ../lib deps
+	@$(MAKE) -C ../lib deps
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
 	@echo "\n\n"-------- Compiling $< --------

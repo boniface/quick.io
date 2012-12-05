@@ -14,6 +14,7 @@ static gchar *_bind_address_ssl = NULL;
 static gint _bind_port = 80;
 static gint _bind_port_ssl = 443;
 static gchar *_log_file = NULL;
+static guint64 _max_clients = 4194304;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
 static gchar *_ssl_private_key = NULL;
@@ -32,6 +33,7 @@ static config_file_entry_t _config_options[] = {
 	{"bind-port", e_int, &_bind_port},
 	{"bind-port-ssl", e_int, &_bind_port_ssl},
 	{"log-file", e_string, &_log_file},
+	{"max-clients", e_uint64, &_max_clients},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
 	{"ssl-private-key", e_string, &_ssl_private_key},
@@ -134,6 +136,10 @@ const gchar* option_config_file() {
 
 const gchar* option_log_file() {
 	return _log_file;
+}
+
+const guint64 option_max_clients() {
+	return _max_clients;
 }
 
 const guint64 option_max_message_size() {

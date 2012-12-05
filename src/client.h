@@ -172,9 +172,9 @@ struct client_s {
 	gint8 timer;
 	
 	/**
-	 * If anything has been sent in this 60 seconds to the client.
+	 * The last time the client was sent data.
 	 */
-	guint8 heartbeat;
+	gint64 heartbeat;
 	
 	/**
 	 * The state of the client.
@@ -218,7 +218,7 @@ struct client_s {
 	/**
 	 * The number of references the client has.
 	 */
-	volatile gsize ref_count;
+	gsize ref_count;
 };
 
 /**

@@ -71,15 +71,6 @@ APP_EXPORT void conns_balance(guint count, gchar *to);
 void conns_client_new(client_t *client);
 
 /**
- * Closes and cleans up the client.
- *
- * @attention This is ONLY to be used as a callback for quick-event
- *
- * @param client The client to close and free.
- */
-void conns_client_close(client_t *client);
-
-/**
  * A notification that a client has been killed.
  *
  * @attention This is ONLY to be used as a callback for quick-event
@@ -87,6 +78,22 @@ void conns_client_close(client_t *client);
  * @param client The client that was killed.
  */
 void conns_client_killed(client_t *client);
+
+/**
+ * Closes and cleans up the client.
+ *
+ * @attention This is ONLY to be used as a callback for quick-event
+ *
+ * @param client The client to close clean up.
+ */
+void conns_client_close(client_t *client);
+
+/**
+ * Does the final freeing of all the client stuff once the ref count == 0.
+ *
+ * @param client The client to free.
+ */
+void conns_client_free(client_t *client);
 
 /**
  * There is data waiting in a client.

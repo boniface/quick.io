@@ -75,7 +75,7 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	// The mask location depends on how much we have already read
 	gsize position = message->buffer->len;
 	
-	// +1 for the NULL byte
+	// buffer->len includes the NULL byte already
 	gsize required_len = message->buffer->len + remaining;
 	
 	// Access the string directly, it's a bit faster

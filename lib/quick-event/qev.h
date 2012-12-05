@@ -35,6 +35,7 @@
 	#error No platform setup for quick-event
 #endif
 
+#include "qev_lock.h"
 #include "qev_wqueue.h"
 
 /**
@@ -53,6 +54,12 @@
  * The maximum number of events that should be asked for from the OS
  */
 #define QEV_MAX_EVENTS 100
+
+/**
+ * An approximation of the current time, in seconds since Jan 1, 1970.
+ * This is updated every so often to reflect a fairly-recent system time.
+ */
+gint64 qev_time;
 
 /**
  * So that the flags can be changed on a whim everywhere
@@ -89,7 +96,7 @@ struct qev_client {
 	/**
 	 * A bitmask of flags for qev internal use.
 	 */
-	volatile qev_flags_t _flags;
+	qev_flags_t _flags;
 };
 
 /**

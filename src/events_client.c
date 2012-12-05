@@ -331,26 +331,28 @@ static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean
 	
 	DEBUG("Publishing message: %s", amsg->message->str);
 	
+	// If any clients need a heartbeat or are going to in the next interval, just
+	// give it to them
+	gint64 heartbeat_time = qev_time - HEARTBEAT_INTERVAL + HEARTBEAT_TICK;
+	
 	gboolean _write(client_t *client) {
 		enum handlers handler = client->handler;
 		
 		// This little bit of logic here saves on tons of anonymous functions and
 		// confusing code: it feels a bit out of place, but it's far cleaner to have it
 		// here than in the heartbeat anonymous functions
-		if (heartbeat && client->heartbeat == 1) {
-			client->heartbeat = 0;
-			return TRUE;
+		if (heartbeat) {
+			if (client->heartbeat >= heartbeat_time) {
+				return TRUE;
+			} else {
+				STATS_INC(heartbeat);
+			}
 		}
 		
 		if (handler == h_none || client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
 			// Don't remove the client directly: we're holding a lock, and there's a lot
 			// that goes into closing a client, so delay until we're done
 			g_ptr_array_add(dead_clients, client);
-		}
-		
-		if (heartbeat) {
-			STATS_INC(heartbeat);
-			client->heartbeat = 0;
 		}
 		
 		return TRUE;

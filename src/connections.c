@@ -6,6 +6,15 @@
 static GPtrArray *_clients;
 
 /**
+ * The next available position in _clients.
+ * Though there is a len in the array, incrementing this before adding the client
+ * to the array leaves a race condition that could result in a segfault. So we
+ * increment outside of the array, then add to the array, then increment the
+ * array length.
+ */
+static guint _clients_len = 0;
+
+/**
  * In order to make make looping through clients possible while still accepting
  * clients into the list, we're going to ABUSE (indeed, almost to death) a RW lock.
  * Rather than representing RW, we're going to represent two things:
@@ -14,7 +23,7 @@ static GPtrArray *_clients;
  *
  * Why is nothing le thread safe? :(
  */
-static GRWLock _clients_lock;
+static qev_lock_t _clients_lock;
 
 /**
  * All of the clients that have timeouts set on them.
@@ -84,17 +93,29 @@ static void _conns_client_timeout_clean() {
  * the client that replaces him
  */
 static void _conns_clients_remove(client_t *client) {
-	if (client->clients_pos > 0) {
-		g_ptr_array_remove_index_fast(_clients, client->clients_pos - 1);
+	qev_lock_write_lock(&_clients_lock);
+	
+	guint pos = client->clients_pos;
+	
+	if (pos > 0) {
+		g_ptr_array_remove_index_fast(_clients, pos - 1);
+		__sync_fetch_and_sub(&_clients_len, 1);
+		
+		#if defined(TESTING) || defined(DEBUG)
+			// Cause segfaults while testing if we get stuff wrong
+			_clients->pdata[_clients->len] = NULL;
+		#endif
 		
 		// If the array isn't empty and we're not the last element (neither case
 		// is safe to write back to)
-		if (_clients->len > 0 && _clients->len >= client->clients_pos) {
-			((client_t*)g_ptr_array_index(_clients, client->clients_pos - 1))->clients_pos = client->clients_pos;
+		if (_clients->len >= pos) {
+			((client_t*)g_ptr_array_index(_clients, pos - 1))->clients_pos = pos;
 		}
 		
 		client->clients_pos = 0;
 	}
+	
+	qev_lock_write_unlock(&_clients_lock);
 }
 
 /**
@@ -150,15 +171,26 @@ void conns_balance(guint count, gchar *to) {
 }
 
 void conns_client_new(client_t *client) {
-	// Basic information about this client
+	qev_lock_read_lock(&_clients_lock);
+	guint pos = __sync_add_and_fetch(&_clients_len, 1);
+	
+	if (pos > option_max_clients()) {
+		WARN("More clients than `max-clients` trying to connect");
+		
+		qev_close(client);
+		__sync_sub_and_fetch(&_clients_len, 1);
+		
+		qev_lock_read_unlock(&_clients_lock);
+		return;
+	}
+	
+	client->clients_pos = pos;
+	_clients->pdata[client->clients_pos - 1] = client;
+	g_atomic_int_inc(&_clients->len);
+	qev_lock_read_unlock(&_clients_lock);
+	
 	client->state = cstate_initing;
 	client->timer = -1;
-	
-	g_rw_lock_reader_lock(&_clients_lock);
-	g_ptr_array_add(_clients, client);
-	client->clients_pos = _clients->len;
-	g_rw_lock_reader_unlock(&_clients_lock);
-	
 	client_ref(client);
 	
 	apps_client_connect(client);
@@ -175,20 +207,25 @@ void conns_client_killed(client_t *client) {
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
 	
-	g_rw_lock_writer_lock(&_clients_lock);
 	_conns_clients_remove(client);
-	g_rw_lock_writer_unlock(&_clients_lock);
 	
 	conns_client_timeout_clear(client);
+	
+	// The message can be safely freed here: it's only used here,
+	// and we're definitely not reading/writing to it asynchronously
 	conns_message_free(client);
-	apps_client_close(client);
-	evs_client_client_close(client);
-	evs_server_client_close(client);
 	
 	client_unref(client);
 	
 	STATS_INC(clients_closed);
 	STATS_DEC(clients);
+}
+
+void conns_client_free(client_t *client) {
+	apps_client_close(client);
+	evs_client_client_close(client);
+	evs_server_client_close(client);
+	g_slice_free1(sizeof(*client), client);
 }
 
 gboolean conns_client_data(client_t *client) {
@@ -277,7 +314,7 @@ gboolean conns_client_data(client_t *client) {
 }
 
 gboolean conns_init() {
-	_clients = g_ptr_array_new();
+	_clients = g_ptr_array_sized_new(option_max_clients());
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
@@ -314,30 +351,29 @@ void conns_maintenance_tick() {
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
-	// For keeping track of the number of iterations so that we can yield appropriately
-	guint total = 0;
-	
-	g_rw_lock_reader_lock(&_clients_lock);
-	guint i = _clients->len;
+	guint i = g_atomic_int_get(&_clients->len);
 	while (i > 0) {
-		client_t *client = g_ptr_array_index(_clients, i - 1);
-		if (client->state == cstate_running && !_callback(client)) {
+		qev_lock_read_lock(&_clients_lock);
+		
+		guint len = g_atomic_int_get(&_clients->len);
+		
+		if (len == 0) {
+			qev_lock_read_unlock(&_clients_lock);
 			break;
 		}
 		
-		if (++total == CONNS_YIELD) {
-			total = 0;
-			g_rw_lock_reader_unlock(&_clients_lock);
-			g_thread_yield();
-			g_rw_lock_reader_lock(&_clients_lock);
+		if (--i > len) {
+			i = len - 1;
 		}
 		
-		if (--i > _clients->len) {
-			i = _clients->len;
+		client_t *client = g_ptr_array_index(_clients, i);
+		
+		qev_lock_read_unlock(&_clients_lock);
+		
+		if (client->state == cstate_running && !_callback(client)) {
+			break;
 		}
 	}
-	
-	g_rw_lock_reader_unlock(&_clients_lock);
 }
 
 void conns_message_free(client_t *client) {

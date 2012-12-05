@@ -29,8 +29,7 @@ build_dir:
 build: build_dir
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
-	$(MAKE) -C src
-	$(MAKE) -C app
+	@$(MAKE) -C src --no-print-directory
 
 clean:
 	rm -rf $(DIR_BUILD)
@@ -43,10 +42,12 @@ clean:
 	$(MAKE) -C tools clean
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
+	$(MAKE) -C tools clean
 
 test:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
 	@$(MAKE) build DEBUG=1 TESTING=1
+	@$(MAKE) -C app DEBUG=1 TESTING=1
 	@$(MAKE) -C test test DEBUG=1
 	@./tools/gcovr $(GCOVR_ARGS_SRC) $(BUILDDIR)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps

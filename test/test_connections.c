@@ -16,6 +16,8 @@
 void _test_conns_setup() {
 	qev_init();
 	utils_stats_setup();
+	option_parse_args(0, NULL, NULL);
+	option_parse_config_file(NULL, NULL, 0, NULL);
 	evs_server_init();
 	conns_init();
 	apps_run();
@@ -132,6 +134,37 @@ START_TEST(test_conns_clients_foreach) {
 	
 	conns_clients_foreach(_callback);
 	test_uint32_eq(i, CONNS_YIELD+1, "Correct number of clients called");
+}
+END_TEST
+
+START_TEST(test_conns_clients_foreach_race) {
+	client_t *client = u_client_create(NULL);
+	conns_client_new(client);
+	
+	int calls = 0;
+	
+	gboolean _callback(client_t *client) {
+		calls++;
+		return TRUE;
+	}
+	
+	gpointer _race(gpointer nothing) {
+		conns_clients_foreach(_callback);
+		return NULL;
+	}
+	
+	qev_lock_write_lock(&_clients_lock);
+	
+	g_thread_new("_race", _race, NULL);
+	
+	usleep(MS_TO_USEC(10));
+	
+	g_ptr_array_remove_index_fast(_clients, 0);
+	__sync_fetch_and_sub(&_clients_len, 1);
+	
+	qev_lock_write_unlock(&_clients_lock);
+	
+	test_int32_eq(calls, 0, "No callbacks");
 }
 END_TEST
 
@@ -257,6 +290,19 @@ START_TEST(test_conns_balance_yield) {
 }
 END_TEST
 
+START_TEST(test_conns_max_clients) {
+	int socket = 0;
+	for (int i = 0; i < 510; i++) {
+		client_t *client = u_client_create(&socket);
+		client->handler = h_rfc6455;
+		conns_client_new(client);
+		client->state = cstate_running;
+	}
+	
+	test_uint64_eq(_clients->len, 500, "Only 500 accepted");
+}
+END_TEST
+
 Suite* conns_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Connections");
@@ -273,6 +319,7 @@ Suite* conns_suite() {
 	tcase_add_test(tc, test_conns_message_clean_2);
 	tcase_add_test(tc, test_conns_message_clean_3);
 	tcase_add_test(tc, test_conns_clients_foreach);
+	tcase_add_test(tc, test_conns_clients_foreach_race);
 	tcase_add_test(tc, test_conns_clients_remove_0);
 	tcase_add_test(tc, test_conns_clients_remove_1);
 	suite_add_tcase(s, tc);
@@ -283,6 +330,11 @@ Suite* conns_suite() {
 	tcase_add_test(tc, test_conns_balance_1);
 	tcase_add_test(tc, test_conns_balance_2);
 	tcase_add_test(tc, test_conns_balance_yield);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Limits");
+	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);
+	tcase_add_test(tc, test_conns_max_clients);
 	suite_add_tcase(s, tc);
 	
 	return s;

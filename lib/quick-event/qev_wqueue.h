@@ -1,6 +1,6 @@
 /**
  * Defines the functions used by QEV's internal work queue
- * @file qev_internal.h
+ * @file qev_wqueue.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012 Andrew Stone

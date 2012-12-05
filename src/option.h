@@ -145,6 +145,11 @@ const gchar* option_config_file();
 const gchar* option_log_file();
 
 /**
+ * The maximum number of clients allowed to be connected.
+ */
+const guint64 option_max_clients();
+
+/**
  * The maximum length a message may be.
  */
 const guint64 option_max_message_size();
