@@ -1,6 +1,6 @@
 /**
  * Various, useful macros for printing out debug information and handling segfaults while debugging.
- * @file debug.h
+ * @file log.h
  */
 #pragma once
 #include <stdio.h>

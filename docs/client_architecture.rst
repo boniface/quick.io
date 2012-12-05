@@ -53,17 +53,19 @@ one (optional)       Subscribe to the event, receive one event, and unsubscribe
 Client Heartbeats
 -----------------
 
-Your average user will most likely be someone connecting to your service from behind some NAT gateway: this presents some interesting problems. In order to make sure the client maintains a connection to the server at all times, even when there is no activity, application-level heartbeats are employed. By default, the server sends a `/qio/heartbeat` event to every client every 60 seconds (this is not client-specific: if a client connects, it might receive a heartbeat after a few seconds, followed by another 60 seconds thereafter).
+Your average user will most likely be someone connecting to your service from behind some NAT gateway: this presents some interesting problems. In order to make sure the client maintains a connection to the server at all times, even when there is no activity, application-level heartbeats are employed. By default, a client will receive at least one message every 60 seconds, be it in the form of a callback, broadcast event, or heartbeat.
+
+Heartbeats are implemented such that, if a client hasn't been sent a message in around 60 seconds (this is variable to withing -15 seconds, but a client will never go more than 60 seconds without a message), it will receive a heartbeat.
 
 The best method for implementing a heartbeat is:
 
-1. Once the connection is open, the client should set a timer for 65 seconds for heartbeat events, thus giving the server 5 seconds padding around heartbeat events.
+1. The client should listen for a `/qio/heartbeat` event (bot not subscribe).
 
-2. The client should listen for a `/qio/heartbeat` event (bot not subscribe).
+2. Once the connection is open, the client should set a timer for 65 seconds, listening for messages from the server.
 
-3. When a `/qio/heartbeat` event comes in, it should reset its 65 second time for another 65 seconds.
+3. Every time the client receives a message from the server, it should reset its timer.
 
-4. If there is no heartbeat event in 65 seconds, the client should send a `/qio/ping` to the server, with a callback, to verify the server is still there.
+4. If there has been no activity within 65 seconds, the client should send a `/qio/ping` to the server, with a callback, to verify the server is still there.
 	
 	1. If the server sends the callback, restart the timer.
 	2. If the socket is broken, reconnect logic should kick in.

@@ -95,6 +95,7 @@ static void _conns_client_timeout_clean() {
 static void _conns_clients_remove(client_t *client) {
 	qev_lock_write_lock(&_clients_lock);
 	
+	// Clients are only ever removed from 1 thread, so we don't have to be atomic
 	guint pos = client->clients_pos;
 	
 	if (pos > 0) {

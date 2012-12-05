@@ -69,6 +69,9 @@
  */
 typedef struct stats_s {
 	
+	/**
+	 * All of the stats are in one struct
+	 */
 	#define X(slot, name) gsize slot;
 		STATS_S_VALUES
 		STATS_S_COUNTERS

@@ -15,8 +15,19 @@
 #include "qio.h"
 #include "utils.h"
 
+/**
+ * Milliseconds to microseconds
+ */
 #define MS_TO_USEC(ms) (ms * 1000)
+
+/**
+ * Milliseconds to nanoseconds
+ */
 #define MS_TO_NSEC(ms) (MS_TO_USEC(ms) * 1000)
+
+/**
+ * Seconds to microseconds
+ */
 #define SEC_TO_USEC(secs) MS_TO_USEC(secs * 1000)
 
 /**

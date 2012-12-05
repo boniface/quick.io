@@ -10,6 +10,16 @@ A single connection to the server is treated as an individual client. A single c
 
 All clients, as far as the server is concerned, are stateless connections that can be hurled from server to server at any given moment without any ill effect. Client applications should be designed such that a server disconnect doesn't mean the end for the client: once reconnected, the client should resume its normal operation as though everything is going as planned.
 
+quick-event
+-----------
+
+The server is built on top of a statically-routed, event-driven framework called "quick event". Originally, all of the socket code and everything was part of QIO, but it became too complicated to maintain in the same project, and it was broken into quick-event. Quick-event provides a thread-agnostic implementation of event routing that uses minimal locking.
+
+Thread Safety
+-------------
+
+Events on clients are limited to happening in 1 thread. When an operation needs to be performed on a global struture, there are a few locks to ensure atomicity. With the list of connected clients, however, many threads may append to it at the same time using a read lock (used as an append lock). For removal, a write lock must be obtained. Each of these operations happens very quickly, so spin locks are used rather than involving the operating system, which is incredibly costly compared with waiting (at most) a few hundred cycles.
+
 Client Handlers
 ===============
 
