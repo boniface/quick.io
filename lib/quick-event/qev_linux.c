@@ -50,11 +50,24 @@ static int _epoll;
  * Accept connections on the socket.
  */
 static void _qev_accept(QEV_CLIENT_T *server) {
+	struct epoll_event ev;
+	ev.events = EPOLL_READ_EVENTS;
+	
 	while (1) {
 		qev_socket_t client_sock = accept(QEV_CSLOT(server, socket), NULL, NULL);
 		if (client_sock == -1) {
-			if (errno != EAGAIN && errno != EWOULDBLOCK) {
-				g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Could not accept client: %s", strerror(errno));
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				return;
+			}
+			
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Could not accept client: %s", strerror(errno));
+			
+			// If anything else goes wrong, be sure to re-arm the listen FD so that the OS
+			// knows it should fire it again, otherwise it will NEVER be triggered again
+			// (this is edge triggering, not level)
+			ev.data.ptr = server;
+			if (epoll_ctl(_epoll, EPOLL_CTL_MOD, QEV_CSLOT(server, socket), &ev) == -1) {
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_ERROR, "Could not re-arm listen FD: %s", strerror(errno));
 			}
 			
 			return;
@@ -94,10 +107,7 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 		QEV_CSLOT(client, ssl_ctx) = ctx;
 		QEV_CSLOT(client, _flags) = flags;
 		
-		struct epoll_event ev;
-		ev.events = EPOLL_READ_EVENTS;
 		ev.data.ptr = client;
-		
 		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, client_sock, &ev) == -1) {
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "EPOLL_ADD(fd %d): %s", client_sock, strerror(errno));
 			
