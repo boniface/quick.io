@@ -4,10 +4,10 @@
 #define QEV_CLIENT_CLOSE_FN conns_client_close
 
 #define QEV_TIMERS \
-	QEV_TIMER(conns_maintenance_tick, 1, 0) \
-	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_TICK, 0) \
-	QEV_TIMER(evs_client_send_async_messages, 0, 100) \
-	QEV_TIMER(stats_flush, STATS_INTERVAL, 0)
+	QEV_TIMER(conns_maintenance_tick, 1, 0, QEV_TIMER_EXCLUSIVE) \
+	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_TICK, 0, 0) \
+	QEV_TIMER(evs_client_send_async_messages, 0, 100, 0) \
+	QEV_TIMER(stats_flush, STATS_INTERVAL, 0, QEV_TIMER_EXCLUSIVE)
 
 #include "qio.h"
 

@@ -28,6 +28,11 @@ typedef struct {
 	 * For assuring that only 1 thread will ever be running a timer at once
 	 */
 	int operations;
+	
+	/**
+	 * Any flags on this timer
+	 */
+	char flags;
 } _timer_t;
 
 /**
@@ -40,7 +45,7 @@ static int _epoll;
 	 * Any registered timers
 	 */
 	static _timer_t _timers[] = {
-		#define QEV_TIMER(fn, sec, ms) {fn, -1},
+		#define QEV_TIMER(fn, sec, ms, flags) {fn, -1, 0, flags},
 			QEV_TIMERS
 		#undef QEV_TIMER
 	};
@@ -209,10 +214,14 @@ void qev_dispatch() {
 				char buff[8];
 				read(_timers[(gsize)client].fd, buff, sizeof(buff));
 				
-				if (__sync_fetch_and_add(&_timers[(gsize)client].operations, 1) == 0) {
-					do {
-						_timers[(gsize)client].fn();
-					} while (__sync_sub_and_fetch(&_timers[(gsize)client].operations, 1) > 0);
+				if (_timers[(gsize)client].flags & QEV_TIMER_EXCLUSIVE) {
+					if (__sync_fetch_and_add(&_timers[(gsize)client].operations, 1) == 0) {
+						do {
+							_timers[(gsize)client].fn();
+						} while (__sync_sub_and_fetch(&_timers[(gsize)client].operations, 1) > 0);
+					}
+				} else {
+					_timers[(gsize)client].fn();
 				}
 			} else
 		#endif
@@ -295,7 +304,7 @@ int qev_sys_init() {
 		size_t i = 0;
 	#endif
 	
-	#define QEV_TIMER(fn, sec, ms) \
+	#define QEV_TIMER(fn, sec, ms, flags) \
 		ev.data.ptr = (void*)i; \
 		_timers[i].fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK); \
 		if (_timers[i].fd == -1) { \
