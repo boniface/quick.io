@@ -345,7 +345,7 @@ static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean
 			if (client->heartbeat >= heartbeat_time) {
 				return TRUE;
 			} else {
-				STATS_INC(heartbeat);
+				STATS_INC(heartbeats);
 			}
 		}
 		

@@ -43,8 +43,8 @@
 	/** The number of hups from epoll ***TEMP*** */ \
 	X(client_hups, "clients.hups") \
 	\
-	/** Indicates when a heartbeat is sent (see graphite's drawAsInfinite()) */ \
-	X(heartbeat, "heartbeat") \
+	/** The number of heartbeats sent */ \
+	X(heartbeats, "heartbeats") \
 	\
 	/** The number of messages destined for 1 client */ \
 	X(messages_sent, "messages.sent") \

@@ -250,7 +250,7 @@ START_TEST(test_evs_heartbeat) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.heartbeat, 1, "Got 1 heartbeat");
+	test_size_eq(stats.heartbeats, 1, "Got 1 heartbeat");
 	
 	close(socket);
 	u_client_free(client);
@@ -282,7 +282,7 @@ START_TEST(test_evs_heartbeat_yield) {
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 	
-	test_size_eq(stats.heartbeat, CONNS_YIELD*2, "Heartbeats sent");
+	test_size_eq(stats.heartbeats, CONNS_YIELD*2, "Heartbeats sent");
 }
 END_TEST
 
@@ -295,16 +295,16 @@ START_TEST(test_evs_heartbeat_already_written) {
 	
 	evs_client_heartbeat();
 	evs_client_send_async_messages();
-	test_size_eq(stats.heartbeat, 1, "Got heartbeat");
+	test_size_eq(stats.heartbeats, 1, "Got heartbeat");
 	
-	stats.heartbeat = 0;
+	stats.heartbeats = 0;
 	
 	client_write_frame(client, "test", 4);
 	
 	evs_client_heartbeat();
 	evs_client_send_async_messages();
 	
-	test_size_eq(stats.heartbeat, 0, "Got no heartbeat");
+	test_size_eq(stats.heartbeats, 0, "Got no heartbeat");
 	
 	close(socket);
 	u_client_free(client);
