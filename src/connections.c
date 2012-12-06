@@ -203,11 +203,17 @@ void conns_client_new(client_t *client) {
 
 void conns_client_killed(client_t *client) {
 	client->state = cstate_dead;
-	_conns_clients_remove(client);
 }
 
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
+	
+	// Lock contention is best reduced by having the client removed on close
+	// This presents a few race conditions, however, where, if you release the read
+	// lock on the table, it's possible for a client to be removed and freed.
+	// In this case, you MUST client_ref the client to protect yourself until
+	// you're done
+	_conns_clients_remove(client);
 	
 	conns_client_timeout_clear(client);
 	
@@ -368,9 +374,19 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 		
 		client_t *client = g_ptr_array_index(_clients, i);
 		
+		// We're using a reference that doesn't belong to us and unlocking on it.
+		// Without this, we could free a client before we use it
+		client_ref(client);
+		
 		qev_lock_read_unlock(&_clients_lock);
 		
-		if (!_callback(client)) {
+		// We're only supposed to give callbacks on active clients, but it's more a soft
+		// requirement than anything 100% certain
+		gboolean should_break = client->state == cstate_running && !_callback(client);
+		
+		client_unref(client);
+		
+		if (should_break) {
 			break;
 		}
 	}
