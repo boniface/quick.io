@@ -26,7 +26,7 @@ void stats_flush() {
 		return;
 	}
 	
-	gint64 time = g_get_real_time() / 1000000;
+	gint64 time = qev_time;
 	
 	void _append(gchar *prefix, gchar *key, double val) {
 		if (prefix == NULL) {

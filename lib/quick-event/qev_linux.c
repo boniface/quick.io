@@ -216,8 +216,6 @@ void qev_dispatch() {
 				char buff[8];
 				read(_timers[(gsize)client].fd, buff, sizeof(buff));
 				
-				gint64 start = g_get_monotonic_time();
-				
 				if (_timers[(gsize)client].flags & QEV_TIMER_EXCLUSIVE) {
 					if (__sync_fetch_and_add(&_timers[(gsize)client].operations, 1) == 0) {
 						do {
@@ -227,8 +225,6 @@ void qev_dispatch() {
 				} else {
 					_timers[(gsize)client].fn();
 				}
-				
-				INFO("Timer %s: %" G_GINT64_FORMAT, _timers[(gsize)client].name, g_get_monotonic_time() - start);
 			} else
 		#endif
 		
