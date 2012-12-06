@@ -176,19 +176,16 @@ void conns_balance(guint count, gchar *to) {
 
 void conns_client_new(client_t *client) {
 	qev_lock_read_lock(&_clients_lock);
-	guint pos = __sync_add_and_fetch(&_clients_len, 1);
 	
-	if (pos > option_max_clients()) {
+	if (g_atomic_int_get(&_clients_len) + 1 > option_max_clients()) {
 		WARN("More clients than `max-clients` trying to connect");
 		
-		qev_close(client);
-		__sync_sub_and_fetch(&_clients_len, 1);
-		
 		qev_lock_read_unlock(&_clients_lock);
+		qev_close(client);
 		return;
 	}
 	
-	client->clients_pos = pos;
+	client->clients_pos = __sync_add_and_fetch(&_clients_len, 1);
 	_clients->pdata[client->clients_pos - 1] = client;
 	g_atomic_int_inc(&_clients->len);
 	qev_lock_read_unlock(&_clients_lock);
@@ -206,12 +203,11 @@ void conns_client_new(client_t *client) {
 
 void conns_client_killed(client_t *client) {
 	client->state = cstate_dead;
+	_conns_clients_remove(client);
 }
 
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
-	
-	_conns_clients_remove(client);
 	
 	conns_client_timeout_clear(client);
 	
@@ -374,7 +370,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 		
 		qev_lock_read_unlock(&_clients_lock);
 		
-		if (client->state == cstate_running && !_callback(client)) {
+		if (!_callback(client)) {
 			break;
 		}
 	}
