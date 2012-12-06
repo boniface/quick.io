@@ -8,7 +8,7 @@
 /**
  * The events that a socket can be read on.
  */
-#define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLET;
+#define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLET;
 
 /**
  * Held inside _timers, for quick reference
@@ -229,8 +229,7 @@ void qev_dispatch() {
 		if (QEV_CSLOT(client, _flags) & QEV_CMASK_LISTENING) {
 			_qev_accept(client);
 		} else {
-			if (events & EPOLLRDHUP) {
-				STATS_INC(client_hups);
+			if (events & (EPOLLRDHUP | EPOLLERR | EPOLLHUP)) {
 				qev_close(client);
 			} else if (events & EPOLLIN) {
 				qev_client_read(client);
