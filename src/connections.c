@@ -95,25 +95,28 @@ static void _conns_client_timeout_clean() {
 static void _conns_clients_remove(client_t *client) {
 	qev_lock_write_lock(&_clients_lock);
 	
+	//
 	// Clients are only ever removed from 1 thread, so we don't have to be atomic
+	//
+	
 	guint pos = client->clients_pos;
 	
 	if (pos > 0) {
-		g_ptr_array_remove_index_fast(_clients, pos - 1);
-		__sync_fetch_and_sub(&_clients_len, 1);
+		client->clients_pos = 0;
 		
-		#if defined(TESTING) || defined(DEBUG)
-			// Cause segfaults while testing if we get stuff wrong
-			_clients->pdata[_clients->len] = NULL;
-		#endif
-		
-		// If the array isn't empty and we're not the last element (neither case
-		// is safe to write back to)
-		if (_clients->len >= pos) {
-			((client_t*)g_ptr_array_index(_clients, pos - 1))->clients_pos = pos;
+		guint index = pos - 1;
+		if (index != _clients->len - 1) {
+			client_t *replace = _clients->pdata[index] = _clients->pdata[_clients->len - 1];
+			replace->clients_pos = pos;
+			
+			#if defined(TESTING) || defined(DEBUG)
+				// Cause segfaults while testing if we get stuff wrong
+				_clients->pdata[_clients->len] = NULL;
+			#endif
 		}
 		
-		client->clients_pos = 0;
+		_clients->len--;
+		__sync_fetch_and_sub(&_clients_len, 1);
 	}
 	
 	qev_lock_write_unlock(&_clients_lock);
