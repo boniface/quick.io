@@ -177,7 +177,7 @@ void conns_balance(guint count, gchar *to) {
 void conns_client_new(client_t *client) {
 	qev_lock_read_lock(&_clients_lock);
 	
-	if (g_atomic_int_get(&_clients_len) + 1 > option_max_clients()) {
+	if (((guint)g_atomic_int_get(&_clients_len)) + 1 > option_max_clients()) {
 		WARN("More clients than `max-clients` trying to connect");
 		
 		qev_lock_read_unlock(&_clients_lock);
