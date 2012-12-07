@@ -34,7 +34,7 @@
 /**
  * The time between heartbeat ticks.
  */
-#define HEARTBEAT_TICK 15
+#define HEARTBEAT_TICK 10
 
 /**
  * The amount of time between heartbeats to a client
