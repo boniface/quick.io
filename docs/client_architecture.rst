@@ -55,7 +55,7 @@ Client Heartbeats
 
 Your average user will most likely be someone connecting to your service from behind some NAT gateway: this presents some interesting problems. In order to make sure the client maintains a connection to the server at all times, even when there is no activity, application-level heartbeats are employed. By default, a client will receive at least one message every 60 seconds, be it in the form of a callback, broadcast event, or heartbeat.
 
-Heartbeats are implemented such that, if a client hasn't been sent a message in around 60 seconds (this is variable to withing -15 seconds, but a client will never go more than 60 seconds without a message), it will receive a heartbeat.
+Heartbeats are implemented such that, if a client hasn't been sent a message in around 60 seconds (this is variable to within -10 seconds, but a client will never go more than 60 seconds without a message), it will receive a heartbeat.
 
 The best method for implementing a heartbeat is:
 
