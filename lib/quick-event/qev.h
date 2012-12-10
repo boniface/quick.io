@@ -61,6 +61,12 @@
 #define QEV_TIMER_EXCLUSIVE 0x01
 
 /**
+ * Indicates that a timer callback should be executed only after
+ * all the clients have been processed.
+ */
+#define QEV_TIMER_DELAYED 0x02
+
+/**
  * An approximation of the current time, in seconds since Jan 1, 1970.
  * This is updated every so often to reflect a fairly-recent system time.
  */

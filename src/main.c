@@ -3,13 +3,11 @@
 #define QEV_CLIENT_KILLED_FN conns_client_killed
 #define QEV_CLIENT_CLOSE_FN conns_client_close
 
-// Overlapping timers fire in the order that they're added, and since stats
-// messes up if it waits too long, that should always go first
 #define QEV_TIMERS \
-	QEV_TIMER(stats_flush, STATS_INTERVAL, 0, QEV_TIMER_EXCLUSIVE) \
-	QEV_TIMER(conns_maintenance_tick, 1, 0, QEV_TIMER_EXCLUSIVE) \
-	QEV_TIMER(evs_client_send_async_messages, 0, 100, 0) \
-	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_TICK, 0, 0)
+	QEV_TIMER(conns_maintenance_tick, 1, 0, QEV_TIMER_EXCLUSIVE | QEV_TIMER_DELAYED) \
+	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_TICK, 0, QEV_TIMER_DELAYED) \
+	QEV_TIMER(evs_client_send_async_messages, 0, 100, QEV_TIMER_DELAYED) \
+	QEV_TIMER(stats_flush, STATS_INTERVAL, 0, QEV_TIMER_EXCLUSIVE)
 
 #include "qio.h"
 

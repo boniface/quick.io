@@ -265,6 +265,18 @@ void qev_client_read(QEV_CLIENT_T *client) {
 	}
 }
 
+void qev_timer_fire(_timer_t *timer) {
+	if (timer->flags & QEV_TIMER_EXCLUSIVE) {
+		if (__sync_fetch_and_add(&timer->operations, 1) == 0) {
+			do {
+				timer->fn();
+			} while (__sync_sub_and_fetch(&timer->operations, 1) > 0);
+		}
+	} else {
+		timer->fn();
+	}
+}
+
 void qev_close(QEV_CLIENT_T *client) {
 	QEV_TEST_LOCK(qev_close_before);
 	// Don't put the client into the list if he is already being closed

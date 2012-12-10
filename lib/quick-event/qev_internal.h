@@ -81,6 +81,31 @@
 #define QEV_SEC_TO_USEC(secs) QEV_MS_TO_USEC(secs * 1000)
 
 /**
+ * Held inside _timers, for quick reference
+ */
+typedef struct {
+	/**
+	 * The callback function
+	 */
+	qev_timer_cb fn;
+	
+	/**
+	 * The timer's file descriptor
+	 */
+	qev_timer_t timer;
+	
+	/**
+	 * For assuring that only 1 thread will ever be running a timer at once
+	 */
+	int operations;
+	
+	/**
+	 * Any flags on this timer
+	 */
+	char flags;
+} _timer_t;
+
+/**
  * Listen on a ip address and port (system-specific).
  *
  * @param ip_address The IP address to listen on
@@ -98,6 +123,11 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
  * @param client The client ready for reading.
  */
 void qev_client_read(QEV_CLIENT_T *client);
+
+/**
+ * Fires a timer
+ */
+void qev_timer_fire(_timer_t *timer);
 
 /**
  * A notification that a client has been instructed to close: this should clean up all

@@ -35,3 +35,9 @@
  * Sockets on Linux are ints.
  */
 typedef int qev_socket_t;
+
+/**
+ * The timer type.
+ * On Linux, they're files!
+ */
+typedef int qev_timer_t;

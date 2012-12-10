@@ -11,33 +11,6 @@
 #define EPOLL_READ_EVENTS EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLET;
 
 /**
- * Held inside _timers, for quick reference
- */
-typedef struct {
-	/**
-	 * The callback function
-	 */
-	qev_timer_cb fn;
-	
-	gchar *name;
-	
-	/**
-	 * The timer's file descriptor
-	 */
-	int fd;
-	
-	/**
-	 * For assuring that only 1 thread will ever be running a timer at once
-	 */
-	int operations;
-	
-	/**
-	 * Any flags on this timer
-	 */
-	char flags;
-} _timer_t;
-
-/**
  * Everything happens on the same instance of epoll
  */
 static int _epoll;
@@ -47,7 +20,7 @@ static int _epoll;
 	 * Any registered timers
 	 */
 	static _timer_t _timers[] = {
-		#define QEV_TIMER(fn, sec, ms, flags) {fn, #fn, -1, 0, flags},
+		#define QEV_TIMER(fn, sec, ms, flags) {fn, -1, 0, flags},
 			QEV_TIMERS
 		#undef QEV_TIMER
 	};
@@ -197,6 +170,10 @@ void qev_dispatch() {
 	// Where the OS will put events for us
 	struct epoll_event events[QEV_MAX_EVENTS];
 	
+	// Set to true to indicate that a delayed timer fired this round
+	gboolean _delayed_timers[G_N_ELEMENTS(_timers)];
+	memset(&_delayed_timers, FALSE, sizeof(_delayed_timers));
+	
 	int num_evs = epoll_wait(_epoll, events, QEV_MAX_EVENTS, QEV_EPOLL_TIMEOUT);
 	if (num_evs < 1) {
 		if (num_evs == -1 && errno != EINTR) {
@@ -211,19 +188,15 @@ void qev_dispatch() {
 		uint32_t events = ev.events;
 		
 		#ifndef QEV_NO_TIMERS
-			if (((gsize)client) < (sizeof(_timers) / sizeof(*_timers))) {
+			if (((gsize)client) < G_N_ELEMENTS(_timers)) {
 				// Have to read the timer for it to continue to fire on an interval
 				char buff[8];
-				read(_timers[(gsize)client].fd, buff, sizeof(buff));
+				read(_timers[(gsize)client].timer, buff, sizeof(buff));
 				
-				if (_timers[(gsize)client].flags & QEV_TIMER_EXCLUSIVE) {
-					if (__sync_fetch_and_add(&_timers[(gsize)client].operations, 1) == 0) {
-						do {
-							_timers[(gsize)client].fn();
-						} while (__sync_sub_and_fetch(&_timers[(gsize)client].operations, 1) > 0);
-					}
+				if (_timers[(gsize)client].flags & QEV_TIMER_DELAYED) {
+					_delayed_timers[(gsize)client] = TRUE;
 				} else {
-					_timers[(gsize)client].fn();
+					qev_timer_fire(&_timers[(gsize)client]);
 				}
 			} else
 		#endif
@@ -236,6 +209,12 @@ void qev_dispatch() {
 			} else if (events & EPOLLIN) {
 				qev_client_read(client);
 			}
+		}
+	}
+	
+	for (gsize i = 0; i < G_N_ELEMENTS(_delayed_timers); i++) {
+		if (_delayed_timers[i]) {
+			qev_timer_fire(&_timers[i]);
 		}
 	}
 }
@@ -307,8 +286,8 @@ int qev_sys_init() {
 	
 	#define QEV_TIMER(fn, sec, ms, flags) \
 		ev.data.ptr = (void*)i; \
-		_timers[i].fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK); \
-		if (_timers[i].fd == -1) { \
+		_timers[i].timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK); \
+		if (_timers[i].timer == -1) { \
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "timerfd_create(): %s", strerror(errno)); \
 			return -1; \
 		} \
@@ -316,10 +295,10 @@ int qev_sys_init() {
 		spec.it_value.tv_nsec = QEV_MS_TO_NSEC(ms); \
 		spec.it_interval.tv_sec = sec; \
 		spec.it_interval.tv_nsec = QEV_MS_TO_NSEC(ms); \
-		timerfd_settime(_timers[i].fd, 0, &spec, NULL); \
-		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _timers[i].fd, &ev) == -1) { \
+		timerfd_settime(_timers[i].timer, 0, &spec, NULL); \
+		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, _timers[i].timer, &ev) == -1) { \
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "EPOLL_ADD(): %s", strerror(errno)); \
-			close(_timers[i].fd); \
+			close(_timers[i].timer); \
 			return -1; \
 		} \
 		i++;
