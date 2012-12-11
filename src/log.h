@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include "qio.h"
 
+/**
+ * Forward declaration of flushing for coverage
+ */
+void __gcov_flush();
+
 #if defined(COMPILE_DEBUG) || defined(TESTING)
 	#define DEBUG(format, ...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 #else

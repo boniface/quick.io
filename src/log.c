@@ -81,6 +81,7 @@ static void _log(const gchar *log_domain, GLogLevelFlags log_level, const gchar 
 	
 	#if DEBUGGING
 		fprintf(_log_file, "%s - %s : %s\n", log_domain, _get_level(log_level), message);
+		__gcov_flush();
 	#else
 		fprintf(_log_file, "%s - %s [%" G_GINT64_FORMAT "] %s\n", log_domain, _get_level(log_level), g_get_real_time(), message);
 	#endif
