@@ -53,7 +53,6 @@ typedef guint16 status_t;
 #include "module.h"
 
 #include "../test/utils_stats.h"
-#include "../test/utils_locks.h"
 
 // Some out-of-order guys for dependencies
 #include "stats.h"

@@ -6,6 +6,10 @@
 	"[quick.io-apps]\n" \
 	"test-bad = test_bad"
 
+#define GOOD_RUN "[quick.io]\n" \
+	"[quick.io-apps]\n" \
+	"test-bad = test_good_run"
+
 #define BAD_RUN "[quick.io]\n" \
 	"[quick.io-apps]\n" \
 	"test-bad = test_bad_run"
@@ -155,6 +159,21 @@ START_TEST(test_apps_cb_run) {
 }
 END_TEST
 
+START_TEST(test_apps_cb_run_good) {
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(GOOD_RUN, 1, sizeof(GOOD_RUN), f);
+	fclose(f);
+	
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+	
+	test(option_parse_args(argc, argv, NULL), "File ready");
+	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	
+	apps_run();
+}
+END_TEST
+
 START_TEST(test_apps_cb_run_fatal) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(BAD_RUN, 1, sizeof(BAD_RUN), f);
@@ -246,6 +265,7 @@ Suite* apps_suite() {
 	tcase_add_checked_fixture(tc, _apps_setup, _apps_teardown);
 	tcase_add_test(tc, test_apps_cb_register);
 	tcase_add_test(tc, test_apps_cb_run);
+	tcase_add_test(tc, test_apps_cb_run_good);
 	tcase_add_test_raise_signal(tc, test_apps_cb_run_fatal, SIGTRAP);
 	tcase_add_test(tc, test_apps_cb_client_connect);
 	tcase_add_test(tc, test_apps_cb_client_close);

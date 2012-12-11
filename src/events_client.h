@@ -58,7 +58,7 @@ struct evs_client_sub_s {
 	 *
 	 * @attention MUST be g_list_free()'d when done.
 	 */
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	/**
 	 * The hash table (used as a set) of clients.
@@ -141,7 +141,7 @@ void evs_client_send_async_messages();
  *
  * @return The number of people subscribed; 0 if event does not exist.
  */
-APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, const path_extra_t extra);
+APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, path_extra_t *extra);
 
 /**
  * Send a message to everyone subscribed to the event. This just adds to the list of
@@ -157,7 +157,7 @@ APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, co
  *
  * @attention IS thread safe.
  */
-APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const path_extra_t extra, const enum data_t type, const gchar *data);
+APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extra, const enum data_t type, const gchar *data);
 
 /**
  * Prepare a message to be sent to 1 individual user.
@@ -173,7 +173,7 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, const p
  * @return CLIENT_GOOD If the message was prepared and formatted successfully.
  * @return CLIENT_ERROR If anything went wrong.
  */
-status_t evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const callback_t server_callback, const path_extra_t extra, const enum data_t type, const gchar *data, GString *buffer);
+status_t evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const callback_t server_callback, path_extra_t *extra, const enum data_t type, const gchar *data, GString *buffer);
 
 /**
  * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST be called to fire off the callback
@@ -188,7 +188,7 @@ status_t evs_client_format_message(const event_handler_t *handler, const callbac
  * @param valid If the susbcription is valid; determines if the client will be subscribed
  * or rejected.
  */
-APP_EXPORT void evs_client_app_sub_cb(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback, const gboolean valid);
+APP_EXPORT void evs_client_app_sub_cb(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback, const gboolean valid);
 
 /**
  * Send a callback to a user. This is mainly used for async events that need to send stuff back.
@@ -197,11 +197,11 @@ APP_EXPORT void evs_client_app_sub_cb(client_t *client, const event_handler_t *h
  *
  * @param client The client to send the callback to
  * @param client_callback The id of the callback the client is expecting
+ * @param server_callback The callback to be sent back to the server
  * @param type The data type
  * @param data The data to send with the callback
- * @param server_callback The callback to be sent back to the server
  */
-APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t client_callback, const enum data_t type, const gchar *data, const callback_t server_callback);
+APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t client_callback, const callback_t server_callback, const enum data_t type, const gchar *data);
 
 /**
  * Sends an error callback to the user.
@@ -217,6 +217,11 @@ APP_EXPORT void evs_client_send_error_callback(client_t *client, const callback_
  * Send a heartbeat out to all users subscribed to the heartbeat event.
  */
 void evs_client_heartbeat();
+
+/**
+ * Runs on every tick of QEV: for sending out async messages.
+ */
+void evs_client_tick();
 
 /**
  * A cleanup routine for empty events.

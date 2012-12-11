@@ -45,7 +45,7 @@
  * @attention This may never be modified after it is created.
  * @note Each item is a gchar*.
  */
-typedef GPtrArray* path_extra_t;
+typedef GPtrArray path_extra_t;
 
 /**
  * The data type for callbacks.
@@ -91,7 +91,7 @@ typedef struct event_s {
 	 *
 	 * @attention This is ref-counted, so it MUST be g_ptr_array_un/ref()'d
 	 */
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	/**
 	 * The callback number the client sent.
@@ -143,38 +143,26 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  *
  * @param client The client that subscribed to the event.
  * @param handler The event handler, so that references don't have to be stored in the app.
- * @param extra Any extra parameters that came in with the subscription
+ * @param extra Any extra parameters that came in with the subscription.
  * @param client_callback The callback to be issued if going async
  *
  * @return CLIENT_GOOD Everything is good, send the callback as normal.
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t extra, const callback_t client_callback);
-/**
- * A callback for when a client subscribes to a specific event.
- * This is supplied to evs_server_on() and is called when a client subscribes
- * to the event.  Don't give the callbacks too much information about the 
- * subscription: it's too much temptation to do unsafe stuff.
- *
- * @param client The client that subscribed to the event.
- * @param handler The event handler, so that references don't have to be stored in the app.
- * @param extra Any extra parameters that came in with the subscription
- * subscription should be canceled.
- */
-typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_t *handler, const path_extra_t extra);
+typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
 
 /**
- * A callback for when a client subscribes to a specific event.
+ * A callback for when a client unsubscribes to a specific event.
  * This is supplied to evs_server_on() and is called when a client subscribes
  * to the event.  Don't give the callbacks too much information about the 
  * subscription: it's too much temptation to do unsafe stuff.
  *
- * @param client The client that subscribed to the event.
- * @param event_path The path of the event that was subscribed to.
- * @param extra Any extra parameters that came in with the subscription
+ * @param client The client that unsubscribed from the event.
+ * @param handler The event handler, so that references don't have to be stored in the app.
+ * @param extra Any extra parameters that came in with the subscription that should be killed.
  */
-typedef void (*on_subscribe_cb)(client_t *client, const char *event_path, const path_extra_t extra);
+typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t *extra);
 
 /**
  * The function type that is called when a client sends a callback to the server.
@@ -265,7 +253,7 @@ struct event_handler_s {
  *
  * @return The event handler. If null, extra will also be NULL.
  */
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra);
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **extra);
 
 /**
  * Handle an event from a client.
@@ -313,7 +301,7 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler);
  *
  * @return The complete, formatted path, with any extra parameters. This MUST be g_free()'d
  */
-gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra);
+gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra);
 
 /**
  * A shortcut function for not allowing clients to subscribe to an event.
@@ -322,7 +310,7 @@ gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra)
  *
  * @return CLIENT_INVALID_SUBSCRIPTION The client is not allowed to subscribe.
  */
-APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback);
+APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
 
 /**
  * Create a new callback on the client that the client can call back to.

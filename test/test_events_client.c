@@ -100,7 +100,7 @@ START_TEST(test_evs_client_format_message_2) {
 	
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 	
-	path_extra_t extra = NULL;
+	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
@@ -153,7 +153,7 @@ START_TEST(test_evs_client_format_message_with_callback) {
 	
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 	
-	path_extra_t extra = NULL;
+	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
@@ -171,7 +171,7 @@ END_TEST
 START_TEST(test_evs_client_format_message_with_server_callback) {
 	GString *buffer = g_string_sized_new(1);
 	
-	path_extra_t extra = NULL;
+	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
@@ -188,7 +188,7 @@ END_TEST
 START_TEST(test_evs_client_format_message_not_subscribed) {
 	GString *buffer = g_string_sized_new(1);
 	
-	path_extra_t extra = NULL;
+	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
@@ -205,7 +205,7 @@ END_TEST
 START_TEST(test_evs_client_format_message_not_subscribed_callback) {
 	GString *buffer = g_string_sized_new(1);
 	
-	path_extra_t extra = NULL;
+	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
 	test(handler != NULL, "Got handler");
 	
@@ -243,7 +243,7 @@ START_TEST(test_evs_heartbeat) {
 	client->state = cstate_running;
 	
 	evs_client_heartbeat();
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	char buff[512];
 	memset(buff, 0, sizeof(buff));
@@ -260,7 +260,7 @@ END_TEST
 START_TEST(test_evs_heartbeat_no_clients) {
 	// No segfaults?
 	evs_client_heartbeat();
-	evs_client_send_async_messages();
+	evs_client_tick();
 }
 END_TEST
 
@@ -275,7 +275,7 @@ START_TEST(test_evs_heartbeat_yield) {
 	}
 	
 	evs_client_heartbeat();
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	char buff[512];
 	memset(buff, 0, sizeof(buff));
@@ -294,7 +294,7 @@ START_TEST(test_evs_heartbeat_already_written) {
 	client->state = cstate_running;
 	
 	evs_client_heartbeat();
-	evs_client_send_async_messages();
+	evs_client_tick();
 	test_size_eq(stats.heartbeats, 1, "Got heartbeat");
 	
 	stats.heartbeats = 0;
@@ -302,7 +302,7 @@ START_TEST(test_evs_heartbeat_already_written) {
 	client_write_frame(client, "test", 4);
 	
 	evs_client_heartbeat();
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	test_size_eq(stats.heartbeats, 0, "Got no heartbeat");
 	
@@ -378,11 +378,10 @@ END_TEST
 
 START_TEST(test_evs_client_subscribe_async) {
 	client_t *client = u_client_create(NULL);
-	
 	test_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
 	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 	
-	evs_client_send_async_messages();
+	while (client->subs->len != 1);
 	
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	
@@ -400,7 +399,7 @@ START_TEST(test_evs_client_subscribe_async_with_callback) {
 	test_status_eq(evs_client_sub_client("/test/async", client, 654987), CLIENT_ASYNC, "Async");
 	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 	
-	evs_client_send_async_messages();
+	while (client->subs->len != 1);
 	
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
@@ -409,8 +408,6 @@ START_TEST(test_evs_client_subscribe_async_with_callback) {
 	memset(buff, 0, sizeof(buff));
 	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(ASYNC_CALLBACK)-1, "Correct len");
 	test_bin_eq(buff, ASYNC_CALLBACK, sizeof(ASYNC_CALLBACK)-1, "Correct callback sent");
-	
-	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 async callback sent");
 }
 END_TEST
 
@@ -421,14 +418,11 @@ START_TEST(test_evs_client_subscribe_async_without_callback) {
 	test_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
 	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 	
-	evs_client_send_async_messages();
+	while (client->subs->len != 1);
+	
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	
 	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
-	
-	evs_client_send_async_messages();
-	
-	test_size_eq(utils_stats()->evs_client_async_messages, 0, "0 async callbacks sent");
 }
 END_TEST
 
@@ -440,11 +434,9 @@ START_TEST(test_evs_client_subscribe_async_reject) {
 	test_status_eq(evs_client_sub_client("/test/async/reject", client, 1), CLIENT_ASYNC, "Async");
 	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 	
-	evs_client_send_async_messages();
 	test_size_eq(client->subs->len, 0, "Subscription rejected");
 	
 	test_size_eq(utils_stats()->apps_client_subscribe, 0 * option_apps_count(), "All rejected");
-	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 async callback sent");
 	
 	gchar buff[512];
 	int len = read(socket, buff, sizeof(buff)-1);
@@ -460,22 +452,20 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 	
-	test_status_eq(evs_client_sub_client("/test/async", client, 1), CLIENT_ASYNC, "Async");
-	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
-	
-	for (guint32 i = 0; i <= option_max_subscriptions(); i++) {
-		gchar ep[128];
-		snprintf(ep, sizeof(ep), "/test/event/%d", i);
-		evs_client_sub_client(ep, client, 1);
+	for (guint32 i = 0; i < option_max_subscriptions(); i++) {
+		char ep[128];
+		snprintf(ep, sizeof(ep), "/test/async/%d", i);
+		test_status_eq(evs_client_sub_client(ep, client, 0), CLIENT_ASYNC, "Async");
 	}
-	test_size_eq(client->subs->len, option_max_subscriptions(), "Has max subscriptions");
 	
-	evs_client_send_async_messages();
-	
-	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 async callback sent");
+	evs_client_sub_t *sub = _subscription_get("/test/async", TRUE);
+	apps_evs_client_check_subscribe(client, sub->handler, sub->extra, 1);
+	g_mutex_unlock(&sub->lock);
 	
 	gchar buff[512];
+	memset(buff, 0, sizeof(buff));
 	int len = read(socket, buff, sizeof(buff)-1);
+	DEBUG("%s", buff);
 	test_int32_eq(len, sizeof(INVALID_EVENT)-1, "Correct message size sent");
 	test_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct message sent");
 	
@@ -631,9 +621,9 @@ START_TEST(test_evs_client_clean_bad_client) {
 }
 END_TEST
 
-START_TEST(test_evs_client_send_async_messages_empty) {
+START_TEST(test_evs_client_tick_empty) {
 	// Mainly for coverage
-	evs_client_send_async_messages();
+	evs_client_tick();
 }
 END_TEST
 
@@ -649,7 +639,7 @@ START_TEST(test_evs_client_pub_message) {
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
 	test_status_eq(status, CLIENT_GOOD, "Message published");
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	gchar buff[1000];
 	int len = read(socket, buff, sizeof(buff)-1);
@@ -661,7 +651,7 @@ START_TEST(test_evs_client_pub_message) {
 }
 END_TEST
 
-START_TEST(test_evs_client_send_async_messages_closed_client_broadcast) {
+START_TEST(test_evs_client_tick_closed_client_broadcast) {
 	// Client created without a socket == closed
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
@@ -675,7 +665,7 @@ START_TEST(test_evs_client_send_async_messages_closed_client_broadcast) {
 	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something2"), CLIENT_GOOD, "Message published");
 	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something3"), CLIENT_GOOD, "Message published");
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	qev_debug_flush();
 	
 	test_ptr_eq(_subscription_get("/test/event", FALSE), NULL, "Client closed, sub freed");
@@ -683,24 +673,24 @@ START_TEST(test_evs_client_send_async_messages_closed_client_broadcast) {
 }
 END_TEST
 
-START_TEST(test_evs_client_send_async_messages_closed_client_single) {
+START_TEST(test_evs_client_tick_closed_client_single) {
 	// Client created without a socket == closed
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	
-	evs_client_send_callback(client, 1, d_plain, "test", 0);
-	evs_client_send_callback(client, 1, d_plain, "test1", 0);
-	evs_client_send_callback(client, 1, d_plain, "test2", 0);
-	evs_client_send_callback(client, 1, d_plain, "test3", 0);
-	evs_client_send_callback(client, 1, d_plain, "test4", 0);
-	evs_client_send_callback(client, 1, d_plain, "test5", 0);
+	evs_client_send_callback(client, 1, 0, d_plain, "test");
+	evs_client_send_callback(client, 1, 0, d_plain, "test1");
+	evs_client_send_callback(client, 1, 0, d_plain, "test2");
+	evs_client_send_callback(client, 1, 0, d_plain, "test3");
+	evs_client_send_callback(client, 1, 0, d_plain, "test4");
+	evs_client_send_callback(client, 1, 0, d_plain, "test5");
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	test_size_eq(utils_stats()->evs_client_send_single_closes, 6, "Client closed");
 }
 END_TEST
 
-START_TEST(test_evs_client_send_async_messages_no_client_handler) {
+START_TEST(test_evs_client_tick_no_client_handler) {
 	client_t *client = u_client_create(NULL);
 	
 	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
@@ -710,7 +700,7 @@ START_TEST(test_evs_client_send_async_messages_no_client_handler) {
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
 	test_status_eq(status, CLIENT_GOOD, "Message published");
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	qev_debug_flush();
 	
 	// Client not allocated with a socket, so will be closed
@@ -721,7 +711,7 @@ START_TEST(test_evs_client_send_async_messages_no_client_handler) {
 }
 END_TEST
 
-START_TEST(test_evs_client_send_async_messages_clear_subscription) {
+START_TEST(test_evs_client_tick_clear_subscription) {
 	client_t *client = u_client_create(NULL);
 	
 	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
@@ -734,14 +724,14 @@ START_TEST(test_evs_client_send_async_messages_clear_subscription) {
 	conns_client_close(client);
 	
 	// Attempt to publish to an empty subscription
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	test_size_eq(utils_stats()->evs_client_pubd_messages, 0, "No messages sent");
 	test_size_eq(utils_stats()->evs_client_send_pub_closes, 0, "Client closed");
 }
 END_TEST
 
-START_TEST(test_evs_client_send_async_messages_no_handler) {
+START_TEST(test_evs_client_tick_no_handler) {
 	status_t status = evs_client_pub_event(NULL, NULL, d_plain, "something");
 	test_status_eq(status, CLIENT_ERROR, "Message published");
 	}
@@ -755,7 +745,7 @@ START_TEST(test_evs_client_async_message_invalid_event_0) {
 	
 	evs_client_app_sub_cb(client, handler, NULL, 0, FALSE);
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	test_size_eq(utils_stats()->evs_client_async_messages, 0, "0 messages sent");
 }
@@ -770,7 +760,7 @@ START_TEST(test_evs_client_async_message_invalid_event_1) {
 	
 	evs_client_app_sub_cb(client, handler, NULL, 1, FALSE);
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
 	
@@ -788,12 +778,12 @@ START_TEST(test_evs_client_async_message_invalid_event_extra) {
 	
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
 	
-	path_extra_t extra = g_ptr_array_new_with_free_func(g_free);
+	path_extra_t *extra = g_ptr_array_new_with_free_func(g_free);
 	g_ptr_array_add(extra, "test");
 	g_ptr_array_add(extra, "something");
 	evs_client_app_sub_cb(client, handler, extra, 1, FALSE);
 	
-	evs_client_send_async_messages();
+	evs_client_tick();
 	
 	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
 	
@@ -828,7 +818,7 @@ END_TEST
 START_TEST(test_evs_client_number_subscribed_2) {
 	client_t *client = u_client_create(NULL);
 	
-	path_extra_t extra = g_ptr_array_new();
+	path_extra_t *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "something");
 	
 	evs_client_sub_client("/test/event/something", client, 0);
@@ -915,13 +905,13 @@ Suite* events_client_suite() {
 	
 	tc = tcase_create("Publish Messages");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
-	tcase_add_test(tc, test_evs_client_send_async_messages_empty);
+	tcase_add_test(tc, test_evs_client_tick_empty);
 	tcase_add_test(tc, test_evs_client_pub_message);
-	tcase_add_test(tc, test_evs_client_send_async_messages_closed_client_broadcast);
-	tcase_add_test(tc, test_evs_client_send_async_messages_closed_client_single);
-	tcase_add_test(tc, test_evs_client_send_async_messages_no_client_handler);
-	tcase_add_test(tc, test_evs_client_send_async_messages_clear_subscription);
-	tcase_add_test(tc, test_evs_client_send_async_messages_no_handler);
+	tcase_add_test(tc, test_evs_client_tick_closed_client_broadcast);
+	tcase_add_test(tc, test_evs_client_tick_closed_client_single);
+	tcase_add_test(tc, test_evs_client_tick_no_client_handler);
+	tcase_add_test(tc, test_evs_client_tick_clear_subscription);
+	tcase_add_test(tc, test_evs_client_tick_no_handler);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Async Message");

@@ -35,7 +35,7 @@ START_TEST(test_evs_server_format_path_2) {
 END_TEST
 
 START_TEST(test_evs_server_format_path_3) {
-	path_extra_t extra = g_ptr_array_new();
+	path_extra_t *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with");
 	g_ptr_array_add(extra, "path");
 	
@@ -48,7 +48,7 @@ START_TEST(test_evs_server_format_path_3) {
 END_TEST
 
 START_TEST(test_evs_server_format_path_4) {
-	path_extra_t extra = g_ptr_array_new();
+	path_extra_t *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with");
 	g_ptr_array_add(extra, "path");
 	
@@ -359,7 +359,7 @@ START_TEST(test_evs_new_handler_already_exists) {
 END_TEST
 
 START_TEST(test_evs_get_handler_0) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *handler = evs_server_get_handler("qio/noop", &extra);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
@@ -368,7 +368,7 @@ START_TEST(test_evs_get_handler_0) {
 END_TEST
 
 START_TEST(test_evs_get_handler_1) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *handler = evs_server_get_handler("qio/noop/", &extra);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
@@ -377,7 +377,7 @@ START_TEST(test_evs_get_handler_1) {
 END_TEST
 
 START_TEST(test_evs_get_handler_2) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *handler = evs_server_get_handler("/qio/noop/", &extra);
 	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
@@ -386,7 +386,7 @@ START_TEST(test_evs_get_handler_2) {
 END_TEST
 
 START_TEST(test_evs_get_handler_3) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra);
 	test_ptr_eq(handler, NULL, "Correct handler retrieved");
@@ -395,7 +395,7 @@ START_TEST(test_evs_get_handler_3) {
 END_TEST
 
 START_TEST(test_evs_get_handler_4) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *handler = evs_server_get_handler("/qio/noop/////", &extra);
 	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
@@ -404,7 +404,7 @@ START_TEST(test_evs_get_handler_4) {
 END_TEST
 
 START_TEST(test_evs_get_handler_5) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra);
 	test_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
@@ -413,7 +413,7 @@ START_TEST(test_evs_get_handler_5) {
 END_TEST
 
 START_TEST(test_evs_get_handler_6) {
-	path_extra_t extra;
+	path_extra_t *extra;
 	
 	event_handler_t *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
 	
@@ -976,8 +976,8 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	
 	g_string_assign(client->message->buffer, "/test/server/cbs:900:plain=");
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
-	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_async_messages();
+	evs_client_send_callback(client, client_callback, server_callback, d_plain, "");
+	evs_client_tick();
 	
 	gchar buff[512];
 	memset(&buff, 0, sizeof(buff));
@@ -996,8 +996,8 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH":901:plain=", event.client_callback);
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
-	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_async_messages();
+	evs_client_send_callback(client, client_callback, server_callback, d_plain, "");
+	evs_client_tick();
 	
 	memset(&buff, 0, sizeof(buff));
 	read(socket, buff, sizeof(buff));
@@ -1015,8 +1015,8 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH":902:plain=", event.client_callback);
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
-	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_async_messages();
+	evs_client_send_callback(client, client_callback, server_callback, d_plain, "");
+	evs_client_tick();
 	
 	memset(&buff, 0, sizeof(buff));
 	read(socket, buff, sizeof(buff));
@@ -1034,8 +1034,8 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH":0:plain=", event.client_callback);
 	test_status_eq(evs_server_handle(client), CLIENT_GOOD, "Callback sent");
-	evs_client_send_callback(client, client_callback, d_plain, "", server_callback);
-	evs_client_send_async_messages();
+	evs_client_send_callback(client, client_callback, server_callback, d_plain, "");
+	evs_client_tick();
 	
 	test_uint32_eq(calls, 3, "Server callbacks");
 	test_uint32_eq(frees, 4, "Free'd callbacks");

@@ -179,11 +179,9 @@ START_TEST(test_main_close_partial_message) {
 	gsize frame_len = 0;
 	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 	
-	test_lock_acquire();
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 	close(sock);
-	test_lock_release();
 	
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 	
@@ -210,11 +208,9 @@ START_TEST(test_main_close_bad_message) {
 	char buff[100];
 	memset(&buff, 0, sizeof(buff));
 	
-	test_lock_acquire();
 	send(sock, buff, sizeof(buff), MSG_NOSIGNAL);
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 	close(sock);
-	test_lock_release();
 	
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 	

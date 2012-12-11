@@ -133,6 +133,14 @@ void conns_maintenance_tick();
 /**
  * Get a function callback on each client.
  *
+ * You can safely assume that any client you receive from this function will be
+ * valid during this iterator of the event loop: since the client was active
+ * when it was sent, it cannot possibly be freed until this thread ticks in QEV,
+ * so local references are safe. Persistent references must still use client_ref().
+ *
+ * When you receive the client, no locks will be held, so you are free to take your
+ * time doing whatever you want.
+ *
  * @note Clients may be closed / removed from the clients table during this operation,
  * and it is safe to do so as long as you use g_ptr_array_remove_index_fast().
  *
@@ -149,16 +157,6 @@ void conns_maintenance_tick();
  * time to cancel the iteration
  */
 void conns_clients_foreach(gboolean(*_callback)(client_t*));
-
-/**
- * Release the lock on the clients, yield, and relock after the yield.
- */
-void conns_clients_yield();
-
-/**
- * Release the lock on the clients array.
- */
-void conns_clients_unlock();
 
 /**
  * Clean up the client message buffers.

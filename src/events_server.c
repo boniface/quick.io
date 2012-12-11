@@ -215,11 +215,11 @@ static status_t _evs_server_unsubscribe(client_t *client, event_handler_t *handl
 	return status;
 }
 
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t *extra) {
+event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **extra) {
 	event_handler_t *handler = NULL;
 	
 	// Internal extras
-	path_extra_t iextra = g_ptr_array_new_with_free_func(g_free);
+	path_extra_t *iextra = g_ptr_array_new_with_free_func(g_free);
 	
 	// We cannot modify event_path, so let's modify this!
 	gchar *ep = g_strdup(event_path);
@@ -390,7 +390,7 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler) {
 	return g_hash_table_lookup(_events_by_handler, handler);
 }
 
-gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra) {
+gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
 	// Remove any duplicated slashes
 	GString *ep = g_string_new(event_path);
 	gchar prev = ep->str[0];
@@ -428,7 +428,7 @@ gchar* evs_server_format_path(const gchar *event_path, const path_extra_t extra)
 	return path;
 }
 
-status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, const path_extra_t extra, const callback_t client_callback) {
+status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
 	return CLIENT_ERROR;
 }
 

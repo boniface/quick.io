@@ -57,6 +57,16 @@ typedef void (*app_cb_str)();
 typedef void (*app_cb_client)(client_t *client);
 
 /**
+ * A global on subscribe callback: the type of function called whena user subscribes
+ * or unsubscribes from an event.
+ *
+ * @param client The client that subscribed to the event.
+ * @param event_path The path of the event that was subscribed to.
+ * @param extra Any extra parameters that came in with the subscription
+ */
+typedef void (*on_subscribe_cb)(const client_t *client, const char *event_path, const path_extra_t *extra);
+
+/**
  * For closured "on" functions.
  *
  * @param event The name of the event to be notified for.
@@ -221,7 +231,7 @@ void apps_client_close(client_t *client);
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t *handler, path_extra_t extra, const callback_t client_callback);
+status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
 
 /**
  * Inform all the apps when a client has added a subscription.
@@ -233,7 +243,7 @@ status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t
  * @return True if the client subscribed to a valid event, false otherwise,
  * indicating the subscription should be canceled.
  */
-gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t extra);
+gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t *extra);
 
 /**
  * Inform all the apps when a client has dropped a subscription.
@@ -243,7 +253,7 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
  * @param event_path The event path the client dropped.
  * @param extra The extra path segments.
  */
-void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const char *event_path, path_extra_t extra);
+void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const char *event_path, path_extra_t *extra);
 
 /**
  * Triggers the stats callback in all the apps.

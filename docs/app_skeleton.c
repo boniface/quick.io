@@ -112,7 +112,7 @@ gboolean app_run(app_on on) {
 		_earth_population += e->babies_born;
 		
 		// Send a blank callback to the client, indicating the event is processed
-		evs_client_send_callback(e->client, e->client_callback, d_plain, "", 0);
+		evs_client_send_callback(e->client, e->client_callback, 0, d_plain, "");
 		
 		// Send out a message to everyone subscribed to /population with the updated
 		// population of the earth

@@ -227,6 +227,10 @@ void qev_run() {
 			ticks = 0;
 			qev_time = g_get_real_time() / 1000000;
 		}
+		
+		#ifdef QEV_TICK_FN
+			QEV_TICK_FN();
+		#endif
 	}
 }
 

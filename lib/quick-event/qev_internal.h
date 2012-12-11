@@ -125,7 +125,7 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 void qev_client_read(QEV_CLIENT_T *client);
 
 /**
- * Fires a timer
+ * Fires a timer, taking into account any necessary flags.
  */
 void qev_timer_fire(_timer_t *timer);
 
@@ -145,8 +145,6 @@ void qev_sys_client_closed(QEV_CLIENT_T *client);
  * Initializes all system-specific _everythings_ before running.
  * The following should be initialized:
  *   1) All timers, defined in QEV_TIMERS
- *
- * @note Prints to stderr when there is an error
  *
  * @return 0 If everything was setup correctly and quick event can run.
  * @return -1 If there was a fatal error.
