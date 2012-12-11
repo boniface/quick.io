@@ -21,7 +21,7 @@ enum _async_message_types {
  * A message that is waiting to be sent to user(s). It contains all the data it
  * needs to send a message, regardless of any other memory references.
  */
-typedef struct _async_message_s {
+typedef struct {
 	/**
 	 * The type of message being sent
 	 */
@@ -51,7 +51,7 @@ typedef struct _async_message_s {
 	 * opcode field.
 	 */
 	opcode_t message_opcode;
-} _async_message_s;
+} _async_message_t;
 
 /**
  * All of the subscriptions registered on the server.
@@ -293,7 +293,7 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * @param heartbeat Rather than have tons of logic and anonymous functions in the handler,
  * we just zip it up here.
  */
-static void _evs_client_pub_message(_async_message_s *amsg, void(*iter)(gboolean(*)(client_t*)), gboolean heartbeat) {
+static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(gboolean(*)(client_t*)), gboolean heartbeat) {
 	// For holding all the message types we might send
 	gchar *msgs[h_len];
 	gsize msglen[h_len];
@@ -413,7 +413,7 @@ status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extr
 	//  1) Publish event to /test/event
 	//  2) All clients unsubscribe from /test/event
 	//  3) We attempt to publish with an invalid pointer (segfault!)
-	_async_message_s *amsg = g_slice_alloc0(sizeof(*amsg));
+	_async_message_t *amsg = g_slice_alloc0(sizeof(*amsg));
 	amsg->type = _mt_broadcast;
 	amsg->event_path = event_path;
 	amsg->message = message;
@@ -490,13 +490,13 @@ void evs_client_send_error_callback(client_t *client, const callback_t client_ca
 }
 
 void evs_client_heartbeat() {
-	_async_message_s *amsg = g_slice_alloc0(sizeof(*amsg));
+	_async_message_t *amsg = g_slice_alloc0(sizeof(*amsg));
 	amsg->type = _mt_heartbeat;
 	g_async_queue_push(_messages, amsg);
 }
 
 void evs_client_tick() {
-	_async_message_s *amsg;
+	_async_message_t *amsg;
 	
 	void broadcast() {
 		evs_client_sub_t *sub;
@@ -532,6 +532,8 @@ void evs_client_tick() {
 	}
 	
 	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
+		gint64 start = g_get_monotonic_time();
+		
 		switch (amsg->type) {
 			case _mt_broadcast:
 				broadcast();
@@ -541,6 +543,8 @@ void evs_client_tick() {
 				heartbeat();
 				break;
 		}
+		
+		INFO("Run time for %s: %" G_GINT64_FORMAT, amsg->type == _mt_broadcast ? "broadcast" : "heartbeat", g_get_monotonic_time() - start);
 		
 		if (amsg->event_path != NULL) {
 			g_free(amsg->event_path);
