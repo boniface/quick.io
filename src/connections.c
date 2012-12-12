@@ -95,14 +95,14 @@ static void _conns_client_timeout_clean() {
 static void _conns_clients_remove(client_t *client) {
 	qev_lock_write_lock(&_clients_lock);
 	
-	guint pos = client->clients_pos;
+	guint pos = g_atomic_int_get(&client->clients_pos);
 	
 	if (pos > 0) {
-		client->clients_pos = 0;
+		g_atomic_int_set(&client->clients_pos, 0);
 		
 		guint index = pos - 1;
 		if (index != _clients->len - 1) {
-			client_t *replace = g_atomic_pointer_get(&_clients->pdata[_clients->len - 1])
+			client_t *replace = g_atomic_pointer_get(&_clients->pdata[_clients->len - 1]);
 			g_atomic_pointer_set(&_clients->pdata[index], replace);
 			g_atomic_int_set(&replace->clients_pos, pos);
 			
