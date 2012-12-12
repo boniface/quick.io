@@ -95,10 +95,6 @@ static void _conns_client_timeout_clean() {
 static void _conns_clients_remove(client_t *client) {
 	qev_lock_write_lock(&_clients_lock);
 	
-	//
-	// Clients are only ever removed from 1 thread, so we don't have to be atomic
-	//
-	
 	guint pos = client->clients_pos;
 	
 	if (pos > 0) {
@@ -106,8 +102,9 @@ static void _conns_clients_remove(client_t *client) {
 		
 		guint index = pos - 1;
 		if (index != _clients->len - 1) {
-			client_t *replace = _clients->pdata[index] = _clients->pdata[_clients->len - 1];
-			replace->clients_pos = pos;
+			client_t *replace = g_atomic_pointer_get(&_clients->pdata[_clients->len - 1])
+			g_atomic_pointer_set(&_clients->pdata[index], replace);
+			g_atomic_int_set(&replace->clients_pos, pos);
 			
 			#if defined(TESTING) || defined(DEBUG)
 				// Cause segfaults while testing if we get stuff wrong
@@ -115,7 +112,7 @@ static void _conns_clients_remove(client_t *client) {
 			#endif
 		}
 		
-		_clients->len--;
+		__sync_fetch_and_sub(&_clients->len, 1);
 		__sync_fetch_and_sub(&_clients_len, 1);
 	}
 	
@@ -186,7 +183,7 @@ void conns_client_new(client_t *client) {
 	}
 	
 	client->clients_pos = __sync_add_and_fetch(&_clients_len, 1);
-	_clients->pdata[client->clients_pos - 1] = client;
+	g_atomic_pointer_set(&_clients->pdata[client->clients_pos - 1], client);
 	g_atomic_int_inc(&_clients->len);
 	qev_lock_read_unlock(&_clients_lock);
 	
@@ -372,7 +369,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 			i = len - 1;
 		}
 		
-		client_t *client = g_ptr_array_index(_clients, i);
+		client_t *client = g_atomic_pointer_get(&_clients->pdata[i]);
 		
 		// We're using a reference that doesn't belong to us and unlocking on it.
 		// Without this, we could free a client before we use it

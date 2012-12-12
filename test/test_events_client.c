@@ -463,9 +463,7 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 	g_mutex_unlock(&sub->lock);
 	
 	gchar buff[512];
-	memset(buff, 0, sizeof(buff));
 	int len = read(socket, buff, sizeof(buff)-1);
-	DEBUG("%s", buff);
 	test_int32_eq(len, sizeof(INVALID_EVENT)-1, "Correct message size sent");
 	test_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct message sent");
 	
