@@ -257,9 +257,13 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 }
 
 void qev_sys_client_closed(QEV_CLIENT_T *client) {
+	qev_client_lock(client);
+	
 	// This will also remove it from epoll!
 	close(QEV_CSLOT(client, socket));
 	QEV_CSLOT(client, socket) = -1;
+	
+	qev_client_unlock(client);
 }
 
 int qev_sys_init() {
