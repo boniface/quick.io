@@ -288,7 +288,6 @@ gboolean conns_client_data(client_t *client) {
 			
 			// Clean up the message buffer, since we just finished processing him
 			conns_message_clean(client, FALSE, TRUE);
-		
 
 		} else if (status == CLIENT_WAIT) {
 			TEST_STATS_INC(conns_client_wait);

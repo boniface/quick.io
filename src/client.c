@@ -190,11 +190,14 @@ void client_ref(client_t *client) {
 
 void client_unref(client_t *client) {
 	if (g_atomic_pointer_add(&(client->ref_count), -1) == 1) {
-		if (client->external_data != NULL) {
-			g_hash_table_unref(client->external_data);
-		}
+		// Allow the close handler to access client data before freeing
+		GHashTable *data = client->external_data;
 		
 		conns_client_free(client);
+		
+		if (data != NULL) {
+			g_hash_table_unref(data);
+		}
 	}
 }
 
