@@ -11,7 +11,7 @@
 /**
  * The message format for events being sent to a client.
  */
-#define F_EVENT "%s" EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s=%s"
+#define F_EVENT "%s" EVENT_DELIMITER "%" G_GUINT32_FORMAT EVENT_DELIMITER "%s" EVENT_DATA_DELIMITER "%s"
 
 /**
  * The message format for a callback.
