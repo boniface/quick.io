@@ -105,15 +105,11 @@ static void _conns_clients_remove(client_t *client) {
 			client_t *replace = g_atomic_pointer_get(&_clients->pdata[_clients->len - 1]);
 			g_atomic_pointer_set(&_clients->pdata[index], replace);
 			g_atomic_int_set(&replace->clients_pos, pos);
-			
-			#if defined(TESTING) || defined(DEBUG)
-				// Cause segfaults while testing if we get stuff wrong
-				_clients->pdata[_clients->len] = NULL;
-			#endif
 		}
 		
 		__sync_fetch_and_sub(&_clients->len, 1);
 		__sync_fetch_and_sub(&_clients_len, 1);
+		g_atomic_pointer_set(&_clients->pdata[_clients->len], NULL);
 	}
 	
 	qev_lock_write_unlock(&_clients_lock);
@@ -317,6 +313,8 @@ gboolean conns_client_data(client_t *client) {
 
 gboolean conns_init() {
 	_clients = g_ptr_array_sized_new(option_max_clients());
+	memset(_clients->pdata, 0, option_max_clients());
+	
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
@@ -369,6 +367,11 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 		}
 		
 		client_t *client = g_atomic_pointer_get(&_clients->pdata[i]);
+		
+		if (client == NULL) {
+			qev_lock_read_unlock(&_clients_lock);
+			continue;
+		}
 		
 		// We're using a reference that doesn't belong to us and unlocking on it.
 		// Without this, we could free a client before we use it

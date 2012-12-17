@@ -168,6 +168,36 @@ START_TEST(test_conns_clients_foreach_race) {
 }
 END_TEST
 
+START_TEST(test_conns_clients_foreach_null) {
+	client_t *client = u_client_create(NULL);
+	conns_client_new(client);
+	client->state = cstate_running;
+	
+	client_t *client2 = u_client_create(NULL);
+	conns_client_new(client2);
+	client2->state = cstate_running;
+	
+	_conns_clients_remove(client2);
+	
+	// It's possible for _clients->len to be incremented before the client
+	// is inserted into the correct slot: two threads are going, one increments
+	// _clients_len then is stopped by the OS; the other thread adds the client
+	// entirely and increments _clients->len.  Now it thinks that there is a 
+	// client there, but there doesn't have to be: that can cause a segfault
+	_clients->len += 5;
+	
+	int calls = 0;
+	gboolean _callback(client_t *client) {
+		calls++;
+		return TRUE;
+	}
+	
+	conns_clients_foreach(_callback);
+	
+	test_int32_eq(calls, 1, "Ignored empty client");
+}
+END_TEST
+
 START_TEST(test_conns_clients_remove_0) {
 	for (guint i = 0; i < 10; i++) {
 		client_t *client = u_client_create(NULL);
@@ -320,6 +350,7 @@ Suite* conns_suite() {
 	tcase_add_test(tc, test_conns_message_clean_3);
 	tcase_add_test(tc, test_conns_clients_foreach);
 	tcase_add_test(tc, test_conns_clients_foreach_race);
+	tcase_add_test(tc, test_conns_clients_foreach_null);
 	tcase_add_test(tc, test_conns_clients_remove_0);
 	tcase_add_test(tc, test_conns_clients_remove_1);
 	suite_add_tcase(s, tc);
