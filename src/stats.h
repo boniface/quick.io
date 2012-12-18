@@ -40,9 +40,6 @@
 	/** The number of socket write errors */ \
 	X(client_failed_writes, "clients.failed_writes") \
 	\
-	/** The number of hups from epoll ***TEMP*** */ \
-	X(client_hups, "clients.hups") \
-	\
 	/** The number of heartbeats sent */ \
 	X(heartbeats, "heartbeats") \
 	\
