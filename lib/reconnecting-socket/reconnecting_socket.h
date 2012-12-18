@@ -7,7 +7,7 @@
  * typically return errors. This is essentially a UDP socket that has guaranteed delivery
  * while connected.
  *
- * @file persistent_socket.h
+ * @file reconnecting_socket.h
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012 Andrew Stone
  *
@@ -33,43 +33,43 @@ typedef struct {
 	 * The current address that we're looking at in the address chain.
 	 */
 	struct addrinfo *curr_addr;
-} psocket;
+} rsocket;
 
 /**
  * Create a new connection.
  * 
  * @param host The hostname to connect to.
  * @param port The port to connect to.
- * @param[out] psocket Where the new persistent socket should be put.
+ * @param[out] rsocket Where the new persistent socket should be put.
  *
  * @return 0 on success.
  * @return -1 on address lookup error.
  */
-int psocket_connect(const char *host, const int port, psocket **psocket);
+int rsocket_connect(const char *host, const int port, rsocket **rsocket);
 
 /**
- * Closes a psocket connection.
+ * Closes a rsocket connection.
  *
- * @param psocket The persistent socket to close.
+ * @param rsocket The persistent socket to close.
  */
-void psocket_close(psocket *psocket);
+void rsocket_close(rsocket *rsocket);
 
 /**
  * Send some data out to the server.
  *
- * @param psocket The persistent socket
+ * @param rsocket The persistent socket
  * @param msg The message to send
  * @param len The length of the message
  */
-void psocket_send(psocket *psocket, char *msg, int len);
+void rsocket_send(rsocket *rsocket, char *msg, int len);
 
 /**
  * Read data from the server.
  *
- * @param psocket The socket to read from
+ * @param rsocket The socket to read from
  * @param buff Where the data should be put
  * @param len The length of the data buffer
  *
  * @return The length of data read from the socket, 0 or greater.
  */
-int psocket_read(psocket *psocket, char *buff, size_t len);
+int rsocket_read(rsocket *rsocket, char *buff, size_t len);

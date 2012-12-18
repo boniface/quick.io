@@ -48,7 +48,7 @@ typedef guint16 status_t;
 
 #include "quick-event/qev.h"
 #include "http-parser/http_parser.h"
-#include "persistent-socket/persistent_socket.h"
+#include "reconnecting-socket/reconnecting_socket.h"
 
 #include "module.h"
 

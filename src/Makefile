@@ -4,7 +4,7 @@ include ../Makefile.inc
 CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/lib/
 LDFLAGS += -Wl,-E
 
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/persistent_socket.o
+OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/reconnecting_socket.o
 TARGET = $(BUILDDIR)/qio
 TESTING = 0
 
@@ -23,7 +23,7 @@ endif
 $(BUILDDIR)/http_parser.o:
 	@$(MAKE) -C ../lib deps
 	
-$(BUILDDIR)/persistent_socket.o:
+$(BUILDDIR)/reconnecting_socket.o:
 	@$(MAKE) -C ../lib deps
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c

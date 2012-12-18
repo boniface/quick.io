@@ -2,8 +2,8 @@ include ../../Makefile.inc
 
 CFLAGS += -fPIC -c
 
-all: $(BUILDDIR)/persistent_socket.o
+all: $(BUILDDIR)/reconnecting_socket.o
 	
-$(BUILDDIR)/persistent_socket.o: persistent_socket.c persistent_socket.h
+$(BUILDDIR)/reconnecting_socket.o: reconnecting_socket.c reconnecting_socket.h
 	@echo "\n\n"-------- Compiling $< --------
 	@$(CC) $(CFLAGS) $< -o $@
