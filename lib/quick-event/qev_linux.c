@@ -170,9 +170,11 @@ void qev_dispatch() {
 	// Where the OS will put events for us
 	struct epoll_event events[QEV_MAX_EVENTS];
 	
-	// Set to true to indicate that a delayed timer fired this round
-	gboolean _delayed_timers[G_N_ELEMENTS(_timers)];
-	memset(&_delayed_timers, FALSE, sizeof(_delayed_timers));
+	#ifndef QEV_NO_TIMERS
+		// Set to true to indicate that a delayed timer fired this round
+		gboolean _delayed_timers[G_N_ELEMENTS(_timers)];
+		memset(&_delayed_timers, FALSE, sizeof(_delayed_timers));
+	#endif
 	
 	int num_evs = epoll_wait(_epoll, events, QEV_MAX_EVENTS, QEV_EPOLL_TIMEOUT);
 	if (num_evs < 1) {
@@ -212,11 +214,13 @@ void qev_dispatch() {
 		}
 	}
 	
-	for (gsize i = 0; i < G_N_ELEMENTS(_delayed_timers); i++) {
-		if (_delayed_timers[i]) {
-			qev_timer_fire(&_timers[i]);
+	#ifndef QEV_NO_TIMERS
+		for (gsize i = 0; i < G_N_ELEMENTS(_delayed_timers); i++) {
+			if (_delayed_timers[i]) {
+				qev_timer_fire(&_timers[i]);
+			}
 		}
-	}
+	#endif
 }
 
 int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size) {

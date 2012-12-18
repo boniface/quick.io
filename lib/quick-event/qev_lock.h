@@ -21,11 +21,6 @@ typedef struct {
 	guint readers;
 	
 	/**
-	 * The number of readers waiting
-	 */
-	guint readers_waiting;
-	
-	/**
 	 * If there is currently a writer
 	 */
 	guint writer;
