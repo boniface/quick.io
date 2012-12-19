@@ -285,12 +285,12 @@ void qev_close(QEV_CLIENT_T *client) {
 	QEV_TEST_LOCK(qev_close_before);
 	// Don't put the client into the list if he is already being closed
 	if (!(__sync_fetch_and_or(&QEV_CSLOT(client, _flags), QEV_CMASK_CLOSING) & QEV_CMASK_CLOSING)) {
-		qev_sys_client_closed(client);
-		qev_wqueue_add(_closed, client);
-		
 		#ifdef QEV_CLIENT_KILLED_FN
 			QEV_CLIENT_KILLED_FN(client);
 		#endif
+		
+		qev_sys_client_closed(client);
+		qev_wqueue_add(_closed, client);
 	}
 }
 

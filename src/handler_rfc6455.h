@@ -68,6 +68,15 @@ status_t h_rfc6455_incoming(client_t *client);
  */
 status_t h_rfc6455_continue(client_t *client);
 
+/**
+ * The frame to write to a client when it closes.
+ *
+ * @param frame_len The length of the close frame.
+ *
+ * @return A statically-allocated frame: this must NOT be freed.
+ */
+char* h_rfc6455_close_frame(gsize *frame_len);
+
 #ifdef TESTING
 #include "../test/test_handler_rfc6455.h"
 #endif

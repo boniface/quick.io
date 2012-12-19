@@ -172,6 +172,22 @@ status_t client_write(client_t *client, message_t *message) {
 	return status;
 }
 
+void client_write_close(client_t *client) {
+	char *frame;
+	gsize frame_len = 0;
+	
+	switch (client->handler) {
+		case h_rfc6455:
+			frame = h_rfc6455_close_frame(&frame_len);
+			break;
+		
+		default:
+			return;
+	}
+	
+	client_write_frame(client, frame, frame_len);
+}
+
 status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	// Frames MUST ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right

@@ -248,8 +248,8 @@ struct event_handler_s {
  * Get all of the event info for the event.
  *
  * @param event_path The event path.
- * @param[out] extra Where any extra path segments are put. Will not be updated if NULL. MUST
- * be g_list_free_full(extra, g_free)'d.
+ * @param[out] extra Where any extra path segments are put. Will not be updated if NULL. Use
+ * g_ptr_array_unref() when done.
  *
  * @return The event handler. If null, extra will also be NULL.
  */

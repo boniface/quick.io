@@ -17,13 +17,13 @@
 #define HEADERS_LEN sizeof(HEADERS)
 
 // Opcodes that can be used
-#define OPCODE 0b00001111
-#define OP_CONTINUATION 0b00000000
-#define OP_TEXT 0b00000001
-#define OP_BINARY 0b00000010
-#define OP_CLOSE 0b00001000
-#define OP_PING 0b00001001
-#define OP_PONG 0b00001010
+#define OPCODE 0x0F
+#define OP_CONTINUATION 0x00
+#define OP_TEXT 0x01
+#define OP_BINARY 0x02
+#define OP_CLOSE 0x08
+#define OP_PING 0x09
+#define OP_PONG 0x0A
 
 // The location of the mask bit in the second byte
 #define MASK_BIT 0b10000000
@@ -53,6 +53,9 @@
 
 // Extended-length header contains an extra 16 bits for payload len
 #define EXTENDED_HEADER_LEN (HEADER_LEN + (16 / 8))
+
+// The frame sent once a client closes
+#define CLOSE_FRAME ("\x88" "\x00")
 
 /**
  * Read masked text from the socket buffer.
@@ -362,6 +365,11 @@ status_t h_rfc6455_incoming(client_t *client) {
 	
 	// If the client wasn't handled above, that was bad, we don't support it
 	return CLIENT_FATAL;
+}
+
+char* h_rfc6455_close_frame(gsize *frame_len) {
+	*frame_len = sizeof(CLOSE_FRAME)-1;
+	return (char*)CLOSE_FRAME;
 }
 
 #ifdef TESTING

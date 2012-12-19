@@ -9,9 +9,10 @@
 #define MESSAGE "\x81\x92""abcd""N""\x13""\n""\x0b""N""\x12""\n""\n""\x06""X""R""^""\x11""\x0e""\x02""\r""\x0f""_"
 
 #define PING "/ping:123:plain=pingeth"
+#define CLOSE_FRAME "\x88" "\x00"
 
-#define MOVE "\x81\x16""/qio/move:0:plain=test"
-#define MOVE2 "\x81\x17""/qio/move:0:plain=test2"
+#define MOVE "\x81\x16""/qio/move:0:plain=test" CLOSE_FRAME
+#define MOVE2 "\x81\x17""/qio/move:0:plain=test2" CLOSE_FRAME
 
 void _test_conns_setup() {
 	qev_init();

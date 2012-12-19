@@ -315,6 +315,14 @@ START_TEST(test_h_rfc6455_partial_ping) {
 }
 END_TEST
 
+START_TEST(test_h_rfc6455_close_response) {
+	gsize frame_len = 0;
+	char *frame = h_rfc6455_close_frame(&frame_len);
+	test_int32_eq(frame_len, 2, "Correct frame length");
+	test_bin_eq(frame, "\x88" "\x00", 2, "Close frame");
+}
+END_TEST
+
 START_TEST(test_h_rfc6455_long_message) {
 	client_t *client = u_client_create(NULL);
 	
@@ -435,6 +443,7 @@ Suite* h_rfc6455_suite() {
 	tcase_add_test(tc, test_h_rfc6455_bad_ping);
 	tcase_add_test(tc, test_h_rfc6455_no_mask);
 	tcase_add_test(tc, test_h_rfc6455_partial_ping);
+	tcase_add_test(tc, test_h_rfc6455_close_response);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Send Frames");

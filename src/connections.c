@@ -195,6 +195,7 @@ void conns_client_new(client_t *client) {
 }
 
 void conns_client_killed(client_t *client) {
+	client_write_close(client);
 	client->state = cstate_dead;
 }
 

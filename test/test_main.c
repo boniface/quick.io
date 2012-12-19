@@ -14,6 +14,8 @@
 
 #define INVALID_SUBSCRIPTION "/qio/sub:0:plain=/this/doesnt/exist"
 
+#define RFC6455_CLOSE_FRAME "\x88" "\x00"
+
 static pid_t _server;
 
 void _main_setup() {
@@ -221,6 +223,24 @@ START_TEST(test_main_close_bad_message) {
 }
 END_TEST
 
+START_TEST(test_main_close_with_frame) {
+	int sock = u_ws_connect();
+	test(sock, "Connection established");
+	
+	send(sock, RFC6455_CLOSE_FRAME, sizeof(RFC6455_CLOSE_FRAME)-1, MSG_NOSIGNAL);
+	
+	char buff[sizeof(RFC6455_CLOSE_FRAME)];
+	test_int32_eq(read(sock, buff, sizeof(buff)), sizeof(RFC6455_CLOSE_FRAME)-1, "Close frame sent");
+	
+	test_size_eq(utils_stats()->conns_messages, 1, "Bad message accepted");
+	test_size_eq(utils_stats()->conns_hups, 0, "Client did not HUP");
+	test_size_eq(utils_stats()->conns_bad_clients, 1, "Server left client open");
+	test_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
+	
+	close(sock);
+}
+END_TEST
+
 START_TEST(test_main_two_partial_messages) {
 	int sock = u_ws_connect();
 	
@@ -320,6 +340,7 @@ Suite* main_suite() {
 	tcase_add_test(tc, test_main_two_messages);
 	tcase_add_test(tc, test_main_close_partial_message);
 	tcase_add_test(tc, test_main_close_bad_message);
+	tcase_add_test(tc, test_main_close_with_frame);
 	tcase_add_test(tc, test_main_two_partial_messages);
 	tcase_add_test(tc, test_main_flash_policy);
 	tcase_add_test(tc, test_main_invalid_subscription);

@@ -247,6 +247,13 @@ status_t client_message(client_t *client);
 status_t client_write(client_t *client, message_t *message);
 
 /**
+ * A client has closed: send the proper notification to the user.
+ *
+ * @param client The client that closed.
+ */
+void client_write_close(client_t *client);
+
+/**
  * Write the given message to the underlying client socket.
  *
  * This is a separate function for bulk writing: it merely demands a pre-formatted
