@@ -90,6 +90,11 @@ status_t client_handshake(client_t *client) {
 		status = CLIENT_FATAL;
 	}
 	
+	char *agent = g_hash_table_lookup(headers, "User-Agent");
+	if (agent != NULL) {
+		client_set(client, "useragent", agent);
+	}
+	
 	g_free(headers_dup);
 	g_hash_table_unref(headers);
 	
