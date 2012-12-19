@@ -1,6 +1,6 @@
 include Makefile.inc
 
-GCOVR_ARGS = -p -r . --exclude='src/log.*' --exclude='test.*' --exclude='src/http_parser.c' --exclude='src/persistent_socket.c' --exclude='lib.*' --single-directory
+GCOVR_ARGS = -p -r . --exclude='src/log.*' --exclude='test.*' --exclude='src/http_parser.c' --exclude='src/reconnecting_socket.c' --exclude='lib.*' --single-directory
 GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/ 
 GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
