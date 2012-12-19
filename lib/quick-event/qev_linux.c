@@ -210,6 +210,8 @@ void qev_dispatch() {
 				qev_close(client);
 			} else if (events & EPOLLIN) {
 				qev_client_read(client);
+			} else {
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "qev_dispatch: Unknown event from epoll: %d", events);
 			}
 		}
 	}
