@@ -183,6 +183,7 @@ void conns_client_new(client_t *client) {
 	g_atomic_int_inc(&_clients->len);
 	qev_lock_read_unlock(&_clients_lock);
 	
+	client->handler = h_none;
 	client->state = cstate_initing;
 	client->timer = -1;
 	client_ref(client);

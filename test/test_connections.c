@@ -246,8 +246,8 @@ START_TEST(test_conns_balance_1) {
 	
 	int socket = 0;
 	client_t *client = u_client_create(&socket);
-	client->handler = h_rfc6455;
 	conns_client_new(client);
+	client->handler = h_rfc6455;
 	client->state = cstate_running;
 	
 	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
@@ -267,14 +267,14 @@ START_TEST(test_conns_balance_2) {
 	
 	int socket1 = 0;
 	client_t *client1 = u_client_create(&socket1);
-	client1->handler = h_rfc6455;
 	conns_client_new(client1);
+	client1->handler = h_rfc6455;
 	client1->state = cstate_running;
 	
 	int socket2 = 0;
 	client_t *client2 = u_client_create(&socket2);
-	client2->handler = h_rfc6455;
 	conns_client_new(client2);
+	client2->handler = h_rfc6455;
 	client2->state = cstate_running;
 	
 	test_int64_eq(g_async_queue_length(_balances), 2, "Two requests");
@@ -305,8 +305,8 @@ START_TEST(test_conns_balance_yield) {
 	int socket = 0;
 	for (int i = 0; i < 200; i++) {
 		client_t *client = u_client_create(&socket);
-		client->handler = h_rfc6455;
 		conns_client_new(client);
+		client->handler = h_rfc6455;
 		client->state = cstate_running;
 	}
 	
@@ -325,8 +325,8 @@ START_TEST(test_conns_max_clients) {
 	int socket = 0;
 	for (int i = 0; i < 510; i++) {
 		client_t *client = u_client_create(&socket);
-		client->handler = h_rfc6455;
 		conns_client_new(client);
+		client->handler = h_rfc6455;
 		client->state = cstate_running;
 	}
 	

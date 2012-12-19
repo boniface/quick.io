@@ -282,9 +282,9 @@ START_TEST(test_main_flash_policy) {
 	
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 	
-	gchar buff[sizeof(H_FLASH_POLICY_RESPONSE)];
+	gchar buff[sizeof(H_FLASH_POLICY_RESPONSE)+10];
 	memset(&buff, 0, sizeof(buff));
-	test_size_eq(read(sock, buff, sizeof(buff)-1), sizeof(buff)-1, "XML recieved");
+	test_size_eq(read(sock, buff, sizeof(buff)-1), sizeof(H_FLASH_POLICY_RESPONSE)-1, "XML recieved");
 	test_str_eq(buff, H_FLASH_POLICY_RESPONSE, "Correct XML sent");
 	
 	test_size_eq(utils_stats()->conns_handshakes, 1, "Only handshake sent");

@@ -238,8 +238,8 @@ END_TEST
 START_TEST(test_evs_heartbeat) {
 	int socket = 0;
 	client_t *client = u_client_create(&socket);
-	client->handler = h_rfc6455;
 	conns_client_new(client);
+	client->handler = h_rfc6455;
 	client->state = cstate_running;
 	
 	evs_client_heartbeat();
@@ -269,8 +269,8 @@ START_TEST(test_evs_heartbeat_yield) {
 	
 	for (int i = 0; i < CONNS_YIELD*2; i++) {
 		client_t *client = u_client_create(&socket);
-		client->handler = h_rfc6455;
 		conns_client_new(client);
+		client->handler = h_rfc6455;
 		client->state = cstate_running;
 	}
 	
@@ -289,8 +289,8 @@ END_TEST
 START_TEST(test_evs_heartbeat_already_written) {
 	int socket = 0;
 	client_t *client = u_client_create(&socket);
-	client->handler = h_rfc6455;
 	conns_client_new(client);
+	client->handler = h_rfc6455;
 	client->state = cstate_running;
 	
 	evs_client_heartbeat();
