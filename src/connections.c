@@ -230,6 +230,10 @@ void conns_client_free(client_t *client) {
 }
 
 gboolean conns_client_data(client_t *client) {
+	if (client->state == cstate_dead) {
+		return FALSE;
+	}
+
 	// Where data from the client's socket will be stored
 	gchar buffer[option_max_message_size()];
 	

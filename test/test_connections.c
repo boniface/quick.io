@@ -25,7 +25,19 @@ void _test_conns_setup() {
 	test(stats_init());
 }
 
-START_TEST(test_conns_client_closed) {
+START_TEST(test_conns_client_closed_0) {
+	client_t *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+	client->state = cstate_dead;
+	
+	g_string_append(client->message->socket_buffer, MESSAGE);
+	test_not(conns_client_data(client), "Client dead");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_conns_client_closed_1) {
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	client->state = cstate_running;
@@ -340,7 +352,8 @@ Suite* conns_suite() {
 	
 	tc = tcase_create("Client Writing");
 	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);
-	tcase_add_test(tc, test_conns_client_closed);
+	tcase_add_test(tc, test_conns_client_closed_0);
+	tcase_add_test(tc, test_conns_client_closed_1);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Utilities");
