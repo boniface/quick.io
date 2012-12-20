@@ -27,7 +27,7 @@ status_t client_handshake(client_t *client) {
 	// The path is just a string we hurl around
 	// And we have to keep state while it's parsing up everything so we can populate everything
 	
-	gchar *headers_dup = g_strdup(buffer->str);
+	gchar *headers_dup = g_strndup(buffer->str, buffer->len);
 	GHashTable *headers = g_hash_table_new(g_str_hash, g_str_equal);
 	gchar *path = NULL;
 	
