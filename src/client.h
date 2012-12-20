@@ -32,37 +32,37 @@
 /**
  * Everything went as expected. Send any callbacks, include any data in buffers, and move on.
  */
-#define CLIENT_GOOD 1 << 0
+#define CLIENT_GOOD (1 << 0)
 
 /**
  * That bastard of a client aborted / should be aborted, or did something incredibly stupid, so
  * he should just be killed.
  */
-#define CLIENT_FATAL 1 << 1
+#define CLIENT_FATAL (1 << 1)
 
 /**
  * A non-fatal error occurred while processing. This response trips the event handler
  * to respond with an error event to callbacks.
  */
-#define CLIENT_ERROR 1 << 2
+#define CLIENT_ERROR (1 << 2)
 
 /**
  * An async operation is being performed. This should be treated like CLIENT_GOOD in
  * most cases, but it MUST NOT send back any information to the client. The function that returned
  * this status becomes responsible for that.
  */
-#define CLIENT_ASYNC 1 << 3
+#define CLIENT_ASYNC (1 << 3)
 
 /**
  * There is data in the response buffer that should be written back to the client.
  */
-#define CLIENT_WRITE 1 << 4
+#define CLIENT_WRITE (1 << 4)
 
 /**
  * Something happened that we need to wait for more from the client. Set a wait,
  * and notify us later.
  */
-#define CLIENT_WAIT 1 << 5
+#define CLIENT_WAIT (1 << 5)
 
 /**
  * The opcodes that we support.

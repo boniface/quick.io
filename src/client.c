@@ -90,11 +90,6 @@ status_t client_handshake(client_t *client) {
 		status = CLIENT_FATAL;
 	}
 	
-	char *agent = g_hash_table_lookup(headers, "User-Agent");
-	if (agent != NULL) {
-		client_set(client, "useragent", agent);
-	}
-	
 	g_free(headers_dup);
 	g_hash_table_unref(headers);
 	
@@ -115,7 +110,6 @@ status_t client_message(client_t* client) {
 			
 			default:
 			case h_none:
-				// This should technically be impossible, nevertheless...
 				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
