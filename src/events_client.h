@@ -29,7 +29,7 @@
  * This is a power of 2 because that is GPtrArray always expands
  * itself to the nearest power of 2.
  */
-#define EVS_CLIENT_CLIENT_INTIAL_COUNT 4
+#define EVS_CLIENT_CLIENT_INITIAL_COUNT 4
 
 /**
  * The time between heartbeat ticks.

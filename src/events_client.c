@@ -377,7 +377,7 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 
 void evs_client_client_ready(client_t *client) {
 	// Initialize our internal management from the client
-	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INTIAL_COUNT));
+	client->subs = g_ptr_array_sized_new(MIN(option_max_subscriptions(), EVS_CLIENT_CLIENT_INITIAL_COUNT));
 }
 
 void evs_client_client_close(client_t *client) {
