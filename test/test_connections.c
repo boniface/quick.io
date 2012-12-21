@@ -126,8 +126,8 @@ START_TEST(test_conns_clients_foreach) {
 		
 		if (remove) {
 			for (int i = 0; i < CONNS_YIELD/2; i++) {
-				_conns_clients_remove(g_ptr_array_index(_clients, 0));
-				_conns_clients_remove(g_ptr_array_index(_clients, _clients->len - 1));
+				_conns_clients_remove(_clients[0]);
+				_conns_clients_remove(_clients[_clients_len - 1]);
 			}
 			
 			remove = FALSE;
@@ -172,8 +172,9 @@ START_TEST(test_conns_clients_foreach_race) {
 	
 	usleep(MS_TO_USEC(10));
 	
-	g_ptr_array_remove_index_fast(_clients, 0);
+	_clients[0] = _clients[_clients_len - 1];
 	__sync_fetch_and_sub(&_clients_len, 1);
+	__sync_fetch_and_sub(&_clients_len_next, 1);
 	
 	qev_lock_write_unlock(&_clients_lock);
 	
@@ -192,12 +193,12 @@ START_TEST(test_conns_clients_foreach_null) {
 	
 	_conns_clients_remove(client2);
 	
-	// It's possible for _clients->len to be incremented before the client
+	// It's sossible for _clients_len to be incremented before the client
 	// is inserted into the correct slot: two threads are going, one increments
-	// _clients_len then is stopped by the OS; the other thread adds the client
-	// entirely and increments _clients->len.  Now it thinks that there is a 
+	// _clients_len_next then is stopped by the OS; the other thread adds the client
+	// entirely and increments _clients_len.  Now it thinks that there is a 
 	// client there, but there doesn't have to be: that can cause a segfault
-	_clients->len += 5;
+	_clients_len += 5;
 	
 	int calls = 0;
 	gboolean _callback(client_t *client) {
@@ -222,7 +223,7 @@ START_TEST(test_conns_clients_remove_0) {
 	}
 	
 	for (guint i = 10; i > 0; i--) {
-		client_t *client = g_ptr_array_index(_clients, i - 1);
+		client_t *client = _clients[i - 1];
 		_conns_clients_remove(client);
 		
 		test_uint64_eq(client->clients_pos, 0, "Correct position");
@@ -342,7 +343,7 @@ START_TEST(test_conns_max_clients) {
 		client->state = cstate_running;
 	}
 	
-	test_uint64_eq(_clients->len, 500, "Only 500 accepted");
+	test_uint64_eq(_clients_len, 500, "Only 500 accepted");
 }
 END_TEST
 

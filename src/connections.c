@@ -3,7 +3,12 @@
 /**
  * All of the clients currently connected to the server.
  */
-static GPtrArray *_clients;
+static client_t **_clients;
+
+/**
+ * The number of clients currently residing in _clients
+ */
+static guint _clients_len = 0;
 
 /**
  * The next available position in _clients.
@@ -12,7 +17,7 @@ static GPtrArray *_clients;
  * increment outside of the array, then add to the array, then increment the
  * array length.
  */
-static guint _clients_len = 0;
+static guint _clients_len_next = 0;
 
 /**
  * In order to make make looping through clients possible while still accepting
@@ -101,15 +106,15 @@ static void _conns_clients_remove(client_t *client) {
 		g_atomic_int_set(&client->clients_pos, 0);
 		
 		guint index = pos - 1;
-		if (index != _clients->len - 1) {
-			client_t *replace = g_atomic_pointer_get(&_clients->pdata[_clients->len - 1]);
-			g_atomic_pointer_set(&_clients->pdata[index], replace);
+		if (index != _clients_len - 1) {
+			client_t *replace = g_atomic_pointer_get(&_clients[_clients_len - 1]);
+			g_atomic_pointer_set(&_clients[index], replace);
 			g_atomic_int_set(&replace->clients_pos, pos);
 		}
 		
-		__sync_fetch_and_sub(&_clients->len, 1);
 		__sync_fetch_and_sub(&_clients_len, 1);
-		g_atomic_pointer_set(&_clients->pdata[_clients->len], NULL);
+		__sync_fetch_and_sub(&_clients_len_next, 1);
+		g_atomic_pointer_set(&_clients[_clients_len], NULL);
 	}
 	
 	qev_lock_write_unlock(&_clients_lock);
@@ -170,7 +175,7 @@ void conns_balance(guint count, gchar *to) {
 void conns_client_new(client_t *client) {
 	qev_lock_read_lock(&_clients_lock);
 	
-	if (((guint)g_atomic_int_get(&_clients_len)) + 1 > option_max_clients()) {
+	if (((guint)g_atomic_int_get(&_clients_len_next)) + 1 > option_max_clients()) {
 		WARN("More clients than `max-clients` trying to connect");
 		
 		qev_lock_read_unlock(&_clients_lock);
@@ -178,9 +183,9 @@ void conns_client_new(client_t *client) {
 		return;
 	}
 	
-	client->clients_pos = __sync_add_and_fetch(&_clients_len, 1);
-	g_atomic_pointer_set(&_clients->pdata[client->clients_pos - 1], client);
-	g_atomic_int_inc(&_clients->len);
+	client->clients_pos = __sync_add_and_fetch(&_clients_len_next, 1);
+	g_atomic_pointer_set(&_clients[client->clients_pos - 1], client);
+	g_atomic_int_inc(&_clients_len);
 	qev_lock_read_unlock(&_clients_lock);
 	
 	client->handler = h_none;
@@ -318,9 +323,7 @@ gboolean conns_client_data(client_t *client) {
 }
 
 gboolean conns_init() {
-	_clients = g_ptr_array_sized_new(option_max_clients());
-	memset(_clients->pdata, 0, option_max_clients());
-	
+	_clients = g_malloc0(sizeof(*_clients) * option_max_clients());
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
@@ -359,11 +362,11 @@ void conns_maintenance_tick() {
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
-	guint i = g_atomic_int_get(&_clients->len);
+	guint i = g_atomic_int_get(&_clients_len);
 	while (i > 0) {
 		qev_lock_read_lock(&_clients_lock);
 		
-		guint len = g_atomic_int_get(&_clients->len);
+		guint len = g_atomic_int_get(&_clients_len);
 		
 		if (len == 0) {
 			qev_lock_read_unlock(&_clients_lock);
@@ -374,7 +377,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 			i = len - 1;
 		}
 		
-		client_t *client = g_atomic_pointer_get(&_clients->pdata[i]);
+		client_t *client = g_atomic_pointer_get(&_clients[i]);
 		
 		if (client == NULL) {
 			qev_lock_read_unlock(&_clients_lock);
