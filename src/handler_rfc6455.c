@@ -78,7 +78,7 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	// The mask location depends on how much we have already read
 	gsize position = message->buffer->len;
 	
-	// buffer->len includes the NULL byte already
+	// g_string_set_size() will add the NULL byte, so no +1 here
 	gsize required_len = message->buffer->len + remaining;
 	
 	// Access the string directly, it's a bit faster
@@ -247,7 +247,7 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 	// The first frame of text is ALWAYS the same
 	*frame = FIRST_BYTE;
 	
-	// The opcode that we should sent back to the client
+	// The opcode that should be sent back to the client
 	switch (type) {
 		case op_pong:
 			*frame |= OP_PONG;
