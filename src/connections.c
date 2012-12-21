@@ -266,7 +266,7 @@ gboolean conns_client_data(client_t *client) {
 			status = client_handshake(client);
 			
 			// Headers are sent without encoding, don't use the client wrapper
-			if (status & CLIENT_WRITE) {
+			if (status == CLIENT_WRITE) {
 				STATS_INC(client_handshakes);
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 				
@@ -354,6 +354,8 @@ void conns_client_timeout_set(client_t *client) {
 void conns_maintenance_tick() {
 	_conns_client_timeout_clean();
 	_conns_balance();
+	
+	DEBUG("Clients: %"G_GINT64_FORMAT, stats.clients);
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {

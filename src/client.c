@@ -109,7 +109,6 @@ status_t client_message(client_t* client) {
 				break;
 			
 			default:
-			case h_none:
 				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
@@ -120,7 +119,6 @@ status_t client_message(client_t* client) {
 				break;
 			
 			default:
-			case h_none:
 				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
