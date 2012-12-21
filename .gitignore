@@ -4,8 +4,6 @@
 *.o
 *.so
 *.pyc
-xunit.xml
-coverage.xml
 /build*/
 
 /*.sublime*

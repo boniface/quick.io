@@ -49,10 +49,11 @@ test:
 	@$(MAKE) build DEBUG=1 TESTING=1
 	@$(MAKE) -C app DEBUG=1 TESTING=1
 	@$(MAKE) -C test test DEBUG=1
+	@$(MAKE) -C test valgrind DEBUG=1
 	@./tools/gcovr $(GCOVR_ARGS_SRC) $(BUILDDIR)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps
 	
 test-jenkins: clean
 	@$(MAKE) test TEST_OUTPUT_XML=1
-	@./tools/gcovr $(GCOVR_ARGS_SRC) -x -o test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(DIR_BUILD_TEST)
-	@./tools/gcovr $(GCOVR_ARGS_APPS) -x -o test_coverage_apps.xml $(DIR_BUILD_TEST)/apps
+	@./tools/gcovr $(GCOVR_ARGS_SRC) -x -o $(DIR_BUILD_TEST)/test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(DIR_BUILD_TEST)
+	@./tools/gcovr $(GCOVR_ARGS_APPS) -x -o $(DIR_BUILD_TEST)/test_coverage_apps.xml $(DIR_BUILD_TEST)/apps

@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	SRunner *sr = srunner_create(suite_create("Master"));
 	
 #if TEST_OUTPUT_XML
-	srunner_set_xml(sr, "test_unit.xml");
+	srunner_set_xml(sr, "test_xunit.xml");
 #endif
 	
 	srunner_add_suite(sr, apps_suite());
