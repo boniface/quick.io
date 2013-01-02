@@ -17,13 +17,16 @@ void qev_lock_free(qev_lock_t *lock) {
 
 void qev_lock_read_lock(qev_lock_t *lock) {
 	while (TRUE) {
-		// First, just optimistically acquire a read lock
-		__sync_fetch_and_add(&lock->readers, 1);
-		
 		// Before we're allowed to continue, make sure there are no writers
 		if (__sync_bool_compare_and_swap(&lock->writer, 0, 0)) {
-			break;
-		} else {
+			__sync_fetch_and_add(&lock->readers, 1);
+			
+			// If no writer got a lock after we got a read lock, then we're good
+			if (__sync_bool_compare_and_swap(&lock->writer, 0, 0)) {
+				break;
+			}
+			
+			// If a writer got a lock, then we have to release our read lock and try again
 			__sync_fetch_and_sub(&lock->readers, 1);
 		}
 		

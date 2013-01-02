@@ -296,6 +296,8 @@ void qev_close(QEV_CLIENT_T *client) {
 
 void qev_client_lock(QEV_CLIENT_T *client) {
 	while (!__sync_bool_compare_and_swap(&QEV_CSLOT(client, _lock), 0, 1)) {
+		// Use yield: you're allowed to do sys calls on clients while locked,
+		// so another syscall won't hurt too bad
 		g_thread_yield();
 	}
 }
