@@ -23,6 +23,10 @@
 	#define QEV_TIMERS
 #endif
 
+#ifndef QEV_STATS_INC
+	#define QEV_STATS_INC(stat)
+#endif
+
 /**
  * The prefix that our messages are logged under
  */

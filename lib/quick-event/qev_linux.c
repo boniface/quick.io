@@ -185,6 +185,8 @@ void qev_dispatch() {
 	}
 	
 	for (int i = 0; i < num_evs; i++) {
+		QEV_STATS_INC(qev_event);
+		
 		struct epoll_event ev = events[i];
 		QEV_CLIENT_T *client = ev.data.ptr;
 		uint32_t events = ev.events;

@@ -50,7 +50,25 @@
 	X(messages_broadcast, "messages.broadcast") \
 	\
 	/** The number of messages received in this tick. */ \
-	X(messages_received, "messages.received")
+	X(messages_received, "messages.received") \
+	\
+	/** The number of events recieved from the OS */ \
+	X(qev_event, "qev.event") \
+	\
+	/** The number of times a QEV client lock spun */ \
+	X(qev_lock_client_spin, "qev.lock.client.spin") \
+	\
+	/** The number of spins on a read lock */ \
+	X(qev_lock_read_spin, "qev.lock.read.spin") \
+	\
+	/** The number of false acquires on a read lock */ \
+	X(qev_lock_read_false_acquire, "qev.lock.read.false_acquire") \
+	\
+	/** The number of spins on a write lock, waiting for the lock */ \
+	X(qev_lock_write_spin, "qev.lock.write.spin") \
+	\
+	/** The number of spins on a write lock, waiting for the readers */ \
+	X(qev_lock_write_wait, "qev.lock.write.wait")
 
 /**
  * The fields that can be sent to graphite.

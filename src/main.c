@@ -3,6 +3,7 @@
 #define QEV_CLIENT_KILLED_FN conns_client_killed
 #define QEV_CLIENT_CLOSE_FN conns_client_close
 #define QEV_TICK_FN evs_client_tick
+#define QEV_STATS_INC STATS_INC
 
 #define QEV_TIMERS \
 	QEV_TIMER(conns_maintenance_tick, 1, 0, QEV_TIMER_EXCLUSIVE | QEV_TIMER_DELAYED) \

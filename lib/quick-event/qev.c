@@ -299,6 +299,7 @@ void qev_client_lock(QEV_CLIENT_T *client) {
 		// Use yield: you're allowed to do sys calls on clients while locked,
 		// so another syscall won't hurt too bad
 		g_thread_yield();
+		QEV_STATS_INC(qev_lock_client_spin);
 	}
 }
 
