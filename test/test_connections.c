@@ -125,9 +125,8 @@ START_TEST(test_conns_clients_foreach) {
 		static gboolean remove = TRUE;
 		
 		if (remove) {
-			for (int i = 0; i < CONNS_YIELD/2; i++) {
-				_conns_clients_remove(_clients[0]);
-				_conns_clients_remove(_clients[_clients_len - 1]);
+			for (int i = 0; i < CONNS_YIELD; i++) {
+				conns_client_killed(_clients[i]);
 			}
 			
 			remove = FALSE;
@@ -166,17 +165,9 @@ START_TEST(test_conns_clients_foreach_race) {
 		return NULL;
 	}
 	
-	qev_lock_write_lock(&_clients_lock);
-	
 	g_thread_new("_race", _race, NULL);
 	
 	usleep(MS_TO_USEC(10));
-	
-	_clients[0] = _clients[_clients_len - 1];
-	__sync_fetch_and_sub(&_clients_len, 1);
-	__sync_fetch_and_sub(&_clients_len_next, 1);
-	
-	qev_lock_write_unlock(&_clients_lock);
 	
 	test_int32_eq(calls, 0, "No callbacks");
 }
@@ -191,14 +182,7 @@ START_TEST(test_conns_clients_foreach_null) {
 	conns_client_new(client2);
 	client2->state = cstate_running;
 	
-	_conns_clients_remove(client2);
-	
-	// It's sossible for _clients_len to be incremented before the client
-	// is inserted into the correct slot: two threads are going, one increments
-	// _clients_len_next then is stopped by the OS; the other thread adds the client
-	// entirely and increments _clients_len.  Now it thinks that there is a 
-	// client there, but there doesn't have to be: that can cause a segfault
-	_clients_len += 5;
+	conns_client_killed(client2);
 	
 	int calls = 0;
 	gboolean _callback(client_t *client) {
@@ -218,15 +202,13 @@ START_TEST(test_conns_clients_remove_0) {
 		client->handler = h_rfc6455;
 		conns_client_new(client);
 		client->state = cstate_running;
-		
-		test_uint64_eq(client->clients_pos, i + 1, "Correct position");
 	}
 	
 	for (guint i = 10; i > 0; i--) {
 		client_t *client = _clients[i - 1];
-		_conns_clients_remove(client);
+		conns_client_killed(client);
 		
-		test_uint64_eq(client->clients_pos, 0, "Correct position");
+		test_ptr_eq(client->clients_slot, NULL, "Correct position");
 	}
 }
 END_TEST
@@ -241,9 +223,9 @@ START_TEST(test_conns_clients_remove_1) {
 	client_t *client3 = u_client_create(NULL);
 	conns_client_new(client3);
 	
-	_conns_clients_remove(client2);
+	conns_client_killed(client2);
 	
-	test_uint64_eq(client3->clients_pos, 2, "Correct position");
+	test_ptr_eq(client3->clients_slot, _clients + 2, "Correct position");
 }
 END_TEST
 
@@ -343,7 +325,7 @@ START_TEST(test_conns_max_clients) {
 		client->state = cstate_running;
 	}
 	
-	test_uint64_eq(_clients_len, 500, "Only 500 accepted");
+	test_uint64_eq(stats.clients, 500, "Only 500 accepted");
 }
 END_TEST
 

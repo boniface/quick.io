@@ -208,7 +208,7 @@ struct client_s {
 	 *
 	 * This is protected by _clients_lock in connections.c
 	 */
-	guint clients_pos;
+	client_t **clients_slot;
 	
 	/**
 	 * The callbacks registered on the client.

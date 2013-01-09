@@ -35,7 +35,6 @@
 	#error No platform setup for quick-event
 #endif
 
-#include "qev_lock.h"
 #include "qev_wqueue.h"
 
 /**
