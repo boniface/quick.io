@@ -174,7 +174,12 @@ struct client_s {
 	/**
 	 * The last time the client was sent data.
 	 */
-	gint64 heartbeat;
+	gint64 last_send;
+	
+	/**
+	 * The last time a message was read from the client.
+	 */
+	gint64 last_receive;
 	
 	/**
 	 * The state of the client.

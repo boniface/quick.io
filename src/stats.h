@@ -43,6 +43,12 @@
 	/** The number of heartbeats sent */ \
 	X(heartbeats, "heartbeats") \
 	\
+	/** The number of heartbeat challenges sent */ \
+	X(heartbeats_inactive_challenges, "heartbeats.inactive.challenges") \
+	\
+	/** The number of clients that failed the heartbeat challenge */ \
+	X(heartbeats_inactive_closed, "heartbeats.inactive.closed") \
+	\
 	/** The number of messages destined for 1 client */ \
 	X(messages_sent, "messages.sent") \
 	\

@@ -25,7 +25,8 @@ status_t client_handshake(client_t *client) {
 	// http-parser requires a bit of setup to get going:
 	// Headers go in a hash table for easy access
 	// The path is just a string we hurl around
-	// And we have to keep state while it's parsing up everything so we can populate everything
+	// And we have to keep state while it's parsing up everything so we can
+	// populate everything
 	
 	gchar *headers_dup = g_strndup(buffer->str, buffer->len);
 	GHashTable *headers = g_hash_table_new(g_str_hash, g_str_equal);
@@ -127,6 +128,7 @@ status_t client_message(client_t* client) {
 	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
 		STATS_INC(messages_received);
+		client->last_receive = qev_time;
 		status = evs_server_handle(client);
 	}
 	
@@ -189,7 +191,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 	// Frames MUST ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right
 	if (frame_len > 0 && qev_write(client, frame, frame_len) == (gssize)frame_len) {
-		client->heartbeat = qev_time;
+		client->last_send = qev_time;
 		return CLIENT_GOOD;
 	} else {
 		STATS_INC(client_failed_writes)

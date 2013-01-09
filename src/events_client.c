@@ -1,32 +1,10 @@
 #include "qio.h"
 
 /**
- * The types of messages that can be sent asynchronously
- */
-enum _async_message_types {
-	/**
-	 * A broadcast message.
-	 * Requires: _message_s#event_path, _message_s#message, _message_s#message_opcode
-	 */
-	_mt_broadcast,
-	
-	/**
-	 * A heartbeat message to send to all clients.
-	 * Requires:
-	 */
-	_mt_heartbeat,
-};
-
-/**
  * A message that is waiting to be sent to user(s). It contains all the data it
  * needs to send a message, regardless of any other memory references.
  */
 typedef struct {
-	/**
-	 * The type of message being sent
-	 */
-	enum _async_message_types type;
-	
 	/**
 	 * The path of the event we're publishing to.
 	 * This causes another hash table lookup, but it saves us from the following case:
@@ -78,6 +56,12 @@ static GAsyncQueue *_messages;
  * The handler for heartbeat events.
  */
 static event_handler_t *_heartbeat;
+
+/**
+ * The asynchronous heartbeat message, so that we don't have to regen the same message
+ * on every heart beat.
+ */
+_async_message_t *_heartbeat_amsg;
 
 /**
  * Creates a subscription from a handler and friends.
@@ -319,7 +303,7 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(gboolean
 		// confusing code: it feels a bit out of place, but it's far cleaner to have it
 		// here than in the heartbeat anonymous functions
 		if (heartbeat) {
-			if (client->heartbeat >= heartbeat_time) {
+			if (client->last_send >= heartbeat_time) {
 				return TRUE;
 			} else {
 				STATS_INC(heartbeats);
@@ -341,6 +325,14 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(gboolean
 	for (int i = 0; i < h_len; i++) {
 		free(msgs[i]);
 	}
+}
+
+/**
+ * An empty callback function for heartbeat challenges.  We don't care what the client
+ * says, so long as he says something.
+ */
+static status_t _evs_client_cb_noop(client_t *client, void *data, event_t *event) {
+	return CLIENT_GOOD;
 }
 
 status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback) {
@@ -414,7 +406,6 @@ status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extr
 	//  2) All clients unsubscribe from /test/event
 	//  3) We attempt to publish with an invalid pointer (segfault!)
 	_async_message_t *amsg = g_slice_alloc0(sizeof(*amsg));
-	amsg->type = _mt_broadcast;
 	amsg->event_path = event_path;
 	amsg->message = message;
 	amsg->message_opcode = op_text;
@@ -434,6 +425,11 @@ gboolean evs_client_init() {
 	_messages = g_async_queue_new();
 	
 	_heartbeat = evs_server_on("/qio/heartbeat", NULL, evs_no_subscribe, NULL, FALSE);
+	
+	_heartbeat_amsg = g_slice_alloc0(sizeof(*_heartbeat_amsg));
+	_heartbeat_amsg->message = g_string_sized_new(100);
+	_heartbeat_amsg->message_opcode = op_text;
+	_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", _heartbeat_amsg->message, NULL);
 	
 	return TRUE;
 }
@@ -490,70 +486,73 @@ void evs_client_send_error_callback(client_t *client, const callback_t client_ca
 }
 
 void evs_client_heartbeat() {
-	_async_message_t *amsg = g_slice_alloc0(sizeof(*amsg));
-	amsg->type = _mt_heartbeat;
-	g_async_queue_push(_messages, amsg);
+	_evs_client_pub_message(_heartbeat_amsg, conns_clients_foreach, TRUE);
+}
+
+void evs_client_heartbeat_inactive() {
+	// If we haven't heard from the client before this time
+	gint64 before = qev_time - HEARTBEAT_INACTIVE;
+	
+	// If we haven't heard from this client since 2 rounds
+	gint64 dead = qev_time - (HEARTBEAT_INACTIVE*2);
+	
+	// The message used to write to clients
+	message_t m;
+	m.type = op_text;
+	m.buffer = g_string_sized_new(100);
+	
+	gboolean _cb(client_t *client) {
+		if (client->last_receive > before) {
+			return TRUE;
+		}
+		
+		if (client->last_receive < dead) {
+			STATS_INC(heartbeats_inactive_closed);
+			qev_close(client);
+			return TRUE;
+		}
+		
+		STATS_INC(heartbeats_inactive_challenges);
+		
+		callback_t server_callback = evs_server_callback_new(client, _evs_client_cb_noop, NULL, NULL);
+		_evs_client_format_message(_heartbeat, 0, server_callback, NULL, d_plain, "", m.buffer, NULL);
+		client_write(client, &m);
+		return TRUE;
+	}
+
+	conns_clients_foreach(_cb);
+	
+	g_string_free(m.buffer, TRUE);
 }
 
 void evs_client_tick() {
 	_async_message_t *amsg;
 	
-	void broadcast() {
-		evs_client_sub_t *sub;
+	void iter(gboolean(*_write)(client_t*)) {
+		evs_client_sub_t *sub = _subscription_get(amsg->event_path, FALSE);
 		
-		void iter(gboolean(*_write)(client_t*)) {
-			sub = _subscription_get(amsg->event_path, FALSE);
-			
-			if (sub == NULL) {
-				return;
-			}
-			
-			TEST_STATS_INC(evs_client_pubd_messages);
-			
-			GHashTableIter iter;
-			client_t *client;
-			g_hash_table_iter_init(&iter, sub->clients);
-			while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
-				STATS_INC(messages_broadcast);
-				_write(client);
-			}
-			
-			g_mutex_unlock(&sub->lock);
+		if (sub == NULL) {
+			return;
 		}
 		
-		_evs_client_pub_message(amsg, iter, FALSE);
-	}
-	
-	void heartbeat() {
-		amsg->message = g_string_sized_new(100);
-		amsg->message_opcode = op_text;
-		_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", amsg->message, NULL);
-		_evs_client_pub_message(amsg, conns_clients_foreach, TRUE);
+		TEST_STATS_INC(evs_client_pubd_messages);
+		
+		GHashTableIter iter;
+		client_t *client;
+		g_hash_table_iter_init(&iter, sub->clients);
+		while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
+			STATS_INC(messages_broadcast);
+			_write(client);
+		}
+		
+		g_mutex_unlock(&sub->lock);
 	}
 	
 	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
-		gint64 start = g_get_monotonic_time();
+		_evs_client_pub_message(amsg, iter, FALSE);
 		
-		switch (amsg->type) {
-			case _mt_broadcast:
-				broadcast();
-				break;
-			
-			case _mt_heartbeat:
-				heartbeat();
-				break;
-		}
-		
-		INFO("Run time for %s: %" G_GINT64_FORMAT, amsg->type == _mt_broadcast ? "broadcast" : "heartbeat", g_get_monotonic_time() - start);
-		
-		if (amsg->event_path != NULL) {
-			g_free(amsg->event_path);
-		}
-		
-		if (amsg->message != NULL) {
-			g_string_free(amsg->message, TRUE);
-		}
-		
+		g_free(amsg->event_path);
+		g_string_free(amsg->message, TRUE);
 		g_slice_free1(sizeof(*amsg), amsg);
 	}
 }

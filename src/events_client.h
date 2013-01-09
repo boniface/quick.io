@@ -42,6 +42,11 @@
 #define HEARTBEAT_INTERVAL 60
 
 /**
+ * The amount of time between challenge heartbeats for inactive clients.
+ */
+#define HEARTBEAT_INACTIVE 60*15
+
+/**
  * The value that is stored in the hash table so that we can access
  * the pointer to the key for passing around to events.
  */
@@ -217,6 +222,26 @@ APP_EXPORT void evs_client_send_error_callback(client_t *client, const callback_
  * Send a heartbeat out to all users subscribed to the heartbeat event.
  */
 void evs_client_heartbeat();
+
+/**
+ * This is just a work around for a crazy bug: some browsers and proxies SUCK at closing
+ * and managing websocket connections.  I cannot figure out why some will speculatively open
+ * sockets (they probably just don't understand websocket).  I cannot figure out why some will
+ * not close a socket when you call websocket.close().  I cannot figure out why some will
+ * leave a socket open in the background after you've lost your internet connection for a
+ * few seconds and tried to reconnect.  Long story short, there are tons of bugs all over the place
+ * that cause WAYYY too many connections to be opened.  Since I can't really fix every computer
+ * and proxy that wants to use this, we just have to be aggressive with the clients:
+ *   1) Every so often, send the client a challenge message, assuming he hasn't sent
+ *      us a message.
+ *   2) If the client responds in a reasonable amount of time, then he's fine to stay active.
+ *   3) If the client doesn't respond, close him, becuase there's probably no QIO client
+ *      logic sitting on the other side.
+ *
+ * This function is named "heartbeat inactive" because we are only going to check the inactive
+ * clients.
+ */
+void evs_client_heartbeat_inactive();
 
 /**
  * Runs on every tick of QEV: for sending out async messages.

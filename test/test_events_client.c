@@ -10,6 +10,11 @@
 
 #define ASYNC_CALLBACK "\x81""\x1d""/qio/callback/654987:0:plain="
 #define HEARTBEAT_EVENT "\x81""\x17""/qio/heartbeat:0:plain="
+#define HEARTBEAT_EVENT_MASKED "\x81\x97""abcd""N""\x13""\n""\x0b""N""\n""\x06""\x05""\x13""\x16""\x01""\x01""\x00""\x16""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^"
+
+#define HEARBEAT_CHALLENGE_CB "\x81\x98""abcd""N""\x13""\n""\x0b""N""\x01""\x02""\x08""\r""\x00""\x02""\x07""\n""M""R""^""Q""X""\x13""\x08""\x00""\x0b""\r""Y"
+
+#define HEARTBEAT_CHALLENGE "\x81""\x17""/qio/heartbeat:1:plain="
 
 void _test_evs_client_setup() {
 	qev_init();
@@ -305,6 +310,94 @@ START_TEST(test_evs_heartbeat_already_written) {
 	evs_client_tick();
 	
 	test_size_eq(stats.heartbeats, 0, "Got no heartbeat");
+	
+	close(socket);
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_heartbeat_inactive_0) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	conns_client_new(client);
+	client->handler = h_rfc6455;
+	client->state = cstate_running;
+	
+	qev_time = client->last_receive = 1000;
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
+	
+	qev_time += HEARTBEAT_INACTIVE;
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	
+	qev_time += HEARTBEAT_INACTIVE + 1;
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	test_size_eq(stats.heartbeats_inactive_closed, 1, "Client closed on failed challenge");
+	
+	close(socket);
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_heartbeat_inactive_1) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	conns_client_new(client);
+	client->handler = h_rfc6455;
+	client->state = cstate_running;
+	
+	qev_time = client->last_receive = 1000;
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
+	
+	qev_time += HEARTBEAT_INACTIVE;
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	
+	g_string_append_len(client->message->socket_buffer, HEARTBEAT_EVENT_MASKED, sizeof(HEARTBEAT_EVENT_MASKED)-1);
+	
+	test_status_eq(client_message(client), CLIENT_GOOD, "Data good");
+	test_int64_eq(client->last_receive, qev_time, "Client time updated");
+	
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	test_size_eq(stats.heartbeats_inactive_closed, 0, "Client not closed");
+	
+	close(socket);
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_heartbeat_inactive_2) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	conns_client_new(client);
+	client->handler = h_rfc6455;
+	client->state = cstate_running;
+	
+	qev_time = HEARTBEAT_INACTIVE;
+	client->last_receive = 0;
+	evs_client_heartbeat_inactive();
+	
+	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	
+	char buff[1024];
+	memset(buff, 0, sizeof(buff));
+	read(socket, buff, sizeof(buff)-1);
+	
+	test_bin_eq(buff, HEARTBEAT_CHALLENGE, sizeof(HEARTBEAT_CHALLENGE)-1, "Challenge with callback sent");
+	
+	g_string_append_len(client->message->socket_buffer, HEARBEAT_CHALLENGE_CB, sizeof(HEARBEAT_CHALLENGE_CB)-1);
+	test_status_eq(client_message(client), CLIENT_GOOD, "Data good");
+	test_int64_eq(client->last_receive, qev_time, "Client time updated");
 	
 	close(socket);
 	u_client_free(client);
@@ -864,6 +957,9 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_heartbeat_no_clients);
 	tcase_add_test(tc, test_evs_heartbeat_yield);
 	tcase_add_test(tc, test_evs_heartbeat_already_written);
+	tcase_add_test(tc, test_evs_heartbeat_inactive_0);
+	tcase_add_test(tc, test_evs_heartbeat_inactive_1);
+	tcase_add_test(tc, test_evs_heartbeat_inactive_2);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Subscribe");
