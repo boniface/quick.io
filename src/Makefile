@@ -1,10 +1,10 @@
 include ../Makefile.inc
 
 # Hide everything by default, unless annotated with APP_EXPORT
-CFLAGS += -I. -c -fvisibility=hidden
+CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/lib/
 LDFLAGS += -Wl,-E
 
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c))
+OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/reconnecting_socket.o
 TARGET = $(BUILDDIR)/qio
 TESTING = 0
 
@@ -12,16 +12,19 @@ TESTING = 0
 
 default: $(TARGET)
 
-dependencies:
-	@$(MAKE) -C ../lib deps
-
 ifeq ($(TESTING),1)
-$(TARGET): dependencies $(OBJECTS)
+$(TARGET): $(OBJECTS)
 else
-$(TARGET): dependencies $(OBJECTS)
+$(TARGET): $(OBJECTS)
 	@echo "\n\n"-------- Compiling server --------
-	@$(CC) $(OBJECTS) $(DEPS) -o $@ $(LDFLAGS)
+	@$(CC) $^ -o $@ $(LDFLAGS)
 endif
+
+$(BUILDDIR)/http_parser.o:
+	@$(MAKE) -C ../lib deps
+	
+$(BUILDDIR)/reconnecting_socket.o:
+	@$(MAKE) -C ../lib deps
 
 $(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
 	@echo "\n\n"-------- Compiling $< --------

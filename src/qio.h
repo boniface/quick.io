@@ -47,9 +47,8 @@ typedef guint16 status_t;
 #define QEV_CLIENT_NEVER_FREE
 
 #include "quick-event/qev.h"
-#include "utils/http_parser.h"
-#include "utils/reconnecting_socket.h"
-#include "utils/ring_queue.h"
+#include "http-parser/http_parser.h"
+#include "reconnecting-socket/reconnecting_socket.h"
 
 #include "module.h"
 

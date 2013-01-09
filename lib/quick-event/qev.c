@@ -317,4 +317,5 @@ void qev_debug_flush() {
 	#error No platform setup for quick-event
 #endif
 
+#include "qev_lock.c"
 #include "qev_wqueue.c"

@@ -1,2 +1,3 @@
 deps:
-	@$(MAKE) -C utils
+	@$(MAKE) -C http-parser
+	@$(MAKE) -C reconnecting-socket

@@ -6,9 +6,29 @@
 static client_t **_clients;
 
 /**
- * The list of open slots in _clients
+ * The number of clients currently residing in _clients
  */
-static ringq_t *_clients_slots;
+static guint _clients_len = 0;
+
+/**
+ * The next available position in _clients.
+ * Though there is a len in the array, incrementing this before adding the client
+ * to the array leaves a race condition that could result in a segfault. So we
+ * increment outside of the array, then add to the array, then increment the
+ * array length.
+ */
+static guint _clients_len_next = 0;
+
+/**
+ * In order to make make looping through clients possible while still accepting
+ * clients into the list, we're going to ABUSE (indeed, almost to death) a RW lock.
+ * Rather than representing RW, we're going to represent two things:
+ *   R = Safe to append to
+ *   W = Complete lock on the data structure
+ *
+ * Why is nothing le thread safe? :(
+ */
+static qev_lock_t _clients_lock;
 
 /**
  * All of the clients that have timeouts set on them.
@@ -31,7 +51,7 @@ static GAsyncQueue *_balances;
 static event_handler_t *_balance_handler;
 
 /**
- * Create a new message struct in the client
+ * Create a new message struct in the clien
  */
 static void _conns_message_new(client_t *client) {
 	message_t *message = client->message;
@@ -71,6 +91,33 @@ static void _conns_client_timeout_clean() {
 	}
 	
 	g_mutex_unlock(&_client_timeouts_lock);
+}
+
+/**
+ * Assumes you have a lock on _clients: removes the given client and updates
+ * the client that replaces him
+ */
+static void _conns_clients_remove(client_t *client) {
+	qev_lock_write_lock(&_clients_lock);
+	
+	guint pos = g_atomic_int_get(&client->clients_pos);
+	
+	if (pos > 0) {
+		g_atomic_int_set(&client->clients_pos, 0);
+		
+		guint index = pos - 1;
+		if (index != _clients_len - 1) {
+			client_t *replace = g_atomic_pointer_get(&_clients[_clients_len - 1]);
+			g_atomic_pointer_set(&_clients[index], replace);
+			g_atomic_int_set(&replace->clients_pos, pos);
+		}
+		
+		__sync_fetch_and_sub(&_clients_len, 1);
+		__sync_fetch_and_sub(&_clients_len_next, 1);
+		g_atomic_pointer_set(&_clients[_clients_len], NULL);
+	}
+	
+	qev_lock_write_unlock(&_clients_lock);
 }
 
 /**
@@ -126,13 +173,20 @@ void conns_balance(guint count, gchar *to) {
 }
 
 void conns_client_new(client_t *client) {
-	// If there's a slot for the client, we're not overloaded!
-	client_t **slot = ringq_next(_clients_slots);
-	if (slot == NULL) {
+	qev_lock_read_lock(&_clients_lock);
+	
+	if (((guint)g_atomic_int_get(&_clients_len_next)) + 1 > option_max_clients()) {
 		WARN("More clients than `max-clients` trying to connect");
+		
+		qev_lock_read_unlock(&_clients_lock);
 		qev_close(client);
 		return;
 	}
+	
+	client->clients_pos = __sync_add_and_fetch(&_clients_len_next, 1);
+	g_atomic_pointer_set(&_clients[client->clients_pos - 1], client);
+	g_atomic_int_inc(&_clients_len);
+	qev_lock_read_unlock(&_clients_lock);
 	
 	client->handler = h_none;
 	client->state = cstate_initing;
@@ -142,31 +196,24 @@ void conns_client_new(client_t *client) {
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
 	
-	client->clients_slot = slot;
-	*slot = client;
-	
 	STATS_INC(clients_new);
 	STATS_INC(clients);
 }
 
 void conns_client_killed(client_t *client) {
-	// This is only ever called from 1 thread! Hooray!
-	client_t **slot = client->clients_slot;
-	client->clients_slot = NULL;
-	
-	if (slot != NULL) {
-		*slot = NULL;
-		
-		// Internally, this syncrhonizes the memory writes
-		ringq_add(_clients_slots, slot);
-	}
-	
 	client_write_close(client);
 	client->state = cstate_dead;
 }
 
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
+	
+	// Lock contention is best reduced by having the client removed on close
+	// This presents a few race conditions, however, where, if you release the read
+	// lock on the table, it's possible for a client to be removed and freed.
+	// In this case, you MUST client_ref the client to protect yourself until
+	// you're done
+	_conns_clients_remove(client);
 	
 	conns_client_timeout_clear(client);
 	
@@ -277,11 +324,6 @@ gboolean conns_client_data(client_t *client) {
 
 gboolean conns_init() {
 	_clients = g_malloc0(sizeof(*_clients) * option_max_clients());
-	_clients_slots = ringq_new(option_max_clients());
-	for (guint64 i = 0; i < option_max_clients(); i++) {
-		ringq_add(_clients_slots, _clients + i);
-	}
-	
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
@@ -320,16 +362,33 @@ void conns_maintenance_tick() {
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
-	for (guint64 i = 0; i < option_max_clients(); i++) {
-		client_t *client = _clients[i];
+	guint i = g_atomic_int_get(&_clients_len);
+	while (i > 0) {
+		qev_lock_read_lock(&_clients_lock);
+		
+		guint len = g_atomic_int_get(&_clients_len);
+		
+		if (len == 0) {
+			qev_lock_read_unlock(&_clients_lock);
+			break;
+		}
+		
+		if (--i > len) {
+			i = len - 1;
+		}
+		
+		client_t *client = g_atomic_pointer_get(&_clients[i]);
 		
 		if (client == NULL) {
+			qev_lock_read_unlock(&_clients_lock);
 			continue;
 		}
 		
 		// We're using a reference that doesn't belong to us and unlocking on it.
 		// Without this, we could free a client before we use it
 		client_ref(client);
+		
+		qev_lock_read_unlock(&_clients_lock);
 		
 		// We're only supposed to give callbacks on active clients, but it's more a soft
 		// requirement than anything 100% certain
