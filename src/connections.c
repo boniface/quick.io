@@ -203,11 +203,17 @@ void conns_client_new(client_t *client) {
 void conns_client_killed(client_t *client) {
 	client_write_close(client);
 	client->state = cstate_dead;
-	_conns_clients_remove(client);
 }
 
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
+	
+	// Lock contention is best reduced by having the client removed on close
+	// This presents a few race conditions, however, where, if you release the read
+	// lock on the table, it's possible for a client to be removed and freed.
+	// In this case, you MUST client_ref the client to protect yourself until
+	// you're done
+	_conns_clients_remove(client);
 	
 	conns_client_timeout_clear(client);
 	
