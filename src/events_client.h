@@ -44,12 +44,12 @@
 /**
  * The amount of time between challenge heartbeats for inactive clients.
  */
-#define HEARTBEAT_INACTIVE 60*15
+#define HEARTBEAT_INACTIVE (60*15)
 
 /**
  * The amount of time a client is given to respond to the heartbeat challenge before being killed
  */
-#define HEARTBEAT_INACTIVE_DEAD (HEARTBEAT_INACTIVE + (60*2))
+#define HEARTBEAT_INACTIVE_DEAD (HEARTBEAT_INACTIVE + (60*3))
 
 /**
  * The value that is stored in the hash table so that we can access
