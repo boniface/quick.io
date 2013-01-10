@@ -74,6 +74,8 @@ status_t client_handshake(client_t *client) {
 	http_parser_init(&parser, HTTP_REQUEST);
 	
 	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == buffer->len) {
+		client->last_receive = qev_time;
+		
 		// If the path is not /qio, it's not for us
 		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
 			status = CLIENT_FATAL;
