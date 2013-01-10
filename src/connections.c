@@ -378,11 +378,17 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 			continue;
 		}
 		
+		// We're using a reference that doesn't belong to us and unlocking on it.
+		// Without this, we could free a client before we use it
+		client_ref(client);
+		
 		qev_lock_read_unlock(&_clients_lock);
 		
 		// We're only supposed to give callbacks on active clients, but it's more a soft
 		// requirement than anything 100% certain
 		gboolean should_break = client->state == cstate_running && !_callback(client);
+		
+		client_unref(client);
 		
 		if (should_break) {
 			break;
