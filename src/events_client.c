@@ -274,10 +274,8 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * @param message The message to send to all the subscribers.
  * @param iter A function that loops through all the clients and calls the passed in
  * function on them.
- * @param heartbeat Rather than have tons of logic and anonymous functions in the handler,
- * we just zip it up here.
  */
-static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(gboolean(*)(client_t*)), gboolean heartbeat) {
+static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(client_t*))) {
 	// For holding all the message types we might send
 	gchar *msgs[h_len];
 	gsize msglen[h_len];
@@ -292,30 +290,13 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(gboolean
 	
 	DEBUG("Publishing message: %s", amsg->message->str);
 	
-	// If any clients need a heartbeat or are going to in the next interval, just
-	// give it to them
-	gint64 heartbeat_time = qev_time - HEARTBEAT_INTERVAL + HEARTBEAT_TICK;
-	
-	gboolean _write(client_t *client) {
+	void _write(client_t *client) {
 		enum handlers handler = client->handler;
-		
-		// This little bit of logic here saves on tons of anonymous functions and
-		// confusing code: it feels a bit out of place, but it's far cleaner to have it
-		// here than in the heartbeat anonymous functions
-		if (heartbeat) {
-			if (client->last_send >= heartbeat_time) {
-				return TRUE;
-			} else {
-				STATS_INC(heartbeats);
-			}
-		}
 		
 		if (handler == h_none || client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
 			TEST_STATS_INC(evs_client_send_pub_closes);
 			qev_close(client);
 		}
-		
-		return TRUE;
 	}
 	
 	// Go through all the clients and give them their messages
@@ -486,15 +467,18 @@ void evs_client_send_error_callback(client_t *client, const callback_t client_ca
 }
 
 void evs_client_heartbeat() {
-	_evs_client_pub_message(_heartbeat_amsg, conns_clients_foreach, TRUE);
-}
-
-void evs_client_heartbeat_inactive() {
+	// The write function for pub_message
+	void(*_write)(client_t*);
+	
+	// If any clients need a heartbeat or are going to in the next interval, just
+	// give it to them
+	gint64 heartbeat_time = qev_time - HEARTBEAT_INTERVAL + HEARTBEAT_TICK;
+	
 	// If we haven't heard from the client before this time
-	gint64 before = qev_time - HEARTBEAT_INACTIVE;
+	gint64 inactive_before = qev_time - HEARTBEAT_INACTIVE;
 	
 	// If we haven't heard from this client since 2 rounds
-	gint64 dead = qev_time - (HEARTBEAT_INACTIVE*2);
+	gint64 inactive_dead = qev_time - HEARTBEAT_INACTIVE_DEAD;
 	
 	// The message used to write to clients
 	message_t m;
@@ -502,25 +486,53 @@ void evs_client_heartbeat_inactive() {
 	m.buffer = g_string_sized_new(100);
 	
 	gboolean _cb(client_t *client) {
-		if (client->last_receive > before) {
-			return TRUE;
-		}
-		
-		if (client->last_receive < dead) {
+		// This is just a work around for a crazy bug: some browsers and proxies SUCK at closing
+		// and managing websocket connections.  I cannot figure out why some will speculatively
+		// open sockets (they probably just don't understand websocket).  I cannot figure out
+		// why some will not close a socket when you call websocket.close().  I cannot figure
+		// out why some will leave a socket open in the background after you've lost your
+		// internet connection for a few seconds and tried to reconnect.  Long story short, 
+		// there are tons of bugs all over the place that cause WAYYY too many connections to
+		// be opened.  Since I can't really fix every computer and proxy that wants to use this,
+		// we just have to be aggressive with the clients:
+		//   1) Every so often, send the client a challenge message, assuming he hasn't sent
+		//      us a message.
+		//   2) If the client responds in a reasonable amount of time, then he's fine to
+		//      stay active.
+		//   3) If the client doesn't respond, close him, becuase there's probably no QIO client
+		//      logic sitting on the other side.
+		if (client->last_receive < inactive_dead) {
 			STATS_INC(heartbeats_inactive_closed);
 			qev_close(client);
 			return TRUE;
 		}
 		
-		STATS_INC(heartbeats_inactive_challenges);
+		if (client->last_receive < inactive_before) {
+			STATS_INC(heartbeats_inactive_challenges);
+			
+			callback_t server_callback = evs_server_callback_new(client, _evs_client_cb_noop, NULL, NULL);
+			_evs_client_format_message(_heartbeat, 0, server_callback, NULL, d_plain, "", m.buffer, NULL);
+			client_write(client, &m);
+			return TRUE;
+		}
 		
-		callback_t server_callback = evs_server_callback_new(client, _evs_client_cb_noop, NULL, NULL);
-		_evs_client_format_message(_heartbeat, 0, server_callback, NULL, d_plain, "", m.buffer, NULL);
-		client_write(client, &m);
+		if (client->last_send >= heartbeat_time) {
+			return TRUE;
+		}
+		
+		// If we get here, we're just sending a standard heartbeat
+		STATS_INC(heartbeats);
+		_write(client);
+		
 		return TRUE;
 	}
+	
+	void _iter(void(*write)(client_t*)) {
+		_write = write;
+		conns_clients_foreach(_cb);
+	}
 
-	conns_clients_foreach(_cb);
+	_evs_client_pub_message(_heartbeat_amsg, _iter);
 	
 	g_string_free(m.buffer, TRUE);
 }
@@ -528,7 +540,7 @@ void evs_client_heartbeat_inactive() {
 void evs_client_tick() {
 	_async_message_t *amsg;
 	
-	void iter(gboolean(*_write)(client_t*)) {
+	void iter(void(*_write)(client_t*)) {
 		evs_client_sub_t *sub = _subscription_get(amsg->event_path, FALSE);
 		
 		if (sub == NULL) {
@@ -549,7 +561,7 @@ void evs_client_tick() {
 	}
 	
 	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
-		_evs_client_pub_message(amsg, iter, FALSE);
+		_evs_client_pub_message(amsg, iter);
 		
 		g_free(amsg->event_path);
 		g_string_free(amsg->message, TRUE);

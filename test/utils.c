@@ -26,6 +26,7 @@ client_t* u_client_create(int *socket) {
 	
 	client->message = message;
 	client->handler = h_none;
+	client->last_receive = qev_time;
 	
 	if (socket != NULL) {
 		int sockets[2];
