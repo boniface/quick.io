@@ -13,11 +13,8 @@ char* test_status_to_str(status_t status) {
 }
 
 client_t* u_client_create(int *socket) {
-	client_t *client = malloc(sizeof(*client));
-	memset(client, 0, sizeof(*client));
-	
-	message_t *message = malloc(sizeof(*message));
-	memset(message, 0, sizeof(*message));
+	client_t *client = g_slice_alloc0(sizeof(*client));
+	message_t *message = g_slice_alloc0(sizeof(*message));
 	
 	message->socket_buffer = g_string_sized_new(1);
 	message->buffer = g_string_sized_new(1);
@@ -50,8 +47,8 @@ void u_client_free(client_t *client) {
 	g_string_free(client->message->socket_buffer, TRUE);
 	g_string_free(client->message->buffer, TRUE);
 	g_ptr_array_free(client->subs, TRUE);
-	free(client->message);
-	free(client);
+	g_slice_free1(sizeof(*client->message), client->message);
+	g_slice_free1(sizeof(*client), client);
 }
 
 void u_main_setup(pid_t *pid) {

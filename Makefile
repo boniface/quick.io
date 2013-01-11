@@ -55,7 +55,7 @@ test_valgrind: test_build
 	@$(MAKE) valgrind DEBUG=1
 
 test: test_build
-	@$(MAKE) -C test test DEBUG=1
+	@G_SLICE=debug-blocks $(MAKE) -C test test DEBUG=1
 	@./tools/gcovr $(GCOVR_ARGS_SRC) $(BUILDDIR)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps
 	
