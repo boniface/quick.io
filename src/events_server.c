@@ -163,7 +163,7 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 	qev_client_lock(client);
 	
 	// If a callback came through that was evicted, ignore it
-	if (client->callbacks[slot].id != id) {
+	if (client->callbacks[slot].id != id || client->callbacks[slot].fn == NULL) {
 		qev_client_unlock(client);
 		return CLIENT_ERROR;
 	}
@@ -433,7 +433,6 @@ status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, path
 }
 
 callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn) {
-	
 	if (fn == NULL) {
 		CRITICAL("No callback function passed into evs_server_callback_new(). You probably didn't mean that.");
 		

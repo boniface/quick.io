@@ -757,6 +757,16 @@ START_TEST(test_evs_server_server_callback_bad_id) {
 }
 END_TEST
 
+START_TEST(test_evs_server_server_callback_huge_id) {
+	client_t *client = u_client_create(NULL);
+	
+	g_string_assign(client->message->buffer, "/qio/callback/4294967295:0:plain=");
+	test_status_eq(evs_server_handle(client), CLIENT_ERROR, "Callback coming");
+	
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_evs_server_server_callback_subscribe_to_callback) {
 	client_t *client = u_client_create(NULL);
 	
@@ -1064,6 +1074,26 @@ START_TEST(test_evs_server_server_callback_bad_status) {
 }
 END_TEST
 
+START_TEST(test_evs_server_server_callback_uninitialized) {
+	client_t *client = u_client_create(NULL);
+	
+	event_t event;
+	memset(&event, 0, sizeof(event));
+	event.extra = g_ptr_array_sized_new(1);
+	g_ptr_array_add(event.extra, "0");
+	
+	test_status_eq(_evs_server_callback(client, NULL, &event, NULL), CLIENT_ERROR, "Callback doesn't exist");
+	
+	g_ptr_array_unref(event.extra);
+	event.extra = g_ptr_array_sized_new(1);
+	g_ptr_array_add(event.extra, "256");
+	
+	test_status_eq(_evs_server_callback(client, NULL, &event, NULL), CLIENT_ERROR, "Callback doesn't exist");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* events_server_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Events - Server");
@@ -1145,6 +1175,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_server_callback_no_callback);
 	tcase_add_test(tc, test_evs_server_server_callback_client_close);
 	tcase_add_test(tc, test_evs_server_server_callback_bad_id);
+	tcase_add_test(tc, test_evs_server_server_callback_huge_id);
 	tcase_add_test(tc, test_evs_server_server_callback_subscribe_to_callback);
 	tcase_add_test(tc, test_evs_server_server_callback_subscribe_to_bad_event);
 	tcase_add_test(tc, test_evs_server_server_callback_fatal);
@@ -1152,6 +1183,7 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_server_callback_chain);
 	tcase_add_test(tc, test_evs_server_server_callback_chain_async);
 	tcase_add_test(tc, test_evs_server_server_callback_bad_status);
+	tcase_add_test(tc, test_evs_server_server_callback_uninitialized);
 	suite_add_tcase(s, tc);
 	
 	return s;
