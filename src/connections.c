@@ -94,27 +94,25 @@ static void _conns_client_timeout_clean() {
 }
 
 /**
- * Assumes you have a lock on _clients: removes the given client and updates
- * the client that replaces him
+ * Removes the given client and updates the client that replaces him
  */
 static void _conns_clients_remove(client_t *client) {
 	qev_lock_write_lock(&_clients_lock);
 	
-	guint pos = g_atomic_int_get(&client->clients_pos);
+	guint pos = client->clients_pos;
 	
 	if (pos > 0) {
-		g_atomic_int_set(&client->clients_pos, 0);
-		
-		guint index = pos - 1;
-		if (index != _clients_len - 1) {
-			client_t *replace = g_atomic_pointer_get(&_clients[_clients_len - 1]);
-			g_atomic_pointer_set(&_clients[index], replace);
-			g_atomic_int_set(&replace->clients_pos, pos);
+		if (client->clients_pos != _clients_len) {
+			client_t *replace = _clients[_clients_len - 1];
+			_clients[pos - 1] = replace;
+			replace->clients_pos = pos;
 		}
 		
-		__sync_fetch_and_sub(&_clients_len, 1);
-		__sync_fetch_and_sub(&_clients_len_next, 1);
-		g_atomic_pointer_set(&_clients[_clients_len], NULL);
+		client->clients_pos = 0;
+		
+		_clients_len--;
+		_clients_len_next--;
+		_clients[_clients_len] = NULL;
 	}
 	
 	qev_lock_write_unlock(&_clients_lock);
