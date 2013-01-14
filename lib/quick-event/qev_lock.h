@@ -1,5 +1,6 @@
 /**
  * Provides a read-write spin lock.
+ * All locking operations issue full memory barriers.
  * @file qev_lock.h
  *
  * @author Andrew Stone <andrew@clovar.com>
