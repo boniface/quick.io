@@ -69,15 +69,15 @@ static DH* _qev_ssl_get_tmpdh(SSL *s, int is_export, int key_len) {
  * @return If everything was setup correctly
  */
 static gboolean _qev_setup_ecdh(SSL_CTX *ctx) {
-    EC_KEY *ecdh;
-    
-    if ((ecdh = EC_KEY_new_by_curve_name(QEV_ECDH_CURVE)) == NULL) {
-    	return FALSE;
-    }
-    
-    SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-    SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
-    EC_KEY_free(ecdh);
+	EC_KEY *ecdh;
+	
+	if ((ecdh = EC_KEY_new_by_curve_name(QEV_ECDH_CURVE)) == NULL) {
+		return FALSE;
+	}
+	
+	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
+	EC_KEY_free(ecdh);
 	
 	return TRUE;
 }
@@ -97,9 +97,9 @@ static gboolean _qev_setup_dh(SSL_CTX *ctx) {
 		
 		QEV_DH_SIZES
 	#undef QEV_DH_SIZES_X
-    
-    SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE);
-    SSL_CTX_set_tmp_dh_callback(ctx, _qev_ssl_get_tmpdh);
+	
+	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE);
+	SSL_CTX_set_tmp_dh_callback(ctx, _qev_ssl_get_tmpdh);
 	
 	return TRUE;
 }
