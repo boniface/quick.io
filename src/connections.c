@@ -171,6 +171,10 @@ void conns_balance(guint count, gchar *to) {
 }
 
 void conns_client_new(client_t *client) {
+	// Even if the client doesn't get into _clients, we still need a ref: conns_client_close
+	// unrefs, and the free will happen there. If we leave this at 0, that's just wrong
+	client_ref(client);
+	
 	qev_lock_read_lock(&_clients_lock);
 	
 	if (((guint)g_atomic_int_get(&_clients_len_next)) + 1 > option_max_clients()) {
@@ -189,7 +193,6 @@ void conns_client_new(client_t *client) {
 	client->handler = h_none;
 	client->state = cstate_initing;
 	client->timer = -1;
-	client_ref(client);
 	
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
@@ -383,7 +386,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 		}
 		
 		// We're using a reference that doesn't belong to us and unlocking on it.
-		// Without this, we could free a client before we use it
+		// Without this, a client could be free'd before we use it
 		client_ref(client);
 		
 		qev_lock_read_unlock(&_clients_lock);
