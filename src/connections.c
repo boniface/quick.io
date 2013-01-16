@@ -2,6 +2,11 @@
 
 /**
  * All of the clients currently connected to the server.
+ *
+ * In order to use any client from here when you do not hold any
+ * type of lock on _clients_lock, you MUST client_ref() the client,
+ * or it's possible that the client will be free'd before you
+ * can use him. When you're done, also be sure to client_unref()
  */
 static client_t **_clients;
 
@@ -209,11 +214,17 @@ void conns_client_killed(client_t *client) {
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
 	
-	// Lock contention is best reduced by having the client removed on close
-	// This presents a few race conditions, however, where, if you release the read
-	// lock on the table, it's possible for a client to be removed and freed.
-	// In this case, you MUST client_ref the client to protect yourself until
-	// you're done
+	// We can only remove the client from _clients once we are assured that no more
+	// events will fire on it. If it's possible for more events to fire, then the
+	// following could happen:
+	//   1) Client is accepted in 1 thread
+	//   2) Once added to epoll, the client is immediately closed, and another thread
+	//      catches this
+	//   3) The close thread fires instantly, causing conns_client_killed() to be called
+	//   4) The client is "removed" from _clients, but since he had clients_pos == 0,
+	//      he was just ignored
+	//   5) conns_client_new() is called from the first thread, client is added to
+	//      _clients, and now he's there forever, even after a close.
 	_conns_clients_remove(client);
 	
 	conns_client_timeout_clear(client);
