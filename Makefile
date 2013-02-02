@@ -23,10 +23,10 @@ docs:
 run: debug
 	./$(DIR_BUILD_DEBUG)/qio
 
-build_dir:
+build-dir:
 	mkdir -p $(BUILDDIR)
 
-build: build_dir
+build: build-dir
 	pkg-config --exists '$(LIBS_VERSIONS)'
 	cp $(QIOINI) $(BUILDDIR)/$(QIOINI_DEFAULT)
 	@$(MAKE) -C src --no-print-directory
@@ -44,25 +44,25 @@ clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C tools clean
 
-test_build:
+test-build:
 	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
 	@$(MAKE) build DEBUG=1 TESTING=1
 	@$(MAKE) -C app DEBUG=1 TESTING=1
 
-test_all: test test_valgrind
+test-all: test test-valgrind
 	
-test_valgrind: test_build
+test-valgrind: test-build
 	@$(MAKE) valgrind DEBUG=1
 
-test: test_build
+test: test-build
 	@G_SLICE=debug-blocks $(MAKE) -C test test DEBUG=1
 	@./tools/gcovr $(GCOVR_ARGS_SRC) $(BUILDDIR)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps
 	
-valgrind: test_build
+valgrind: test-build
 	@$(MAKE) -C test valgrind DEBUG=1
 	
-test_jenkins: clean
+test-jenkins: clean
 	@$(MAKE) test TEST_OUTPUT_XML=1
 	@./tools/gcovr $(GCOVR_ARGS_SRC) -x -o $(DIR_BUILD_TEST)/test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(DIR_BUILD_TEST)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) -x -o $(DIR_BUILD_TEST)/test_coverage_apps.xml $(DIR_BUILD_TEST)/apps
