@@ -106,17 +106,10 @@ gboolean apps_run() {
 		// resolve them on load
 		GModule *module = g_module_open(path, 0);
 		
-		// If we can't open the app, just quit
 		if (module == NULL) {
 			CRITICAL("Could not open app (%s): %s", path, g_module_error());
 			return FALSE;
 		}
-		
-		// For storing the app information
-		app_t *app = g_malloc0(sizeof(*app));
-		
-		// We allocated, so save it
-		g_ptr_array_add(_apps, app);
 		
 		// Format the prefix, setting it to NULL if there is no prefix
 		gchar *prefix = evs_server_format_path(o_app->prefix, NULL);
@@ -125,7 +118,8 @@ gboolean apps_run() {
 			prefix = NULL;
 		}
 		
-		// Some basics that we'll definitely need
+		app_t *app = g_malloc0(sizeof(*app));
+		g_ptr_array_add(_apps, app);
 		app->module = module;
 		app->id = i;
 		app->name = o_app->config_group;
@@ -139,7 +133,6 @@ gboolean apps_run() {
 		gchar abspath[PATH_MAX];
 		realpath(path, abspath);
 		
-		// Done dealing with path
 		free(path);
 		
 		// Register all the callbacks the app has
@@ -205,7 +198,6 @@ status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t
 }
 
 gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t *extra) {
-	// Notify all the general listeners that a subscription happened.
 	APP_FOREACH(
 		on_subscribe_cb cb = app->subscribe;
 		
@@ -222,7 +214,6 @@ void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handle
 		handler->on_unsubscribe(client, handler, extra);
 	}
 	
-	// Notify all the general listeners that an unsubscription happened.
 	APP_FOREACH(
 		on_subscribe_cb cb = app->unsubscribe;
 		

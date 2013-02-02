@@ -27,7 +27,7 @@ static FILE *_log_file = NULL;
 		
 		fprintf(stderr, "Error: segfault\n");
 		
-		// +1 -> skip this function
+		// +1 -> skip this function on the stack
 		backtrace_symbols_fd(array + 1, size, 2);
 		exit(11);
 	}

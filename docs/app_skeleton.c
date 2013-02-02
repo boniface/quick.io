@@ -77,6 +77,10 @@ static status_t _baby_born(client_t *client, event_handler_t *handler, event_t *
 	// This is guaranteed to be right, no error checking needed
 	e->client_callback = event->client_callback;
 	
+	// Put the birth into the async queue for processing in the app's thread
+	// This is just a good way to synchronize threads
+	g_async_queue_push(_events, e);
+	
 	// Indicate that we are going async with this event
 	return CLIENT_ASYNC;
 }

@@ -7,12 +7,8 @@
  * (segfaults not withstanding). As such, the apps should run with their own references to
  * everything, such that any changes to the internal structures do not affect the apps,
  * and vis-versa. That being said, the only reference the apps share with the main server
- * is `client`, but that id ref-counted and void* in the apps (in other words, it may not be
+ * is `client`, but that is ref-counted and void* in the apps (in other words, it may not be
  * modified for any reason).
- *
- * Generally speaking, each app runs in its own thread, independent of the server, and it
- * recieves callbacks asynchronously. If the application defines an `app_run()` function,
- * then it is responsible for allocating time to fire any events it recieves.
  */
 
 #pragma once

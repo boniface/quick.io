@@ -181,7 +181,7 @@ status_t h_rfc6455_handshake(client_t *client, GHashTable *headers) {
 		return CLIENT_FATAL;
 	}
 	
-	//build up the concated key, ready for hashing for the return header
+	// Build up the concated key, ready for hashing for the return header
 	guchar out[strlen(key) + HASH_KEY_LEN];
 	strcpy((char*)out, key);
 	strcat((char*)out, HASH_KEY);

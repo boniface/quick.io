@@ -1,6 +1,5 @@
 #include "qio.h"
 
-// Command line options
 static gchar* _config_file = NULL;
 
 static GOptionEntry command_options[] = {
@@ -8,7 +7,8 @@ static GOptionEntry command_options[] = {
 	{NULL}
 };
 
-// Config file options
+static opt_app_t **_apps = NULL;
+static guint16 _apps_count = 0;
 static gchar *_bind_address = NULL;
 static gchar *_bind_address_ssl = NULL;
 static gint _bind_port = 80;
@@ -46,10 +46,6 @@ static config_file_entry_t _config_options[] = {
 	{"timeout", e_int, &_timeout},
 	{"user", e_string, &_user},
 };
-
-// The processed list of apps and their prefixes
-static opt_app_t **_apps = NULL;
-static guint16 _apps_count = 0;
 
 static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 	gsize key_len = 0;
@@ -89,7 +85,6 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 	if (_apps_count > 0) {
 		apps = g_list_first(apps);
 		
-		// Plop all the apps into an array
 		gsize i = 0;
 		_apps = g_malloc0(_apps_count * sizeof(*_apps));
 		

@@ -74,7 +74,6 @@ static evs_client_sub_t* _subscription_create(const gchar *event_path, event_han
 	sub->event_path = g_strdup(event_path);
 	
 	// Use the default hashing functions, only using memory locations anyway
-	// (*client->*client is what is being stored)
 	sub->clients = g_hash_table_new(NULL, NULL);
 	
 	// Because we'll need this for some future references, let's keep the
@@ -175,7 +174,6 @@ static void _subscription_cleanup(const gchar *event_path) {
  * @see evs_client_sub_client
  */
 static status_t _evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback, const gboolean from_app) {
-	// Attempt to get the subscription to check if it exists
 	evs_client_sub_t *sub = _subscription_get(event_path, TRUE);
 	
 	if (sub == NULL) {
@@ -202,7 +200,6 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 	
 	DEBUG("Subscribing client to: %s", event_path);
 	
-	// Subscribe the client
 	g_hash_table_add(sub->clients, client);
 	
 	g_mutex_unlock(&sub->lock);
@@ -212,7 +209,6 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 	
 	qev_client_unlock(client);
 	
-	// And now, once the subscribe is complete, send the general subscribe event
 	apps_evs_client_subscribe(client, sub->event_path, sub->extra);
 	
 	return CLIENT_GOOD;
@@ -224,7 +220,6 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
  * @param path If this is not NULL, then it MUST be free()'d
  */
 static status_t _evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const guint32 server_callback, path_extra_t *extra, const enum data_t type, const gchar *data, GString *buffer, gchar **path) {
-	// A way of getting the path back to the caller
 	gchar *final_path;
 	
 	// A callback takes precedence over an event handler, always
@@ -276,7 +271,6 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * function on them.
  */
 static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(client_t*))) {
-	// For holding all the message types we might send
 	gchar *msgs[h_len];
 	gsize msglen[h_len];
 	
@@ -302,7 +296,6 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(
 	// Go through all the clients and give them their messages
 	iter(_write);
 	
-	// Clean up all the allocated frames
 	for (int i = 0; i < h_len; i++) {
 		free(msgs[i]);
 	}
@@ -321,7 +314,6 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client, const 
 }
 
 status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
-	// Attempt to get the subscription to check if it exists
 	evs_client_sub_t *sub = _subscription_get(event_path, FALSE);
 	
 	if (sub == NULL) {
@@ -400,8 +392,6 @@ status_t evs_client_format_message(const event_handler_t *handler, const callbac
 }
 
 gboolean evs_client_init() {
-	// Keys are copied before they are inserted, so when they're removed,
-	// they must be freed
 	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 	_messages = g_async_queue_new();
 	

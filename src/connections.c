@@ -61,7 +61,6 @@ static event_handler_t *_balance_handler;
 static void _conns_message_new(client_t *client) {
 	message_t *message = client->message;
 	
-	// Replace any slots in the message that might have been freed
 	if (message == NULL) {
 		message = g_slice_alloc0(sizeof(*message));
 	}
@@ -251,14 +250,12 @@ gboolean conns_client_data(client_t *client) {
 		return FALSE;
 	}
 
-	// Where data from the client's socket will be stored
 	gchar buffer[option_max_message_size()];
 	
 	// Clients typically aren't sending messages
 	_conns_message_new(client);
 	
-	// Read the message the client sent, unless it's too large,
-	// then kill the client
+	// Read the message the client sent, unless it's too large, then kill the client
 	gssize len;
 	while ((len = qev_read(client, buffer, sizeof(buffer))) > 0) {
 		g_string_append_len(client->message->socket_buffer, buffer, len);
@@ -282,7 +279,7 @@ gboolean conns_client_data(client_t *client) {
 			DEBUG("Client handshake");
 			status = client_handshake(client);
 			
-			// Headers are sent without encoding, don't use the client wrapper
+			// Headers are sent without encoding, don't use the client_write wrapper
 			if (status == CLIENT_WRITE) {
 				STATS_INC(client_handshakes);
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
@@ -304,8 +301,6 @@ gboolean conns_client_data(client_t *client) {
 		
 		if (status == CLIENT_GOOD) {
 			conns_client_timeout_clear(client);
-			
-			// Clean up the message buffer, since we just finished processing him
 			conns_message_clean(client, FALSE, TRUE);
 
 		} else if (status == CLIENT_WAIT) {
@@ -415,7 +410,6 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 }
 
 void conns_message_free(client_t *client) {
-	// If the client doesn't have a message, don't be stupid
 	if (client->message == NULL) {
 		return;
 	}

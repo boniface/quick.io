@@ -145,7 +145,6 @@ static void _event_free(event_t *event) {
 }
 
 static void _evs_server_callback_free(struct client_cb_s cb) {
-	// Get rid of the callback's data, that's over
 	if (cb.data != NULL && cb.free_fn != NULL) {
 		cb.free_fn(cb.data);
 	}
@@ -348,13 +347,11 @@ status_t evs_server_handle(client_t *client) {
 }
 
 event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
-	// Don't allow events with EVENT_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
 		CRITICAL("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 	
-	// Don't allow events with EVENT_DATA_DELIMITER in the name
 	if (g_strstr_len(event_path, -1, EVENT_DATA_DELIMITER) != NULL) {
 		CRITICAL("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
 		return NULL;
@@ -370,14 +367,12 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 		return NULL;
 	}
 	
-	// Grab some memory to store the event info
 	event_handler_t *handler = g_malloc0(sizeof(*handler));
 	handler->fn = fn;
 	handler->on_subscribe = on_subscribe;
 	handler->on_unsubscribe = on_unsubscribe;
 	handler->handle_children = handle_children;
 	
-	// Store the handler for the event
 	g_hash_table_insert(_events_by_path, path, handler);
 	g_hash_table_insert(_events_by_handler, handler, path);
 	
@@ -478,7 +473,6 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 }
 
 void evs_server_callback_free(client_t *client, callback_t server_callback) {
-	// Make sure we're not just killing a callback at random
 	guint8 slot, id;
 	SERVER_CALLBACK_PARTS(client, server_callback, slot, id);
 	

@@ -127,7 +127,6 @@ status_t client_message(client_t* client) {
 		}
 	}
 	
-	// If everything went well with the handler, process the message
 	if (status == CLIENT_GOOD) {
 		STATS_INC(messages_received);
 		client->last_receive = qev_time;
@@ -138,7 +137,6 @@ status_t client_message(client_t* client) {
 }
 
 status_t client_write(client_t *client, message_t *message) {
-	// Extract the message from the client, if necessary
 	if (message == NULL) {
 		if (client->message == NULL) {
 			return CLIENT_FATAL;
