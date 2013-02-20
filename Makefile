@@ -8,12 +8,13 @@ GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
 all: debug
 
+debug: export DEBUG=1
+debug: export BUILDDIR=$(shell pwd)/$(DIR_BUILD_DEBUG)
 debug:
-	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_DEBUG))
-	$(MAKE) build DEBUG=1
+	$(MAKE) build
 
+profile: export BUILDDIR=$(shell pwd)/$(DIR_BUILD_PROFILE)
 profile:
-	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_PROFILE))
 	$(MAKE) build PROFILE=1
 
 docs:
@@ -44,10 +45,12 @@ clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C tools clean
 
+test-build: export DEBUG=1
+test-build: export TESTING=1
+test-build: export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST)
 test-build:
-	@$(eval export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST))
-	@$(MAKE) build DEBUG=1 TESTING=1
-	@$(MAKE) -C app DEBUG=1 TESTING=1
+	@$(MAKE) build
+	@$(MAKE) -C app
 
 test-all: test test-valgrind
 	
