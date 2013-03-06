@@ -111,19 +111,12 @@ gboolean apps_run() {
 			return FALSE;
 		}
 		
-		// Format the prefix, setting it to NULL if there is no prefix
-		gchar *prefix = evs_server_format_path(o_app->prefix, NULL);
-		if (strlen(prefix) == 1) {
-			g_free(prefix);
-			prefix = NULL;
-		}
-		
 		app_t *app = g_malloc0(sizeof(*app));
 		g_ptr_array_add(_apps, app);
 		app->module = module;
 		app->id = i;
 		app->name = o_app->config_group;
-		app->event_prefix = prefix;
+		app->event_prefix = evs_server_format_path(o_app->prefix, NULL);
 		
 		// Find the absolute path to the directory holding the module
 		// There is no error checking here: after g_module_open, the path must exist

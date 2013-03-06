@@ -6,13 +6,12 @@ LDFLAGS += -Wl,-E
 
 OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/reconnecting_socket.o
 TARGET = $(BUILDDIR)/qio
-TESTING = 0
 
 .PHONY: default clean
 
 default: $(TARGET)
 
-ifeq ($(TESTING),1)
+ifdef TESTING
 $(TARGET): $(OBJECTS)
 else
 $(TARGET): $(OBJECTS)

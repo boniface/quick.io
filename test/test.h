@@ -32,7 +32,6 @@
 
 /**
  * Test that the assertion is true.
- * This is a basic wrapper around _ck_assert_msg().
  */
 #define test ck_assert_msg
 
@@ -88,7 +87,12 @@
 #define test_str_eq(test, should_be, description) { \
 	_test_setup(const char*, test, should_be); \
 	_msg("Assertion '%s'=='%s' failed", actual, expect, description); \
-	_ck_assert_msg(strcmp(actual, expect) == 0, __FILE__, __LINE__, msg, NULL);}
+	if (actual == NULL || expect == NULL) { \
+		_ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL); \
+	} else { \
+		_ck_assert_msg(strcmp(actual, expect) == 0, __FILE__, __LINE__, msg, NULL); \
+	} }
+		
 
 /**
  * Tests if the two strings are equal.

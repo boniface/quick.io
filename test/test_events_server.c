@@ -60,6 +60,33 @@ START_TEST(test_evs_server_format_path_4) {
 }
 END_TEST
 
+START_TEST(test_evs_server_format_path_5) {
+	gchar *path = evs_server_format_path("/these/**are***/%%%not%%/valid/", NULL);
+	test_str_eq(path, "/these/are/not/valid", "Bad characters removed");
+	g_free(path);
+}
+END_TEST
+
+START_TEST(test_evs_server_format_path_6) {
+	path_extra_t *extra = g_ptr_array_new();
+	g_ptr_array_add(extra, "with^^%^#^^#*@*@&");
+	g_ptr_array_add(extra, "path/////////");
+	
+	gchar *path = evs_server_format_path("/these/**are***/%%%not%%/valid/", extra);
+	test_str_eq(path, "/these/are/not/valid/with/path", "Bad characters removed");
+	g_free(path);
+	
+	g_ptr_array_free(extra, TRUE);
+}
+END_TEST
+
+START_TEST(test_evs_server_format_path_7) {
+	gchar *path = evs_server_format_path("/these/^^are-valid@@/chars_yep/", NULL);
+	test_str_eq(path, "/these/are-valid/chars_yep", "Bad characters removed");
+	g_free(path);
+}
+END_TEST
+
 START_TEST(test_evs_event_creation_valid_minimal) {
 	client_t *client = u_client_create(NULL);
 	
@@ -1104,6 +1131,9 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_format_path_2);
 	tcase_add_test(tc, test_evs_server_format_path_3);
 	tcase_add_test(tc, test_evs_server_format_path_4);
+	tcase_add_test(tc, test_evs_server_format_path_5);
+	tcase_add_test(tc, test_evs_server_format_path_6);
+	tcase_add_test(tc, test_evs_server_format_path_7);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Event Creation");

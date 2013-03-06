@@ -386,24 +386,7 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler) {
 }
 
 gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
-	// Remove any duplicated slashes
 	GString *ep = g_string_new(event_path);
-	gchar prev = ep->str[0];
-	gsize i = 1;
-	while (i < ep->len) {
-		if (ep->str[i] == '/' && prev == '/') {
-			// Remove the single slash
-			g_string_erase(ep, i, 1);
-		} else {
-			prev = ep->str[i];
-			i++;
-		}
-	}
-	
-	// Remove any trailing slashes
-	if (ep->str[--i] == '/') {
-		g_string_erase(ep, i, 1);
-	}
 	
 	// Make sure it starts with a slash
 	if (*(ep->str) != '/') {
@@ -417,7 +400,33 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
 		}
 	}
 	
-	gchar *path = ep->str;
+	// Remove any duplicated slashes or non-printable characters
+	// We don't need to check the first character: it's always a slash (added above)
+	gsize i = 1;
+	gchar prev = ep->str[0];
+	while (i < ep->len) {
+		char curr = ep->str[i];
+		// Essentially checking for this regex: [^_\-/a-zA-Z0-9]
+		// And in the process, removing any double slashes (//)
+		if ((curr == '/' && prev == '/') || !((curr >= '/' && curr <= '9') || (curr >= 'a' && curr <= 'z') || (curr >= 'A' && curr <= 'Z') || curr == '_' || curr == '-')) {
+			// Remove the bad character
+			g_string_erase(ep, i, 1);
+		} else {
+			prev = curr;
+			i++;
+		}
+	}
+	
+	// Remove any trailing slashes
+	if (ep->str[--i] == '/') {
+		g_string_erase(ep, i, 1);
+	}
+	
+	gchar *path = NULL;
+	if (ep->len != 0) {
+		path = ep->str;
+	}
+	
 	g_string_free(ep, FALSE);
 	
 	return path;

@@ -1,7 +1,7 @@
 include Makefile.inc
 
 GCOVR_ARGS = -p -r . --exclude='src/log.*' --exclude='test.*' $(patsubst %.o, --exclude='src/%.c', $(DEPENDENCIES)) --exclude='lib.*' --single-directory
-GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/ 
+GCOVR_ARGS_SRC = $(GCOVR_ARGS) --object-directory=src/
 GCOVR_ARGS_APPS = $(GCOVR_ARGS) --object-directory=$(ROOT)/app/
 
 .PHONY: all build clean debug docs test
@@ -45,27 +45,28 @@ clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C tools clean
 
-test-build: export DEBUG=1
-test-build: export TESTING=1
-test-build: export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST)
 test-build:
 	@$(MAKE) build
 	@$(MAKE) -C app
 
-test-all: test test-valgrind
+test-all: test valgrind
 	
-test-valgrind: test-build
-	@$(MAKE) valgrind DEBUG=1
-
+test: export DEBUG=1
+test: export TESTING=1
+test: export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST)
 test: test-build
 	@G_SLICE=debug-blocks $(MAKE) -C test test DEBUG=1
 	@./tools/gcovr $(GCOVR_ARGS_SRC) $(BUILDDIR)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) $(BUILDDIR)/apps
-	
+
+valgrind: export DEBUG=1
+valgrind: export TESTING=1
+valgrind: export BUILDDIR=$(shell pwd)/$(DIR_BUILD_TEST)
 valgrind: test-build
-	@$(MAKE) -C test valgrind DEBUG=1
-	
+	@$(MAKE) -C test valgrind
+
+test-jenkins: export TEST_OUTPUT_XML=1
 test-jenkins: clean
-	@$(MAKE) test TEST_OUTPUT_XML=1
+	@$(MAKE) test 
 	@./tools/gcovr $(GCOVR_ARGS_SRC) -x -o $(DIR_BUILD_TEST)/test_coverage.xml --exclude='src/qsys*' --exclude='src/main*' $(DIR_BUILD_TEST)
 	@./tools/gcovr $(GCOVR_ARGS_APPS) -x -o $(DIR_BUILD_TEST)/test_coverage_apps.xml $(DIR_BUILD_TEST)/apps

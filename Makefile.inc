@@ -8,6 +8,7 @@ HEADERS = $(wildcard *.h)
 ARCH := $(shell getconf LONG_BIT)
 
 export ROOT ?= $(shell pwd)
+export WD = $(shell pwd)
 DIR_BUILD = build
 DIR_BUILD_DEBUG = build_debug
 DIR_BUILD_PROFILE = build_profile
@@ -32,7 +33,7 @@ DEPENDENCIES = \
 
 DEPS = $(patsubst %.o, $(BUILDDIR)/%.o, $(DEPENDENCIES))
 
-# If we should include debug everything
+# If we should debug everything
 ifdef DEBUG
 	QIOINI = quickio.ini
 	OPTIMIZE = 0

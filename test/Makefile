@@ -32,4 +32,5 @@ valgrind: $(BUILDDIR)/valgrind.o $(OBJECTS)
 # Compiles test.c to test.o
 $(BUILDDIR)/%.o: %.c test.h
 	@echo "\n\n"-------- Compiling $< --------
-	@$(CC) $(CFLAGS) -DTEST_OUTPUT_XML=$(TEST_OUTPUT_XML) $< -o $@
+	@# Compile using WD so that gcov can easily filter these out
+	@$(CC) $(CFLAGS) -DTEST_OUTPUT_XML=$(TEST_OUTPUT_XML) $(WD)/$< -o $@

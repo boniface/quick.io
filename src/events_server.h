@@ -299,7 +299,8 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler);
  * @param event_path The event path
  * @param extra Any extra paramters (may be NULL).
  *
- * @return The complete, formatted path, with any extra parameters. This MUST be g_free()'d
+ * @return The complete, formatted path, with any extra parameters. If the path is
+ * completely invalid, this will return NULL. This MUST be g_free()'d
  */
 gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra);
 
