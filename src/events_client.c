@@ -97,6 +97,10 @@ static evs_client_sub_t* _subscription_create(const gchar *event_path, event_han
  * to ensure that it won't be deleted once returned.
  */
 static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboolean and_create) {
+	if (event_path == NULL) {
+		return NULL;
+	}
+	
 	g_mutex_lock(&_events_lock);
 	
 	evs_client_sub_t *sub = g_hash_table_lookup(_events, event_path);

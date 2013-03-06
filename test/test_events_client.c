@@ -399,7 +399,7 @@ START_TEST(test_evs_heartbeat_inactive_2) {
 }
 END_TEST
 
-START_TEST(test_evs_client_subscribe_bad_subscription) {
+START_TEST(test_evs_client_subscribe_bad_subscription_0) {
 	client_t *client = u_client_create(NULL);
 	
 	test_status_eq(evs_client_sub_client("test", client, 0), CLIENT_ERROR, "Subscription not found");
@@ -407,6 +407,26 @@ START_TEST(test_evs_client_subscribe_bad_subscription) {
 	
 	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_subscribe_bad_subscription_1) {
+	client_t *client = u_client_create(NULL);
+	
+	test_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Subscription not found");
+	test_size_eq(client->subs->len, 0, "No subscriptions");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_subscribe_bad_subscription_2) {
+	client_t *client = u_client_create(NULL);
+	
+	test_status_eq(evs_client_sub_client("", client, 0), CLIENT_ERROR, "Subscription not found");
+	test_size_eq(client->subs->len, 0, "No subscriptions");
 	
 	u_client_free(client);
 }
@@ -959,7 +979,9 @@ Suite* events_client_suite() {
 	
 	tc = tcase_create("Subscribe");
 	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
-	tcase_add_test(tc, test_evs_client_subscribe_bad_subscription);
+	tcase_add_test(tc, test_evs_client_subscribe_bad_subscription_0);
+	tcase_add_test(tc, test_evs_client_subscribe_bad_subscription_1);
+	tcase_add_test(tc, test_evs_client_subscribe_bad_subscription_2);
 	tcase_add_test(tc, test_evs_client_subscribe_too_many_subscriptions);
 	tcase_add_test(tc, test_evs_client_subscribe_already_subscribed);
 	tcase_add_test(tc, test_evs_client_subscribe_reject_child);
