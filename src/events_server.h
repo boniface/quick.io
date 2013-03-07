@@ -296,6 +296,9 @@ gchar* evs_server_path_from_handler(const event_handler_t *handler);
 /**
  * Cleans up and formats the path, with any extra path elements added on.
  *
+ * Any invalid characters will be stripped from the path until it contains
+ * only the following characters: -_a-zA-Z0-9/
+ *
  * @param event_path The event path
  * @param extra Any extra paramters (may be NULL).
  *

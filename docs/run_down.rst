@@ -35,6 +35,18 @@ The actual data sent in this exchange would look something like the following::
 	/qio/callback/2:0:json={iam: 'Howard'}
 	/app/update:0:json={date: 'Jan 1, 1970'}
 
+Event Paths
+-----------
+
+Event paths may only consist of the following characters::
+	
+	-/0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz
+
+Any other character in the path will be summarily removed and ignored.  In other words, the following two paths will be identical once event path validation finishes::
+	
+	/app/user/new
+	/app/@user/(new)>>>>
+
 Event Format
 ------------
 
