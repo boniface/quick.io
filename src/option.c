@@ -13,6 +13,7 @@ static gchar *_bind_address = NULL;
 static gchar *_bind_address_ssl = NULL;
 static gint _bind_port = 80;
 static gint _bind_port_ssl = 443;
+static gchar *_hostname = NULL;
 static gchar *_log_file = NULL;
 static guint64 _max_clients = 4194304;
 static gint _max_mess_size = 1024;
@@ -32,6 +33,7 @@ static config_file_entry_t _config_options[] = {
 	{"bind-address-ssl", e_string, &_bind_address_ssl},
 	{"bind-port", e_int, &_bind_port},
 	{"bind-port-ssl", e_int, &_bind_port_ssl},
+	{"hostname", e_string, &_hostname},
 	{"log-file", e_string, &_log_file},
 	{"max-clients", e_uint64, &_max_clients},
 	{"max-message-len", e_uint64, &_max_mess_size},
@@ -127,6 +129,10 @@ const gint option_bind_port_ssl() {
 
 const gchar* option_config_file() {
 	return _config_file;
+}
+
+const gchar* option_hostname() {
+	return _hostname;
 }
 
 const gchar* option_log_file() {
@@ -243,6 +249,17 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		CRITICAL("Option `timeout` must be greater than 0 and less than 127.");
 		g_key_file_free(conf);
 		return FALSE;
+	}
+	
+	if (_hostname == NULL) {
+		gchar hostname[1024];
+		memset(&hostname, 0, sizeof(hostname));
+		
+		if (gethostname(hostname, sizeof(hostname)-1) == -1) {
+			FATAL("Could not determine hostname for server: %s", strerror(errno));
+		}
+		
+		_hostname = g_strdup(hostname);
 	}
 
 	g_key_file_free(conf);

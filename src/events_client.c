@@ -365,6 +365,26 @@ void evs_client_client_close(client_t *client) {
 	client->subs = NULL;
 }
 
+status_t evs_client_send(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t server_callback, const enum data_t type, const gchar *data) {
+	if (client->state != cstate_running) {
+		return CLIENT_FATAL;
+	}
+	
+	GString *message = g_string_sized_new(100);
+	status_t status = evs_client_format_message(handler, 0, server_callback, extra, type, data, message);
+	
+	if (status == CLIENT_GOOD) {
+		message_t m;
+		m.type = op_text;
+		m.buffer = message;
+		
+		client_write(client, &m);
+	}
+	
+	g_string_free(message, TRUE);
+	return status;
+}
+
 status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extra, const enum data_t type, const gchar *data) {
 	// Format the message that will be sent to the clients
 	GString *message = g_string_sized_new(100);

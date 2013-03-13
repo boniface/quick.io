@@ -140,6 +140,13 @@ const gint option_bind_port_ssl();
 const gchar* option_config_file();
 
 /**
+ * Gets the hostname of the running instance.
+ *
+ * @ingroup AppFunctions
+ */
+APP_EXPORT const gchar* option_hostname();
+
+/**
  * The path to the log file.
  */
 const gchar* option_log_file();

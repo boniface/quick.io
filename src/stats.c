@@ -16,11 +16,6 @@ static GString *_builder;
  */
 static rsocket *_graphite = NULL;
 
-/**
- * The hostname to send to graphite
- */
-static gchar *_hostname = NULL;
-
 void stats_flush() {
 	if (!_graphite) {
 		return;
@@ -33,7 +28,7 @@ void stats_flush() {
 			prefix = "";
 		}
 		
-		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), _hostname, prefix, key, val, time);
+		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), option_hostname(), prefix, key, val, time);
 		
 		// It's legal for the paths to graphite to be in the form qio.host/app/prefix.key,
 		// so clean that up
@@ -74,15 +69,6 @@ gboolean stats_init() {
 	if (option_stats_graphite_address() != NULL) {
 		if (rsocket_connect(option_stats_graphite_address(), option_stats_graphite_port(), &_graphite) == -1) {
 			WARN("Could not lookup graphite address. Graphite will not be used.");
-		} else {
-			gchar hostname[1024];
-			memset(&hostname, 0, sizeof(hostname));
-			if (gethostname(hostname, sizeof(hostname)-1) == -1) {
-				WARN("Could not determine hostname, falling back to bind-address");
-				_hostname = g_strdup(option_bind_address());
-			} else {
-				_hostname = g_strdup(hostname);
-			}
 		}
 	}
 	

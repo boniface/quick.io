@@ -8,6 +8,8 @@
 #define PUB_EVENT "\x81""\x1d""/test/event:0:plain=something"
 #define INVALID_EVENT "\x81""\x21""/qio/callback/1:0:plain=qio_error"
 
+#define CLIENT_SEND "\x81""\x14""/test/event:0:plain="
+
 #define ASYNC_CALLBACK "\x81""\x1d""/qio/callback/654987:0:plain="
 #define HEARTBEAT_EVENT "\x81""\x17""/qio/heartbeat:0:plain="
 #define HEARTBEAT_EVENT_MASKED "\x81\x97""abcd""N""\x13""\n""\x0b""N""\n""\x06""\x05""\x13""\x16""\x01""\x01""\x00""\x16""Y""T""[""\x12""\x0f""\x05""\x08""\x0c""^"
@@ -840,7 +842,44 @@ END_TEST
 START_TEST(test_evs_client_tick_no_handler) {
 	status_t status = evs_client_pub_event(NULL, NULL, d_plain, "something");
 	test_status_eq(status, CLIENT_ERROR, "Message published");
-	}
+}
+END_TEST
+
+START_TEST(test_evs_client_send_0) {
+	int socket = 0;
+	client_t *client = u_client_create(&socket);
+	client->handler = h_rfc6455;
+	client->state = cstate_running;
+	
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
+	test_status_eq(evs_client_send(client, handler, NULL, 0, d_plain, ""), CLIENT_GOOD, "Message sent");
+	
+	gchar buff[128];
+	int len = read(socket, buff, sizeof(buff)-1);
+	test_int32_eq(len, sizeof(CLIENT_SEND)-1, "Got right message size");
+	test_bin_eq(buff, CLIENT_SEND, sizeof(CLIENT_SEND)-1, "Correct message sent");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_send_1) {
+	client_t *client = u_client_create(NULL);
+	
+	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
+	test_status_eq(evs_client_send(client, handler, NULL, 0, d_plain, ""), CLIENT_FATAL, "Message rejected");
+	
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_send_2) {
+	client_t *client = u_client_create(NULL);
+	
+	test_status_eq(evs_client_send(client, NULL, NULL, 0, d_plain, ""), CLIENT_FATAL, "Message rejected");
+	
+	u_client_free(client);
+}
 END_TEST
 
 START_TEST(test_evs_client_async_message_invalid_event_0) {
@@ -1023,6 +1062,13 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_client_tick_no_client_handler);
 	tcase_add_test(tc, test_evs_client_tick_clear_subscription);
 	tcase_add_test(tc, test_evs_client_tick_no_handler);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("Publish Messages");
+	tcase_add_checked_fixture(tc, _test_evs_client_setup, _test_evs_client_teardown);
+	tcase_add_test(tc, test_evs_client_send_0);
+	tcase_add_test(tc, test_evs_client_send_1);
+	tcase_add_test(tc, test_evs_client_send_2);
 	suite_add_tcase(s, tc);
 	
 	tc = tcase_create("Async Message");

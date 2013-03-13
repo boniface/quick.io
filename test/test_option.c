@@ -8,6 +8,7 @@
 	"bind-address = 0.0.0.0\n" \
 	"bind-port = 5001\n" \
 	"log-file = /var/log/qio.log\n" \
+	"hostname = notmyhostname\n" \
 	"threads = 100\n" \
 	"max-subs = 128\n" \
 	"max-message-len = 4096\n" \
@@ -98,6 +99,7 @@ START_TEST(test_option_all) {
 	test(option_bind_address_ssl() == NULL, "No bind address");
 	test_int32_eq(option_bind_port_ssl(), 443, "Correct port");
 	test_str_eq(option_log_file(), "/var/log/qio.log", "Correct port");
+	test_str_eq(option_hostname(), "notmyhostname", "Correct hostname");
 	test_uint64_eq(option_max_message_size(), 4096, "Max message size");
 	test_uint64_eq(option_max_subscriptions(), 128, "Correct subscription count");
 	test(option_ssl_cert_chain() == NULL, "No cert chain");

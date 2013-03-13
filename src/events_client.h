@@ -170,6 +170,21 @@ APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, pa
 APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extra, const enum data_t type, const gchar *data);
 
 /**
+ * Send a single event to the given client.
+ *
+ * @ingroup AppFunctions
+ *
+ * @param client The client to send the event to.
+ * @param handler The event handler of the event being sent
+ * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
+ * @param type The type of the data (json, plain, etc). d_plain if none.
+ * @param data The actual data to be sent. NULL if none.
+ *
+ * @attention IS thread safe.
+ */
+APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t server_callback, const enum data_t type, const gchar *data);
+
+/**
  * Prepare a message to be sent to 1 individual user.
  *
  * @param handler The event handler; if NULL, will use the callback.

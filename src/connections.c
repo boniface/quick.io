@@ -365,7 +365,7 @@ void conns_maintenance_tick() {
 	_conns_client_timeout_clean();
 	_conns_balance();
 	
-	DEBUG("Clients: %u", _clients_len);
+	// DEBUG("Clients: %u", _clients_len);
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
