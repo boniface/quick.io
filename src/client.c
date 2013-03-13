@@ -216,23 +216,27 @@ void client_unref(client_t *client) {
 	}
 }
 
-void client_set(client_t *client, const gchar *key, const gchar *value) {
+const gchar* client_set(client_t *client, const gchar *key, const gchar *value) {
 	qev_client_lock(client);
 	
 	if (client->external_data == NULL) {
 		client->external_data = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	}
 	
+	gchar *ret = NULL;
 	if (value == NULL) {
 		g_hash_table_remove(client->external_data, key);
 	} else {
-		g_hash_table_insert(client->external_data, g_strdup(key), g_strdup(value));
+		ret = g_strdup(value);
+		g_hash_table_insert(client->external_data, g_strdup(key), ret);
 	}
 	
 	qev_client_unlock(client);
+	
+	return ret;
 }
 
-gchar* client_get(client_t *client, const gchar *key) {
+const gchar* client_get(client_t *client, const gchar *key) {
 	qev_client_lock(client);
 	
 	gchar *value = NULL;

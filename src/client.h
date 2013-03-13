@@ -294,8 +294,11 @@ APP_EXPORT void client_unref(client_t *client);
  * @param client The client to store the information on.
  * @param key The key to set.
  * @param value The value to set.
+ *
+ * @return A pointer to the new, duplicated value. This value MUST NOT be altered, free'd, or
+ * anything: if you need to do any operations on it, make a copy.
  */
-APP_EXPORT void client_set(client_t *client, const gchar *key, const gchar *value);
+APP_EXPORT const gchar* client_set(client_t *client, const gchar *key, const gchar *value);
 
 /**
  * Gets a piece of information on a client.
@@ -303,10 +306,10 @@ APP_EXPORT void client_set(client_t *client, const gchar *key, const gchar *valu
  * @param client The client to get the information from.
  * @param key The key to get.
  *
- * @return A copy of the value, or NULL if not found. If the value is returned, it MUST be
- * g_free()'d.
+ * @return The value, or NULL if not found. This value MUST NOT be altered, free'd, or anything:
+ * if you need to do any operations on it, make a copy.
  */
-APP_EXPORT gchar* client_get(client_t *client, const gchar *key);
+APP_EXPORT const gchar* client_get(client_t *client, const gchar *key);
 
 /**
  * Determines if a piece of information exists on a client.

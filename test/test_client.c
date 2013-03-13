@@ -268,9 +268,8 @@ START_TEST(test_client_external_data_sane) {
 	
 	client_set(client, "test", "test");
 	
-	gchar *val = client_get(client, "test");
+	const gchar *val = client_get(client, "test");
 	test_str_eq(val, "test", "Correct value");
-	g_free(val);
 	test(client_has(client, "test"), "Not set");
 	
 	client_ref(client);
@@ -278,7 +277,6 @@ START_TEST(test_client_external_data_sane) {
 	
 	val = client_get(client, "test");
 	test_str_eq(val, "test", "Correct value");
-	g_free(val);
 	test(client_has(client, "test"), "Not set");
 }
 END_TEST
@@ -290,9 +288,8 @@ START_TEST(test_client_external_data_overwrite) {
 	client_set(client, "test", "test2");
 	client_set(client, "test", "test3");
 	
-	gchar *val = client_get(client, "test");
+	const gchar *val = client_get(client, "test");
 	test_str_eq(val, "test3", "Correct value");
-	g_free(val);
 }
 END_TEST
 

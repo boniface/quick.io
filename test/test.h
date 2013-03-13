@@ -323,7 +323,7 @@
  * @param description The description of the test, to be printed with failure information
  */
 #define test_ptr_eq(test, should_be, description) { \
-	_test_setup(void*, test, should_be); \
+	_test_setup(const void*, test, should_be); \
 	_msg("Assertion %p==%p failed", actual, expect, description); \
 	_ck_assert_msg(actual == expect, __FILE__, __LINE__, msg, NULL);}
 
