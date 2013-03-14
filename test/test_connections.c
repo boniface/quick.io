@@ -347,6 +347,24 @@ START_TEST(test_conns_max_clients) {
 }
 END_TEST
 
+START_TEST(test_conns_client_close_free) {
+	// Tests the case when an app has client_ref'd a client: it MUST still receive a close
+	// callback when the client leaves
+	
+	client_t *client = u_client_create(NULL);
+	client_ref(client);
+	client_ref(client);
+	client_ref(client);
+	
+	// The notification should be fired immediately
+	conns_client_close(client);
+	
+	test_size_eq(utils_stats()->apps_client_close, 2, "Single client disconnected, 2 apps fired");
+	
+	u_client_free(client);
+}
+END_TEST
+
 Suite* conns_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Connections");
@@ -381,6 +399,11 @@ Suite* conns_suite() {
 	tc = tcase_create("Limits");
 	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);
 	tcase_add_test(tc, test_conns_max_clients);
+	suite_add_tcase(s, tc);
+	
+	tc = tcase_create("App Callbacks");
+	tcase_add_checked_fixture(tc, _test_conns_setup, NULL);
+	tcase_add_test(tc, test_conns_client_close_free);
 	suite_add_tcase(s, tc);
 	
 	return s;

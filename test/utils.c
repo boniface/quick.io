@@ -43,10 +43,16 @@ void u_client_free(client_t *client) {
 	if (client->qevclient.socket != 0) {
 		close(client->qevclient.socket);
 	}
-
-	g_string_free(client->message->socket_buffer, TRUE);
-	g_string_free(client->message->buffer, TRUE);
-	g_ptr_array_free(client->subs, TRUE);
+	
+	if (client->message != NULL) {
+		g_string_free(client->message->socket_buffer, TRUE);
+		g_string_free(client->message->buffer, TRUE);
+	}
+	
+	if (client->subs != NULL) {
+		g_ptr_array_free(client->subs, TRUE);
+	}
+	
 	g_slice_free1(sizeof(*client->message), client->message);
 	g_slice_free1(sizeof(*client), client);
 }

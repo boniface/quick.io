@@ -170,7 +170,7 @@ typedef struct app_s {
 	
 	/**
 	 * A reference to an application's `app_client_close` function.
-	 * A notification that a client has closed.
+	 * A notification that a client has closed / been killed.
 	 */
 	app_cb_client client_close;
 	

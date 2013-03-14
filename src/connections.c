@@ -224,6 +224,8 @@ void conns_client_close(client_t *client) {
 	//      he was just ignored
 	//   5) conns_client_new() is called from the first thread, client is added to
 	//      _clients, and now he's there forever, even after a close.
+	//   6) Since the client is put back into the free list, he could be allocated
+	//      for a new client, then we could see 2 of him in _clients
 	_conns_clients_remove(client);
 	
 	conns_client_timeout_clear(client);
