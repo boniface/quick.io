@@ -378,6 +378,8 @@ status_t evs_client_send(client_t *client, const event_handler_t *handler, path_
 		m.type = op_text;
 		m.buffer = message;
 		
+		DEBUG("Sending message: %s", message->str);
+		
 		client_write(client, &m);
 	}
 	

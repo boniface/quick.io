@@ -232,6 +232,8 @@ void conns_client_close(client_t *client) {
 	// and we're definitely not reading/writing to it asynchronously
 	conns_message_free(client);
 	
+	apps_client_close(client);
+	
 	client_unref(client);
 	
 	STATS_INC(clients_closed);
@@ -239,7 +241,6 @@ void conns_client_close(client_t *client) {
 }
 
 void conns_client_free(client_t *client) {
-	apps_client_close(client);
 	evs_client_client_close(client);
 	evs_server_client_close(client);
 	g_slice_free1(sizeof(*client), client);

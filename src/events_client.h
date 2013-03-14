@@ -177,6 +177,7 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, path_ex
  * @param client The client to send the event to.
  * @param handler The event handler of the event being sent
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
+ * @param server_callback The callback we're expecting on the server.
  * @param type The type of the data (json, plain, etc). d_plain if none.
  * @param data The actual data to be sent. NULL if none.
  *
