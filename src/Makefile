@@ -1,30 +1,36 @@
-include ../Makefile.inc
+include ../Makefile.mk
 
-# Hide everything by default, unless annotated with APP_EXPORT
-CFLAGS += -I. -c -fvisibility=hidden -I$(ROOT)/lib/
-LDFLAGS += -Wl,-E
+TARGET = $(BUILD_DIR)/qio
+OBJECTS += \
+	$(patsubst %.c, $(BUILD_DIR)/%.o, $(wildcard *.c)) \
+	$(patsubst %.o, $(BUILD_DIR)/%.o, $(DEPENDENCIES))
 
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c)) $(BUILDDIR)/http_parser.o $(BUILDDIR)/reconnecting_socket.o
-TARGET = $(BUILDDIR)/qio
+all: $(TARGET)
 
-.PHONY: default clean
+$(TARGET): $(BUILD_DIR) $(BUILD_DIR)/$(QIOINI_NAME) $(OBJECTS)
+	@echo '-------- Compiling server --------'
+	@$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 
-default: $(TARGET)
+$(BUILD_DIR)/%.o: %.c %.h ../test/test_%.c
+	@echo '-------- Compiling $< --------'
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
-ifdef TESTING
-$(TARGET): $(OBJECTS)
-else
-$(TARGET): $(OBJECTS)
-	@echo "\n\n"-------- Compiling server --------
-	@$(CC) $^ -o $@ $(LDFLAGS)
-endif
+$(BUILD_DIR)/%.o: %.c %.h
+	@echo '-------- Compiling $< --------'
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
-$(BUILDDIR)/http_parser.o:
-	@$(MAKE) -C ../lib deps
-	
-$(BUILDDIR)/reconnecting_socket.o:
-	@$(MAKE) -C ../lib deps
+$(BUILD_DIR)/%.o: ../test/%.c ../test/%.h
+	@echo '-------- Compiling $< --------'
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
-$(BUILDDIR)/%.o: %.c %.h ../test/test_%.c
-	@echo "\n\n"-------- Compiling $< --------
-	@$(CC) $(CFLAGS) $< -o $@
+$(BUILD_DIR)/valgrind.o: ../test/valgrind.c
+	@echo '-------- Compiling valgrind.o --------'
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(BUILD_DIR)/$(QIOINI_NAME):
+	cp $(ROOT)/$(QIOINI) $@
+
+include ../lib/utils/Makefile

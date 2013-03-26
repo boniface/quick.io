@@ -1,4 +1,3 @@
-#include "check.h"
 #include "test.h"
 
 void _setup() {

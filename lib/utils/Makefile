@@ -1,10 +1,10 @@
-include ../../Makefile.inc
-CFLAGS += -fPIC -c -I$(ROOT)/src
+UTILS_CFLAGS = -fPIC -c -I$(ROOT)/src
+UTILS_DIR = $(ROOT)/lib/utils
 
-OBJECTS = $(patsubst %.c, $(BUILDDIR)/%.o, $(wildcard *.c))
+$(BUILD_DIR)/http_parser.o: $(UTILS_DIR)/http_parser.c $(UTILS_DIR)/http_parser.h
+	@echo '-------- Compiling http_parser.o --------'
+	@$(CC) -c $(CFLAGS) $(UTILS_CFLAGS) $< -o $@
 
-all: $(OBJECTS)
-
-$(BUILDDIR)/%.o: %.c %.h
-	@echo "\n\n"-------- Compiling $< --------
-	@$(CC) $(CFLAGS) $< -o $@
+$(BUILD_DIR)/reconnecting_socket.o: $(UTILS_DIR)/reconnecting_socket.c $(UTILS_DIR)/reconnecting_socket.h
+	@echo '-------- Compiling reconnecting_socket.o --------'
+	@$(CC) -c $(CFLAGS) $(UTILS_CFLAGS) $< -o $@
