@@ -69,4 +69,3 @@ clean:
 	rm -f test*.xml
 	$(MAKE) -C docs clean
 	$(MAKE) -C tools clean
-	$(MAKE) -C tools clean
