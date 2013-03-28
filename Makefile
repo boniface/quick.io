@@ -24,8 +24,9 @@ profile: export BUILD_DIR = $(BUILD_DIR_PROFILE)
 profile: export CFLAGS += -g -DCOMPILE_PROFILE=1
 profile: deps build
 
-release: CFLAGS += -O2
-release: LDFLAGS += -O2
+release: export BUILD_DIR ?= $(BUILD_DIR_RELEASE)
+release: export CFLAGS += -O2
+release: export LDFLAGS += -O2
 release: deps build
 
 test: export BUILD_DIR ?= $(BUILD_DIR_TEST)

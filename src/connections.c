@@ -338,6 +338,8 @@ gboolean conns_init() {
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
 	
+	qev_lock_static_init(&_clients_lock);
+	
 	return TRUE;
 }
 

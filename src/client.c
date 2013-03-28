@@ -194,7 +194,7 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 		client->last_send = qev_time;
 		return CLIENT_GOOD;
 	} else {
-		STATS_INC(client_failed_writes)
+		STATS_INC(client_failed_writes);
 		return CLIENT_FATAL;
 	}
 }

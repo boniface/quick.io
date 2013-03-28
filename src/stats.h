@@ -138,12 +138,12 @@ gboolean stats_init();
 /**
  * Increment a counter found in stats_t.
  */
-#define STATS_INC(counter) g_atomic_pointer_add(&(stats.counter), 1);
+#define STATS_INC(counter) g_atomic_pointer_add(&(stats.counter), 1)
 
 /**
  * Decrement a counter found in stats_t
  */
-#define STATS_DEC(counter) g_atomic_pointer_add(&(stats.counter), -1);
+#define STATS_DEC(counter) g_atomic_pointer_add(&(stats.counter), -1)
 
 #ifdef TESTING
 #include "../test/test_stats.h"

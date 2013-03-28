@@ -40,6 +40,11 @@ qev_lock_t* qev_lock_new();
 void qev_lock_free(qev_lock_t *lock);
 
 /**
+ * Prepares as statically initialized lock for usage
+ */
+void qev_lock_static_init(qev_lock_t *lock);
+
+/**
  * Obtain a read lock
  */
 void qev_lock_read_lock(qev_lock_t *lock);

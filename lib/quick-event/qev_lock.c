@@ -15,6 +15,10 @@ void qev_lock_free(qev_lock_t *lock) {
 	g_free(lock);
 }
 
+void qev_lock_static_init(qev_lock_t *lock) {
+	memset(lock, 0, sizeof(*lock));
+}
+
 void qev_lock_read_lock(qev_lock_t *lock) {
 	while (TRUE) {
 		// Before we're allowed to continue, make sure there are no writers
@@ -26,41 +30,32 @@ void qev_lock_read_lock(qev_lock_t *lock) {
 				break;
 			}
 			
-			QEV_STATS_INC(qev_lock_read_false_acquire);
-			
 			// If a writer got a lock, then we have to release our read lock and try again
 			__sync_fetch_and_sub(&lock->readers, 1);
+			QEV_STATS_INC(qev_lock_read_false_acquire);
 		}
 		
 		QEV_STATS_INC(qev_lock_read_spin);
-		pause();
+		g_thread_yield();
 	}
-	
-	__sync_synchronize();
 }
 
 void qev_lock_read_unlock(qev_lock_t *lock) {
 	__sync_fetch_and_sub(&lock->readers, 1);
-	__sync_synchronize();
 }
 
 void qev_lock_write_lock(qev_lock_t *lock) {
 	// Acquire the single write lock
 	while (!__sync_bool_compare_and_swap(&lock->writer, 0, 1)) {
 		QEV_STATS_INC(qev_lock_write_spin);
-		pause();
 	}
 	
 	// Wait until all the readers are done
 	while (!__sync_bool_compare_and_swap(&lock->readers, 0, 0)) {
 		QEV_STATS_INC(qev_lock_write_wait);
-		pause();
 	}
-	
-	__sync_synchronize();
 }
 
 void qev_lock_write_unlock(qev_lock_t *lock) {
 	__sync_bool_compare_and_swap(&lock->writer, 1, 0);
-	__sync_synchronize();
 }
