@@ -21,7 +21,7 @@ debug: export CFLAGS += -g -rdynamic -fno-inline -fno-default-inline -DCOMPILE_D
 debug: deps build
 
 profile: export BUILD_DIR = $(BUILD_DIR_PROFILE)
-profile: export CFLAGS += -g -DCOMPILE_PROFILE=1
+profile: export CFLAGS += -g -pg -DCOMPILE_PROFILE=1
 profile: deps build
 
 release: export BUILD_DIR ?= $(BUILD_DIR_RELEASE)
@@ -63,6 +63,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BUILD_DIR_DEBUG)
 	rm -rf $(BUILD_DIR_PROFILE)
+	rm -rf $(BUILD_DIR_RELEASE)
 	rm -rf $(BUILD_DIR_TEST)
 	rm -rf $(BUILD_DIR_VALGRIND)
 	rm -f test*.xml
