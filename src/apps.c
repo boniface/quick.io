@@ -124,7 +124,9 @@ gboolean apps_run() {
 		// case this can fail in
 		dirname(path);
 		gchar abspath[PATH_MAX];
-		realpath(path, abspath);
+		// Silence compiler warnings
+		char *unused __attribute__((unused));
+		unused = realpath(path, abspath);
 		
 		free(path);
 		

@@ -32,10 +32,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	// Move into the directory holding this binary
-	// Only do so after parsing the args so that the config file path is maintained
-	chdir(dirname(argv[0]));
-	
 	if (option_parse_config_file(NULL, NULL, 0, &error)) {
 		DEBUG("Config file parsed");
 	} else {

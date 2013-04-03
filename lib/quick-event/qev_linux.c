@@ -195,7 +195,8 @@ void qev_dispatch() {
 			if (((gsize)client) < G_N_ELEMENTS(_timers)) {
 				// Have to read the timer for it to continue to fire on an interval
 				char buff[8];
-				read(_timers[(gsize)client].timer, buff, sizeof(buff));
+				int unused __attribute__((unused));
+				unused = read(_timers[(gsize)client].timer, buff, sizeof(buff));
 				
 				if (_timers[(gsize)client].flags & QEV_TIMER_DELAYED) {
 					_delayed_timers[(gsize)client] = TRUE;

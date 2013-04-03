@@ -1,12 +1,12 @@
 Source: quickio
-Maintainer: Andrew Stone <andrewstone@clearchannel.com>
+Maintainer: Andrew Stone <andrew@clovar.com>
 Section: web
 Priority: optional
-Standards-Version: 3.9.2
-Build-Depends: debhelper (>= 8.0.0), check (= 0.9.8-2)
+Standards-Version: 3.9.4
+Build-Depends: debhelper (>= 8.0.0), check (= 0.9.8-2), libc6-dev (>= 2.13), libglib2.0-dev (>= 2.32), libssl-dev (>= 1.0.0)
 
 Package: quickio
-Architecture: any
-Depends: libglib2.0-0 (>= 2.32), libssl1.0.0 (>= 1.0.0)
+Architecture: i386 amd64
+Depends: adduser, ${misc:Depends}, ${shlibs:Depends}
 Description: Quick WebSocket server
  QuickIO is an incredibly fast, incredibly lightweight WebSocket server.

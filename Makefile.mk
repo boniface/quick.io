@@ -15,6 +15,7 @@ BUILD_DIR_RELEASE = $(ROOT)/build_release
 BUILD_DIR_TEST = $(ROOT)/build_test
 BUILD_DIR_VALGRIND = $(ROOT)/build_valgrind
 
+BINARY = quickio
 QIOINI_NAME = quickio.ini
 QIOINI ?= $(QIOINI_NAME)
 
@@ -22,9 +23,9 @@ CC = gcc
 LIBS += glib-2.0 gmodule-2.0 openssl
 LIBS_REQUIREMENTS += glib-2.0 >= 2.32 gmodule-2.0 >= 2.32 openssl >= 1
 
-CFLAGS ?= -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized -I. -I$(ROOT)/lib/ $(shell pkg-config --cflags $(LIBS)) -I$(ROOT)/lib/
+CFLAGS += -g -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -I. -I$(ROOT)/lib/ $(shell pkg-config --cflags $(LIBS)) -I$(ROOT)/lib/
 CFLAGS_OBJ ?= -c -fvisibility=hidden
-LDFLAGS ?= $(shell pkg-config --libs $(LIBS)) -Wl,-E
+LDFLAGS += $(shell pkg-config --libs $(LIBS)) -Wl,-E
 
 DEPENDENCIES = \
 	http_parser.o \

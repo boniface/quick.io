@@ -3,6 +3,13 @@
 # Uncomment to enable verbose mode.
 #export DH_VERBOSE=1
 
+include /usr/share/hardening-includes/hardening.make
+
+export CFLAGS = $(shell dpkg-buildflags --get CFLAGS)
+export LDFLAGS = $(shell dpkg-buildflags --get LDFLAGS)
+export CFLAGS += $(HARDENING_CFLAGS)
+export LDFLAGS += $(HARDENING_LDFLAGS)
+
 clean:
 	dh_testdir
 	dh_testroot
@@ -18,9 +25,12 @@ install: build
 	dh_testroot
 	dh_installdirs
 	dh_install
+	dh_installman
+	dh_shlibdeps
 	
 	cd debian/quickio/etc/security/limits.d && mv quickio-limits.conf quickio.conf
 	cd debian/quickio/etc/sysctl.d && mv quickio-sysctl.conf quickio.conf
+	cp LICENSE debian/quickio/usr/share/doc/quickio/copyright
 
 binary-arch: build install
 	dh_testdir
@@ -35,5 +45,7 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-arch
+build-arch: build
+build-indep: build
 
 .PHONY: build clean binary-indep binary-arch binary install
