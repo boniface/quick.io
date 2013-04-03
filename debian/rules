@@ -1,0 +1,39 @@
+#!/usr/bin/make -f
+
+# Uncomment to enable verbose mode.
+#export DH_VERBOSE=1
+
+clean:
+	dh_testdir
+	dh_testroot
+	$(MAKE) clean
+	dh_clean
+
+build:
+	dh_testdir
+	$(MAKE) release
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_installdirs
+	dh_install
+	
+	cd debian/quickio/etc/security/limits.d && mv quickio-limits.conf quickio.conf
+	cd debian/quickio/etc/sysctl.d && mv quickio-sysctl.conf quickio.conf
+
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs
+	dh_installinit -u'start 50 2 3 4 5 . stop 50 0 1 6 .'
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-arch
+
+.PHONY: build clean binary-indep binary-arch binary install

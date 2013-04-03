@@ -1,6 +1,6 @@
 include ../Makefile.mk
 
-TARGET = $(BUILD_DIR)/qio
+TARGET = $(BUILD_DIR)/quickio
 OBJECTS += \
 	$(patsubst %.c, $(BUILD_DIR)/%.o, $(wildcard *.c)) \
 	$(patsubst %.o, $(BUILD_DIR)/%.o, $(DEPENDENCIES))

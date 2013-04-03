@@ -22,12 +22,7 @@
 /**
  * How to reference the current directory.
  */
-#define PATH_CURR_DIR "./"
-
-/**
- * Where the applications are stored, by default
- */
-#define APP_PATH "apps/"
+#define PATH_LIB_DIR "/usr/lib/quickio"
 
 /**
  * A completely void app callback.

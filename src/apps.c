@@ -94,9 +94,9 @@ gboolean apps_run() {
 		// name, and open that module
 		gchar *path;
 		if (strspn(o_app->path, PATH_STARTERS) == 0) {
-			size_t len = strlen(o_app->path) + sizeof(PATH_CURR_DIR) + sizeof(APP_PATH);
+			size_t len = strlen(o_app->path) + sizeof(PATH_LIB_DIR) + 1;
 			path = g_malloc0((len * sizeof(*path)));
-			snprintf(path, len, "%s"APP_PATH"%s", PATH_CURR_DIR, o_app->path);
+			snprintf(path, len, "%s/%s", PATH_LIB_DIR, o_app->path);
 		} else {
 			path = g_strdup(o_app->path);
 		}

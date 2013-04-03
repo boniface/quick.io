@@ -20,7 +20,7 @@ QIOINI ?= $(QIOINI_NAME)
 
 CC = gcc
 LIBS += glib-2.0 gmodule-2.0 openssl
-LIBS_REQUIREMENTS = glib-2.0 >= 2.32 gmodule-2.0 >= 2.32 openssl >= 1
+LIBS_REQUIREMENTS += glib-2.0 >= 2.32 gmodule-2.0 >= 2.32 openssl >= 1
 
 CFLAGS ?= -std=gnu99 -Wall -Woverride-init -Wsign-compare -Wtype-limits -Wuninitialized -I. -I$(ROOT)/lib/ $(shell pkg-config --cflags $(LIBS)) -I$(ROOT)/lib/
 CFLAGS_OBJ ?= -c -fvisibility=hidden

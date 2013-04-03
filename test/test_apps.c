@@ -4,19 +4,23 @@
 
 #define BAD_CONFIG "[quick.io]\n" \
 	"[quick.io-apps]\n" \
-	"test-bad = test_bad"
+	"test-bad = ./apps/test_bad"
 
 #define GOOD_RUN "[quick.io]\n" \
 	"[quick.io-apps]\n" \
-	"test-bad = test_good_run"
+	"test-bad = ./apps/test_good_run"
 
 #define BAD_RUN "[quick.io]\n" \
 	"[quick.io-apps]\n" \
-	"test-bad = test_bad_run"
+	"test-bad = ./apps/test_bad_run"
 
 #define BAD_CONFIG_NONEXISTENT "[quick.io]\n" \
 	"[quick.io-apps]\n" \
 	"test-bad = /this/path/does/not/exist"
+
+#define BAD_CONFIG_NONEXISTENT_DEFAULT "[quick.io]\n" \
+	"[quick.io-apps]\n" \
+	"doesnotexist = doesnotexist"
 
 static void _apps_setup() {
 	utils_stats_setup();
@@ -49,6 +53,21 @@ END_TEST
 START_TEST(test_apps_events_register_nonexistent) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(BAD_CONFIG_NONEXISTENT, 1, sizeof(BAD_CONFIG_NONEXISTENT), f);
+	fclose(f);
+	
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+	
+	test(option_parse_args(argc, argv, NULL), "File ready");
+	test(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	
+	test_not(apps_run(), "Bad app failed to init");
+}
+END_TEST
+
+START_TEST(test_apps_events_register_nonexistent_default) {
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(BAD_CONFIG_NONEXISTENT_DEFAULT, 1, sizeof(BAD_CONFIG_NONEXISTENT_DEFAULT), f);
 	fclose(f);
 	
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
@@ -253,6 +272,7 @@ Suite* apps_suite() {
 	tcase_add_checked_fixture(tc, _apps_setup, _apps_teardown);
 	tcase_add_test(tc, test_apps_events_register_bad);
 	tcase_add_test(tc, test_apps_events_register_nonexistent);
+	tcase_add_test(tc, test_apps_events_register_nonexistent_default);
 	tcase_add_test(tc, test_apps_events_on_0);
 	tcase_add_test(tc, test_apps_events_on_1);
 	tcase_add_test(tc, test_apps_events_off_0);
