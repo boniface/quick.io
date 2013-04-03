@@ -24,7 +24,7 @@ case "$1" in
 		sysctl -p /etc/sysctl.d/quickio.conf
 	;;
 	
-	abort-upgrade|abort-remove|abort-deconfigure)
+	abort-upgrade|abort-remove|abort-deconfigure|upgrade)
 	;;
 	
 	*)

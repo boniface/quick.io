@@ -3,17 +3,8 @@ set -e
 
 case "$1" in
 	remove)
-		groupdel quickio || true
 		userdel quickio || true
-	;;
-	
-	purge)
-		# Handled by remove
-	;;
-	
-	*)
-		echo "postrm called with unknown argument \`$1'" >&2
-		exit 1
+		groupdel quickio > /dev/null 2>&1 || true
 	;;
 esac
 

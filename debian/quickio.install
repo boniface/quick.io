@@ -2,3 +2,4 @@ build_release/quickio usr/bin/
 debian/quickio.ini etc/quickio/
 debian/quickio-limits.conf etc/security/limits.d/
 debian/quickio-sysctl.conf etc/sysctl.d/
+debian/quickio-logrotate etc/logrotate.d

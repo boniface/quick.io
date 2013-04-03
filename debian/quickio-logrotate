@@ -1,0 +1,13 @@
+/var/log/quickio.log {
+	weekly
+	missingok
+	rotate 4
+	compress
+	delaycompress
+	notifempty
+	create 640 quickio quickio
+	sharedscripts
+	postrotate
+		/etc/init.d/quickio rotate
+	endscript
+}
