@@ -30,17 +30,17 @@ typedef enum entry_t {
 	 * The entry is a 32bit integer.
 	 */
 	e_int,
-	
+
 	/**
 	 * The entry is a string.
 	 */
 	e_string,
-	
+
 	/**
 	 * The entry is an array of string.
 	 */
 	e_string_array,
-	
+
 	/**
 	 * The entry is an unsigned 64bit integer.
 	 */
@@ -55,17 +55,17 @@ typedef struct config_file_entry_s {
 	 * The name of the option in the configuration file.
 	 */
 	gchar *name;
-	
+
 	/**
 	 * The type of the option in the configuration file.
 	 */
 	entry_t arg;
-	
+
 	/**
 	 * Where the value from the configration file should be stored.
 	 */
 	gpointer arg_data;
-	
+
 	/**
 	 * If an array, the number of items read from the configuration file.
 	 */
@@ -80,12 +80,12 @@ typedef struct opt_app_s {
 	 * The name of the configuration section for the app.
 	 */
 	gchar *config_group;
-	
+
 	/**
 	 * The path to the application's executable.
 	 */
 	gchar *path;
-	
+
 	/**
 	 * The prefix that the app should be under.
 	 */
@@ -207,7 +207,7 @@ const gint option_threads();
 const gint option_timeout();
 
 /**
- * Gets which user the server should run as. Returns NULL if 
+ * Gets which user the server should run as. Returns NULL if
  * no user switching should be done.
  */
 const gchar* option_user();
@@ -229,7 +229,7 @@ APP_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_entr
  *
  * @param argc The number of arguments being passed in
  * @param argv The arguments to parse.
- * @param[out] error Any error that might happen when parsing the command line args. 
+ * @param[out] error Any error that might happen when parsing the command line args.
  */
 gboolean option_parse_args(int argc, char *argv[], GError **error);
 

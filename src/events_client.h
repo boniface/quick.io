@@ -62,27 +62,27 @@ struct evs_client_sub_s {
 	 * @attention This is free'd when g_hash_table_remove is called.
 	 */
 	gchar *event_path;
-	
+
 	/**
 	 * The extra path segments that are on the end of the path.
 	 *
 	 * @attention MUST be g_list_free()'d when done.
 	 */
 	path_extra_t *extra;
-	
+
 	/**
 	 * The hash table (used as a set) of clients.
 	 *
 	 * @see http://developer.gnome.org/glib/2.30/glib-Hash-Tables.html#id915490
 	 */
 	GHashTable *clients;
-	
+
 	/**
-	 * The handler for this event. Keep this around to save us on lookups to 
+	 * The handler for this event. Keep this around to save us on lookups to
 	 * evs_server_get_handler().
 	 */
 	event_handler_t *handler;
-	
+
 	/**
 	 * For protecting writes to the client list in this subscription
 	 */
@@ -96,14 +96,14 @@ gboolean evs_client_init();
 
 /**
  * Subscribes a client to an event.
- * 
+ *
  * @param event_path The name of the event the client should be subscribed to.
  * @param client The client to subscribe to event.
  * @param client_callback The callback to be issued if anything goes async.
  *
  * @return CLIENT_GOOD Everything went well.
  * @return CLIENT_ASYNC The app has gone async with the request.
- * @return CLIENT_ERROR Subscribe miserably failed. 
+ * @return CLIENT_ERROR Subscribe miserably failed.
  */
 status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback);
 

@@ -20,7 +20,7 @@ typedef struct {
 	 * The number of active readers.
 	 */
 	guint readers;
-	
+
 	/**
 	 * If there is currently a writer
 	 */

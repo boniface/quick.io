@@ -41,7 +41,7 @@ typedef struct conns_balance_request_s {
 	 * The number of clients to move.
 	 */
 	guint count;
-	
+
 	/**
 	 * The external address (with port) that the clients should be moved to.
 	 */
@@ -61,7 +61,7 @@ APP_EXPORT void conns_balance(guint count, gchar *to);
 /**
  * Accept a new connection into our midst.
  * It is perfectly acceptable to close the client at this point, or do anything
- * you want with him. Typically, the best thing to do is just set some init 
+ * you want with him. Typically, the best thing to do is just set some init
  * values and a timer, and then wait for him to send a handshake.
  *
  * This client is expected to have been allocated with g_slice_alloc*

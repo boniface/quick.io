@@ -1,6 +1,6 @@
 /**
  * @file module.h
- * 
+ *
  * For making functions visible to modules.
  * The single macro for making functions visible to loaded modules (aka. apps).
  */
@@ -16,7 +16,7 @@
 
 /**
  * The functions available to modules (aka apps).
- * 
+ *
  * @defgroup AppFunctions App-visible functions
  *
  * Any function in this group can be called by any app. Be sure to pay attention

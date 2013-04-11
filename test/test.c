@@ -8,18 +8,18 @@ int main(int argc, char *argv[]) {
 		CRITICAL("Could not init log");
 		return 1;
 	}
-	
+
 	// Move into the directory holding this binary
 	chdir(dirname(argv[0]));
 
 	int number_failed = 0;
-	
+
 	SRunner *sr = srunner_create(suite_create("Master"));
-	
+
 #if TEST_OUTPUT_XML
 	srunner_set_xml(sr, "test_xunit.xml");
 #endif
-	
+
 	srunner_add_suite(sr, apps_suite());
 	srunner_add_suite(sr, client_suite());
 	srunner_add_suite(sr, conns_suite());

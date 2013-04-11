@@ -24,12 +24,12 @@ END_TEST
 Suite* monkey_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Monkey");
-	
+
 	tc = tcase_create("g_string_ends_with");
 	tcase_add_test(tc, test_monkey_gstr_ends_with_0);
 	tcase_add_test(tc, test_monkey_gstr_ends_with_1);
 	tcase_add_test(tc, test_monkey_gstr_ends_with_2);
 	suite_add_tcase(s, tc);
-	
+
 	return s;
 }

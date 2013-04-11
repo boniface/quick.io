@@ -63,45 +63,45 @@
 static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	message_t *message = client->message;
 	char *sbuff = message->socket_buffer->str;
-	
+
 	// Advance the buffer past the header, we can't read it
 	sbuff += header_len;
-	
+
 	// It's possible we have more on the socket buffer than this message, so only
 	// read the message.  It's also possible the buffer doesn't contain the whole
 	// message yet, so only go for the smallest of what we can use.
 	gsize remaining = MIN(message->socket_buffer->len - header_len, message->remaining_length);
-	
+
 	// Transform the 32bit int to a char array for simpler use (read: offsets)
 	char *mask = (char*)(&message->mask);
-	
+
 	// The mask location depends on how much we have already read
 	gsize position = message->buffer->len;
-	
+
 	// g_string_set_size() will add the NULL byte, so no +1 here
 	gsize required_len = message->buffer->len + remaining;
-	
+
 	// Access the string directly, it's a bit faster
 	// But make sure its internal length is set correctly and that there's enough space
 	g_string_set_size(message->buffer, required_len);
-	
+
 	gchar *ob = message->buffer->str;
 	for (gsize i = 0; i < remaining; i++, position++) {
 		ob[position] = (char)(*(sbuff + i) ^ mask[position & 3]);
 	}
-	
+
 	// Update the current command's mask and length for any future reads
 	client->message->remaining_length -= remaining;
-	
+
 	// Remove what we just processed from the socket buffer
 	g_string_erase(message->socket_buffer, 0, header_len + remaining);
-	
+
 	// Are there any bytes that haven't been read from the socket that we need from this
 	// message?  If len - available != 0, then the entire message isn't yet in our buffer.
 	if (client->message->remaining_length != 0) {
 		return CLIENT_WAIT;
 	}
-	
+
 	return CLIENT_GOOD;
 }
 
@@ -112,21 +112,21 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 static status_t _h_rfc6455_start(client_t *client) {
 	GString *sb = client->message->socket_buffer;
 	char *buff = sb->str;
-	
+
 	// The first 7 bits of the second byte tell us the length
 	// You can't make this stuff up :(
 	guint16 len = *(buff + 1) & SECOND_BYTE;
-	
+
 	// The 32bit mask data: position dependent based on the payload len
 	char *mask = NULL;
-	
+
 	// The length of the header for this message
 	guint16 header_len = 0;
-	
+
 	if (len <= PAYLOAD_LEN_SHORT) {
 		// Length is good, now all we need is the mask (right after the headers)
 		mask = buff + HEADER_LEN;
-		
+
 		// Skip the headers and the mask
 		header_len = HEADER_LEN + MASK_LEN;
 	} else if (len == PAYLOAD_LEN_LONG) {
@@ -134,38 +134,38 @@ static status_t _h_rfc6455_start(client_t *client) {
 		if (sb->len < EXTENDED_HEADER_LEN) {
 			return CLIENT_WAIT;
 		}
-		
+
 		// The third and fourth bytes contain the length
 		len = GUINT16_FROM_BE(*((guint16*)(buff + HEADER_LEN)));
-		
+
 		// The mask starts after the header and extended length
 		mask = buff + EXTENDED_HEADER_LEN;
-		
+
 		// Skip the headers, the extended length, and the mask
 		header_len = EXTENDED_HEADER_LEN + MASK_LEN;
 	} else {
 		len = option_max_message_size() + 1;
 	}
-	
+
 	// Advance the buffer to the beginning of the message
 	buff += header_len;
-	
+
 	// Don't accept the incoming data if it's too long
 	if (len > option_max_message_size()) {
 		return CLIENT_FATAL;
 	}
-	
+
 	// Wait on more information if we didn't completely read the header
 	if (sb->len < header_len) {
 		return CLIENT_WAIT;
 	}
-	
+
 	// Pass on the length that is left to read to the reader
 	client->message->remaining_length = len;
-	
+
 	// Pass on the mask as an int to make it easier for memory management
 	client->message->mask = *((guint32*)mask);
-	
+
 	return _h_rfc6455_read(client, header_len);
 }
 
@@ -176,37 +176,37 @@ gboolean h_rfc6455_handles(gchar *path, GHashTable *headers) {
 
 status_t h_rfc6455_handshake(client_t *client, GHashTable *headers) {
 	const char *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
-	
+
 	if (key == NULL) {
 		return CLIENT_FATAL;
 	}
-	
+
 	// Build up the concated key, ready for hashing for the return header
 	guchar out[strlen(key) + HASH_KEY_LEN];
 	strcpy((char*)out, key);
 	strcat((char*)out, HASH_KEY);
-	
+
 	gsize size = strlen((char*)out);
 	GChecksum *sum = g_checksum_new(G_CHECKSUM_SHA1);
-	
+
 	// Do some hard-core hashing, then free it all
 	g_checksum_update(sum, out, size);
 	g_checksum_get_digest(sum, out, &size);
 	gchar *b64 = g_base64_encode(out, size);
 	g_checksum_free(sum);
-	
+
 	g_string_printf(client->message->buffer, HEADERS, b64);
 	g_free(b64);
-	
+
 	return CLIENT_WRITE;
 }
 
 char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len) {
 	char *frame;
-	
+
 	// If masked, then start the header off with room from the mask
 	guint8 header_size = masked ? MASK_LEN : 0;
-	
+
 	// If 125 chars or less, then only use 7 bits to represent
 	// payload length
 	//
@@ -218,9 +218,9 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 		// to represent the data
 		header_size += HEADER_LEN;
 		*frame_len = payload_len + header_size;
-		
+
 		frame = g_malloc0(*frame_len * sizeof(*frame));
-		
+
 		// The second frame: the first bit is always 0 (data going
 		// to the client is never masked), and since the length is
 		// less than 125, that bit will ALWAYS be set to 0, as it should
@@ -230,9 +230,9 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 		// to provide the header for this message
 		header_size += EXTENDED_HEADER_LEN;
 		*frame_len = payload_len + header_size;
-		
+
 		frame = g_malloc0(*frame_len * sizeof(*frame));
-		
+
 		// The second frame: the first bit is always 0 (data going
 		// to the client is never masked), and to indicate that we
 		// are sending a 16-bit payload, we need to set this to 126,
@@ -243,43 +243,43 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 		CRITICAL("Msg len > 65535, not implemented");
 		return NULL;
 	}
-	
+
 	// The first frame of text is ALWAYS the same
 	*frame = FIRST_BYTE;
-	
+
 	// The opcode that should be sent back to the client
 	switch (type) {
 		case op_pong:
 			*frame |= OP_PONG;
 			break;
-		
+
 		default:
 		case op_text:
 			*frame |= OP_TEXT;
 			break;
 	}
-	
+
 	if (masked) {
 		// The length was set above, so this is safe
 		*(frame + 1) |= MASK_BIT;
-		
+
 		// The mask can just be a random 32bit int, then we trick it into some bytes
 		gint32 randmask = g_random_int();
 		char *mask = (char*)&randmask;
-		
+
 		// The mask comes directly after the header
 		memcpy((frame + 2), mask, MASK_LEN);
-		
+
 		// The start of the encoded bytes
 		char *start = frame + header_size;
-		
+
 		for (guint64 i = 0; i < payload_len; i++) {
 			*(start + i) = *(payload + i) ^ *(mask + (i % MASK_LEN));
 		}
 	} else {
 		memcpy((frame + header_size), payload, payload_len);
 	}
-	
+
 	return frame;
 }
 
@@ -296,17 +296,17 @@ char* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len)
 status_t h_rfc6455_continue(client_t *client) {
 	// There are no headers when continuing
 	status_t status = _h_rfc6455_read(client, 0);
-	
+
 	if (status != CLIENT_GOOD) {
 		return status;
 	}
-	
+
 	// If the message is done, and it's a ping, then we just need to write
 	// directly back to the client what was recieved
 	if (client->message->type == op_pong) {
 		return CLIENT_WRITE;
 	}
-	
+
 	return status;
 }
 
@@ -315,9 +315,9 @@ status_t h_rfc6455_incoming(client_t *client) {
 	if (client->message->socket_buffer->len < HEADER_LEN) {
 		return CLIENT_WAIT;
 	}
-	
+
 	char *buff = client->message->socket_buffer->str;
-	
+
 	// If data came from the client unmasked, then that's wrong. Abort.
 	// There MUST always be at least the first byte, so we don't need
 	// any continuation logic here
@@ -326,10 +326,10 @@ status_t h_rfc6455_incoming(client_t *client) {
 	if ((*(buff + 1) & MASK_BIT) == 0) {
 		return CLIENT_FATAL;
 	}
-	
+
 	// Remove everything but the OPCODE from the byte
 	char opcode = *buff & OPCODE;
-	
+
 	if (opcode == OP_TEXT) {
 		client->message->type = op_text;
 		return _h_rfc6455_start(client);
@@ -352,17 +352,17 @@ status_t h_rfc6455_incoming(client_t *client) {
 		return CLIENT_FATAL;
 	} else if (opcode == OP_PING) {
 		client->message->type = op_pong;
-		
+
 		// If the message wasn't correctly processed, then return that
 		status_t status;
 		if ((status =_h_rfc6455_start(client)) != CLIENT_GOOD) {
 			return status;
 		}
-		
+
 		// If we got a good status, then we need to respond to the ping
 		return CLIENT_WRITE;
 	}
-	
+
 	// If the client wasn't handled above, that was bad, we don't support it
 	return CLIENT_FATAL;
 }

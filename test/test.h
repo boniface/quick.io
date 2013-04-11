@@ -92,7 +92,7 @@
 	} else { \
 		fail_unless(strcmp(actual, expect) == 0, __FILE__, __LINE__, msg, NULL); \
 	} }
-		
+
 
 /**
  * Tests if the two strings are equal.
@@ -275,7 +275,7 @@
 
 /**
  * Tests if the two size_t's are equal.
- * 
+ *
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
@@ -317,7 +317,7 @@
 
 /**
  * Tests if the two pointers are equal.
- * 
+ *
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information

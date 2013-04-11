@@ -86,24 +86,24 @@ struct qev_client {
 	 * The underlying socket connection.
 	 */
 	qev_socket_t socket;
-	
+
 	/**
 	 * For ssl: everything needs a context
 	 */
 	void *ssl_ctx;
-	
+
 	/**
 	 * For acquiring a lock on a client. Since only 1 thing can have the lock
 	 * at once, we're only using a char.
 	 */
 	char _lock;
-	
+
 	/**
 	 * For assuring that only 1 thread will ever issue a read event on a client
 	 * at a time.
 	 */
 	int _read_operations;
-	
+
 	/**
 	 * A bitmask of flags for qev internal use.
 	 */

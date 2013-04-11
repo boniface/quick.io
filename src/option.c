@@ -52,54 +52,54 @@ static config_file_entry_t _config_options[] = {
 static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 	gsize key_len = 0;
 	gchar **keys = g_key_file_get_keys(conf, OPT_APPS_GROUP_NAME, &key_len, error);
-	
+
 	if (keys == NULL) {
 		return FALSE;
 	}
-	
+
 	// Allow this function to be called multiple times
 	// Mainly for testing
 	_apps_count = 0;
-	
+
 	GList *apps = NULL;
 	while (key_len--) {
 		gchar *key = *(keys + key_len);
 		if (g_strstr_len(key, -1, ":") == NULL) {
 			gchar *path = g_key_file_get_string(conf, OPT_APPS_GROUP_NAME, key, NULL);
-			
+
 			// There ABSOLUTELY DOES NOT have to be a prefix for an application,
 			// so it's fine to use the NULL value to denote no prefix
 			gchar key_prefix[strlen(key) + sizeof(OPT_APP_PREFIX_SUFFIX)];
 			g_snprintf(key_prefix, sizeof(key_prefix), "%s"OPT_APP_PREFIX_SUFFIX, key);
 			gchar *prefix = g_key_file_get_string(conf, OPT_APPS_GROUP_NAME, key_prefix, NULL);
-			
+
 			_apps_count++;
-			
+
 			opt_app_t *app = g_malloc0(sizeof(*app));
 			app->config_group = g_strdup(key);
 			app->path = path;
 			app->prefix = prefix;
-			
+
 			apps = g_list_prepend(apps, app);
 		}
 	}
-	
+
 	if (_apps_count > 0) {
 		apps = g_list_first(apps);
-		
+
 		gsize i = 0;
 		_apps = g_malloc0(_apps_count * sizeof(*_apps));
-		
+
 		// This is kinda disgusting...
 		do {
 			*(_apps + i++) = apps->data;
 		} while ((apps = g_list_next(apps)) != NULL);
 	}
-	
+
 	// Man, this is just gross
 	g_list_free(g_list_first(apps));
 	g_strfreev(keys);
-	
+
 	return TRUE;
 }
 
@@ -189,27 +189,27 @@ const gchar* option_user() {
 
 gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error) {
 	GKeyFile *conf = g_key_file_new();
-	
+
 	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
 		CRITICAL("Could not load config file: %s", _config_file);
 		g_key_file_free(conf);
 		return FALSE;
 	}
-	
+
 	// If parsing the defaults, then also parse up the app configuration
 	if (group_name == NULL) {
 		group_name = OPT_DEFAULT_GROUP_NAME;
 		opts = _config_options;
 		opts_len = G_N_ELEMENTS(_config_options);
-		
+
 		if (!_option_parse_apps(conf, error)) {
 			return FALSE;
 		}
 	}
-	
+
 	for (size_t i = 0; i < opts_len; i++) {
 		config_file_entry_t e = opts[i];
-		
+
 		if (e.arg == e_string) {
 			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);
 			if (opt != NULL && strlen(opt) > 0) {
@@ -232,7 +232,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 			}
 		}
 	}
-	
+
 	// Determine if the number is a power of 2
 	// The bitmask of any power of 2 is, for example: 0b01000000
 	// Subtracting 1 from this number will make it so that it is 0 with an &
@@ -243,22 +243,22 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		g_key_file_free(conf);
 		return FALSE;
 	}
-	
+
 	// We only have a signed 8 bit number, so the timeout may not be too large
 	if (_timeout < 0 || _timeout > 127) {
 		CRITICAL("Option `timeout` must be greater than 0 and less than 127.");
 		g_key_file_free(conf);
 		return FALSE;
 	}
-	
+
 	if (_hostname == NULL) {
 		gchar hostname[1024];
 		memset(&hostname, 0, sizeof(hostname));
-		
+
 		if (gethostname(hostname, sizeof(hostname)-1) == -1) {
 			FATAL("Could not determine hostname for server: %s", strerror(errno));
 		}
-		
+
 		_hostname = g_strdup(hostname);
 	}
 
@@ -268,19 +268,19 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 
 gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	gboolean success = TRUE;
-	
+
 	GOptionContext *context = g_option_context_new("");
 	g_option_context_add_main_entries(context, command_options, NULL);
-	
+
 	if (!g_option_context_parse(context, &argc, &argv, error)) {
 		success = FALSE;
 	}
-	
+
 	// So that there doesn't have to be any crazy free() logic
 	if (_config_file == NULL) {
 		_config_file = g_strdup("quickio.ini");
 	}
-	
+
 	// Resolve the absolute path to the configuration file
 	char path[PATH_MAX+1];
 	memset(&path, 0, sizeof(path));
@@ -291,9 +291,9 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 		g_free(_config_file);
 		_config_file = g_strdup(path);
 	}
-	
+
 	g_option_context_free(context);
-	
+
 	return success;
 }
 

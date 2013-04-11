@@ -72,7 +72,7 @@ typedef enum opcode {
 	 * A pong should be sent to the client.
 	 */
 	op_pong,
-	
+
 	/**
 	 * Text is being sent to the client.
 	 */
@@ -88,25 +88,25 @@ typedef struct message_s {
 	 * The remaining length of the incoming message to read
 	 */
 	guint16 remaining_length;
-	
+
 	/**
 	 * The opcode from the message.
 	 */
 	opcode_t type;
-	
+
 	/**
 	 * The mask used for all the data in this message; all messages are 32 bits.
 	 * We're being tricky with this mask and converting it from a string to a 32bit
 	 * integer for easier use.
 	 */
 	guint32 mask;
-	
+
 	/**
 	 * The data buffer of what has been read but not processed for the client.
 	 * Once data has been processed, it MUST be removed from the socket_buffer.
 	 */
 	GString *socket_buffer;
-	
+
 	/**
 	 * Buffer of data procesed from socket_buffer (demasked).
 	 */
@@ -121,12 +121,12 @@ enum handlers {
 	 * @see handler_6455.h
 	 */
 	h_rfc6455,
-	
+
 	/**
 	 * The number of handlers that exist.
 	 */
 	h_len,
-	
+
 	/**
 	 * Not included in the length because we don't use it for arrays. It's always
 	 * an error if this is the handler when a client sends a message.
@@ -142,12 +142,12 @@ enum client_state {
 	 * The client just connected, no handshake or anything.
 	 */
 	cstate_initing,
-	
+
 	/**
 	 * The client is connected and operating like any other client.
 	 */
 	cstate_running,
-	
+
 	/**
 	 * The client is disconnected but not yet freed.
 	 * This is useful mainly for unit testing.
@@ -163,50 +163,50 @@ struct client_s {
 	 * The quick-event data
 	 */
 	struct qev_client qevclient;
-	
+
 	/**
 	 * A timer for killing stupid clients.
 	 * This is the number of ticks a client may misbehave before he is killed.
 	 * A value of -1 indicates no timer is set.
 	 */
 	gint8 timer;
-	
+
 	/**
 	 * The last time the client was sent data.
 	 */
 	gint64 last_send;
-	
+
 	/**
 	 * The last time a message was read from the client.
 	 */
 	gint64 last_receive;
-	
+
 	/**
 	 * The state of the client.
 	 */
 	enum client_state state;
-	
+
 	/**
 	 * The handler for this client.
 	 */
 	enum handlers handler;
-	
+
 	/**
 	 * Which events the client is currently subscribed to.
 	 */
 	GPtrArray *subs;
-	
+
 	/**
 	 * The current message(s) that the client is sending / are being processed.
 	 */
 	message_t *message;
-	
+
 	/**
 	 * Extra data that is stored on the client.  This exists until ref_count == 0.
 	 * This table is lazy-allocated, so it MIGHT be NULL.
 	 */
 	GHashTable *external_data;
-	
+
 	/**
 	 * The position in the clients table (this is index + 1 such that 0 indicates it's
 	 * not in the table).
@@ -214,12 +214,12 @@ struct client_s {
 	 * This is protected by _clients_lock in connections.c
 	 */
 	guint clients_pos;
-	
+
 	/**
 	 * The callbacks registered on the client.
 	 */
 	struct client_cb_s callbacks[MAX_CALLBACKS];
-	
+
 	/**
 	 * The number of references the client has.
 	 */
@@ -290,7 +290,7 @@ APP_EXPORT void client_unref(client_t *client);
  * exists).
  *
  * @note This information is visible to all apps.
- * 
+ *
  * @param client The client to store the information on.
  * @param key The key to set.
  * @param value The value to set.

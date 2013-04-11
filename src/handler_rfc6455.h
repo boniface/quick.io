@@ -36,7 +36,7 @@ status_t h_rfc6455_handshake(client_t *client, GHashTable *headers);
  * @param payload_len The length of the payload
  * @param[out] frame_len The length of the final frame.
  *
- * @return The fully-framed frame to write to the client. If NULL, there was an error in 
+ * @return The fully-framed frame to write to the client. If NULL, there was an error in
  * frame creation.
  * @attention The return of this function MUST be free'd
  */
@@ -54,7 +54,7 @@ char* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len)
  * Takes the incoming data, de-masks it, and adds it to the message buffer.
  *
  * @param client The client sending data.
- * 
+ *
  * @return Any client status.
  * @return CLIENT_WAIT indicates that there wasn't enough data in the socket to create a message.
  */

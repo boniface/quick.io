@@ -42,13 +42,13 @@ static void _test_option_setup() {
 START_TEST(test_option_cl_args_short) {
 	char *argv[] = {"./server", "-c", CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	char path[PATH_MAX+1];
 	memset(&path, 0, sizeof(path));
 	if (realpath(CONFIG_FILE, path) == NULL) {
 		test(FALSE, "Could not find config file");
 	}
-	
+
 	test(option_parse_args(argc, argv, NULL), "Parsed options");
 	test_str_eq(option_config_file(), path, "Correct config file");
 }
@@ -57,13 +57,13 @@ END_TEST
 START_TEST(test_option_cl_args_long) {
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	char path[PATH_MAX+1];
 	memset(&path, 0, sizeof(path));
 	if (realpath(CONFIG_FILE, path) == NULL) {
 		test(FALSE, "Could not find config file");
 	}
-	
+
 	test(option_parse_args(argc, argv, NULL), "Parsed options");
 	test_str_eq(option_config_file(), path, "Correct config file");
 }
@@ -72,7 +72,7 @@ END_TEST
 START_TEST(test_option_cl_args_fail) {
 	char *argv[] = {"./server", "--config-f ile="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	test_not(option_parse_args(argc, argv, NULL), "Failed to parse");
 }
 END_TEST
@@ -80,7 +80,7 @@ END_TEST
 START_TEST(test_option_bad_config) {
 	char *argv[] = {"./server", "--config-file=this_cant_exist_EVER.ini"};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	test_not(option_parse_args(argc, argv, NULL), "File ready");
 	test_not(option_parse_config_file(NULL, NULL, 0, NULL), "Couldn't load file");
 }
@@ -89,10 +89,10 @@ END_TEST
 START_TEST(test_option_all) {
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	test(option_parse_args(argc, argv, NULL), "Options parsed");
 	test(option_parse_config_file(NULL, NULL, 0, NULL), "File parsed");
-	
+
 	test_int32_eq(option_apps_count(), 3, "3 apps found");
 	test_str_eq(option_bind_address(), "0.0.0.0", "Bind address");
 	test_int32_eq(option_bind_port(), 5001, "Correct port");
@@ -108,17 +108,17 @@ START_TEST(test_option_all) {
 	test_int32_eq(option_threads(), 100, "Tons of threads");
 	test_int32_eq(option_timeout(), 15, "Tons of timeout time");
 	test_str_eq(option_user(), "test", "Correct user");
-	
+
 	const opt_app_t **apps = option_apps();
-	
+
 	test_str_eq((*apps)->config_group, "skeleton", "First is skeleton");
 	test_str_eq((*apps)->path, "skeleton", "Skeleton has simple path");
 	test_ptr_eq((*apps)->prefix, NULL, "Skeleton has no prefix");
-	
+
 	test_str_eq((*(apps + 1))->config_group, "test", "Second is test");
 	test_str_eq((*(apps + 1))->path, "test", "Test has simple path");
 	test_str_eq((*(apps + 1))->prefix, "/test", "Test prefixed with /test");
-	
+
 	test_str_eq((*(apps + 2))->config_group, "test2", "Third is test2");
 	test_str_eq((*(apps + 2))->path, "/some/path", "Test2 has absolute path");
 	test_str_eq((*(apps + 2))->prefix, "/two/things", "Test2 prefixed with /two/things");
@@ -129,10 +129,10 @@ START_TEST(test_option_empty) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite("", 1, 0, f);
 	fclose(f);
-	
+
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	test(option_parse_args(argc, argv, NULL), "Options parsed");
 	test_not(option_parse_config_file(NULL, NULL, 0, NULL), "Could not parse empty file");
 }
@@ -142,10 +142,10 @@ START_TEST(test_option_bad_subs) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_BAD_MAX_SUBS, 1, sizeof(QIOINI_BAD_MAX_SUBS), f);
 	fclose(f);
-	
+
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	test(option_parse_args(argc, argv, NULL), "Options parsed");
 	test_not(option_parse_config_file(NULL, NULL, 0, NULL), "Bad max subs");
 }
@@ -155,10 +155,10 @@ START_TEST(test_option_bad_timeout) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_BAD_TIMEOUT, 1, sizeof(QIOINI_BAD_TIMEOUT), f);
 	fclose(f);
-	
+
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
-	
+
 	test(option_parse_args(argc, argv, NULL), "Options parsed");
 	test_not(option_parse_config_file(NULL, NULL, 0, NULL), "Bad max subs");
 }
@@ -168,19 +168,19 @@ START_TEST(test_option_string_array) {
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_STRING_ARRAY, 1, sizeof(QIOINI_STRING_ARRAY), f);
 	fclose(f);
-	
+
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 	test(option_parse_args(argc, argv, NULL), "Options parsed");
-	
+
 	gchar **array = NULL;
 	gint len = 0;
 	config_file_entry_t opts[] = {
 		{"string-array", e_string_array, &array, &len}
 	};
-	
+
 	test(option_parse_config_file("test-app", opts, G_N_ELEMENTS(opts), NULL), "Config file parsed");
-	
+
 	test_int32_eq(len, 3, "Correct string length");
 	test_str_eq(*array, "three", "First value right");
 	test_str_eq(*(array + 1), "different", "Second value right");
@@ -191,18 +191,18 @@ END_TEST
 Suite* option_suite() {
 	TCase *tc;
 	Suite *s = suite_create("Option");
-	
+
 	tc = tcase_create("Command Line Args");
 	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
 	tcase_add_test(tc, test_option_cl_args_short);
 	tcase_add_test(tc, test_option_cl_args_long);
 	tcase_add_test(tc, test_option_cl_args_fail);
 	suite_add_tcase(s, tc);
-	
+
 	tc = tcase_create("Nonexistant config");
 	tcase_add_test(tc, test_option_bad_config);
 	suite_add_tcase(s, tc);
-	
+
 	tc = tcase_create("Config File Options");
 	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
 	tcase_add_test(tc, test_option_all);
@@ -211,6 +211,6 @@ Suite* option_suite() {
 	tcase_add_test(tc, test_option_bad_timeout);
 	tcase_add_test(tc, test_option_string_array);
 	suite_add_tcase(s, tc);
-	
+
 	return s;
 }

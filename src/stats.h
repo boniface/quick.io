@@ -89,7 +89,7 @@
  * @warning Each member of the struct MUST be a size_t, or this won't work.
  */
 typedef struct stats_s {
-	
+
 	/**
 	 * All of the stats are in one struct
 	 */

@@ -60,7 +60,7 @@ enum data_t {
 	 * The data contained in the event is plain text.
 	 */
 	d_plain,
-	
+
 	/**
 	 * The data contained in the event is json-formatted.
 	 */
@@ -73,14 +73,14 @@ enum data_t {
 typedef struct event_s {
 	/**
 	 * The underlying buffer that the event is constructed from.
-	 * 
+	 *
 	 * @note Being able to access the full event name is a side-effect of
 	 * processing the event string, and it's rather useful
-	 * 
+	 *
 	 * @attention This MUST be freed.
 	 */
 	gchar *path;
-	
+
 	/**
 	 * The extra event segments to be passed to the event handler,
 	 * not including the event itself.
@@ -92,22 +92,22 @@ typedef struct event_s {
 	 * @attention This is ref-counted, so it MUST be g_ptr_array_un/ref()'d
 	 */
 	path_extra_t *extra;
-	
+
 	/**
 	 * The callback number the client sent.
 	 */
 	callback_t client_callback;
-	
+
 	/**
 	 * The callback the server wants to recieve for this event.
 	 */
 	callback_t server_callback;
-	
-	/** 
+
+	/**
 	 * The type of data sitting in the data buffer.
 	 */
 	enum data_t data_type;
-	
+
 	/**
 	 * The data string sent from the client.
 	 *
@@ -124,7 +124,7 @@ typedef struct event_s {
  * @param client The client that triggered the event.
  * @param event The event that the client sent to the server.
  * @param response The buffer that the handler should write his response to. If there is a
- * callback, then this is the data that will be sent. If there is no callback, then the 
+ * callback, then this is the data that will be sent. If there is no callback, then the
  * data will be ignored.
  *
  * @return CLIENT_GOOD Everything went well within the handler, and any data / callbacks
@@ -138,7 +138,7 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
 /**
  * A callback for when a client subscribes to a specific event.
  * This is supplied to evs_server_on() and is called when a client subscribes
- * to the event.  Don't give the callbacks too much information about the 
+ * to the event.  Don't give the callbacks too much information about the
  * subscription: it's too much temptation to do unsafe stuff.
  *
  * @param client The client that subscribed to the event.
@@ -155,7 +155,7 @@ typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handle
 /**
  * A callback for when a client unsubscribes to a specific event.
  * This is supplied to evs_server_on() and is called when a client subscribes
- * to the event.  Don't give the callbacks too much information about the 
+ * to the event.  Don't give the callbacks too much information about the
  * subscription: it's too much temptation to do unsafe stuff.
  *
  * @param client The client that unsubscribed from the event.
@@ -170,7 +170,7 @@ typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_
  * @param data The data that was passed into evs_server_new_callback()
  * @param event The complete event object. If you want to keep anything in here for anything async,
  * make a copy.
- * 
+ *
  * @return A status code for the callback.
  */
 typedef status_t (*callback_fn)(client_t *client, void *data, event_t *event);
@@ -192,19 +192,19 @@ struct client_cb_s {
 	 * when one has been evicted and its still active on the client.
 	 */
 	guint8 id;
-	
+
 	/**
 	 * The callback function.
 	 * @attention When this is NULL, it indicates that the callback is not in use,
 	 * so when a callback is used, this MUST be set to NULL.
 	 */
 	callback_fn fn;
-	
+
 	/**
 	 * The data to be passed to the callback
 	 */
 	void *data;
-	
+
 	/**
 	 * The free function
 	 */
@@ -220,19 +220,19 @@ struct event_handler_s {
 	 * @note If this is NULL, then there will be no handler.
 	 */
 	handler_fn fn;
-	
+
 	/**
 	 * The alert function for when a client subscribes to the event.
 	 * @note If this is NULL, then no notifications will be sent.
 	 */
 	on_subscribe_handler_cb on_subscribe;
-	
+
 	/**
 	 * The alert function for when a client unsubscribes from the event.
 	 * @note If this is NULL, then no notifications will be sent.
 	 */
 	on_unsubscribe_handler_cb on_unsubscribe;
-	
+
 	/**
 	 * If this event handler handles child events without handlers.
 	 *
@@ -325,7 +325,7 @@ APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *ha
  * @param fn The function to be called when the callback comes in.
  * @param data The data to be passed to the callback.
  * @param free_fn The function to be called to free the data passed in.  May be NULL.
- * 
+ *
  * @return The callback ID.
  */
 APP_EXPORT callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn);

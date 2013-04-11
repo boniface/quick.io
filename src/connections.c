@@ -60,40 +60,40 @@ static event_handler_t *_balance_handler;
  */
 static void _conns_message_new(client_t *client) {
 	message_t *message = client->message;
-	
+
 	if (message == NULL) {
 		message = g_slice_alloc0(sizeof(*message));
 	}
-	
+
 	if (message->socket_buffer == NULL) {
 		message->socket_buffer = g_string_sized_new(STRING_BUFFER(client));
 	}
-	
+
 	if (message->buffer == NULL) {
 		message->buffer = g_string_sized_new(STRING_BUFFER(client));
 	}
-	
+
 	client->message = message;
 }
 
 static void _conns_client_timeout_clean() {
 	client_t *client;
 	GHashTableIter iter;
-	
+
 	g_mutex_lock(&_client_timeouts_lock);
-	
+
 	g_hash_table_iter_init(&iter, _client_timeouts);
 	while (g_hash_table_iter_next(&iter, (void*)&client, NULL)) {
 		if (--client->timer == 0) {
 			TEST_STATS_INC(conns_timeouts);
 			STATS_INC(client_timeouts);
-			
+
 			DEBUG("Timer on client expired: %p", &client->qevclient);
 			qev_close(client);
 			g_hash_table_iter_remove(&iter);
 		}
 	}
-	
+
 	g_mutex_unlock(&_client_timeouts_lock);
 }
 
@@ -102,23 +102,23 @@ static void _conns_client_timeout_clean() {
  */
 static void _conns_clients_remove(client_t *client) {
 	qev_lock_write_lock(&_clients_lock);
-	
+
 	guint pos = client->clients_pos;
-	
+
 	if (pos > 0) {
 		if (client->clients_pos != _clients_len) {
 			client_t *replace = _clients[_clients_len - 1];
 			_clients[pos - 1] = replace;
 			replace->clients_pos = pos;
 		}
-		
+
 		client->clients_pos = 0;
-		
+
 		_clients_len--;
 		_clients_len_next--;
 		_clients[_clients_len] = NULL;
 	}
-	
+
 	qev_lock_write_unlock(&_clients_lock);
 }
 
@@ -130,39 +130,39 @@ static void _conns_balance() {
 	if (g_async_queue_length(_balances) == 0) {
 		return;
 	}
-	
+
 	message_t message;
 	message.type = op_text;
 	message.buffer = g_string_sized_new(100);
-	
+
 	conns_balance_request_t *req;
 	while ((req = g_async_queue_try_pop(_balances)) != NULL) {
 		evs_client_format_message(_balance_handler, 0, 0, NULL, d_plain, req->to, message.buffer);
-		
+
 		DEBUG("Balancing: %d to %s", req->count, req->to);
-		
+
 		guint cnt = 0;
-		
+
 		gboolean _callback(client_t *client) {
 			if (cnt++ >= req->count) {
 				return FALSE;
 			}
-			
+
 			if (message.buffer->len > 0) {
 				client_write(client, &message);
 			}
-			
+
 			STATS_INC(clients_balanced);
 			qev_close(client);
-			
+
 			return TRUE;
 		}
-		
+
 		conns_clients_foreach(_callback);
 		g_free(req->to);
 		g_slice_free1(sizeof(*req), req);
 	}
-	
+
 	g_string_free(message.buffer, TRUE);
 }
 
@@ -170,7 +170,7 @@ void conns_balance(guint count, gchar *to) {
 	conns_balance_request_t *req = g_slice_alloc0(sizeof(*req));
 	req->count = count;
 	req->to = g_strdup(to);
-	
+
 	g_async_queue_push(_balances, req);
 }
 
@@ -178,29 +178,29 @@ void conns_client_new(client_t *client) {
 	// Even if the client doesn't get into _clients, we still need a ref: conns_client_close
 	// unrefs, and the free will happen there. If we leave this at 0, that's just wrong
 	client_ref(client);
-	
+
 	qev_lock_read_lock(&_clients_lock);
-	
+
 	if (((guint)g_atomic_int_get(&_clients_len_next)) + 1 > option_max_clients()) {
 		WARN("More clients than `max-clients` trying to connect");
-		
+
 		qev_lock_read_unlock(&_clients_lock);
 		qev_close(client);
 		return;
 	}
-	
+
 	client->clients_pos = __sync_add_and_fetch(&_clients_len_next, 1);
 	g_atomic_pointer_set(&_clients[client->clients_pos - 1], client);
 	g_atomic_int_inc(&_clients_len);
 	qev_lock_read_unlock(&_clients_lock);
-	
+
 	client->handler = h_none;
 	client->state = cstate_initing;
 	client->timer = -1;
-	
+
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
-	
+
 	STATS_INC(clients_new);
 	STATS_INC(clients);
 }
@@ -212,7 +212,7 @@ void conns_client_killed(client_t *client) {
 
 void conns_client_close(client_t *client) {
 	DEBUG("A client closed: %p", &client->qevclient);
-	
+
 	// We can only remove the client from _clients once we are assured that no more
 	// events will fire on it. If it's possible for more events to fire, then the
 	// following could happen:
@@ -227,17 +227,17 @@ void conns_client_close(client_t *client) {
 	//   6) Since the client is put back into the free list, he could be allocated
 	//      for a new client, then we could see 2 of him in _clients
 	_conns_clients_remove(client);
-	
+
 	conns_client_timeout_clear(client);
-	
+
 	// The message can be safely freed here: it's only used here,
 	// and we're definitely not reading/writing to it asynchronously
 	conns_message_free(client);
-	
+
 	apps_client_close(client);
-	
+
 	client_unref(client);
-	
+
 	STATS_INC(clients_closed);
 	STATS_DEC(clients);
 }
@@ -254,81 +254,81 @@ gboolean conns_client_data(client_t *client) {
 	}
 
 	gchar buffer[option_max_message_size()];
-	
+
 	// Clients typically aren't sending messages
 	_conns_message_new(client);
-	
+
 	// Read the message the client sent, unless it's too large, then kill the client
 	gssize len;
 	while ((len = qev_read(client, buffer, sizeof(buffer))) > 0) {
 		g_string_append_len(client->message->socket_buffer, buffer, len);
-		
+
 		// If the client needs to enhance his calm, kill the connection.
 		if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
 			TEST_STATS_INC(conns_bad_clients);
 			STATS_INC(clients_ratelimited);
-			
+
 			DEBUG("Client needs to enhance his calm");
 			return FALSE;
 		}
 	}
-	
+
 	// While there is still something on the socket buffer to process
 	while (client->message->socket_buffer->len > 0) {
 		status_t status;
-		
+
 		if (client->state == cstate_initing) {
 			TEST_STATS_INC(conns_handshakes);
 			DEBUG("Client handshake");
 			status = client_handshake(client);
-			
+
 			// Headers are sent without encoding, don't use the client_write wrapper
 			if (status == CLIENT_WRITE) {
 				STATS_INC(client_handshakes);
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
-				
+
 				// The handshake is complete, we're done here.
 				client->state = cstate_running;
 				evs_client_client_ready(client);
 			}
 		} else {
 			TEST_STATS_INC(conns_messages);
-			
+
 			DEBUG("Message from client");
 			status = client_message(client);
-			
+
 			if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
 				status = CLIENT_FATAL;
 			}
 		}
-		
+
 		if (status == CLIENT_GOOD) {
 			conns_client_timeout_clear(client);
 			conns_message_clean(client, FALSE, TRUE);
 
 		} else if (status == CLIENT_WAIT) {
 			TEST_STATS_INC(conns_client_wait);
-			
+
 			conns_client_timeout_set(client);
-			
+
 			// The buffer will still be set, we're waiting, so just exit
 			break;
-			
+
 		} else if (status == CLIENT_FATAL) {
 			TEST_STATS_INC(conns_bad_clients);
-			
+
 			DEBUG("Bad client, closing: status=%d", status);
 			qev_close(client);
 			client = NULL;
-			
+
 			break;
 		}
 	}
-	
+
 	if (client != NULL && client->message->socket_buffer->len == 0 && client->message->remaining_length == 0) {
 		conns_message_free(client);
 	}
-	
+
 	return TRUE;
 }
 
@@ -337,16 +337,16 @@ gboolean conns_init() {
 	_client_timeouts = g_hash_table_new(NULL, NULL);
 	_balance_handler = evs_server_on("/qio/move", NULL, NULL, NULL, FALSE);
 	_balances = g_async_queue_new();
-	
+
 	qev_lock_static_init(&_clients_lock);
-	
+
 	return TRUE;
 }
 
 void conns_client_timeout_clear(client_t *client) {
 	if (client->timer != -1) {
 		client->timer = -1;
-		
+
 		g_mutex_lock(&_client_timeouts_lock);
 		g_hash_table_remove(_client_timeouts, client);
 		g_mutex_unlock(&_client_timeouts_lock);
@@ -358,9 +358,9 @@ void conns_client_timeout_set(client_t *client) {
 	if (client->timer >= 0) {
 		return;
 	}
-	
+
 	client->timer = option_timeout();
-	
+
 	g_mutex_lock(&_client_timeouts_lock);
 	g_hash_table_add(_client_timeouts, client);
 	g_mutex_unlock(&_client_timeouts_lock);
@@ -369,7 +369,7 @@ void conns_client_timeout_set(client_t *client) {
 void conns_maintenance_tick() {
 	_conns_client_timeout_clean();
 	_conns_balance();
-	
+
 	// DEBUG("Clients: %u", _clients_len);
 }
 
@@ -377,37 +377,37 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 	guint i = g_atomic_int_get(&_clients_len);
 	while (i > 0) {
 		qev_lock_read_lock(&_clients_lock);
-		
+
 		guint len = g_atomic_int_get(&_clients_len);
-		
+
 		if (len == 0) {
 			qev_lock_read_unlock(&_clients_lock);
 			break;
 		}
-		
+
 		if (--i > len) {
 			i = len - 1;
 		}
-		
+
 		client_t *client = g_atomic_pointer_get(&_clients[i]);
-		
+
 		if (client == NULL) {
 			qev_lock_read_unlock(&_clients_lock);
 			continue;
 		}
-		
+
 		// We're using a reference that doesn't belong to us and unlocking on it.
 		// Without this, a client could be free'd before we use it
 		client_ref(client);
-		
+
 		qev_lock_read_unlock(&_clients_lock);
-		
+
 		// We're only supposed to give callbacks on active clients, but it's more a soft
 		// requirement than anything 100% certain
 		gboolean should_break = client->state == cstate_running && !_callback(client);
-		
+
 		client_unref(client);
-		
+
 		if (should_break) {
 			break;
 		}
@@ -418,7 +418,7 @@ void conns_message_free(client_t *client) {
 	if (client->message == NULL) {
 		return;
 	}
-	
+
 	g_string_free(client->message->buffer, TRUE);
 	g_string_free(client->message->socket_buffer, TRUE);
 	g_slice_free1(sizeof(*(client->message)), client->message);
@@ -427,19 +427,19 @@ void conns_message_free(client_t *client) {
 
 void conns_message_clean(client_t *client, gboolean truncate_socket_buffer, gboolean truncate_buffer) {
 	message_t *message = client->message;
-	
+
 	if (message == NULL) {
 		return;
 	}
-	
+
 	message->remaining_length = 0;
 	message->type = 0;
 	message->mask = 0;
-	
+
 	if (truncate_socket_buffer) {
 		g_string_truncate(message->socket_buffer, 0);
 	}
-	
+
 	if (truncate_buffer) {
 		g_string_truncate(message->buffer, 0);
 	}

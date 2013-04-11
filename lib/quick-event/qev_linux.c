@@ -32,16 +32,16 @@ static int _epoll;
 static void _qev_accept(QEV_CLIENT_T *server) {
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
-	
+
 	while (1) {
 		qev_socket_t client_sock = accept(QEV_CSLOT(server, socket), NULL, NULL);
 		if (client_sock == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return;
 			}
-			
+
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Could not accept client: %s", strerror(errno));
-			
+
 			// If anything else goes wrong, be sure to re-arm the listen FD so that the OS
 			// knows it should fire it again, otherwise it will NEVER be triggered again
 			// (this is edge triggering, not level)
@@ -49,22 +49,22 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 			if (epoll_ctl(_epoll, EPOLL_CTL_MOD, QEV_CSLOT(server, socket), &ev) == -1) {
 				g_log(QEV_DOMAIN, G_LOG_LEVEL_ERROR, "Could not re-arm listen FD: %s", strerror(errno));
 			}
-			
+
 			return;
 		}
-		
+
 		if (fcntl(client_sock, F_SETFL, O_NONBLOCK) == -1) {
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "Could not set client non-blocking (fd %d)", client_sock);
 			close(client_sock);
 			continue;
 		}
-		
+
 		qev_flags_t flags = 0;
 		SSL *ctx = NULL;
-		
+
 		if (QEV_CSLOT(server, _flags) & QEV_CMASK_SSL) {
 			ctx = SSL_new(QEV_CSLOT(server, ssl_ctx));
-			
+
 			int err;
 			if ((err = SSL_set_fd(ctx, client_sock)) == 0) {
 				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_set_fd failed: %s", ERR_reason_error_string(SSL_get_error(ctx, err)));
@@ -72,31 +72,31 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 				SSL_free(ctx);
 				continue;
 			}
-			
+
 			if (_qev_ssl_handshake(ctx, &flags) != 0) {
 				close(client_sock);
 				SSL_free(ctx);
 				continue;
 			}
-			
+
 			flags |= QEV_CMASK_SSL;
 		}
-		
+
 		QEV_CLIENT_T *client = qev_client_create();
 		QEV_CSLOT(client, socket) = client_sock;
 		QEV_CSLOT(client, ssl_ctx) = ctx;
 		QEV_CSLOT(client, _flags) = flags;
-		
+
 		ev.data.ptr = client;
 		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, client_sock, &ev) == -1) {
 			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "EPOLL_ADD(fd %d): %s", client_sock, strerror(errno));
-			
+
 			close(client_sock);
 			SSL_free(ctx);
 			g_slice_free1(sizeof(*client), client);
 			continue;
 		}
-		
+
 		QEV_CLIENT_NEW_FN(client);
 	}
 }
@@ -106,76 +106,76 @@ static void _qev_accept(QEV_CLIENT_T *server) {
  */
 qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client) {
 	qev_socket_t sock;
-	
+
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->socket(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	struct sockaddr_in addy;
 	addy.sin_family = AF_INET;
 	addy.sin_port = htons(port);
 	addy.sin_addr.s_addr = inet_addr(ip_address);
 	memset(&addy.sin_zero, 0, sizeof(addy.sin_zero));
-	
+
 	int on = 1;
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
 		close(sock);
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->setsockopt(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
 		close(sock);
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->fcntl(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	if (bind(sock, (struct sockaddr*)&addy, sizeof(addy)) == -1) {
 		close(sock);
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->bind(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	if (listen(sock, QEV_LISTEN_BACKLOG) == -1) {
 		close(sock);
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->listen(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	QEV_CLIENT_T *_client = qev_client_create();
 	QEV_CSLOT(_client, socket) = sock;
 	QEV_CSLOT(_client, _flags) |= QEV_CMASK_LISTENING;
-	
+
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
 	ev.data.ptr = _client;
-	
+
 	if (epoll_ctl(_epoll, EPOLL_CTL_ADD, sock, &ev) == -1) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "EPOLL_ADD(): %s", strerror(errno));
-		
+
 		close(sock);
 		g_slice_free1(sizeof(*_client), _client);
 		return -1;
 	}
-	
+
 	if (client != NULL) {
 		*client = _client;
 	}
-	
+
 	return 0;
 }
 
 void qev_dispatch() {
 	// Where the OS will put events for us
 	struct epoll_event events[QEV_MAX_EVENTS];
-	
+
 	#ifndef QEV_NO_TIMERS
 		// Set to true to indicate that a delayed timer fired this round
 		gboolean _delayed_timers[G_N_ELEMENTS(_timers)];
 		memset(&_delayed_timers, FALSE, sizeof(_delayed_timers));
 	#endif
-	
+
 	int num_evs = epoll_wait(_epoll, events, QEV_MAX_EVENTS, QEV_EPOLL_TIMEOUT);
 	if (num_evs < 1) {
 		if (num_evs == -1 && errno != EINTR) {
@@ -183,21 +183,21 @@ void qev_dispatch() {
 		}
 		return;
 	}
-	
+
 	for (int i = 0; i < num_evs; i++) {
 		QEV_STATS_INC(qev_event);
-		
+
 		struct epoll_event ev = events[i];
 		QEV_CLIENT_T *client = ev.data.ptr;
 		uint32_t events = ev.events;
-		
+
 		#ifndef QEV_NO_TIMERS
 			if (((gsize)client) < G_N_ELEMENTS(_timers)) {
 				// Have to read the timer for it to continue to fire on an interval
 				char buff[8];
 				int unused __attribute__((unused));
 				unused = read(_timers[(gsize)client].timer, buff, sizeof(buff));
-				
+
 				if (_timers[(gsize)client].flags & QEV_TIMER_DELAYED) {
 					_delayed_timers[(gsize)client] = TRUE;
 				} else {
@@ -205,7 +205,7 @@ void qev_dispatch() {
 				}
 			} else
 		#endif
-		
+
 		if (QEV_CSLOT(client, _flags) & QEV_CMASK_LISTENING) {
 			_qev_accept(client);
 		} else {
@@ -218,7 +218,7 @@ void qev_dispatch() {
 			}
 		}
 	}
-	
+
 	#ifndef QEV_NO_TIMERS
 		for (gsize i = 0; i < G_N_ELEMENTS(_delayed_timers); i++) {
 			if (_delayed_timers[i]) {
@@ -232,11 +232,11 @@ int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 	if (QEV_CSLOT(client, socket) == -1) {
 		return 0;
 	}
-	
+
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
 		return SSL_read(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
 	}
-	
+
 	return read(QEV_CSLOT(client, socket), buff, buff_size);
 }
 
@@ -244,30 +244,30 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 	if (QEV_CSLOT(client, socket) == -1) {
 		return -1;
 	}
-	
+
 	int ret;
-	
+
 	qev_client_lock(client);
-	
+
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
 		int sent = SSL_write(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
 		ret = sent <= 0 ? -1 : sent;
 	} else {
 		ret = send(QEV_CSLOT(client, socket), buff, buff_size, MSG_NOSIGNAL);
 	}
-	
+
 	qev_client_unlock(client);
-	
+
 	return ret;
 }
 
 void qev_sys_client_closed(QEV_CLIENT_T *client) {
 	qev_client_lock(client);
-	
+
 	// This will also remove it from epoll!
 	close(QEV_CSLOT(client, socket));
 	QEV_CSLOT(client, socket) = -1;
-	
+
 	qev_client_unlock(client);
 }
 
@@ -278,21 +278,21 @@ int qev_sys_init() {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "epoll_create(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	#ifndef QEV_NO_TIMERS
 		// For adding the timers
 		struct epoll_event ev;
 		ev.events = EPOLL_READ_EVENTS;
-		
+
 		struct itimerspec spec;
 		memset(&spec, 0, sizeof(spec));
-		
+
 		// On Linux, there's no way a pointer is going to be
 		// anywhere near the number of timers, even if that number
 		// is very large, so this should be fine
 		size_t i = 0;
 	#endif
-	
+
 	#define QEV_TIMER(fn, sec, ms, flags) \
 		ev.data.ptr = (void*)i; \
 		_timers[i].timer = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK); \
@@ -311,35 +311,35 @@ int qev_sys_init() {
 			return -1; \
 		} \
 		i++;
-		
+
 		QEV_TIMERS
 	#undef QEV_TIMER
-	
+
 	return 0;
 }
 
 int qev_chuser(const char *username) {
 	struct passwd *user = getpwnam(username);
-	
+
 	if (user == NULL) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_chuser(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	if (user->pw_gid == 0 || user->pw_uid == 0) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Cowardly refusing to run as root: %s", strerror(errno));
 		return -1;
 	}
-	
+
 	if (setgid(user->pw_gid) == -1) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_chuser(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	if (setuid(user->pw_uid) == -1) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_chuser(): %s", strerror(errno));
 		return -1;
 	}
-	
+
 	return 0;
 }

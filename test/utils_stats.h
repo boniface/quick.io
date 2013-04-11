@@ -38,87 +38,87 @@ typedef struct test_stats_s {
 	 * The number of hups that were seen.
 	 */
 	gsize conns_hups;
-	
+
 	/**
 	 * The number of timeouts seen.
 	 */
 	gsize conns_timeouts;
-	
+
 	/**
 	 * The number of messages that clients sent.
 	 */
 	gsize conns_messages;
-	
+
 	/**
 	 * The number of handshakes seen by the server.
 	 */
 	gsize conns_handshakes;
-	
+
 	/**
 	 * The number of bad clients forcibly closed.
 	 */
 	gsize conns_bad_clients;
-	
+
 	/**
 	 * The number of times clients were put into CLIENT_WAIT
 	 */
 	gsize conns_client_wait;
-	
+
 	/**
 	 * The number of times app_run is hit.
 	 */
 	gsize apps_run;
-	
+
 	/**
 	 * The number of times app_client_connect is hit.
 	 */
 	gsize apps_client_connect;
-	
+
 	/**
 	 * The number of times app_client_close is hit.
 	 */
 	gsize apps_client_close;
-	
+
 	/**
 	 * The number of times app_evs_client_subscribe is hit.
 	 */
 	gsize apps_client_subscribe;
-	
+
 	/**
 	 * The number of times app_evs_client_unsubscribe is hit.
 	 */
 	gsize apps_client_unsubscribe;
-	
+
 	/**
 	 * The number of times the test_handler is hit.
 	 */
 	gsize apps_client_handler;
-	
+
 	/**
 	 * The number of times the test_handler_on is hit.
 	 */
 	gsize apps_client_handler_on;
-	
+
 	/**
 	 * The number of times the test_handler_off is hit.
 	 */
 	gsize apps_client_handler_off;
-	
+
 	/**
 	 * The number of messages that were published.  1 publish to many users counts as 1 message.
 	 */
 	gsize evs_client_pubd_messages;
-	
+
 	/**
 	 * The number of individual, async messages sent.
 	 */
 	gsize evs_client_async_messages;
-	
+
 	/**
 	 * The number of clients closed during message publishing.
 	 */
 	gsize evs_client_send_pub_closes;
-	
+
 	/**
 	 * The number of clients closed during message publishing.
 	 */

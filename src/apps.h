@@ -101,53 +101,53 @@ typedef struct app_s {
 	 * The app's internal ID.
 	 */
 	guint16 id;
-	
+
 	/**
 	 * The name of the app.
 	 *
 	 * @attention This should NEVER be free'd
 	 */
 	gchar *name;
-	
+
 	/**
 	 * The prefix that all events the app registers are forced to.
 	 *
 	 * @attention This should NEVER be free'd
 	 */
 	gchar *event_prefix;
-	
+
 	/**
 	 * The thread the app is running in, if it has an `app_run` function.
 	 */
 	GThread *thread;
-	
+
 	/**
 	 * The lock indicating that the application is done initing and ready to start serving
 	 * requests.
 	 */
 	GMutex ready;
-	
+
 	/**
 	 * A pointer to the module reference for accessing with GModule functions.
 	 *
 	 * @see http://developer.gnome.org/glib/2.32/glib-Dynamic-Loading-of-Modules.html
 	 */
 	GModule *module;
-	
+
 	/**
 	 * The callback for setting application-specific options (name, path, etc).
 	 */
 	app_cb_str _set_app_opts;
-	
+
 	/**
 	 * A reference to an application's `app_init` function.
 	 * This function runs the application inside its own thread.
-	 * 
+	 *
 	 * This allows the app to register events and setup anything it needs
 	 * before the server starts serving requests.
 	 */
 	app_on_cb init;
-	
+
 	/**
 	 * A reference to an application's `app_run` function.
 	 * This function runs the application inside its own thread.
@@ -156,31 +156,31 @@ typedef struct app_s {
 	 * this function must be implemented.
 	 */
 	app_on_cb run;
-	
+
 	/**
 	 * A reference to an application's `app_client_connect` function.
 	 * A notification that a new client has connected and been accepted.
 	 */
 	app_cb_client client_connect;
-	
+
 	/**
 	 * A reference to an application's `app_client_close` function.
 	 * A notification that a client has closed / been killed.
 	 */
 	app_cb_client client_close;
-	
+
 	/**
 	 * A reference to an application's `app_evs_client_subscribe` function.
 	 * A notification that a client has subscribed to an event.
 	 */
 	on_subscribe_cb subscribe;
-	
+
 	/**
 	 * A reference to an application's `app_evs_client_unsubscribe` function.
 	 * A notification that a client has unsubscribed from an event.
 	 */
 	on_subscribe_cb unsubscribe;
-	
+
 	/**
 	 * A reference to an application's `app_register_events` function.
 	 * Tells the application to register its events with events_server.
@@ -202,7 +202,7 @@ gboolean apps_run();
 void apps_client_connect(client_t *client);
 
 /**
- * Inform all the apps that a client has closed so that he can be removed from 
+ * Inform all the apps that a client has closed so that he can be removed from
  * any internal tracking.
  *
  * @param client The client that closed.
@@ -226,7 +226,7 @@ status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t
 
 /**
  * Inform all the apps when a client has added a subscription.
- * 
+ *
  * @param client The client that subscribed.
  * @param event_path The path to the event that was subscribed to.
  * @param extra The extra segments on the event.
@@ -238,7 +238,7 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
 
 /**
  * Inform all the apps when a client has dropped a subscription.
- * 
+ *
  * @param client The client that unsubscribed.
  * @param handler The event handler the client dropped.
  * @param event_path The event path the client dropped.

@@ -92,17 +92,17 @@ typedef struct {
 	 * The callback function
 	 */
 	qev_timer_cb fn;
-	
+
 	/**
 	 * The timer's file descriptor
 	 */
 	qev_timer_t timer;
-	
+
 	/**
 	 * For assuring that only 1 thread will ever be running a timer at once
 	 */
 	int operations;
-	
+
 	/**
 	 * Any flags on this timer
 	 */
