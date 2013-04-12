@@ -66,7 +66,7 @@ struct evs_client_sub_s {
 	/**
 	 * The extra path segments that are on the end of the path.
 	 *
-	 * @attention MUST be g_list_free()'d when done.
+	 * @attention MUST be g_ptr_array_free()'d when done.
 	 */
 	path_extra_t *extra;
 
@@ -86,7 +86,7 @@ struct evs_client_sub_s {
 	/**
 	 * For protecting writes to the client list in this subscription
 	 */
-	GMutex lock;
+	GRWLock lock;
 };
 
 /**

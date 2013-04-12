@@ -45,7 +45,7 @@ static GHashTable* _events;
  *   Locking in this file __**MUST**__ happen in this order:
  *       Events Lock -> Subscription Lock -> Client Lock
  */
-static GMutex _events_lock;
+static GRWLock _events_lock;
 
 /**
  * The list of messages that we need to send in our next loop.
@@ -85,7 +85,9 @@ static evs_client_sub_t* _subscription_create(const gchar *event_path, event_han
 	g_ptr_array_ref(extra);
 	sub->extra = extra;
 
-	g_mutex_init(&sub->lock);
+	g_rw_lock_init(&sub->lock);
+
+	g_hash_table_insert(_events, sub->event_path, sub);
 
 	return sub;
 }
@@ -93,15 +95,18 @@ static evs_client_sub_t* _subscription_create(const gchar *event_path, event_han
 /**
  * Shortcut for getting a subscription, or creating it if it doesn't exist.
  *
- * @note This function ALWAYS gives the caller a lock on the subscription
- * to ensure that it won't be deleted once returned.
+ * @note This function ALWAYS gives the caller a lock on the subscription to ensure that it won't be deleted once returned.
+ *
+ * @param event_path Obviously the path
+ * @param and_create If the subscription should be created if it doesn't exist
+ * @param read_only When the subcription is created, if a read lock (TRUE) should be acquired, or a write lock (FALSE)
  */
-static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboolean and_create) {
+static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboolean and_create, const gboolean read_only) {
 	if (event_path == NULL) {
 		return NULL;
 	}
 
-	g_mutex_lock(&_events_lock);
+	g_rw_lock_reader_lock(&_events_lock);
 
 	evs_client_sub_t *sub = g_hash_table_lookup(_events, event_path);
 
@@ -113,22 +118,22 @@ static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboole
 
 		// If no handler was found, don't create anything
 		if (handler == NULL) {
-			g_mutex_unlock(&_events_lock);
-			return NULL;
+			goto done;
 		}
 
 		sub = _subscription_create(event_path, handler, extra);
-
-		// The hash table relies on the key existing for its
-		// lifetime: duplicated in _subscription_create
-		g_hash_table_insert(_events, sub->event_path, sub);
 	}
 
 	if (sub != NULL) {
-		g_mutex_lock(&sub->lock);
+		if (read_only) {
+			g_rw_lock_reader_lock(&sub->lock);
+		} else {
+			g_rw_lock_writer_lock(&sub->lock);
+		}
 	}
 
-	g_mutex_unlock(&_events_lock);
+done:
+	g_rw_lock_reader_unlock(&_events_lock);
 
 	return sub;
 }
@@ -137,35 +142,39 @@ static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboole
  * Check and cleanup a subscription if it has no more subscribers.
  */
 static void _subscription_cleanup(const gchar *event_path) {
-	g_mutex_lock(&_events_lock);
+	g_rw_lock_writer_lock(&_events_lock);
 
 	evs_client_sub_t *sub = g_hash_table_lookup(_events, event_path);
 
 	if (sub == NULL) {
-		g_mutex_unlock(&_events_lock);
+		g_rw_lock_writer_unlock(&_events_lock);
 		return;
 	}
 
-	g_mutex_lock(&sub->lock);
+	g_rw_lock_writer_lock(&sub->lock);
 
 	if (g_hash_table_size(sub->clients) == 0) {
 		DEBUG("Removing empty subscription: %s", sub->event_path);
 
 		g_hash_table_remove(_events, event_path);
-		g_mutex_unlock(&_events_lock);
+		g_rw_lock_writer_unlock(&_events_lock);
 
 		g_ptr_array_unref(sub->extra);
 		g_hash_table_unref(sub->clients);
 
 		// It's removed from the events table at this point, so it's safe
 		// to do unlocked operations on it
-		g_mutex_unlock(&sub->lock);
-		g_mutex_clear(&sub->lock);
+		g_rw_lock_writer_unlock(&sub->lock);
+
+		g_rw_lock_clear(&sub->lock);
+		g_free(sub->event_path);
+		g_ptr_array_free(sub->extra, TRUE);
+		g_hash_table_unref(sub->clients);
 
 		g_slice_free1(sizeof(*sub), sub);
 	} else {
-		g_mutex_unlock(&_events_lock);
-		g_mutex_unlock(&sub->lock);
+		g_rw_lock_writer_unlock(&_events_lock);
+		g_rw_lock_writer_unlock(&sub->lock);
 	}
 }
 
@@ -178,7 +187,7 @@ static void _subscription_cleanup(const gchar *event_path) {
  * @see evs_client_sub_client
  */
 static status_t _evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback, const gboolean from_app) {
-	evs_client_sub_t *sub = _subscription_get(event_path, TRUE);
+	evs_client_sub_t *sub = _subscription_get(event_path, TRUE, FALSE);
 
 	if (sub == NULL) {
 		return CLIENT_ERROR;
@@ -187,7 +196,7 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 	qev_client_lock(client);
 
 	if (client->subs->len >= option_max_subscriptions() || g_hash_table_contains(sub->clients, client)) {
-		g_mutex_unlock(&sub->lock);
+		g_rw_lock_writer_unlock(&sub->lock);
 		qev_client_unlock(client);
 		return CLIENT_ERROR;
 	}
@@ -196,7 +205,7 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 		status_t status = apps_evs_client_check_subscribe(client, sub->handler, sub->extra, client_callback);
 
 		if (status == CLIENT_ASYNC || status != CLIENT_GOOD) {
-			g_mutex_unlock(&sub->lock);
+			g_rw_lock_writer_unlock(&sub->lock);
 			qev_client_unlock(client);
 			return status == CLIENT_ASYNC ? CLIENT_ASYNC : CLIENT_ERROR;
 		}
@@ -206,7 +215,7 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 
 	g_hash_table_add(sub->clients, client);
 
-	g_mutex_unlock(&sub->lock);
+	g_rw_lock_writer_unlock(&sub->lock);
 
 	// Give the client a reference to the key of the event he is subscribed to
 	g_ptr_array_add(client->subs, sub);
@@ -318,7 +327,7 @@ status_t evs_client_sub_client(const gchar *event_path, client_t *client, const 
 }
 
 status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
-	evs_client_sub_t *sub = _subscription_get(event_path, FALSE);
+	evs_client_sub_t *sub = _subscription_get(event_path, FALSE, FALSE);
 
 	if (sub == NULL) {
 		return CLIENT_ERROR;
@@ -326,11 +335,11 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 
 	// If the client isn't a member of the subscription, that's an error
 	if (!g_hash_table_remove(sub->clients, client)) {
-		g_mutex_unlock(&sub->lock);
+		g_rw_lock_writer_unlock(&sub->lock);
 		return CLIENT_ERROR;
 	}
 
-	g_mutex_unlock(&sub->lock);
+	g_rw_lock_writer_unlock(&sub->lock);
 
 	// The client isn't subscribed anymore, remove from his list
 	qev_client_lock(client);
@@ -418,7 +427,7 @@ status_t evs_client_format_message(const event_handler_t *handler, const callbac
 }
 
 gboolean evs_client_init() {
-	_events = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+	_events = g_hash_table_new(g_str_hash, g_str_equal);
 	_messages = g_async_queue_new();
 
 	_heartbeat = evs_server_on("/qio/heartbeat", NULL, evs_no_subscribe, NULL, FALSE);
@@ -557,7 +566,7 @@ void evs_client_tick() {
 	_async_message_t *amsg;
 
 	void iter(void(*_write)(client_t*)) {
-		evs_client_sub_t *sub = _subscription_get(amsg->event_path, FALSE);
+		evs_client_sub_t *sub = _subscription_get(amsg->event_path, FALSE, TRUE);
 
 		if (sub == NULL) {
 			return;
@@ -573,7 +582,7 @@ void evs_client_tick() {
 			_write(client);
 		}
 
-		g_mutex_unlock(&sub->lock);
+		g_rw_lock_reader_unlock(&sub->lock);
 	}
 
 	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
@@ -590,12 +599,12 @@ guint evs_client_number_subscribed(const event_handler_t *handler, path_extra_t 
 
 	gchar *event_path = evs_server_path_from_handler(handler);
 	gchar *ep = evs_server_format_path(event_path, extra);
-	evs_client_sub_t *sub = _subscription_get(ep, FALSE);
+	evs_client_sub_t *sub = _subscription_get(ep, FALSE, TRUE);
 	g_free(ep);
 
 	if (sub != NULL) {
 		cnt = g_hash_table_size(sub->clients);
-		g_mutex_unlock(&sub->lock);
+		g_rw_lock_reader_unlock(&sub->lock);
 	}
 
 	return cnt;

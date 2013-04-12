@@ -35,19 +35,19 @@ void _test_evs_client_teardown() {
 }
 
 START_TEST(test_evs_client_subscription_get_no_clients) {
-	evs_client_sub_t *sub = _subscription_get("/test/event", FALSE);
+	evs_client_sub_t *sub = _subscription_get("/test/event", FALSE, FALSE);
 	test_ptr_eq(sub, NULL, "Not created when no clients");
 }
 END_TEST
 
 START_TEST(test_evs_client_subscription_get_not_valid) {
-	evs_client_sub_t *sub = _subscription_get("/what/is/that", FALSE);
+	evs_client_sub_t *sub = _subscription_get("/what/is/that", FALSE, FALSE);
 	test_ptr_eq(sub, NULL, "Not created when no clients");
 }
 END_TEST
 
 START_TEST(test_evs_client_subscription_get_and_create) {
-	evs_client_sub_t *sub = _subscription_get("/test/event", TRUE);
+	evs_client_sub_t *sub = _subscription_get("/test/event", TRUE, FALSE);
 
 	test_str_eq(sub->event_path, "/test/event", "Not created when no clients");
 	test(sub->handler != NULL, "Handler is set");
@@ -60,7 +60,7 @@ START_TEST(test_evs_client_subscription_get_and_create) {
 END_TEST
 
 START_TEST(test_evs_client_subscription_get_and_create_invalid) {
-	evs_client_sub_t *sub = _subscription_get("/test/not/an/event", TRUE);
+	evs_client_sub_t *sub = _subscription_get("/test/not/an/event", TRUE, FALSE);
 	test(sub == NULL, "Bad event, not created");
 }
 END_TEST
@@ -459,7 +459,7 @@ START_TEST(test_evs_client_subscribe_already_subscribed) {
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_ERROR, "Subscription not found");
 
-	evs_client_sub_t *sub = _subscription_get("/test/event/test", FALSE);
+	evs_client_sub_t *sub = _subscription_get("/test/event/test", FALSE, FALSE);
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
 	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In subscription");
 
@@ -568,9 +568,9 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 		test_status_eq(evs_client_sub_client(ep, client, 0), CLIENT_ASYNC, "Async");
 	}
 
-	evs_client_sub_t *sub = _subscription_get("/test/async", TRUE);
+	evs_client_sub_t *sub = _subscription_get("/test/async", TRUE, FALSE);
 	apps_evs_client_check_subscribe(client, sub->handler, sub->extra, 1);
-	g_mutex_unlock(&sub->lock);
+	g_rw_lock_writer_unlock(&sub->lock);
 
 	gchar buff[512];
 	int len = read(socket, buff, sizeof(buff)-1);
@@ -607,9 +607,9 @@ END_TEST
 START_TEST(test_evs_client_unsubscribe_not_subscribed) {
 	client_t *client = u_client_create(NULL);
 
-	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE);
+	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE, FALSE);
 	test(sub != NULL, "Subscription created");
-	g_mutex_unlock(&sub->lock);
+	g_rw_lock_writer_unlock(&sub->lock);
 
 	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_ERROR, "Subscribed");
 
@@ -629,10 +629,10 @@ END_TEST
 START_TEST(test_evs_client_subscription_cleanup_1) {
 	// Just make sure the test completes without segfaulting
 	client_t *client = u_client_create(NULL);
-	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE);
+	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE, FALSE);
 	g_hash_table_add(sub->clients, client);
 
-	g_mutex_unlock(&sub->lock);
+	g_rw_lock_writer_unlock(&sub->lock);
 
 	_subscription_cleanup("/test/event/test");
 }
@@ -701,9 +701,9 @@ START_TEST(test_evs_client_clean) {
 
 	test_ptr_eq(client->subs, NULL, "No subscriptions");
 
-	test_ptr_eq(_subscription_get("/test/event/test1", FALSE), NULL, "No more clients subscribed 1");
-	test_ptr_eq(_subscription_get("/test/event/test2", FALSE), NULL, "No more clients subscribed 2");
-	test_ptr_eq(_subscription_get("/test/event/test3", FALSE), NULL, "No more clients subscribed 3");
+	test_ptr_eq(_subscription_get("/test/event/test1", FALSE, FALSE), NULL, "No more clients subscribed 1");
+	test_ptr_eq(_subscription_get("/test/event/test2", FALSE, FALSE), NULL, "No more clients subscribed 2");
+	test_ptr_eq(_subscription_get("/test/event/test3", FALSE, FALSE), NULL, "No more clients subscribed 3");
 
 	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
 	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Unsubscribes sent to client close");
@@ -776,7 +776,7 @@ START_TEST(test_evs_client_tick_closed_client_broadcast) {
 	evs_client_tick();
 	qev_debug_flush();
 
-	test_ptr_eq(_subscription_get("/test/event", FALSE), NULL, "Client closed, sub freed");
+	test_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed, sub freed");
 	test_size_eq(utils_stats()->evs_client_send_pub_closes, 4, "Client closed in each pub");
 }
 END_TEST
@@ -812,7 +812,7 @@ START_TEST(test_evs_client_tick_no_client_handler) {
 	qev_debug_flush();
 
 	// Client not allocated with a socket, so will be closed
-	test_ptr_eq(_subscription_get("/test/event", FALSE), NULL, "Client closed");
+	test_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed");
 
 	test_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
 	test_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
