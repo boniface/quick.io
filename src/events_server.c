@@ -282,7 +282,7 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **
 		}
 	}
 
-	if (handler == NULL && iextra != NULL) {
+	if (handler == NULL) {
 		g_ptr_array_unref(iextra);
 		iextra = NULL;
 	}
