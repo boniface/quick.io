@@ -1,4 +1,5 @@
-#pragma once
+#ifndef QIO_QIO_H
+#define QIO_QIO_H
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -68,3 +69,5 @@ typedef guint16 status_t;
 #include "main.h"
 #include "monkey.h"
 #include "option.h"
+
+#endif

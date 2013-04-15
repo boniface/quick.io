@@ -2,8 +2,9 @@
  * Handles the raw socket connections.
  * @file connections.h
  */
+#ifndef QIO_CONNECTIONS_H
+#define QIO_CONNECTIONS_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -176,4 +177,6 @@ void conns_message_free(client_t *client);
 
 #ifdef TESTING
 #include "../test/test_connections.h"
+#endif
+
 #endif

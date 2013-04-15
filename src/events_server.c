@@ -17,6 +17,23 @@ static GHashTable* _events_by_handler;
 static GMutex _events_lock;
 
 /**
+ * Essentially: [^_\-/a-zA-Z0-9]
+ *
+ * Linus, you crazy genius.
+ */
+static const gchar event_path_chars[] = {
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,
+	0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+	1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+	1,  0,  0,  0,  0,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,
+	1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+	1,  1,  1,  0,  0,  0,  0,  0,
+};
+
+/**
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
@@ -251,20 +268,18 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **
 		// Rewind the end pointer to the next '/'
 		// Important: don't allow this to pass the start of the string -- this also changes
 		// the condition for the while loop
-		while (*(--end) != '/' && end > ep);
+		while (*(--end) != '/' && end > ep) {}
 
 		// If the event is in the form "/some/event/" (trailing slash), this
 		// could be null, so ignore
-		if (*(end + 1) == '\0') {
-			continue;
+		if (*(end + 1) != '\0') {
+			// If it falls through here, then no command was found, so plop the current
+			// segment onto the extra segments list
+			// +1 -> the iterator moves onto the '/', and we don't want that in the segment
+			gchar *seg = g_strdup(end + 1);
+
+			g_ptr_array_add(iextra, seg);
 		}
-
-		// If it falls through here, then no command was found, so plop the current
-		// segment onto the extra segments list
-		// +1 -> the iterator moves onto the '/', and we don't want that in the segment
-		gchar *seg = g_strdup(end + 1);
-
-		g_ptr_array_add(iextra, seg);
 	}
 
 	if (handler == NULL && iextra != NULL) {
@@ -406,10 +421,7 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
 	gchar prev = ep->str[0];
 	while (i < ep->len) {
 		char curr = ep->str[i];
-		// Essentially checking for this regex: [^_\-/a-zA-Z0-9]
-		// And in the process, removing any double slashes (//)
-		if ((curr == '/' && prev == '/') || !((curr >= '/' && curr <= '9') || (curr >= 'a' && curr <= 'z') || (curr >= 'A' && curr <= 'Z') || curr == '_' || curr == '-')) {
-			// Remove the bad character
+		if (!event_path_chars[(unsigned char)curr] || (curr == '/' && prev == '/')) {
 			g_string_erase(ep, i, 1);
 		} else {
 			prev = curr;

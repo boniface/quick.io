@@ -4,8 +4,9 @@
  * When a client calls QuickIo#on, they are subscribed on the server side,
  * and all of the subscriptions are managed here.
  */
+#ifndef QIO_EVENTS_CLIENT_H
+#define QIO_EVENTS_CLIENT_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -87,6 +88,11 @@ struct evs_client_sub_s {
 	 * For protecting writes to the client list in this subscription
 	 */
 	GRWLock lock;
+
+	/**
+	 * The number of existing references to the subscription
+	 */
+	int ref_count;
 };
 
 /**
@@ -130,7 +136,8 @@ void evs_client_client_close(client_t *client);
  * @param event_path The name of the event to unsubscribe the client from.
  * @param client The client to unsubscribe from event.
  *
- * @return CLIENT_CANNOT_UNSUBSCRIBE - The client was either not subscribed to the event of the event didn't exist.  Either way, the client will not recieve notifications for this event.
+ * @return CLIENT_CANNOT_UNSUBSCRIBE - The client was either not subscribed to the event of
+ * the event didn't exist.  Either way, the client will not recieve notifications for this event.
  */
 status_t evs_client_unsub_client(const gchar *event_path, client_t *client);
 
@@ -190,7 +197,8 @@ APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *han
  *
  * @param handler The event handler; if NULL, will use the callback.
  * @param client_callback The callback to send to the user; 0 if no callback.
- * @param server_callback What should be sent to the client, indicating the server wants a callback. 0 if no callback is wanted.
+ * @param server_callback What should be sent to the client, indicating the server
+ * wants a callback. 0 if no callback is wanted.
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
  * @param type The type of the data (json, plain, etc).  d_plain if none.
  * @param data The actual data to be sent. "" (empty string) if none.
@@ -202,8 +210,8 @@ APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *han
 status_t evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const callback_t server_callback, path_extra_t *extra, const enum data_t type, const gchar *data, GString *buffer);
 
 /**
- * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST be called to fire off the callback
- * and subscribe (or not) the user to the event.
+ * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST
+ * be called to fire off the callback and subscribe (or not) the user to the event.
  *
  * @ingroup AppFunctions
  *
@@ -258,4 +266,6 @@ void evs_client_cleanup();
 
 #ifdef TESTING
 #include "../test/test_events_client.h"
+#endif
+
 #endif

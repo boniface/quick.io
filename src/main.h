@@ -2,7 +2,8 @@
  * Starts up the server.
  * @file main.h
  */
-#pragma once
+#ifndef QIO_MAIN_H
+#define QIO_MAIN_H
 
 /**
  * @mainpage Automatically generated API documentation.
@@ -20,4 +21,6 @@ int init_main(int argc, char *argv[]);
 
 #ifdef TESTING
 #include "../test/test_main.h"
+#endif
+
 #endif

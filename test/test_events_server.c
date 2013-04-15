@@ -87,6 +87,20 @@ START_TEST(test_evs_server_format_path_7) {
 }
 END_TEST
 
+START_TEST(test_evs_server_format_path_8) {
+	gchar *path = evs_server_format_path("", NULL);
+	test_str_eq(path, NULL, "No path found");
+	g_free(path);
+}
+END_TEST
+
+START_TEST(test_evs_server_format_path_9) {
+	gchar *path = evs_server_format_path("a", NULL);
+	test_str_eq(path, "/a", "Bad characters removed");
+	g_free(path);
+}
+END_TEST
+
 START_TEST(test_evs_event_creation_valid_minimal) {
 	client_t *client = u_client_create(NULL);
 
@@ -1134,6 +1148,8 @@ Suite* events_server_suite() {
 	tcase_add_test(tc, test_evs_server_format_path_5);
 	tcase_add_test(tc, test_evs_server_format_path_6);
 	tcase_add_test(tc, test_evs_server_format_path_7);
+	tcase_add_test(tc, test_evs_server_format_path_8);
+	tcase_add_test(tc, test_evs_server_format_path_9);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Event Creation");

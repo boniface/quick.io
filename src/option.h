@@ -2,8 +2,9 @@
  * For accessing options from the configuration file.
  * @file option.h
  */
+#ifndef QIO_OPTION_H
+#define QIO_OPTION_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -235,4 +236,6 @@ gboolean option_parse_args(int argc, char *argv[], GError **error);
 
 #ifdef TESTING
 #include "../test/test_option.h"
+#endif
+
 #endif

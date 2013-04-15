@@ -3,8 +3,9 @@
  * The main process aggregates and sends all of the statistics.
  * @file stats.h
  */
+#ifndef QIO_STATS_H
+#define QIO_STATS_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -147,4 +148,6 @@ gboolean stats_init();
 
 #ifdef TESTING
 #include "../test/test_stats.h"
+#endif
+
 #endif

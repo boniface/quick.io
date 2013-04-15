@@ -64,30 +64,63 @@ static event_handler_t *_heartbeat;
 _async_message_t *_heartbeat_amsg;
 
 /**
+ * Increments the reference count on a evs_client_sub_t
+ */
+static void _sub_ref(evs_client_sub_t *sub) {
+	g_atomic_int_inc(&sub->ref_count);
+}
+
+/**
+ * Decrements the reference count on evs_client_sub_t, freeing it if it reaches 0.
+ *
+ * @attention YOU MUST NOT HOLD THE LOCK ON `sub` WHEN YOU CALL THIS FUNCTION. In other words,
+ * release your lock on `sub` before calling this function.
+ */
+static void _sub_unref(evs_client_sub_t *sub) {
+	if (g_atomic_int_dec_and_test(&sub->ref_count)) {
+		g_ptr_array_unref(sub->extra);
+		g_hash_table_unref(sub->clients);
+
+		g_rw_lock_clear(&sub->lock);
+		g_free(sub->event_path);
+
+		g_slice_free1(sizeof(*sub), sub);
+	}
+}
+
+/**
  * Creates a subscription from a handler and friends.
  */
 static evs_client_sub_t* _subscription_create(const gchar *event_path, event_handler_t *handler, path_extra_t *extra) {
-	evs_client_sub_t *sub = g_slice_alloc0(sizeof(*sub));
+	g_rw_lock_reader_unlock(&_events_lock);
+	g_rw_lock_writer_lock(&_events_lock);
 
-	// Keep around a reference to the key for passing around for easier
-	// persistence when the event names are freed from a message
-	sub->event_path = g_strdup(event_path);
+	evs_client_sub_t *sub = g_hash_table_lookup(_events, event_path);
 
-	// Use the default hashing functions, only using memory locations anyway
-	sub->clients = g_hash_table_new(NULL, NULL);
+	if (sub == NULL) {
+		sub = g_slice_alloc0(sizeof(*sub));
 
-	// Because we'll need this for some future references, let's keep the
-	// handler around: this will also save us on future lookups for the same
-	// event
-	sub->handler = handler;
+		// Keep around a reference to the key for passing around for easier
+		// persistence when the event names are freed from a message
+		sub->event_path = g_strdup(event_path);
 
-	// Save the extra elements on the path, we'll need those again later
-	g_ptr_array_ref(extra);
-	sub->extra = extra;
+		// Use the default hashing functions, only using memory locations anyway
+		sub->clients = g_hash_table_new(NULL, NULL);
 
-	g_rw_lock_init(&sub->lock);
+		// Because we'll need this for some future references, let's keep the
+		// handler around: this will also save us on future lookups for the same
+		// event
+		sub->handler = handler;
 
-	g_hash_table_insert(_events, sub->event_path, sub);
+		// Save the extra elements on the path, we'll need those again later
+		g_ptr_array_ref(extra);
+		sub->extra = extra;
+
+		g_rw_lock_init(&sub->lock);
+		_sub_ref(sub);
+
+		g_hash_table_insert(_events, sub->event_path, sub);
+	}
 
 	return sub;
 }
@@ -95,16 +128,25 @@ static evs_client_sub_t* _subscription_create(const gchar *event_path, event_han
 /**
  * Shortcut for getting a subscription, or creating it if it doesn't exist.
  *
- * @note This function ALWAYS gives the caller a lock on the subscription to ensure that it won't be deleted once returned.
+ * @note This function ALWAYS gives the caller a lock on the subscription to ensure that it
+ * won't be deleted once returned.
  *
  * @param event_path Obviously the path
  * @param and_create If the subscription should be created if it doesn't exist
- * @param read_only When the subcription is created, if a read lock (TRUE) should be acquired, or a write lock (FALSE)
+ * @param read_only When the subcription is created, if a read lock (TRUE) should be
+ * acquired, or a write lock (FALSE)
+ *
+ * @return The subscription, or NULL if it doesn't exist (when you didn't want it created). Since
+ * you have a read/write lock on sub, you MAY do whatever you want with it as long as you
+ * hold that lock; once you release the lock, you may no longer operate on sub; if you wish
+ * to hold a reference to sub after releasing the lock, use _sub_(un)ref().
  */
 static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboolean and_create, const gboolean read_only) {
 	if (event_path == NULL) {
 		return NULL;
 	}
+
+	gboolean is_writer = FALSE;
 
 	g_rw_lock_reader_lock(&_events_lock);
 
@@ -118,9 +160,11 @@ static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboole
 
 		// If no handler was found, don't create anything
 		if (handler == NULL) {
-			goto done;
+			g_rw_lock_reader_unlock(&_events_lock);
+			return NULL;
 		}
 
+		is_writer = TRUE;
 		sub = _subscription_create(event_path, handler, extra);
 	}
 
@@ -132,8 +176,11 @@ static evs_client_sub_t* _subscription_get(const gchar *event_path, const gboole
 		}
 	}
 
-done:
-	g_rw_lock_reader_unlock(&_events_lock);
+	if (is_writer) {
+		g_rw_lock_writer_unlock(&_events_lock);
+	} else {
+		g_rw_lock_reader_unlock(&_events_lock);
+	}
 
 	return sub;
 }
@@ -158,20 +205,9 @@ static void _subscription_cleanup(const gchar *event_path) {
 
 		g_hash_table_remove(_events, event_path);
 		g_rw_lock_writer_unlock(&_events_lock);
-
-		g_ptr_array_unref(sub->extra);
-		g_hash_table_unref(sub->clients);
-
-		// It's removed from the events table at this point, so it's safe
-		// to do unlocked operations on it
 		g_rw_lock_writer_unlock(&sub->lock);
 
-		g_rw_lock_clear(&sub->lock);
-		g_free(sub->event_path);
-		g_ptr_array_free(sub->extra, TRUE);
-		g_hash_table_unref(sub->clients);
-
-		g_slice_free1(sizeof(*sub), sub);
+		_sub_unref(sub);
 	} else {
 		g_rw_lock_writer_unlock(&_events_lock);
 		g_rw_lock_writer_unlock(&sub->lock);
@@ -215,14 +251,17 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 
 	g_hash_table_add(sub->clients, client);
 
+	_sub_ref(sub);
+
 	g_rw_lock_writer_unlock(&sub->lock);
 
-	// Give the client a reference to the key of the event he is subscribed to
 	g_ptr_array_add(client->subs, sub);
 
 	qev_client_unlock(client);
 
 	apps_evs_client_subscribe(client, sub->event_path, sub->extra);
+
+	_sub_unref(sub);
 
 	return CLIENT_GOOD;
 }
@@ -339,14 +378,19 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 		return CLIENT_ERROR;
 	}
 
+	_sub_ref(sub);
+
+	// The client lock must be acquired before releasing the sub lock to ensure serializability
+	// of subscribe and unsubscribe events
+	qev_client_lock(client);
 	g_rw_lock_writer_unlock(&sub->lock);
 
-	// The client isn't subscribed anymore, remove from his list
-	qev_client_lock(client);
 	g_ptr_array_remove_fast(client->subs, sub);
 	qev_client_unlock(client);
 
 	apps_evs_client_unsubscribe(client, sub->handler, sub->event_path, sub->extra);
+
+	_sub_unref(sub);
 
 	_subscription_cleanup(event_path);
 
@@ -565,7 +609,7 @@ void evs_client_heartbeat() {
 void evs_client_tick() {
 	_async_message_t *amsg;
 
-	void iter(void(*_write)(client_t*)) {
+	void _iter(void(*_write)(client_t*)) {
 		evs_client_sub_t *sub = _subscription_get(amsg->event_path, FALSE, TRUE);
 
 		if (sub == NULL) {
@@ -586,7 +630,7 @@ void evs_client_tick() {
 	}
 
 	while ((amsg = g_async_queue_try_pop(_messages)) != NULL) {
-		_evs_client_pub_message(amsg, iter);
+		_evs_client_pub_message(amsg, _iter);
 
 		g_free(amsg->event_path);
 		g_string_free(amsg->message, TRUE);

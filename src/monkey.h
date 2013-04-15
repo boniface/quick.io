@@ -2,6 +2,8 @@
  * Contains some extra utility functions added to libraries for quicker access.
  * @file monkey.h
  */
+#ifndef QIO_MONKEY_H
+#define QIO_MONKEY_H
 
 /**
  * Determines if the string ends with suffix.
@@ -16,4 +18,6 @@
 
 #ifdef TESTING
 #include "../test/test_monkey.h"
+#endif
+
 #endif

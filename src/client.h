@@ -5,7 +5,9 @@
  * @file client.h
  */
 
-#pragma once
+#ifndef QIO_CLIENT_H
+#define QIO_CLIENT_H
+
 #include "qio.h"
 
 /**
@@ -323,4 +325,6 @@ APP_EXPORT gboolean client_has(client_t *client, const gchar *key);
 
 #ifdef TESTING
 #include "../test/test_client.h"
+#endif
+
 #endif

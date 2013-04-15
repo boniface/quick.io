@@ -2,7 +2,9 @@
  * Various, useful macros for printing out debug information and handling segfaults while debugging.
  * @file log.h
  */
-#pragma once
+#ifndef QIO_LOG_H
+#define QIO_LOG_H
+
 #include <stdio.h>
 #include "qio.h"
 
@@ -44,3 +46,5 @@ void __gcov_flush();
  * Sets up all the log handlers and such.
  */
 gboolean log_init(void);
+
+#endif

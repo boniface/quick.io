@@ -297,8 +297,8 @@ gboolean conns_client_data(client_t *client) {
 			DEBUG("Message from client");
 			status = client_message(client);
 
-			if (status == CLIENT_WRITE && (status = client_write(client, NULL)) != CLIENT_GOOD) {
-				status = CLIENT_FATAL;
+			if (status == CLIENT_WRITE) {
+				status = client_write(client, NULL);
 			}
 		}
 
@@ -369,8 +369,6 @@ void conns_client_timeout_set(client_t *client) {
 void conns_maintenance_tick() {
 	_conns_client_timeout_clean();
 	_conns_balance();
-
-	// DEBUG("Clients: %u", _clients_len);
 }
 
 void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
@@ -382,7 +380,7 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 
 		if (len == 0) {
 			qev_lock_read_unlock(&_clients_lock);
-			break;
+			return;
 		}
 
 		if (--i > len) {
@@ -393,23 +391,22 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*)) {
 
 		if (client == NULL) {
 			qev_lock_read_unlock(&_clients_lock);
-			continue;
-		}
+		} else {
+			// We're using a reference that doesn't belong to us and unlocking on it.
+			// Without this, a client could be free'd before we use it
+			client_ref(client);
 
-		// We're using a reference that doesn't belong to us and unlocking on it.
-		// Without this, a client could be free'd before we use it
-		client_ref(client);
+			qev_lock_read_unlock(&_clients_lock);
 
-		qev_lock_read_unlock(&_clients_lock);
+			// We're only supposed to give callbacks on active clients, but it's more a soft
+			// requirement than anything 100% certain
+			gboolean should_break = client->state == cstate_running && !_callback(client);
 
-		// We're only supposed to give callbacks on active clients, but it's more a soft
-		// requirement than anything 100% certain
-		gboolean should_break = client->state == cstate_running && !_callback(client);
+			client_unref(client);
 
-		client_unref(client);
-
-		if (should_break) {
-			break;
+			if (should_break) {
+				return;
+			}
 		}
 	}
 }

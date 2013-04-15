@@ -66,10 +66,8 @@ gsize stats_clients() {
 
 gboolean stats_init() {
 	// Since graphite is optional, only emit a warning if anything fails
-	if (option_stats_graphite_address() != NULL) {
-		if (rsocket_connect(option_stats_graphite_address(), option_stats_graphite_port(), &_graphite) == -1) {
-			WARN("Could not lookup graphite address. Graphite will not be used.");
-		}
+	if (option_stats_graphite_address() != NULL && rsocket_connect(option_stats_graphite_address(), option_stats_graphite_port(), &_graphite) == -1) {
+		WARN("Could not lookup graphite address. Graphite will not be used.");
 	}
 
 	_buffer = g_string_sized_new(128);

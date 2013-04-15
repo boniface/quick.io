@@ -581,6 +581,37 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 }
 END_TEST
 
+START_TEST(test_evs_client_subscribe_stupid_path_0) {
+	client_t *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+
+	test_status_eq(evs_client_sub_client("/", client, 0), CLIENT_ERROR, "Rejected");
+
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_subscribe_stupid_path_1) {
+	client_t *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+
+	test_status_eq(evs_client_sub_client("", client, 0), CLIENT_ERROR, "Rejected");
+
+	u_client_free(client);
+}
+END_TEST
+
+
+START_TEST(test_evs_client_subscribe_stupid_path_2) {
+	client_t *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+
+	test_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Rejected");
+
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_evs_client_unsubscribe) {
 	client_t *client = u_client_create(NULL);
 
@@ -1029,6 +1060,9 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_client_subscribe_async_without_callback);
 	tcase_add_test(tc, test_evs_client_subscribe_async_reject);
 	tcase_add_test(tc, test_evs_client_subscribe_async_reject_too_many_subscriptions);
+	tcase_add_test(tc, test_evs_client_subscribe_stupid_path_0);
+	tcase_add_test(tc, test_evs_client_subscribe_stupid_path_1);
+	tcase_add_test(tc, test_evs_client_subscribe_stupid_path_2);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Unsubscribe");

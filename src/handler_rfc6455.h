@@ -3,8 +3,9 @@
  * @see http://tools.ietf.org/html/rfc6455
  * @file handler_rfc6455.h
  */
+#ifndef QIO_HANDLER_RFC6455_H
+#define QIO_HANDLER_RFC6455_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -79,4 +80,6 @@ char* h_rfc6455_close_frame(gsize *frame_len);
 
 #ifdef TESTING
 #include "../test/test_handler_rfc6455.h"
+#endif
+
 #endif

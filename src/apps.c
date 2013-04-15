@@ -72,10 +72,8 @@ static gpointer _app_run(gpointer void_app) {
 
 	g_mutex_lock(&(app->ready));
 
-	if (app->run != NULL) {
-		if (!app->run(on)) {
-			FATAL("App \"%s\" exited with bad status", app->name);
-		}
+	if (app->run != NULL && !app->run(on)) {
+		FATAL("App \"%s\" exited with bad status", app->name);
 	}
 
 	return NULL;
@@ -131,14 +129,14 @@ gboolean apps_run() {
 		free(path);
 
 		// Register all the callbacks the app has
-		for (gsize i = 0; i < G_N_ELEMENTS(callbacks); i++) {
+		for (gsize j = 0; j < G_N_ELEMENTS(callbacks); j++) {
 			// For use with the current callback being registered
 			gpointer curr_cb;
 
-			if (g_module_symbol(module, callbacks[i].name, &curr_cb)) {
+			if (g_module_symbol(module, callbacks[j].name, &curr_cb)) {
 				// Just side-step type check altogether. They're all function
 				// pointers
-				*((app_cb*)(((char*)app) + callbacks[i].offset)) = curr_cb;
+				*((app_cb*)(((char*)app) + callbacks[j].offset)) = curr_cb;
 			}
 		}
 

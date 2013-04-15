@@ -4,7 +4,8 @@
  * For making functions visible to modules.
  * The single macro for making functions visible to loaded modules (aka. apps).
  */
-#pragma once
+#ifndef QIO_MODULE_H
+#define QIO_MODULE_H
 
 /**
  * Make a function visible in a module.
@@ -22,3 +23,5 @@
  * Any function in this group can be called by any app. Be sure to pay attention
  * to any warnings about thread safety.
  */
+
+#endif

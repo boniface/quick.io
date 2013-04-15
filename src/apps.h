@@ -10,8 +10,9 @@
  * is `client`, but that is ref-counted and void* in the apps (in other words, it may not be
  * modified for any reason).
  */
+#ifndef QIO_APPS_H
+#define QIO_APPS_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -255,4 +256,6 @@ void apps_stats_gather(stats_app_append_cb app_append);
 
 #ifdef TESTING
 #include "../test/test_apps.h"
+#endif
+
 #endif

@@ -4,8 +4,9 @@
  *
  * @file handler_flash_policy.h
  */
+#ifndef QIO_HANDLER_FLASH_POLICY_H
+#define QIO_HANDLER_FLASH_POLICY_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -41,4 +42,6 @@ status_t h_flash_policy_handshake(client_t *client);
 
 #ifdef TESTING
 #include "../test/test_handler_flash_policy.h"
+#endif
+
 #endif

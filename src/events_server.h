@@ -2,8 +2,9 @@
  * Handles the routing of events triggered on the client side.
  * @file events_server.h
  */
+#ifndef QIO_EVENTS_SERVER_H
+#define QIO_EVENTS_SERVER_H
 
-#pragma once
 #include "qio.h"
 
 /**
@@ -354,4 +355,6 @@ gboolean evs_server_init();
 
 #ifdef TESTING
 #include "../test/test_events_server.h"
+#endif
+
 #endif

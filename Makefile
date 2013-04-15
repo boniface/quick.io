@@ -12,6 +12,7 @@ deps:
 	pkg-config --exists '$(LIBS_REQUIREMENTS)'
 	@echo '-------- All good. Compiling... --------'
 
+build: export BUILD_DIR = $(BUILD_DIR_RELEASE)
 build:
 	$(MAKE) -C src
 
