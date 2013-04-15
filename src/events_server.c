@@ -268,7 +268,7 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **
 		// Rewind the end pointer to the next '/'
 		// Important: don't allow this to pass the start of the string -- this also changes
 		// the condition for the while loop
-		while (*(--end) != '/' && end > ep) {}
+		while (*(--end) != '/' && end > ep) { ; }
 
 		// If the event is in the form "/some/event/" (trailing slash), this
 		// could be null, so ignore
