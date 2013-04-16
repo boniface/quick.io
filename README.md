@@ -12,7 +12,7 @@ Originally, the project was called Q.IO, named after the omnipotent Q from Star 
 
 ## Requirements
 
-* linux >= 2.6.3
+* linux >= 2.6.30
 * glib >= 2.32
 * openssl >= 1.0
 * doxygen + sphinx (for generating docs)

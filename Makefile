@@ -63,6 +63,11 @@ deb:
 	dpkg-buildpackage -uc -us -tc -Iexample -Itools -Idocs -I.git* -IDoxyfile -I*sublime* -Ivars
 	lintian
 
+rhel-install: release
+	install build_release/quickio /usr/bin/quickio
+	install build_release/quickio.ini /etc/quickio/quickio.ini
+	install rhel/init /etc/init.d/quickio
+
 docs:
 	$(MAKE) -C docs html
 	doxygen
