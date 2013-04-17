@@ -1,4 +1,4 @@
-UTILS_CFLAGS = -fPIC -c -I$(ROOT)/src
+UTILS_CFLAGS = -fPIC -c -I$(ROOT)/src -fvisibility=hidden
 UTILS_DIR = $(ROOT)/lib/utils
 
 $(BUILD_DIR)/http_parser.o: $(UTILS_DIR)/http_parser.c $(UTILS_DIR)/http_parser.h

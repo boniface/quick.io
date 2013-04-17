@@ -12,7 +12,6 @@ deps:
 	pkg-config --exists '$(LIBS_REQUIREMENTS)'
 	@echo '-------- All good. Compiling... --------'
 
-build: export BUILD_DIR = $(BUILD_DIR_RELEASE)
 build:
 	$(MAKE) -C src
 
@@ -60,13 +59,8 @@ test-build: deps
 	$(MAKE) -C src
 
 deb:
-	dpkg-buildpackage -uc -us -tc -Iexample -Itools -Idocs -I.git* -IDoxyfile -I*sublime* -Ivars
+	dpkg-buildpackage -uc -us -tc -I.git* -I*sublime* -Ivars
 	lintian
-
-rhel-install: release
-	install build_release/quickio /usr/bin/quickio
-	install build_release/quickio.ini /etc/quickio/quickio.ini
-	install rhel/init /etc/init.d/quickio
 
 docs:
 	$(MAKE) -C docs html
