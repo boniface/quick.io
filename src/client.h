@@ -225,7 +225,7 @@ struct client_s {
 	/**
 	 * The number of references the client has.
 	 */
-	gsize ref_count;
+	guint ref_count;
 };
 
 /**

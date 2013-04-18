@@ -200,11 +200,11 @@ status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
 }
 
 void client_ref(client_t *client) {
-	g_atomic_pointer_add(&(client->ref_count), 1);
+	g_atomic_int_inc(&client->ref_count);
 }
 
 void client_unref(client_t *client) {
-	if (g_atomic_pointer_add(&(client->ref_count), -1) == 1) {
+	if (g_atomic_int_dec_and_test(&client->ref_count)) {
 		// Allow the close handler to access client data before freeing
 		GHashTable *data = client->external_data;
 
