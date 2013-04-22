@@ -311,16 +311,24 @@ void qev_close(QEV_CLIENT_T *client) {
 }
 
 void qev_client_lock(QEV_CLIENT_T *client) {
-	while (!__sync_bool_compare_and_swap(&QEV_CSLOT(client, _lock), 0, 1)) {
+	if (g_atomic_pointer_get(&QEV_CSLOT(client, _locking_thread)) == g_thread_self()) {
+		g_atomic_int_inc(&QEV_CSLOT(client, _lock));
+		return;
+	}
+
+	while (!g_atomic_int_compare_and_exchange(&QEV_CSLOT(client, _lock), 0, 1)) {
 		// Use yield: you're allowed to do sys calls on clients while locked,
 		// so another syscall won't hurt too bad
 		g_thread_yield();
 		QEV_STATS_INC(qev_lock_client_spin);
 	}
+
+	g_atomic_pointer_set(&QEV_CSLOT(client, _locking_thread), g_thread_self());
 }
 
 void qev_client_unlock(QEV_CLIENT_T *client) {
-	__sync_bool_compare_and_swap(&QEV_CSLOT(client, _lock), 1, 0);
+	g_atomic_pointer_set(&QEV_CSLOT(client, _locking_thread), NULL);
+	g_atomic_int_add(&QEV_CSLOT(client, _lock), -1);
 }
 
 void qev_debug_flush() {

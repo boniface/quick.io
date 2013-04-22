@@ -95,10 +95,14 @@ struct qev_client {
 	void *ssl_ctx;
 
 	/**
-	 * For acquiring a lock on a client. Since only 1 thing can have the lock
-	 * at once, we're only using a char.
+	 * For acquiring a lock on a client.
 	 */
-	char _lock;
+	guint _lock;
+
+	/**
+	 * For the re-entrant part of the lock: holds which thread has the lock
+	 */
+	void *_locking_thread;
 
 	/**
 	 * For assuring that only 1 thread will ever issue a read event on a client
@@ -238,7 +242,9 @@ void qev_close(QEV_CLIENT_T *client);
  * shouldn't use this for things like long-block IO operations, or other
  * things that take a while.
  *
- * @client The client to acquire the lock on.
+ * @note This is a reentrant lock.
+ *
+ * @param client The client to acquire the lock on.
  */
 void qev_client_lock(QEV_CLIENT_T *client);
 

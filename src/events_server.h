@@ -149,7 +149,7 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  *
  * @return CLIENT_GOOD Everything is good, send the callback as normal.
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
- * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
+ * @return CLIENT_ERROR if the subscription should be rejected
  */
 typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
 
