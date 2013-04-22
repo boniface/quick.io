@@ -14,6 +14,7 @@ Clients are built around a few, simple principles:
 * Clients can be killed at any moment by the server, but they are allowed to reconnect and reestablish themselves.
 * Clients can be told to move to a different server; they must follow this instruction.
 * Clients are responsible for maintaining their own connection to the server.
+* Until told otherwise by the server, the client should assume an operation WILL succeed. For example, when subscribing to an event, the client should assume that the subscription will succeed and only fail the subscription if the server rejects it.
 
 Implementing a Client
 =====================
@@ -66,7 +67,7 @@ The best method for implementing a heartbeat is:
 3. Every time the client receives a message from the server, it should reset its timer.
 
 4. If there has been no activity within 65 seconds, the client should send a `/qio/ping` to the server, with a callback, to verify the server is still there.
-	
+
 	1. If the server sends the callback, restart the timer.
 	2. If the socket is broken, reconnect logic should kick in.
 	3. If using a websocket, the browser should fire off a `close` event on the socket, and reconnect logic should kick in.
