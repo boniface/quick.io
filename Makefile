@@ -5,7 +5,6 @@ include Makefile.mk
 all: debug
 
 run: debug
-	$(MAKE) -C ../quick.io-ihr/
 	$(BUILD_DIR_DEBUG)/$(BINARY)
 
 deps:
