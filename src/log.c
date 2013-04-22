@@ -52,7 +52,7 @@ static gboolean _reload_log_file() {
 			return FALSE;
 		}
 
-		setvbuf(_log_file, (char *) NULL, _IOLBF, 0);
+		setvbuf(_log_file, (gchar*)NULL, _IOLBF, 0);
 	#endif
 
 	return TRUE;

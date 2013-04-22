@@ -215,6 +215,10 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 	return 0;
 }
 
+qev_socket_t qev_listen_udp(const char *ip_address, const uint16_t port) {
+	return qev_sys_listen_udp(ip_address, port);
+}
+
 void qev_run() {
 	static int ticks = 0;
 
@@ -268,6 +272,18 @@ void qev_client_read(QEV_CLIENT_T *client) {
 		} while (__sync_sub_and_fetch(&QEV_CSLOT(client, _read_operations), 1) > 0 && !(__sync_fetch_and_or(&QEV_CSLOT(client, _flags), 0) & QEV_CMASK_CLOSING));
 	}
 }
+
+#ifdef QEV_CLIENT_READ_UDP_FN
+	void qev_client_read_udp(QEV_CLIENT_T *client) {
+		int len;
+		char buff[QEV_MAX_UDP_SIZE];
+
+		while ((len = qev_read(client, buff, sizeof(buff)-1)) > 0) {
+			buff[len] = '\0';
+			QEV_CLIENT_READ_UDP_FN(buff, len);
+		}
+	}
+#endif
 
 void qev_timer_fire(_timer_t *timer) {
 	if (timer->flags & QEV_TIMER_EXCLUSIVE) {

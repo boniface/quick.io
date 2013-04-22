@@ -226,6 +226,28 @@ START_TEST(test_evs_client_format_message_not_subscribed_callback) {
 }
 END_TEST
 
+START_TEST(test_evs_client_format_message_null_data) {
+	GString *buffer = g_string_sized_new(1);
+
+	path_extra_t *extra = NULL;
+	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
+	test(handler != NULL, "Got handler");
+
+	status_t status = evs_client_format_message(handler, 123, 0, extra, d_plain, NULL, buffer);
+
+	test_status_eq(status, CLIENT_GOOD, "Got message");
+	test_str_eq(buffer->str, "/qio/callback/123:0:plain=", "Message formatted correctly");
+
+	status = evs_client_format_message(handler, 123, 0, extra, d_plain, "", buffer);
+
+	test_status_eq(status, CLIENT_GOOD, "Got message");
+	test_str_eq(buffer->str, "/qio/callback/123:0:plain=", "Message formatted correctly");
+
+	g_ptr_array_unref(extra);
+	g_string_free(buffer, TRUE);
+}
+END_TEST
+
 START_TEST(test_evs_client_ready) {
 	client_t *client = u_client_create(NULL);
 	g_ptr_array_free(client->subs, TRUE);
@@ -1029,6 +1051,7 @@ Suite* events_client_suite() {
 	tcase_add_test(tc, test_evs_client_format_message_with_server_callback);
 	tcase_add_test(tc, test_evs_client_format_message_not_subscribed);
 	tcase_add_test(tc, test_evs_client_format_message_not_subscribed_callback);
+	tcase_add_test(tc, test_evs_client_format_message_null_data);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Client Ready");

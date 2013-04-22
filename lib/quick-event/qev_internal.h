@@ -43,20 +43,30 @@
 #define QEV_ECDH_CURVE NID_X9_62_prime256v1
 
 /**
+ * The max size for a UDP message: anything above this is stupidity.
+ * @see http://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet
+ */
+#define QEV_MAX_UDP_SIZE 8192
+
+/**
  * The part of the bitmask identifying an "listening" client type,
  * meaning that this client accepts connections on its socket.
  */
 #define QEV_CMASK_LISTENING 0b00000001
 
 /**
+ * The part of the bitmask identifying a UDP-bound socket.
+ */
+#define QEV_CMASK_UDP 0b00000010
+/**
  * The part of the bitmask identifying an SSL client
  */
-#define QEV_CMASK_SSL 0b00000010
+#define QEV_CMASK_SSL 0b00000100
 
 /**
  * Indicates that a client is still shaking hands
  */
-#define QEV_CMASK_SSL_HANDSHAKING 0b00000100
+#define QEV_CMASK_SSL_HANDSHAKING 0b00001000
 
 /**
  * Indicates that a client is in the process of being closed
@@ -121,12 +131,29 @@ typedef struct {
 qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client);
 
 /**
+ * Listen on a ip address and port (system-specific) for UDP messages.
+ *
+ * @param ip_address The IP address to listen on
+ * @param port The port to listen on
+ *
+ * @return The underlying socket that was created.
+ */
+qev_socket_t qev_sys_listen_udp(const char *ip_address, const uint16_t port);
+
+/**
  * Tell qev that a client is read to be read. This function synchronizes itself
  * across threads.
  *
  * @param client The client ready for reading.
  */
 void qev_client_read(QEV_CLIENT_T *client);
+
+/**
+ * Tell qev that a UDP socket has message(s) waiting.
+ *
+ * @param client The socket with messages.
+ */
+void qev_client_read_udp(QEV_CLIENT_T *client);
 
 /**
  * Fires a timer, taking into account any necessary flags.

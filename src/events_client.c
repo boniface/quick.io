@@ -304,7 +304,12 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 		g_string_free(ep, FALSE);
 	}
 
-	g_string_printf(buffer, F_EVENT, final_path, server_callback, DATA_TYPE(type), data);
+	g_string_printf(buffer, F_EVENT,
+		final_path,
+		server_callback,
+		DATA_TYPE(type),
+		data == NULL ? "" : data
+	);
 
 	if (path != NULL) {
 		*path = final_path;
@@ -326,13 +331,18 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(
 	gchar *msgs[h_len];
 	gsize msglen[h_len];
 
-	msgs[h_rfc6455] = h_rfc6455_prepare_frame(
-		amsg->message_opcode,
-		FALSE,
-		amsg->message->str,
-		amsg->message->len,
-		&msglen[h_rfc6455]
-	);
+	#define X(handler) \
+		msgs[handler] = handler## _prepare_frame( \
+			TRUE, \
+			amsg->message_opcode, \
+			FALSE, \
+			amsg->message->str, \
+			amsg->message->len, \
+			&msglen[handler] \
+		);
+
+		HANDLERS
+	#undef X
 
 	DEBUG("Publishing message: %s", amsg->message->str);
 

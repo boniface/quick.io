@@ -266,7 +266,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 	return TRUE;
 }
 
-gboolean option_parse_args(int argc, char *argv[], GError **error) {
+gboolean option_parse_args(int argc, gchar *argv[], GError **error) {
 	gboolean success = TRUE;
 
 	GOptionContext *context = g_option_context_new("");
@@ -282,7 +282,7 @@ gboolean option_parse_args(int argc, char *argv[], GError **error) {
 	}
 
 	// Resolve the absolute path to the configuration file
-	char path[PATH_MAX+1];
+	gchar path[PATH_MAX+1];
 	memset(&path, 0, sizeof(path));
 	if (realpath(_config_file, path) == NULL) {
 		CRITICAL("Could not locate configuration file: %s", _config_file);

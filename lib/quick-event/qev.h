@@ -50,10 +50,12 @@
 	#define QEV_LISTEN_BACKLOG 1000
 #endif
 
+#ifndef QEV_MAX_EVENTS
 /**
  * The maximum number of events that should be asked for from the OS
  */
 #define QEV_MAX_EVENTS 100
+#endif
 
 /**
  * Indicates that a timer MUST be exclusive to a single thread
@@ -177,6 +179,17 @@ int qev_listen(const char *ip_address, const uint16_t port);
  * @return -1 on error.
  */
 int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert_path, const char *key_path);
+
+/**
+ * Instruct quick event to listen on on a UDP socket for messages.
+ *
+ * @param ip_address The IP address to listen on
+ * @param port The port to listen on
+ *
+ * @return 0 on success.
+ * @return -1 on error.
+ */
+int qev_listen_udp(const char *ip_address, const uint16_t port);
 
 /**
  * Read data from the socket.

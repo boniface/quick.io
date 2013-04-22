@@ -170,7 +170,7 @@ APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, pa
  * @param handler The event handler to publish to.
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
  * @param type The type of the data (json, plain, etc). d_plain if none.
- * @param data The actual data to be sent. NULL if none.
+ * @param data The actual data to be sent. NULL/"" if none.
  *
  * @attention IS thread safe.
  */
@@ -201,7 +201,7 @@ APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *han
  * wants a callback. 0 if no callback is wanted.
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
  * @param type The type of the data (json, plain, etc).  d_plain if none.
- * @param data The actual data to be sent. "" (empty string) if none.
+ * @param data The actual data to be sent. "" (empty string) or NULL if none.
  * @param buffer Where the formatted message will be written. MUST NOT be NULL.
  *
  * @return CLIENT_GOOD If the message was prepared and formatted successfully.

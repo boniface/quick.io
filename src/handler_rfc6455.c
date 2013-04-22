@@ -8,13 +8,7 @@
 #define VERSION_KEY "Sec-WebSocket-Version"
 #define CHALLENGE_KEY "Sec-WebSocket-Key"
 
-// Response headers
-#define HEADERS "HTTP/1.1 101 Switching Protocols\r\n" \
-	"Upgrade: websocket\r\n" \
-	"Connection: Upgrade\r\n" \
-	"Access-Control-Allow-Origin: *\r\n" \
-	"Sec-WebSocket-Accept: %s\r\n\r\n"
-#define HEADERS_LEN sizeof(HEADERS)
+#define HEADERS RFC6455_HEADERS "\r\n"
 
 // Opcodes that can be used
 #define OPCODE 0x0F
@@ -58,11 +52,25 @@
 #define CLOSE_FRAME ("\x88" "\x00")
 
 /**
+ * Starts
+ */
+static status_t _h_rfc6455_start(client_t *client) {
+	int header_len;
+	status_t status = h_rfc6455_read_header(client, &header_len);
+
+	if (status != CLIENT_GOOD) {
+		return status;
+	}
+
+	return h_rfc6455_read(client, header_len);
+}
+
+/**
  * Read masked text from the socket buffer.
  */
-static status_t _h_rfc6455_read(client_t *client, int header_len) {
+status_t h_rfc6455_read(client_t *client, int header_len) {
 	message_t *message = client->message;
-	char *sbuff = message->socket_buffer->str;
+	gchar *sbuff = message->socket_buffer->str;
 
 	// Advance the buffer past the header, we can't read it
 	sbuff += header_len;
@@ -73,7 +81,7 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	gsize remaining = MIN(message->socket_buffer->len - header_len, message->remaining_length);
 
 	// Transform the 32bit int to a char array for simpler use (read: offsets)
-	char *mask = (char*)(&message->mask);
+	gchar *mask = (gchar*)(&message->mask);
 
 	// The mask location depends on how much we have already read
 	gsize position = message->buffer->len;
@@ -87,7 +95,7 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 
 	gchar *ob = message->buffer->str;
 	for (gsize i = 0; i < remaining; i++, position++) {
-		ob[position] = (char)(*(sbuff + i) ^ mask[position & 3]);
+		ob[position] = (gchar)(*(sbuff + i) ^ mask[position & 3]);
 	}
 
 	// Update the current command's mask and length for any future reads
@@ -105,30 +113,26 @@ static status_t _h_rfc6455_read(client_t *client, int header_len) {
 	return CLIENT_GOOD;
 }
 
-/**
- * Start reading from a masked buffer, and get all the info
- * needed so that _h_rfc6455_read() can run.
- */
-static status_t _h_rfc6455_start(client_t *client) {
+status_t h_rfc6455_read_header(client_t *client, int *header_len) {
 	GString *sb = client->message->socket_buffer;
-	char *buff = sb->str;
+	gchar *buff = sb->str;
 
 	// The first 7 bits of the second byte tell us the length
 	// You can't make this stuff up :(
 	guint16 len = *(buff + 1) & SECOND_BYTE;
 
 	// The 32bit mask data: position dependent based on the payload len
-	char *mask = NULL;
+	gchar *mask = NULL;
 
 	// The length of the header for this message
-	guint16 header_len = 0;
+	guint16 _header_len = 0;
 
 	if (len <= PAYLOAD_LEN_SHORT) {
 		// Length is good, now all we need is the mask (right after the headers)
 		mask = buff + HEADER_LEN;
 
 		// Skip the headers and the mask
-		header_len = HEADER_LEN + MASK_LEN;
+		_header_len = HEADER_LEN + MASK_LEN;
 	} else if (len == PAYLOAD_LEN_LONG) {
 		// We haven't finished reading the extended header from the socket
 		if (sb->len < EXTENDED_HEADER_LEN) {
@@ -142,13 +146,13 @@ static status_t _h_rfc6455_start(client_t *client) {
 		mask = buff + EXTENDED_HEADER_LEN;
 
 		// Skip the headers, the extended length, and the mask
-		header_len = EXTENDED_HEADER_LEN + MASK_LEN;
+		_header_len = EXTENDED_HEADER_LEN + MASK_LEN;
 	} else {
 		len = option_max_message_size() + 1;
 	}
 
 	// Advance the buffer to the beginning of the message
-	buff += header_len;
+	buff += _header_len;
 
 	// Don't accept the incoming data if it's too long
 	if (len > option_max_message_size()) {
@@ -156,7 +160,7 @@ static status_t _h_rfc6455_start(client_t *client) {
 	}
 
 	// Wait on more information if we didn't completely read the header
-	if (sb->len < header_len) {
+	if (sb->len < _header_len) {
 		return CLIENT_WAIT;
 	}
 
@@ -166,27 +170,28 @@ static status_t _h_rfc6455_start(client_t *client) {
 	// Pass on the mask as an int to make it easier for memory management
 	client->message->mask = *((guint32*)mask);
 
-	return _h_rfc6455_read(client, header_len);
+	*header_len = _header_len;
+
+	return CLIENT_GOOD;
 }
 
 gboolean h_rfc6455_handles(gchar *path, GHashTable *headers) {
-	const char *id = g_hash_table_lookup(headers, VERSION_KEY);
-	return id != NULL && strncmp(id, "13", 2) == 0;
+	const gchar *id = g_hash_table_lookup(headers, VERSION_KEY);
+	return (id != NULL && strncmp(id, "13", 2) == 0) ? 1 : -1;
 }
 
-status_t h_rfc6455_handshake(client_t *client, GHashTable *headers) {
-	const char *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
-
+gchar* h_rfc6455_header_key(client_t *client, GHashTable *headers) {
+	const gchar *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
 	if (key == NULL) {
-		return CLIENT_FATAL;
+		return NULL;
 	}
 
 	// Build up the concated key, ready for hashing for the return header
 	guchar out[strlen(key) + HASH_KEY_LEN];
-	strcpy((char*)out, key);
-	strcat((char*)out, HASH_KEY);
+	strcpy((gchar*)out, key);
+	strcat((gchar*)out, HASH_KEY);
 
-	gsize size = strlen((char*)out);
+	gsize size = strlen((gchar*)out);
 	GChecksum *sum = g_checksum_new(G_CHECKSUM_SHA1);
 
 	// Do some hard-core hashing, then free it all
@@ -195,14 +200,23 @@ status_t h_rfc6455_handshake(client_t *client, GHashTable *headers) {
 	gchar *b64 = g_base64_encode(out, size);
 	g_checksum_free(sum);
 
-	g_string_printf(client->message->buffer, HEADERS, b64);
-	g_free(b64);
+	return b64;
+}
+
+status_t h_rfc6455_handshake(client_t *client, int flags, GHashTable *headers) {
+	gchar *key = h_rfc6455_header_key(client, headers);
+	if (key == NULL) {
+		return CLIENT_FATAL;
+	}
+
+	g_string_printf(client->message->buffer, HEADERS, key);
+	g_free(key);
 
 	return CLIENT_WRITE;
 }
 
-char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, guint64 payload_len, gsize *frame_len) {
-	char *frame;
+gchar* h_rfc6455_prepare_frame(const gboolean broadcast, const opcode_t type, const gboolean masked, const gchar *payload, const guint64 payload_len, gsize *frame_len) {
+	gchar *frame;
 
 	// If masked, then start the header off with room from the mask
 	guint8 header_size = masked ? MASK_LEN : 0;
@@ -253,8 +267,8 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 			*frame |= OP_PONG;
 			break;
 
-		default:
 		case op_text:
+		default:
 			*frame |= OP_TEXT;
 			break;
 	}
@@ -265,13 +279,13 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 
 		// The mask can just be a random 32bit int, then we trick it into some bytes
 		gint32 randmask = g_random_int();
-		char *mask = (char*)&randmask;
+		gchar *mask = (gchar*)&randmask;
 
 		// The mask comes directly after the header
 		memcpy((frame + 2), mask, MASK_LEN);
 
 		// The start of the encoded bytes
-		char *start = frame + header_size;
+		gchar *start = frame + header_size;
 
 		for (guint64 i = 0; i < payload_len; i++) {
 			*(start + i) = *(payload + i) ^ *(mask + (i % MASK_LEN));
@@ -283,8 +297,9 @@ char* h_rfc6455_prepare_frame(opcode_t type, gboolean masked, gchar *payload, gu
 	return frame;
 }
 
-char* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
+gchar* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
 	return h_rfc6455_prepare_frame(
+		FALSE,
 		message->type,
 		FALSE,
 		message->buffer->str,
@@ -295,7 +310,7 @@ char* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len)
 
 status_t h_rfc6455_continue(client_t *client) {
 	// There are no headers when continuing
-	status_t status = _h_rfc6455_read(client, 0);
+	status_t status = h_rfc6455_read(client, 0);
 
 	if (status != CLIENT_GOOD) {
 		return status;
@@ -316,7 +331,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 		return CLIENT_WAIT;
 	}
 
-	char *buff = client->message->socket_buffer->str;
+	gchar *buff = client->message->socket_buffer->str;
 
 	// If data came from the client unmasked, then that's wrong. Abort.
 	// There MUST always be at least the first byte, so we don't need
@@ -328,7 +343,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 	}
 
 	// Remove everything but the OPCODE from the byte
-	char opcode = *buff & OPCODE;
+	gchar opcode = *buff & OPCODE;
 
 	if (opcode == OP_TEXT) {
 		client->message->type = op_text;
@@ -367,9 +382,9 @@ status_t h_rfc6455_incoming(client_t *client) {
 	return CLIENT_FATAL;
 }
 
-char* h_rfc6455_close_frame(gsize *frame_len) {
+gchar* h_rfc6455_close_frame(gsize *frame_len) {
 	*frame_len = sizeof(CLOSE_FRAME)-1;
-	return (char*)CLOSE_FRAME;
+	return (gchar*)CLOSE_FRAME;
 }
 
 #ifdef TESTING

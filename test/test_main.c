@@ -60,7 +60,7 @@ START_TEST(test_main_timeout) {
 	test(sock, "Connection established");
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 
@@ -85,7 +85,7 @@ START_TEST(test_main_ping) {
 
 	// Time to cheat: there's an rfc6455 constructor that works, so use that for framing
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 
 	send(sock, frame, frame_len, MSG_NOSIGNAL);
 	free(frame);
@@ -141,7 +141,7 @@ START_TEST(test_main_two_messages) {
 	test(sock, "Connection established");
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 
 	GString *f = g_string_new_len(frame, frame_len);
 	g_string_append_len(f, frame, frame_len);
@@ -179,7 +179,7 @@ START_TEST(test_main_close_partial_message) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
@@ -251,7 +251,7 @@ START_TEST(test_main_two_partial_messages) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 
 	gsize loc = 0;
 	send(sock, frame, frame_len - 10, MSG_NOSIGNAL);
@@ -299,7 +299,7 @@ START_TEST(test_main_invalid_subscription) {
 	test(sock, "Connection established");
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, TRUE, INVALID_SUBSCRIPTION, sizeof(INVALID_SUBSCRIPTION)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, INVALID_SUBSCRIPTION, sizeof(INVALID_SUBSCRIPTION)-1, &frame_len);
 	test_int32_eq(send(sock, frame, frame_len, MSG_NOSIGNAL), frame_len, "Subscription sent");
 	free(frame);
 
@@ -308,7 +308,7 @@ START_TEST(test_main_invalid_subscription) {
 	// Make sure the connection isn't closed: send multiple PINGS
 	for (int i = 0; i < 3; i++) {
 		frame_len = 0;
-		frame = h_rfc6455_prepare_frame(op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+		frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
 		test_int32_eq(send(sock, frame, frame_len, MSG_NOSIGNAL), frame_len, "Subscription sent");
 		free(frame);
 		usleep(MS_TO_USEC(TEST_EPOLL_WAIT));

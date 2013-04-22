@@ -5,6 +5,7 @@ include Makefile.mk
 all: debug
 
 run: debug
+	$(MAKE) -C ../quick.io-ihr/
 	$(BUILD_DIR_DEBUG)/$(BINARY)
 
 deps:
@@ -61,6 +62,12 @@ test-build: deps
 deb:
 	dpkg-buildpackage -uc -us -tc -I.git* -I*sublime* -Ivars
 	lintian
+
+install: release
+	install -o root -g root build_release/quickio /usr/bin/
+	mkdir /etc/quickio
+	install -o root -g root build_release/quickio.ini /etc/quickio/
+	install -o root -g root init.d /etc/init.d/quickio
 
 docs:
 	$(MAKE) -C docs html

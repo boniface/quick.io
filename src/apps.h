@@ -56,7 +56,7 @@ typedef void (*app_cb_client)(client_t *client);
  * @param event_path The path of the event that was subscribed to.
  * @param extra Any extra parameters that came in with the subscription
  */
-typedef void (*on_subscribe_cb)(const client_t *client, const char *event_path, const path_extra_t *extra);
+typedef void (*on_subscribe_cb)(const client_t *client, const gchar *event_path, const path_extra_t *extra);
 
 /**
  * For closured "on" functions.
@@ -245,7 +245,7 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
  * @param event_path The event path the client dropped.
  * @param extra The extra path segments.
  */
-void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const char *event_path, path_extra_t *extra);
+void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const gchar *event_path, path_extra_t *extra);
 
 /**
  * Triggers the stats callback in all the apps.

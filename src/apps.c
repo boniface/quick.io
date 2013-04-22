@@ -18,7 +18,7 @@ typedef struct _app_callbacks_s {
 	/**
 	 * The name of the function in the module
 	 */
-	char *name;
+	gchar *name;
 } _app_callbacks_t;
 
 static _app_callbacks_t callbacks[] = {
@@ -123,7 +123,7 @@ gboolean apps_run() {
 		dirname(path);
 		gchar abspath[PATH_MAX];
 		// Silence compiler warnings
-		char *unused __attribute__((unused));
+		gchar *unused __attribute__((unused));
 		unused = realpath(path, abspath);
 
 		free(path);
@@ -136,7 +136,7 @@ gboolean apps_run() {
 			if (g_module_symbol(module, callbacks[j].name, &curr_cb)) {
 				// Just side-step type check altogether. They're all function
 				// pointers
-				*((app_cb*)(((char*)app) + callbacks[j].offset)) = curr_cb;
+				*((app_cb*)(((gchar*)app) + callbacks[j].offset)) = curr_cb;
 			}
 		}
 

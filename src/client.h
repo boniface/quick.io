@@ -67,6 +67,12 @@
 #define CLIENT_WAIT (1 << 5)
 
 /**
+ * All of the handlers for different client types
+ */
+#define HANDLERS \
+ 	X(h_rfc6455)
+
+/**
  * The opcodes that we support.
  */
 typedef enum opcode {
@@ -119,10 +125,9 @@ typedef struct message_s {
  * The websocket handlers.
  */
 enum handlers {
-	/**
-	 * @see handler_6455.h
-	 */
-	h_rfc6455,
+	#define X(handler) handler,
+		HANDLERS
+	#undef X
 
 	/**
 	 * The number of handlers that exist.
@@ -270,7 +275,7 @@ void client_write_close(client_t *client);
  * @param frame The string that should be sent.
  * @param frame_len The length of the string.
  */
-status_t client_write_frame(client_t *client, char *frame, gsize frame_len);
+status_t client_write_frame(client_t *client, gchar *frame, gsize frame_len);
 
 /**
  * Increment the reference count on the client.

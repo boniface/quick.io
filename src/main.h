@@ -16,7 +16,7 @@
 /**
  * Only available when testing: inits the server.
  */
-int init_main(int argc, char *argv[]);
+int init_main(int argc, gchar *argv[]);
 #endif
 
 #ifdef TESTING

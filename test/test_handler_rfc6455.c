@@ -91,7 +91,7 @@ START_TEST(test_h_rfc6455_handshake_no_key) {
 	g_hash_table_insert(headers, "Upgrade", "websocket");
 	g_hash_table_insert(headers, "Connection", "Upgrade");
 
-	test_status_eq(h_rfc6455_handshake(client, headers), CLIENT_FATAL, "Client not supported");
+	test_status_eq(h_rfc6455_handshake(client, 0, headers), CLIENT_FATAL, "Client not supported");
 
 	g_hash_table_unref(headers);
 	u_client_free(client);
@@ -351,7 +351,7 @@ END_TEST
 
 START_TEST(test_h_rfc6455_frame_short) {
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame length correct");
 	test_bin_eq(frame, RFC6455_FRAMED_SHORT, sizeof(RFC6455_FRAMED_SHORT)-1, "Frame contains header");
@@ -362,7 +362,7 @@ END_TEST
 
 START_TEST(test_h_rfc6455_frame_long) {
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, FALSE, MESSAGE_LONG, sizeof(MESSAGE_LONG)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE, MESSAGE_LONG, sizeof(MESSAGE_LONG)-1, &frame_len);
 
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_LONG)-1, "Frame length correct");
 	test_bin_eq(frame, RFC6455_FRAMED_LONG, sizeof(RFC6455_FRAMED_LONG)-1, "Frame contains header");
@@ -373,7 +373,7 @@ END_TEST
 
 START_TEST(test_h_rfc6455_frame_oversized) {
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_text, FALSE, "", RFC6455_OVERSIZED_LEN, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE, "", RFC6455_OVERSIZED_LEN, &frame_len);
 
 	test_int32_eq(frame_len, 0, "Frame length correct");
 	test_ptr_eq(frame, NULL, "Frame is null");
@@ -384,7 +384,7 @@ END_TEST
 
 START_TEST(test_h_rfc6455_pong) {
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(op_pong, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_pong, FALSE, MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1, &frame_len);
 
 	test_int32_eq(frame_len, sizeof(RFC6455_FRAMED_PONG)-1, "Frame length correct");
 	test_bin_eq(frame, RFC6455_FRAMED_PONG, sizeof(RFC6455_FRAMED_PONG)-1, "Pong frame contains pong");

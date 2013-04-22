@@ -28,12 +28,14 @@ status_t client_handshake(client_t *client) {
 	// And we have to keep state while it's parsing up everything so we can
 	// populate everything
 
-	gchar *headers_dup = g_strndup(buffer->str, buffer->len);
+#warning Don't create new dictionary: thread local faster?
+
+	gchar *headers_str = buffer->str;
 	GHashTable *headers = g_hash_table_new(g_str_hash, g_str_equal);
 	gchar *path = NULL;
 
-	int on_path(http_parser *parser, const char *at, gsize len) {
-		path = headers_dup + ((gsize)at - (gsize)(buffer->str));
+	int on_path(http_parser *parser, const gchar *at, gsize len) {
+		path = buffer->str + ((gsize)at - (gsize)(buffer->str));
 		*(path + len) = '\0';
 		return 0;
 	}
@@ -42,16 +44,16 @@ status_t client_handshake(client_t *client) {
 	gchar *h_key;
 	gsize h_len = 0;
 
-	int on_key(http_parser *parser, const char *at, gsize len) {
+	int on_key(http_parser *parser, const gchar *at, gsize len) {
 		h_key = (gchar*)at;
 		h_len = len;
 		return 0;
 	}
 
-	int on_value(http_parser *parser, const char *at, gsize len) {
+	int on_value(http_parser *parser, const gchar *at, gsize len) {
 		if (h_len > 0) {
-			gchar *header = headers_dup + ((gsize)h_key - (gsize)(buffer->str));
-			gchar *value = headers_dup + ((gsize)at - (gsize)(buffer->str));
+			gchar *header = headers_str + ((gsize)h_key - (gsize)(buffer->str));
+			gchar *value = headers_str + ((gsize)at - (gsize)(buffer->str));
 			*(header + h_len) = '\0';
 			*(value + len) = '\0';
 
@@ -75,13 +77,14 @@ status_t client_handshake(client_t *client) {
 
 	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == buffer->len) {
 		client->last_receive = qev_time;
+		int flags = 0;
 
 		// If the path is not /qio, it's not for us
 		if (path == NULL || g_strstr_len(path, -1, QIO_PATH) == NULL) {
 			status = CLIENT_FATAL;
-		} else if (h_rfc6455_handles(path, headers)) {
+		} else if ((flags = h_rfc6455_handles(path, headers)) != -1) {
 			client->handler = h_rfc6455;
-			status = h_rfc6455_handshake(client, headers);
+			status = h_rfc6455_handshake(client, flags, headers);
 		} else {
 			// No handler was found, and the headers were parsed OK, so
 			// we just can't support this client
@@ -93,7 +96,6 @@ status_t client_handshake(client_t *client) {
 		status = CLIENT_FATAL;
 	}
 
-	g_free(headers_dup);
 	g_hash_table_unref(headers);
 
 	// We read the header, no matter what was returned, it's our job to clear it
@@ -107,21 +109,31 @@ status_t client_message(client_t* client) {
 
 	if (client->message->remaining_length) {
 		switch (client->handler) {
-			case h_rfc6455:
-				status = h_rfc6455_continue(client);
-				break;
+			#define X(handler) \
+				case handler: \
+					status = handler## _continue(client); \
+					break;
 
-			default:
+				HANDLERS
+			#undef X
+
+			case h_len:
+			case h_none:
 				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
 	} else {
 		switch (client->handler) {
-			case h_rfc6455:
-				status = h_rfc6455_incoming(client);
-				break;
+			#define X(handler) \
+				case handler: \
+					status = handler## _incoming(client); \
+					break;
 
-			default:
+				HANDLERS
+			#undef X
+
+			case h_len:
+			case h_none:
 				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
@@ -146,17 +158,22 @@ status_t client_write(client_t *client, message_t *message) {
 	}
 
 	// The actual frame to send to the client
-	char *frame;
+	gchar *frame;
 
 	// The amount of data to write to the socket
 	gsize frame_len = 0;
 
 	switch (client->handler) {
-		case h_rfc6455:
-			frame = h_rfc6455_prepare_frame_from_message(message, &frame_len);
-			break;
+		#define X(handler) \
+			case handler: \
+				frame = handler## _prepare_frame_from_message(message, &frame_len); \
+				break;
 
-		default:
+			HANDLERS
+		#undef X
+
+		case h_len:
+		case h_none:
 			return CLIENT_FATAL;
 	}
 
@@ -172,22 +189,27 @@ status_t client_write(client_t *client, message_t *message) {
 }
 
 void client_write_close(client_t *client) {
-	char *frame;
+	gchar *frame;
 	gsize frame_len = 0;
 
 	switch (client->handler) {
-		case h_rfc6455:
-			frame = h_rfc6455_close_frame(&frame_len);
-			break;
+		#define X(handler) \
+			case handler: \
+				frame = handler## _close_frame(&frame_len); \
+				break;
 
-		default:
+			HANDLERS
+		#undef X
+
+		case h_len:
+		case h_none:
 			return;
 	}
 
 	client_write_frame(client, frame, frame_len);
 }
 
-status_t client_write_frame(client_t *client, char *frame, gsize frame_len) {
+status_t client_write_frame(client_t *client, gchar *frame, gsize frame_len) {
 	// Frames MUST ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right
 	if (frame_len > 0 && qev_write(client, frame, frame_len) == (gssize)frame_len) {

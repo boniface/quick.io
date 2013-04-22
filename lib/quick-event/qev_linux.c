@@ -101,13 +101,10 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 	}
 }
 
-/**
- * Listen on an IP address + port
- */
-qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client) {
+static int _qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client, int socket_type, char flags) {
 	qev_socket_t sock;
 
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+	if ((sock = socket(AF_INET, socket_type, 0)) == -1) {
 		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->socket(): %s", strerror(errno));
 		return -1;
 	}
@@ -137,15 +134,17 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 		return -1;
 	}
 
-	if (listen(sock, QEV_LISTEN_BACKLOG) == -1) {
-		close(sock);
-		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->listen(): %s", strerror(errno));
-		return -1;
+	if (socket_type != SOCK_DGRAM) {
+		if (listen(sock, QEV_LISTEN_BACKLOG) == -1) {
+			close(sock);
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "qev_listen()->listen(): %s", strerror(errno));
+			return -1;
+		}
 	}
 
 	QEV_CLIENT_T *_client = qev_client_create();
 	QEV_CSLOT(_client, socket) = sock;
-	QEV_CSLOT(_client, _flags) |= QEV_CMASK_LISTENING;
+	QEV_CSLOT(_client, _flags) |= flags;
 
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
@@ -164,6 +163,14 @@ qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLI
 	}
 
 	return 0;
+}
+
+qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client) {
+	return _qev_sys_listen(ip_address, port, client, SOCK_STREAM, QEV_CMASK_LISTENING);
+}
+
+qev_socket_t qev_sys_listen_udp(const char *ip_address, const uint16_t port) {
+	return _qev_sys_listen(ip_address, port, NULL, SOCK_DGRAM, QEV_CMASK_UDP);
 }
 
 void qev_dispatch() {
@@ -208,6 +215,12 @@ void qev_dispatch() {
 
 		if (QEV_CSLOT(client, _flags) & QEV_CMASK_LISTENING) {
 			_qev_accept(client);
+
+		#ifdef QEV_CLIENT_READ_UDP_FN
+		} else if (QEV_CSLOT(client, _flags) & QEV_CMASK_UDP) {
+			qev_client_read_udp(client);
+		#endif
+
 		} else {
 			if (events & (EPOLLRDHUP | EPOLLERR | EPOLLHUP)) {
 				qev_close(client);

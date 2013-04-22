@@ -232,7 +232,7 @@ APP_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_entr
  * @param argv The arguments to parse.
  * @param[out] error Any error that might happen when parsing the command line args.
  */
-gboolean option_parse_args(int argc, char *argv[], GError **error);
+gboolean option_parse_args(int argc, gchar *argv[], GError **error);
 
 #ifdef TESTING
 #include "../test/test_option.h"

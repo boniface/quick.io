@@ -13,9 +13,9 @@
 #include "qio.h"
 
 #ifdef TESTING
-int init_main(int argc, char *argv[]) {
+int init_main(int argc, gchar *argv[]) {
 #else
-int main(int argc, char *argv[]) {
+int main(int argc, gchar *argv[]) {
 #endif
 	if (qev_init() == 0) {
 		DEBUG("Quick-event inited");
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
 
 	// The main thread also runs in qev, so start at 1, not 0
 	for (gint i = 1; i < option_threads(); i++) {
-		char buff[16];
+		gchar buff[16];
 		snprintf(buff, sizeof(buff), "qio_th_%d", i);
 		g_thread_new(buff, qev_run_thread, NULL);
 	}

@@ -421,7 +421,7 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
 	gchar prev = ep->str[0];
 	while (i < ep->len) {
 		char curr = ep->str[i];
-		if (!event_path_chars[(unsigned char)curr] || (curr == '/' && prev == '/')) {
+		if (!event_path_chars[(guchar)curr] || (curr == '/' && prev == '/')) {
 			g_string_erase(ep, i, 1);
 		} else {
 			prev = curr;
