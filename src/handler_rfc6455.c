@@ -52,7 +52,7 @@
 #define CLOSE_FRAME ("\x88" "\x00")
 
 /**
- * Starts
+ * Starts processing a new, incoming request.
  */
 static status_t _h_rfc6455_start(client_t *client) {
 	int header_len;
