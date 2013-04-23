@@ -327,7 +327,10 @@ void qev_client_lock(QEV_CLIENT_T *client) {
 }
 
 void qev_client_unlock(QEV_CLIENT_T *client) {
-	g_atomic_pointer_set(&QEV_CSLOT(client, _locking_thread), NULL);
+	if (g_atomic_int_get(&QEV_CSLOT(client, _lock)) == 1) {
+		g_atomic_pointer_set(&QEV_CSLOT(client, _locking_thread), NULL);
+	}
+
 	g_atomic_int_add(&QEV_CSLOT(client, _lock), -1);
 }
 
