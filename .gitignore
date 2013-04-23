@@ -7,5 +7,3 @@
 /build*/
 
 /*.sublime*
-
-!/lib/check/libcheck*.a

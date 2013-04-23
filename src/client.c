@@ -112,7 +112,7 @@ status_t client_handshake(client_t *client) {
 }
 
 status_t client_message(client_t* client) {
-	status_t status;
+	status_t status = CLIENT_ERROR;
 
 	if (client->message->remaining_length) {
 		switch (client->handler) {
@@ -165,7 +165,7 @@ status_t client_write(client_t *client, message_t *message) {
 	}
 
 	// The actual frame to send to the client
-	gchar *frame;
+	gchar *frame = NULL;
 
 	// The amount of data to write to the socket
 	gsize frame_len = 0;
@@ -196,7 +196,7 @@ status_t client_write(client_t *client, message_t *message) {
 }
 
 void client_write_close(client_t *client) {
-	gchar *frame;
+	gchar *frame = NULL;
 	gsize frame_len = 0;
 
 	switch (client->handler) {

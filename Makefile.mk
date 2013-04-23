@@ -15,6 +15,8 @@ BUILD_DIR_RELEASE = $(ROOT)/build_release
 BUILD_DIR_TEST = $(ROOT)/build_test
 BUILD_DIR_VALGRIND = $(ROOT)/build_valgrind
 
+GCOVR = ./tools/gcovr
+
 BINARY = quickio
 QIOINI_NAME = quickio.ini
 QIOINI ?= $(QIOINI_NAME)

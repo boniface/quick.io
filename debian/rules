@@ -27,7 +27,7 @@ install: build
 	dh_install
 	dh_installman
 	dh_shlibdeps
-	
+
 	cd debian/quickio/etc/security/limits.d && mv quickio-limits.conf quickio.conf
 	cd debian/quickio/etc/sysctl.d && mv quickio-sysctl.conf quickio.conf
 	cd debian/quickio/etc/logrotate.d && mv quickio-logrotate quickio

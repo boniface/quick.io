@@ -14,7 +14,7 @@ Originally, the project was called Q.IO, named after the omnipotent Q from Star 
 
 * linux >= 2.6.30
 * glib >= 2.32
-* openssl >= 1.0
+* openssl >= 1.0.0
 * doxygen + sphinx (for generating docs)
 
 ### Debian-based systems

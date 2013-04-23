@@ -77,8 +77,8 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 	// ATTENTION: DO NOT DO THE HANDLER NULL CHECK HERE:
 	// it is imperative that the client_callback be found if there
 	// is one, so that we might return a proper error.
-	// Our mandate is that if there is a callback, we will send something to it, no matter
-	// what.
+	// Our mandate is that if there is a callback, we will send something to it,
+	// no matter what.
 	*handler = evs_server_get_handler(curr, &(event->extra));
 
 	// Time to parse out the message Id
