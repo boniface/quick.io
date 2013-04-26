@@ -126,7 +126,7 @@ gboolean apps_run() {
 		gchar *unused __attribute__((unused));
 		unused = realpath(path, abspath);
 
-		free(path);
+		g_free(path);
 
 		// Register all the callbacks the app has
 		for (gsize j = 0; j < G_N_ELEMENTS(callbacks); j++) {

@@ -12,7 +12,7 @@
  */
 static FILE *_log_file = NULL;
 
-#if DEBUGGING
+#if DEBUGGING || PROFILING
 	static void _sigint_handler(int sig) {
 		DEBUG("SIGINT: Dying");
 		exit(50);
@@ -94,7 +94,7 @@ gboolean log_init() {
 	// OpenSSL sends SIGPIPE which kills the server == bad
 	signal(SIGPIPE, SIG_IGN);
 
-	#if DEBUGGING
+	#if DEBUGGING || PROFILING
 		signal(SIGINT, _sigint_handler);
 		signal(SIGSEGV, _sigsev_handler);
 		signal(SIGTERM, _sigterm_handler);

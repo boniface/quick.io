@@ -4,6 +4,7 @@
 *.o
 *.so
 *.pyc
+gmon.out
 /build*/
 
 /*.sublime*

@@ -152,7 +152,7 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 static void _event_free(event_t *event) {
 	// Since all the pointers in the event struct are just into the original buffer,
 	// we don't need to free anything but this one string, and everything else is done
-	free(event->path);
+	g_free(event->path);
 	event->path = NULL;
 
 	if (event->extra != NULL) {
@@ -411,7 +411,8 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
 	// Handle any extra parameters
 	if (extra != NULL) {
 		for (guint i = 0; i < extra->len; i++) {
-			g_string_append_printf(ep, "/%s", (gchar*)g_ptr_array_index(extra, i));
+			g_string_append_c(ep, '/');
+			g_string_append(ep, (gchar*)g_ptr_array_index(extra, i));
 		}
 	}
 

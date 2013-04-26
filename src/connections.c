@@ -253,18 +253,19 @@ gboolean conns_client_data(client_t *client) {
 		return FALSE;
 	}
 
-	gchar buffer[option_max_message_size()];
-
 	// Clients typically aren't sending messages
 	_conns_message_new(client);
+
+	gchar buffer[option_max_message_size()];
+	GString *sbuff = client->message->socket_buffer;
 
 	// Read the message the client sent, unless it's too large, then kill the client
 	gssize len;
 	while ((len = qev_read(client, buffer, sizeof(buffer))) > 0) {
-		g_string_append_len(client->message->socket_buffer, buffer, len);
+		g_string_append_len(sbuff, buffer, len);
 
 		// If the client needs to enhance his calm, kill the connection.
-		if (client->message->socket_buffer->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
+		if (sbuff->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
 			TEST_STATS_INC(conns_bad_clients);
 			STATS_INC(clients_ratelimited);
 
@@ -274,7 +275,7 @@ gboolean conns_client_data(client_t *client) {
 	}
 
 	// While there is still something on the socket buffer to process
-	while (client->message->socket_buffer->len > 0) {
+	while (sbuff->len > 0) {
 		status_t status;
 
 		if (client->state == cstate_initing) {
@@ -325,7 +326,7 @@ gboolean conns_client_data(client_t *client) {
 		}
 	}
 
-	if (client != NULL && client->message->socket_buffer->len == 0 && client->message->remaining_length == 0) {
+	if (client != NULL && sbuff->len == 0 && client->message->remaining_length == 0) {
 		conns_message_free(client);
 	}
 

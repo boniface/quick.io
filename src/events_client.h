@@ -202,7 +202,8 @@ APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *han
  * @param extra Any extra path parameters to put onto the path of the event. NULL if none.
  * @param type The type of the data (json, plain, etc).  d_plain if none.
  * @param data The actual data to be sent. "" (empty string) or NULL if none.
- * @param buffer Where the formatted message will be written. MUST NOT be NULL.
+ * @param buffer Where the formatted message will be written. MUST NOT be NULL. All contents
+ * will be cleared to make room for the new data.
  *
  * @return CLIENT_GOOD If the message was prepared and formatted successfully.
  * @return CLIENT_ERROR If anything went wrong.

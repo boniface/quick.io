@@ -1,7 +1,7 @@
 #include "qio.h"
 
 status_t client_handshake(client_t *client) {
-	static GPrivate headers_tbl;
+	static GPrivate priv_headers;
 
 	status_t status = CLIENT_GOOD;
 	GString *buffer = client->message->socket_buffer;
@@ -35,10 +35,10 @@ status_t client_handshake(client_t *client) {
 
 	// This is 5 times faster than creating a new header table
 	// on each request
-	GHashTable *headers = g_private_get(&headers_tbl);
-	if (!headers) {
+	GHashTable *headers = g_private_get(&priv_headers);
+	if (G_UNLIKELY(headers == NULL)) {
 		headers = g_hash_table_new(g_str_hash, g_str_equal);
-		g_private_set(&headers_tbl, headers);
+		g_private_set(&priv_headers, headers);
 	}
 
 	int on_path(http_parser *parser, const gchar *at, gsize len) {
@@ -191,7 +191,7 @@ status_t client_write(client_t *client, message_t *message) {
 	STATS_INC(messages_sent);
 	status_t status = client_write_frame(client, frame, frame_len);
 
-	free(frame);
+	g_free(frame);
 	return status;
 }
 

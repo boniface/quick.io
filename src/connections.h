@@ -11,13 +11,13 @@
  * The size to intialize a message buffer to. Most messages won't exceed this:
  * the initial headers are typically around 150 characters
  */
-#define STRING_BUFFER_SIZE 100
+#define STRING_BUFFER_SIZE 512
 
 /**
  * Headers are typically longer than messages, so initialize at a larger size, so
  * to minimize reallocs.
  */
-#define STRING_HEADER_BUFFER_SIZE 200
+#define STRING_HEADER_BUFFER_SIZE 256
 
 /**
  * The number of clients to balance before yielding

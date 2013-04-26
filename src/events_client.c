@@ -272,11 +272,19 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
  * @param path If this is not NULL, then it MUST be free()'d
  */
 static status_t _evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const guint32 server_callback, path_extra_t *extra, const enum data_t type, const gchar *data, GString *buffer, gchar **path) {
-	gchar *final_path;
+	static GPrivate priv_buff;
+
+	GString *buff = g_private_get(&priv_buff);
+	if (G_UNLIKELY(buff == NULL)) {
+		buff = g_string_sized_new(STRING_BUFFER_SIZE);
+		g_private_set(&priv_buff, buff);
+	}
+
+	g_string_truncate(buff, 0);
 
 	// A callback takes precedence over an event handler, always
 	if (client_callback != 0) {
-		final_path = g_strdup_printf(F_CALLBACK_PATH, client_callback);
+		g_string_append_printf(buff, F_CALLBACK_PATH, client_callback);
 	} else {
 		// Seriously, no handler = no message
 		if (handler == NULL) {
@@ -291,30 +299,25 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
 			return CLIENT_ERROR;
 		}
 
-		GString *ep = g_string_new(handler_path);
+		g_string_append(buff, handler_path);
 
 		// Skip all the loopy logic unless there are extra path segments
 		if (extra != NULL) {
 			for (guint i = 0; i < extra->len; i++) {
-				g_string_append_printf(ep, "/%s", (gchar*)g_ptr_array_index(extra, i));
+				g_string_append_printf(buff, "/%s", (gchar*)g_ptr_array_index(extra, i));
 			}
 		}
-
-		final_path = ep->str;
-		g_string_free(ep, FALSE);
 	}
 
 	g_string_printf(buffer, F_EVENT,
-		final_path,
+		buff->str,
 		server_callback,
 		DATA_TYPE(type),
 		data == NULL ? "" : data
 	);
 
 	if (path != NULL) {
-		*path = final_path;
-	} else {
-		g_free(final_path);
+		*path = g_strndup(buff->str, buff->len);
 	}
 
 	return CLIENT_GOOD;
@@ -359,7 +362,7 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(
 	iter(_write);
 
 	for (int i = 0; i < h_len; i++) {
-		free(msgs[i]);
+		g_free(msgs[i]);
 	}
 }
 

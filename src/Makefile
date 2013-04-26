@@ -30,7 +30,7 @@ $(BUILD_DIR)/valgrind.o: ../test/valgrind.c
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/$(QIOINI_NAME):
+$(BUILD_DIR)/$(QIOINI_NAME): $(ROOT)/$(QIOINI)
 	cp $(ROOT)/$(QIOINI) $@
 
 include ../lib/utils/Makefile

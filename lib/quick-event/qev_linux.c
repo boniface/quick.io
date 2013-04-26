@@ -260,16 +260,12 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 
 	int ret;
 
-	qev_client_lock(client);
-
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
 		int sent = SSL_write(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
 		ret = sent <= 0 ? -1 : sent;
 	} else {
 		ret = send(QEV_CSLOT(client, socket), buff, buff_size, MSG_NOSIGNAL);
 	}
-
-	qev_client_unlock(client);
 
 	return ret;
 }

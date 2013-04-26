@@ -24,7 +24,8 @@ debug: export CFLAGS += -rdynamic -fno-inline -fno-default-inline -DCOMPILE_DEBU
 debug: deps build
 
 profile: export BUILD_DIR = $(BUILD_DIR_PROFILE)
-profile: export CFLAGS += -pg -DCOMPILE_PROFILE=1
+profile: export CFLAGS += -pg -O2 -DPROFILING=1
+profile: export LDFLAGS += -pg -O2
 profile: deps build
 
 release: export BUILD_DIR ?= $(BUILD_DIR_RELEASE)
@@ -73,7 +74,7 @@ install: release
 
 clean:
 	$(MAKE) -C app clean
-	rm -rf $(BUILD_DIR)
+	rm -f gmon.out
 	rm -rf $(BUILD_DIR_DEBUG)
 	rm -rf $(BUILD_DIR_PROFILE)
 	rm -rf $(BUILD_DIR_RELEASE)
