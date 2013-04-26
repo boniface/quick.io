@@ -60,7 +60,7 @@ Heartbeats are implemented such that, if a client hasn't been sent a message in 
 
 The best method for implementing a heartbeat is:
 
-1. The client should listen for a `/qio/heartbeat` event (bot not subscribe).
+1. The client should listen for a `/qio/heartbeat` event (but not subscribe).
 
 2. Once the connection is open, the client should set a timer for 65 seconds, listening for messages from the server.
 
