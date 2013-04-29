@@ -247,7 +247,10 @@ int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 	}
 
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
-		return SSL_read(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
+		qev_client_lock(client);
+		int res = SSL_read(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
+		qev_client_unlock(client);
+		return res;
 	}
 
 	return read(QEV_CSLOT(client, socket), buff, buff_size);
@@ -261,7 +264,10 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 	int ret;
 
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
+		qev_client_lock(client);
 		int sent = SSL_write(QEV_CSLOT(client, ssl_ctx), buff, buff_size);
+		qev_client_unlock(client);
+
 		ret = sent <= 0 ? -1 : sent;
 	} else {
 		ret = send(QEV_CSLOT(client, socket), buff, buff_size, MSG_NOSIGNAL);
