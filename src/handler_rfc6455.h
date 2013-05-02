@@ -11,7 +11,8 @@
 /**
  * Base response headers that can be extended for more options
  */
-#define RFC6455_HEADERS "HTTP/1.1 101 Switching Protocols\r\n" \
+#define RFC6455_HEADERS \
+	"HTTP/1.1 101 Switching Protocols\r\n" \
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \

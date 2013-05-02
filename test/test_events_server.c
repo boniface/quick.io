@@ -573,8 +573,8 @@ START_TEST(test_evs_handler_subscribe_already_subscribed) {
 	test_size_eq(client->message->buffer->len, 0, "Subscribed!");
 
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
-	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	test_status_eq(evs_server_handle(client), CLIENT_WRITE, "Duplicate ignored");
+	test_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=", "Server played along");
 
 	u_client_free(client);
 }

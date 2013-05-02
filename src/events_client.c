@@ -231,10 +231,12 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 
 	qev_client_lock(client);
 
-	if (client->subs->len >= option_max_subscriptions() || g_hash_table_contains(sub->clients, client)) {
+	gboolean too_many = client->subs->len >= option_max_subscriptions();
+	gboolean already = g_hash_table_contains(sub->clients, client);
+	if (too_many || already) {
 		g_rw_lock_writer_unlock(&sub->lock);
 		qev_client_unlock(client);
-		return CLIENT_ERROR;
+		return too_many ? CLIENT_ERROR : CLIENT_GOOD;
 	}
 
 	if (!from_app) {

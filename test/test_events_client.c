@@ -479,7 +479,7 @@ START_TEST(test_evs_client_subscribe_already_subscribed) {
 	client_t *client = u_client_create(NULL);
 
 	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_ERROR, "Subscription not found");
+	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Double subscription ignored");
 
 	evs_client_sub_t *sub = _subscription_get("/test/event/test", FALSE, FALSE);
 	test_size_eq(client->subs->len, 1, "Only 1 subscription");
