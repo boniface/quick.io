@@ -256,23 +256,24 @@ gboolean conns_client_data(client_t *client) {
 	// Clients typically aren't sending messages
 	_conns_message_new(client);
 
-	gchar buffer[option_max_message_size()];
+	gssize size = option_max_message_size();
+	gchar buffer[size];
 	GString *sbuff = client->message->socket_buffer;
 
-	// Read the message the client sent, unless it's too large, then kill the client
 	gssize len;
-	while ((len = qev_read(client, buffer, sizeof(buffer))) > 0) {
+	do {
+		len = qev_read(client, buffer, size);
 		g_string_append_len(sbuff, buffer, len);
 
 		// If the client needs to enhance his calm, kill the connection.
-		if (sbuff->len > (option_max_message_size() * MAX_BUFFER_SIZE_MULTIPLIER)) {
+		if (sbuff->len > (size * MAX_BUFFER_SIZE_MULTIPLIER)) {
 			TEST_STATS_INC(conns_bad_clients);
 			STATS_INC(clients_ratelimited);
 
 			DEBUG("Client needs to enhance his calm");
 			return FALSE;
 		}
-	}
+	} while (len == size);
 
 	// While there is still something on the socket buffer to process
 	while (sbuff->len > 0) {
