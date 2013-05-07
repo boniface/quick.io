@@ -13,6 +13,7 @@ BUILD_DIR_DEBUG = $(ROOT)/build_debug
 BUILD_DIR_PROFILE = $(ROOT)/build_profile
 BUILD_DIR_RELEASE = $(ROOT)/build_release
 BUILD_DIR_TEST = $(ROOT)/build_test
+BUILD_DIR_APP_TEST = $(ROOT)/build_app_test
 BUILD_DIR_VALGRIND = $(ROOT)/build_valgrind
 
 GCOVR = ./tools/gcovr

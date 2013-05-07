@@ -28,6 +28,7 @@ static _app_callbacks_t callbacks[] = {
 	// For running the app in its own thread
 	{offsetof(app_t, init), "app_init"},
 	{offsetof(app_t, run), "app_run"},
+	{offsetof(app_t, test), "app_test"},
 
 	// Called in the main thread when the app is running
 	{offsetof(app_t, client_connect), "app_client_connect"},
@@ -70,7 +71,7 @@ static gpointer _app_run(gpointer void_app) {
 		_apps_init_success &= app->init(on);
 	}
 
-	g_mutex_lock(&(app->ready));
+	g_atomic_int_inc(&app->ready);
 
 	if (app->run != NULL && !app->run(on)) {
 		FATAL("App \"%s\" exited with bad status", app->name);
@@ -147,14 +148,12 @@ gboolean apps_run() {
 		}
 
 		app->_set_app_opts(i, app->name, abspath);
-		g_mutex_init(&(app->ready));
 		app->thread = g_thread_new(app->name, _app_run, app);
 	}
 
 	// Wait for the applications to be ready before allowing the server to run
 	APP_FOREACH(
-		while (g_mutex_trylock(&(app->ready))) {
-			g_mutex_unlock(&(app->ready));
+		while (!g_atomic_int_compare_and_exchange(&app->ready, 1, 0)) {
 			g_thread_yield();
 		}
 	)
@@ -229,6 +228,24 @@ void apps_stats_gather(stats_app_append_cb app_append) {
 		}
 	)
 }
+
+#ifdef APP_TESTING
+
+gboolean apps_test() {
+	if (_apps->len != 1) {
+		FATAL("Can only test 1 app at a time, not %u", _apps->len);
+	}
+
+	app_t *app = g_ptr_array_index(_apps, 0);
+
+	if (app->test == NULL) {
+		FATAL("App \"%s\" did not define `app_test()`", app->name);
+	}
+
+	return app->test();
+}
+
+#endif
 
 #ifdef TESTING
 #include "../test/test_apps.c"

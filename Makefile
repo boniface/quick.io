@@ -18,7 +18,7 @@ app:
 build:
 	$(MAKE) -C src
 
-debug: export BUILD_DIR = $(BUILD_DIR_DEBUG)
+debug: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
 debug: export QIOINI = quickio.ini
 debug: export CFLAGS += -rdynamic -fno-inline -fno-default-inline -DCOMPILE_DEBUG=1
 debug: deps build
@@ -40,6 +40,12 @@ test: test-build
 	@G_SLICE=debug-blocks $(BUILD_DIR)/quickio
 	@$(GCOVR) $(GCOVR_ARGS_SRC) $(BUILD_DIR)
 	@$(GCOVR) $(GCOVR_ARGS_APPS) $(BUILD_DIR)/apps
+
+test-apps: export BUILD_DIR = $(BUILD_DIR_APP_TEST)
+test-apps: export CFLAGS += -DAPP_TESTING
+test-apps:
+	$(MAKE) debug
+	$(MAKE) -C app/ test TEST_BINARY=$(BUILD_DIR)/quickio
 
 test-jenkins: export BUILD_DIR = $(BUILD_DIR_TEST)
 test-jenkins: export CFLAGS += -DTEST_OUTPUT_XML=1 -DTESTING=1
@@ -79,4 +85,5 @@ clean:
 	rm -rf $(BUILD_DIR_PROFILE)
 	rm -rf $(BUILD_DIR_RELEASE)
 	rm -rf $(BUILD_DIR_TEST)
+	rm -rf $(BUILD_DIR_APP_TEST)
 	rm -rf $(BUILD_DIR_VALGRIND)

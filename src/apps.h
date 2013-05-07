@@ -95,6 +95,13 @@ typedef void (*apps_stats_app_cb)(apps_stats_cb cb);
 typedef gboolean (*app_on_cb)(app_on on);
 
 /**
+ * Called to run all test cases against an app from inside the app.
+ *
+ * @return If all the tests passed as expected.
+ */
+typedef gboolean (*app_test_cb)();
+
+/**
  * The callbacks that the apps will recieve for different events.
  */
 typedef struct app_s {
@@ -126,7 +133,7 @@ typedef struct app_s {
 	 * The lock indicating that the application is done initing and ready to start serving
 	 * requests.
 	 */
-	GMutex ready;
+	guint ready;
 
 	/**
 	 * A pointer to the module reference for accessing with GModule functions.
@@ -157,6 +164,14 @@ typedef struct app_s {
 	 * this function must be implemented.
 	 */
 	app_on_cb run;
+
+	/**
+	 * A reference to an application's `app_test` function.
+	 *
+	 * When running in test mode, the server will look for these functions
+	 * inside each app, and they will be executed.
+	 */
+	app_test_cb test;
 
 	/**
 	 * A reference to an application's `app_client_connect` function.
@@ -253,6 +268,16 @@ void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handle
  * @param app_append The callback function for adding stats to the current set.
  */
 void apps_stats_gather(stats_app_append_cb app_append);
+
+#ifdef APP_TESTING
+
+/**
+ * ONLY FOR TESTING APPLICATIONS.  The server MUST be started with A SINGLE application,
+ * and that application will have its app_test() function hit.
+ */
+gboolean apps_test();
+
+#endif
 
 #ifdef TESTING
 #include "../test/test_apps.h"
