@@ -1,2 +1,0 @@
-deps:
-	@$(MAKE) -C utils

@@ -3,13 +3,6 @@
 # Uncomment to enable verbose mode.
 #export DH_VERBOSE=1
 
-include /usr/share/hardening-includes/hardening.make
-
-export CFLAGS = $(shell dpkg-buildflags --get CFLAGS)
-export LDFLAGS = $(shell dpkg-buildflags --get LDFLAGS)
-export CFLAGS += $(HARDENING_CFLAGS)
-export LDFLAGS += $(HARDENING_LDFLAGS)
-
 clean:
 	dh_testdir
 	dh_testroot

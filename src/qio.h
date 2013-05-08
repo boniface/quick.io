@@ -47,13 +47,13 @@ typedef guint16 status_t;
 #define QEV_CLIENT_SLOT qevclient
 #define QEV_CLIENT_NEVER_FREE
 
-#include "quick-event/qev.h"
-#include "utils/http_parser.h"
-#include "utils/reconnecting_socket.h"
+#include "lib/quick-event/qev.h"
+#include "lib/http_parser.h"
+#include "lib/reconnecting_socket.h"
 
 #include "module.h"
 
-#include "../test/utils_stats.h"
+#include "test/utils_stats.h"
 
 // Some out-of-order guys for dependencies
 #include "stats.h"

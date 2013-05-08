@@ -1,5 +1,5 @@
 build_release/quickio usr/bin/
-app/*.so /usr/lib/quickio
+build_release/app/*.so /usr/lib/quickio
 app/qio_app.h /usr/include
 debian/quickio.ini etc/quickio/
 debian/quickio-limits.conf etc/security/limits.d/

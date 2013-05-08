@@ -4,15 +4,15 @@
 
 #define BAD_CONFIG "[quick.io]\n" \
 	"[quick.io-apps]\n" \
-	"test-bad = ./apps/test_bad"
+	"test-bad = ./test/app/test_bad"
 
 #define GOOD_RUN "[quick.io]\n" \
 	"[quick.io-apps]\n" \
-	"test-bad = ./apps/test_good_run"
+	"test-bad = ./test/app/test_good_run"
 
 #define BAD_RUN "[quick.io]\n" \
 	"[quick.io-apps]\n" \
-	"test-bad = ./apps/test_bad_run"
+	"test-bad = ./test/app/test_bad_run"
 
 #define BAD_CONFIG_NONEXISTENT "[quick.io]\n" \
 	"[quick.io-apps]\n" \
