@@ -38,9 +38,9 @@ static FILE *_log_file = NULL;
 #endif
 
 static gboolean _reload_log_file() {
-	#if DEBUGGING
+	if (option_log_file() == NULL) {
 		_log_file = stderr;
-	#else
+	} else {
 		if (_log_file != NULL && _log_file != stderr) {
 			fclose(_log_file);
 		}
@@ -53,7 +53,7 @@ static gboolean _reload_log_file() {
 		}
 
 		setvbuf(_log_file, (gchar*)NULL, _IOLBF, 0);
-	#endif
+	}
 
 	return TRUE;
 }
