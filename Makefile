@@ -146,10 +146,12 @@ CFLAGS ?= \
 	$(shell pkg-config --cflags $(LIBS))
 
 CFLAGS_OBJ ?= \
+	$(CFLAGS) \
 	-c \
 	-fvisibility=hidden
 
-CFLAGS_SO ?= \
+CFLAGS_APP ?= \
+	$(CFLAGS) \
 	-fPIC \
 	-shared
 
@@ -164,6 +166,10 @@ CFLAGS_TEST ?= \
 	-fno-default-inline \
 	--coverage \
 	-DTESTING=1
+
+CFLAGS_APP_TEST ?= \
+	$(CFLAGS_APP) \
+	-DAPP_TESTING
 
 LDFLAGS ?= \
 	-Wl,-E \
@@ -262,8 +268,9 @@ test: test-build
 	@$(GCOVR) $(GCOVR_SRC_ARGS)
 	@$(GCOVR) $(GCOVR_APP_ARGS)
 
-test-apps: debug $(APP_TESTS) $(RUNAPPTESTS)
-	$(RUNAPPTESTS) $(BUILD_DIR)/quickio $(APP_TESTS)
+test-apps: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
+test-apps:
+	$(MAKE) _test-apps
 
 test-build: export CFLAGS += $(CFLAGS_TEST)
 test-build: export OBJECTS += $(TEST_OBJECTS)
@@ -294,6 +301,9 @@ test-valgrind: clean test-build
 _build:
 	$(MAKE) $(TARGET)
 
+_test-apps: debug $(APP_TESTS) $(RUNAPPTESTS)
+	$(RUNAPPTESTS) $(BUILD_DIR)/quickio $(APP_TESTS)
+
 #
 # Compilation rules
 # -------------------------------------------------------------------------
@@ -305,23 +315,23 @@ $(TARGET): $(BUILD_DIR_DEP) $(BUILD_QIOINI) $(OBJECTS) $(APP_OBJECTS)
 
 $(BUILD_LIB_DIR)/%.o: $(LIB)/%.c $(LIB)/%.h $(BUILD_LIB_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS_OBJ) $< -o $@
 
 $(BUILD_SRC_DIR)/%.o: $(SRC)/%.c $(SRC)/%.h test/test_%.c $(BUILD_SRC_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS_OBJ) $< -o $@
 
 $(BUILD_TEST_DIR)/%.o: $(TEST)/%.c $(TEST)/%.h $(BUILD_TEST_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS_OBJ) $< -o $@
 
 $(BUILD_TEST_APP_DIR)/%.so: $(TEST_APP)/%.c $(BUILD_TEST_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_SO) $< -o $@
+	@$(CC) $(CFLAGS) $(CFLAGS_APP) $< -o $@
 
 $(BUILD_TEST_DIR)/valgrind.o: $(TEST)/valgrind.c $(BUILD_TEST_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS_OBJ) $< -o $@
 
 $(RUNAPPTESTS): $(TOOLS)/runapptests.c
 	@echo '-------- Compiling $< --------'
@@ -340,8 +350,8 @@ $(BUILD_QIOINI): $(QIOINI) $(BUILD_DEP_DIR)
 
 $(BUILD_APP_DIR)/cluster.so: $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_SO) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads)
+	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads)
 
 $(BUILD_APP_DIR)/test_cluster_server.so: $(APP)/test_cluster_server.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_SO) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads)
+	$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads)
