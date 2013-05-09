@@ -18,6 +18,7 @@ static gchar *_log_file = NULL;
 static guint64 _max_clients = 4194304;
 static gint _max_mess_size = 1024;
 static guint64 _max_subs = 4;
+static gboolean _run_app_test = FALSE;
 static gchar *_ssl_private_key = NULL;
 static gchar *_ssl_cert_chain = NULL;
 static gchar *_stats_graphite_address = NULL;
@@ -38,6 +39,7 @@ static config_file_entry_t _config_options[] = {
 	{"max-clients", e_uint64, &_max_clients},
 	{"max-message-len", e_uint64, &_max_mess_size},
 	{"max-subs", e_uint64, &_max_subs},
+	{"run-app-test", e_boolean, &_run_app_test},
 	{"ssl-private-key", e_string, &_ssl_private_key},
 	{"ssl-cert-chain", e_string, &_ssl_cert_chain},
 	{"stats-graphite-address", e_string, &_stats_graphite_address},
@@ -151,6 +153,10 @@ const guint64 option_max_subscriptions() {
 	return _max_subs;
 }
 
+const gboolean option_run_app_test() {
+	return _run_app_test;
+}
+
 const gchar* option_ssl_cert_chain() {
 	return _ssl_cert_chain;
 }
@@ -230,6 +236,8 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 			if (opt != 0) {
 				*((guint64*)e.arg_data) = opt;
 			}
+		} else if (e.arg == e_boolean) {
+			*((gboolean*)e.arg_data) = g_key_file_get_boolean(conf, group_name, e.name, NULL);
 		}
 	}
 

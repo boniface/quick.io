@@ -6,12 +6,13 @@
 #pragma once
 #include <check.h>
 #include <fcntl.h>
-#include <mcheck.h>
+#include <libgen.h>
 #include <netinet/in.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include "qio.h"
 #include "utils.h"
 
@@ -33,13 +34,13 @@
 /**
  * Test that the assertion is true.
  */
-#define test ck_assert_msg
+#define check ck_assert_msg
 
 /**
  * Test that an assertion is false.
  * This is a basic wrapper around fail_if().
  */
-#define test_not fail_if
+#define check_not fail_if
 
 /**
  * The separator for the system error message and the user error message
@@ -84,7 +85,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_str_eq(test, should_be, description) { \
+#define check_str_eq(test, should_be, description) { \
 	_test_setup(const char*, test, should_be); \
 	_msg("Assertion '%s'=='%s' failed", actual, expect, description); \
 	if (actual == NULL || expect == NULL) { \
@@ -100,8 +101,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_str_eq_(test, should_be) \
-	test_str_eq(test, should_be, "")
+#define check_str_eq_(test, should_be) \
+	check_str_eq(test, should_be, "")
 
 /**
  * Tests if the binary blocks are equal, with a message if something goes wrong.
@@ -111,7 +112,7 @@
  * @param length The length of the binary blob.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_bin_eq(test, should_be, length, description) { \
+#define check_bin_eq(test, should_be, length, description) { \
 	_test_setup(char*, test, should_be); \
 	_msg("The binary blobs do not match: '%X'!='%X'", (*actual) & 0xFF, (*expect) & 0xFF, description); \
 	_fail_unless(memcmp(actual, expect, length) == 0, __FILE__, __LINE__, msg, NULL);}
@@ -123,8 +124,8 @@
  * @param should_be What the thing is expected to be.
  * @param length The length of the binary blob.
  */
-#define test_bin_eq_(test, should_be, length) \
-	test_bin_eq(test, should_be, length, "")
+#define check_bin_eq_(test, should_be, length) \
+heck_bin_eq/gi
 
 /**
  * Tests if the two chars are equal.
@@ -133,7 +134,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_char_eq(test, should_be, description) { \
+#define check_char_eq(test, should_be, description) { \
 	_test_setup(gchar, test, should_be); \
 	_msg("Assertion (character) %d==%d failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -144,8 +145,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_char_eq_(test, should_be) \
-	test_char_eq(test, should_be, "")
+#define check_char_eq_(test, should_be) \
+heck_char_eq/gi
 
 /**
  * Tests if the two int16s are equal.
@@ -154,7 +155,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_int16_eq(test, should_be, description) { \
+#define check_int16_eq(test, should_be, description) { \
 	_test_setup(gint16, test, should_be); \
 	_msg("Assertion %"G_GINT16_FORMAT"==%"G_GINT16_FORMAT" failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -165,8 +166,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_int16_eq_(test, should_be) \
-	test_int16_eq(test, should_be, "")
+#define check_int16_eq_(test, should_be) \
+	check_int16_eq(test, should_be, "")
 
 /**
  * Tests if the two uint16s are equal.
@@ -175,7 +176,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_uint16_eq(test, should_be, description) { \
+#define check_uint16_eq(test, should_be, description) { \
 	_test_setup(guint16, test, should_be); \
 	_msg("Assertion %"G_GUINT16_FORMAT"==%"G_GUINT16_FORMAT" failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -186,8 +187,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_uint16_eq_(test, should_be) \
-	test_uint16_eq(test, should_be, "")
+#define check_uint16_eq_(test, should_be) \
+	check_uint16_eq(test, should_be, "")
 
 /**
  * Tests if the two int32s are equal.
@@ -196,7 +197,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_int32_eq(test, should_be, description) { \
+#define check_int32_eq(test, should_be, description) { \
 	_test_setup(gint32, test, should_be); \
 	_msg("Assertion %"G_GINT32_FORMAT"==%"G_GINT32_FORMAT" failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -207,8 +208,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_int32_eq_(test, should_be) \
-	test_int32_eq(test, should_be, "")
+#define check_int32_eq_(test, should_be) \
+	check_int32_eq(test, should_be, "")
 
 /**
  * Tests if the two uint32s are equal.
@@ -217,7 +218,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_uint32_eq(test, should_be, description) { \
+#define check_uint32_eq(test, should_be, description) { \
 	_test_setup(guint32, test, should_be); \
 	_msg("Assertion %"G_GUINT32_FORMAT"==%"G_GUINT32_FORMAT" failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -228,8 +229,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_uint32_eq_(test, should_be) \
-	test_uint32_eq(test, should_be, "")
+#define check_uint32_eq_(test, should_be) \
+	check_uint32_eq(test, should_be, "")
 
 /**
  * Tests if the two int64s are equal.
@@ -238,7 +239,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_int64_eq(test, should_be, description) { \
+#define check_int64_eq(test, should_be, description) { \
 	_test_setup(gint64, test, should_be); \
 	_msg("Assertion %"G_GINT64_FORMAT"==%"G_GINT64_FORMAT" failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -249,8 +250,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_int64_eq_(test, should_be) \
-	test_int64_eq(test, should_be, "")
+#define check_int64_eq_(test, should_be) \
+	check_int64_eq(test, should_be, "")
 
 /**
  * Tests if the two uint64s are equal.
@@ -259,7 +260,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_uint64_eq(test, should_be, description) { \
+#define check_uint64_eq(test, should_be, description) { \
 	_test_setup(guint64, test, should_be); \
 	_msg("Assertion %"G_GUINT64_FORMAT"==%"G_GUINT64_FORMAT" failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -270,8 +271,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_uint64_eq_(test, should_be) \
-	test_uint64_eq(test, should_be, "")
+#define check_uint64_eq_(test, should_be) \
+	check_uint64_eq(test, should_be, "")
 
 /**
  * Tests if the two size_t's are equal.
@@ -280,7 +281,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_size_eq(test, should_be, description) { \
+#define check_size_eq(test, should_be, description) { \
 	_test_setup(size_t, test, should_be); \
 	_msg("Assertion %zd==%zd failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -291,8 +292,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_size_eq_(test, should_be) \
-	test_size_eq(test, should_be, "")
+#define check_size_eq_(test, should_be) \
+	check_size_eq(test, should_be, "")
 
 /**
  * Tests if the two status_t's match.
@@ -301,7 +302,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_status_eq(test, should_be, description) { \
+#define check_status_eq(test, should_be, description) { \
 	_test_setup(status_t, test, should_be); \
 	_msg("Assertion %s==%s failed", test_status_to_str(actual), test_status_to_str(expect), description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -312,8 +313,8 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_status_eq_(test, should_be) \
-	test_int32_eq(test, should_be, "")
+#define check_status_eq_(test, should_be) \
+	check_int32_eq(test, should_be, "")
 
 /**
  * Tests if the two pointers are equal.
@@ -322,7 +323,7 @@
  * @param should_be What the thing is expected to be.
  * @param description The description of the test, to be printed with failure information
  */
-#define test_ptr_eq(test, should_be, description) { \
+#define check_ptr_eq(test, should_be, description) { \
 	_test_setup(const void*, test, should_be); \
 	_msg("Assertion %p==%p failed", actual, expect, description); \
 	_fail_unless(actual == expect, __FILE__, __LINE__, msg, NULL);}
@@ -333,5 +334,5 @@
  * @param test The thing to test.
  * @param should_be What the thing is expected to be.
  */
-#define test_ptr_eq_(test, should_be) \
-	test_ptr_eq(test, should_be, "")
+#define check_ptr_eq_(test, should_be) \
+	check_ptr_eq(test, should_be, "")

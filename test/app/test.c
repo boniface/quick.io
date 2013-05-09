@@ -1,4 +1,4 @@
-#include "../app/qio_app.h"
+#include "app/qio_app.h"
 
 static GAsyncQueue *_work;
 

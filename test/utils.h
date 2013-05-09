@@ -55,8 +55,9 @@ void u_client_free(client_t *client);
  * Setup the server and get it running.  Returns once the server is ready to function.
  *
  * @param[out] pid The pid of the running server.
+ * @param config_path The config that the forked server should load
  */
-void u_main_setup(pid_t *pid);
+void u_main_setup(pid_t *pid, gchar *config_path);
 
 /**
  * Kill the server and all its children.

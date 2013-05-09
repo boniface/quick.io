@@ -2,35 +2,35 @@
 
 START_TEST(test_monkey_gstr_ends_with_0) {
 	GString *s = g_string_new("");
-	test_not(g_string_ends_with(s, "really long string"));
+	check_not(g_string_ends_with(s, "really long string"));
 	g_string_free(s, TRUE);
 }
 END_TEST
 
 START_TEST(test_monkey_gstr_ends_with_1) {
 	GString *s = g_string_new("really long string");
-	test(g_string_ends_with(s, "string"));
+	check(g_string_ends_with(s, "string"));
 	g_string_free(s, TRUE);
 }
 END_TEST
 
 START_TEST(test_monkey_gstr_ends_with_2) {
 	GString *s = g_string_new("long string");
-	test(g_string_ends_with(s, "long string"));
+	check(g_string_ends_with(s, "long string"));
 	g_string_free(s, TRUE);
 }
 END_TEST
 
 START_TEST(test_monkey_gstr_ends_with_3) {
 	GString *s = g_string_new("long string");
-	test(g_string_ends_with(s, ""));
+	check(g_string_ends_with(s, ""));
 	g_string_free(s, TRUE);
 }
 END_TEST
 
 START_TEST(test_monkey_gstr_ends_with_4) {
 	GString *s = g_string_new("");
-	test(g_string_ends_with(s, ""));
+	check(g_string_ends_with(s, ""));
 	g_string_free(s, TRUE);
 }
 END_TEST

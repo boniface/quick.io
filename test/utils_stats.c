@@ -9,8 +9,8 @@ static test_stats_t *_stats = NULL;
 
 void utils_stats_setup() {
 	_statsfd = shm_open(TEST_SHM_NAME, SHM_FLAGS, SHM_MASK);
-	test(_statsfd, "SHM Open");
-	test(ftruncate(_statsfd, sizeof(*_stats)) == 0, "Stats sized");
+	check(_statsfd, "SHM Open");
+	check(ftruncate(_statsfd, sizeof(*_stats)) == 0, "Stats sized");
 	_stats = mmap(NULL, sizeof(*_stats), PROT_READ | PROT_WRITE, MAP_SHARED, _statsfd, 0);
 	memset(_stats, 0, sizeof(*_stats));
 }

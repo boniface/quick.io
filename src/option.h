@@ -46,6 +46,11 @@ typedef enum entry_t {
 	 * The entry is an unsigned 64bit integer.
 	 */
 	e_uint64,
+
+	/**
+	 * The entry is a boolean
+	 */
+	e_boolean,
 } entry_t;
 
 /**
@@ -166,6 +171,11 @@ const guint64 option_max_message_size();
  * The number of rooms a client may be subscribed to.
  */
 const guint64 option_max_subscriptions();
+
+/**
+ * If the server should only run the app's unit tests and exit.
+ */
+const gboolean option_run_app_test();
 
 /**
  * The path to the SSL cert chain. NULL if none provided.

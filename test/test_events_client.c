@@ -27,7 +27,7 @@ void _test_evs_client_setup() {
 	evs_client_init();
 	conns_init();
 	apps_run();
-	test(stats_init());
+	check(stats_init());
 }
 
 void _test_evs_client_teardown() {
@@ -36,32 +36,32 @@ void _test_evs_client_teardown() {
 
 START_TEST(test_evs_client_subscription_get_no_clients) {
 	evs_client_sub_t *sub = _subscription_get("/test/event", FALSE, FALSE);
-	test_ptr_eq(sub, NULL, "Not created when no clients");
+	check_ptr_eq(sub, NULL, "Not created when no clients");
 }
 END_TEST
 
 START_TEST(test_evs_client_subscription_get_not_valid) {
 	evs_client_sub_t *sub = _subscription_get("/what/is/that", FALSE, FALSE);
-	test_ptr_eq(sub, NULL, "Not created when no clients");
+	check_ptr_eq(sub, NULL, "Not created when no clients");
 }
 END_TEST
 
 START_TEST(test_evs_client_subscription_get_and_create) {
 	evs_client_sub_t *sub = _subscription_get("/test/event", TRUE, FALSE);
 
-	test_str_eq(sub->event_path, "/test/event", "Not created when no clients");
-	test(sub->handler != NULL, "Handler is set");
-	test(sub->clients != NULL, "Clients table is set");
-	test_uint32_eq(g_hash_table_size(sub->clients), 0, "No clients in table");
-	test_uint64_eq(sub->extra->len, 0, "No extra parameters");
+	check_str_eq(sub->event_path, "/test/event", "Not created when no clients");
+	check(sub->handler != NULL, "Handler is set");
+	check(sub->clients != NULL, "Clients table is set");
+	check_uint32_eq(g_hash_table_size(sub->clients), 0, "No clients in table");
+	check_uint64_eq(sub->extra->len, 0, "No extra parameters");
 
-	test(g_hash_table_lookup(_events, sub->event_path) != NULL, "Event registered");
+	check(g_hash_table_lookup(_events, sub->event_path) != NULL, "Event registered");
 }
 END_TEST
 
 START_TEST(test_evs_client_subscription_get_and_create_invalid) {
 	evs_client_sub_t *sub = _subscription_get("/test/not/an/event", TRUE, FALSE);
-	test(sub == NULL, "Bad event, not created");
+	check(sub == NULL, "Bad event, not created");
 }
 END_TEST
 
@@ -69,14 +69,14 @@ START_TEST(test_evs_client_format_message_0) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 
-	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(handler, 0, 0, NULL, d_plain, "some data", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Message format succeeded");
-	test_str_eq(buffer->str, "/test/event:0:plain=some data", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Message format succeeded");
+	check_str_eq(buffer->str, "/test/event:0:plain=some data", "Message formatted correctly");
 
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
@@ -87,14 +87,14 @@ START_TEST(test_evs_client_format_message_1) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 
-	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(handler, 0, 0, NULL, d_plain, "ßäū€öł", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Message format succeeded");
-	test_str_eq(buffer->str, "/test/event:0:plain=ßäū€öł", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Message format succeeded");
+	check_str_eq(buffer->str, "/test/event:0:plain=ßäū€öł", "Message formatted correctly");
 
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
@@ -105,16 +105,16 @@ START_TEST(test_evs_client_format_message_2) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 
 	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(handler, 0, 0, extra, d_plain, "ßäū€öł", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Message format succeeded");
-	test_str_eq(buffer->str, "/test/event/test:0:plain=ßäū€öł", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Message format succeeded");
+	check_str_eq(buffer->str, "/test/event/test:0:plain=ßäū€öł", "Message formatted correctly");
 
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -126,12 +126,12 @@ START_TEST(test_evs_client_format_message_no_handler) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 
 	status_t status = evs_client_format_message(NULL, 0, 0, NULL, d_plain, "ßäū€öł", buffer);
 
-	test_status_eq(status, CLIENT_ERROR, "Could not find handler");
-	test_size_eq(buffer->len, 0, "No message set");
+	check_status_eq(status, CLIENT_ERROR, "Could not find handler");
+	check_size_eq(buffer->len, 0, "No message set");
 
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
@@ -142,12 +142,12 @@ START_TEST(test_evs_client_format_message_invalid_handler) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 
 	status_t status = evs_client_format_message((const event_handler_t *)1000, 0, 0, NULL, d_plain, "ßäū€öł", buffer);
 
-	test_status_eq(status, CLIENT_ERROR, "Could not find handler");
-	test_size_eq(buffer->len, 0, "No message set");
+	check_status_eq(status, CLIENT_ERROR, "Could not find handler");
+	check_size_eq(buffer->len, 0, "No message set");
 
 	g_string_free(buffer, TRUE);
 	u_client_free(client);
@@ -158,16 +158,16 @@ START_TEST(test_evs_client_format_message_with_callback) {
 	client_t *client = u_client_create(NULL);
 	GString *buffer = g_string_sized_new(1);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 
 	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(NULL, 1, 0, extra, d_plain, "ßäū€öł", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/qio/callback/1:0:plain=ßäū€öł", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Got message");
+	check_str_eq(buffer->str, "/qio/callback/1:0:plain=ßäū€öł", "Message formatted correctly");
 
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -180,12 +180,12 @@ START_TEST(test_evs_client_format_message_with_server_callback) {
 
 	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(NULL, 1, 123, extra, d_plain, "ßäū€öł", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/qio/callback/1:123:plain=ßäū€öł", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Got message");
+	check_str_eq(buffer->str, "/qio/callback/1:123:plain=ßäū€öł", "Message formatted correctly");
 
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -197,12 +197,12 @@ START_TEST(test_evs_client_format_message_not_subscribed) {
 
 	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(handler, 0, 0, extra, d_plain, "abcd", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Message formatted even though no clients subscribed");
-	test_str_eq(buffer->str, "/test/event/test:0:plain=abcd", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Message formatted even though no clients subscribed");
+	check_str_eq(buffer->str, "/test/event/test:0:plain=abcd", "Message formatted correctly");
 
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -214,12 +214,12 @@ START_TEST(test_evs_client_format_message_not_subscribed_callback) {
 
 	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(handler, 123, 0, extra, d_plain, "abcd", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/qio/callback/123:0:plain=abcd", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Got message");
+	check_str_eq(buffer->str, "/qio/callback/123:0:plain=abcd", "Message formatted correctly");
 
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -231,17 +231,17 @@ START_TEST(test_evs_client_format_message_null_data) {
 
 	path_extra_t *extra = NULL;
 	event_handler_t *handler = evs_server_get_handler("/test/event/test", &extra);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_format_message(handler, 123, 0, extra, d_plain, NULL, buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/qio/callback/123:0:plain=", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Got message");
+	check_str_eq(buffer->str, "/qio/callback/123:0:plain=", "Message formatted correctly");
 
 	status = evs_client_format_message(handler, 123, 0, extra, d_plain, "", buffer);
 
-	test_status_eq(status, CLIENT_GOOD, "Got message");
-	test_str_eq(buffer->str, "/qio/callback/123:0:plain=", "Message formatted correctly");
+	check_status_eq(status, CLIENT_GOOD, "Got message");
+	check_str_eq(buffer->str, "/qio/callback/123:0:plain=", "Message formatted correctly");
 
 	g_ptr_array_unref(extra);
 	g_string_free(buffer, TRUE);
@@ -254,11 +254,11 @@ START_TEST(test_evs_client_ready) {
 	client->subs = NULL;
 
 	evs_client_client_ready(client);
-	test(client->subs != NULL, "Subscriptions setup");
-	test_size_eq(client->subs->len, 0, "No subscriptions");
+	check(client->subs != NULL, "Subscriptions setup");
+	check_size_eq(client->subs->len, 0, "No subscriptions");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -275,10 +275,10 @@ START_TEST(test_evs_heartbeat) {
 
 	char buff[512];
 	memset(buff, 0, sizeof(buff));
-	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
-	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
+	check_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
+	check_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 
-	test_size_eq(stats.heartbeats, 1, "Got 1 heartbeat");
+	check_size_eq(stats.heartbeats, 1, "Got 1 heartbeat");
 
 	close(socket);
 	u_client_free(client);
@@ -305,10 +305,10 @@ START_TEST(test_evs_heartbeat_yield) {
 
 	char buff[512];
 	memset(buff, 0, sizeof(buff));
-	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
-	test_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
+	check_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
+	check_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 
-	test_size_eq(stats.heartbeats, CONNS_YIELD*2, "Heartbeats sent");
+	check_size_eq(stats.heartbeats, CONNS_YIELD*2, "Heartbeats sent");
 }
 END_TEST
 
@@ -320,7 +320,7 @@ START_TEST(test_evs_heartbeat_already_written) {
 	client->state = cstate_running;
 
 	evs_client_heartbeat();
-	test_size_eq(stats.heartbeats, 1, "Got heartbeat");
+	check_size_eq(stats.heartbeats, 1, "Got heartbeat");
 
 	stats.heartbeats = 0;
 
@@ -328,7 +328,7 @@ START_TEST(test_evs_heartbeat_already_written) {
 
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats, 0, "Got no heartbeat");
+	check_size_eq(stats.heartbeats, 0, "Got no heartbeat");
 
 	close(socket);
 	u_client_free(client);
@@ -345,18 +345,18 @@ START_TEST(test_evs_heartbeat_inactive_0) {
 	qev_time = client->last_receive = 1000;
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
+	check_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
 
 	qev_time += HEARTBEAT_INACTIVE + 1;
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
 
 	qev_time += HEARTBEAT_INACTIVE;
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
-	test_size_eq(stats.heartbeats_inactive_closed, 1, "Client closed on failed challenge");
+	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats.heartbeats_inactive_closed, 1, "Client closed on failed challenge");
 
 	close(socket);
 	u_client_free(client);
@@ -373,22 +373,22 @@ START_TEST(test_evs_heartbeat_inactive_1) {
 	qev_time = client->last_receive = 1000;
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
+	check_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
 
 	qev_time += HEARTBEAT_INACTIVE + 1;
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
 
 	g_string_append_len(client->message->socket_buffer, HEARTBEAT_EVENT_MASKED, sizeof(HEARTBEAT_EVENT_MASKED)-1);
 
-	test_status_eq(client_message(client), CLIENT_GOOD, "Data good");
-	test_int64_eq(client->last_receive, qev_time, "Client time updated");
+	check_status_eq(client_message(client), CLIENT_GOOD, "Data good");
+	check_int64_eq(client->last_receive, qev_time, "Client time updated");
 
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
-	test_size_eq(stats.heartbeats_inactive_closed, 0, "Client not closed");
+	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats.heartbeats_inactive_closed, 0, "Client not closed");
 
 	close(socket);
 	u_client_free(client);
@@ -406,17 +406,17 @@ START_TEST(test_evs_heartbeat_inactive_2) {
 	client->last_receive = 0;
 	evs_client_heartbeat();
 
-	test_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
 
 	char buff[1024];
 	memset(buff, 0, sizeof(buff));
 	read(socket, buff, sizeof(buff)-1);
 
-	test_bin_eq(buff, HEARTBEAT_CHALLENGE, sizeof(HEARTBEAT_CHALLENGE)-1, "Challenge with callback sent");
+	check_bin_eq(buff, HEARTBEAT_CHALLENGE, sizeof(HEARTBEAT_CHALLENGE)-1, "Challenge with callback sent");
 
 	g_string_append_len(client->message->socket_buffer, HEARBEAT_CHALLENGE_CB, sizeof(HEARBEAT_CHALLENGE_CB)-1);
-	test_status_eq(client_message(client), CLIENT_GOOD, "Data good");
-	test_int64_eq(client->last_receive, qev_time, "Client time updated");
+	check_status_eq(client_message(client), CLIENT_GOOD, "Data good");
+	check_int64_eq(client->last_receive, qev_time, "Client time updated");
 
 	close(socket);
 	u_client_free(client);
@@ -426,11 +426,11 @@ END_TEST
 START_TEST(test_evs_client_subscribe_bad_subscription_0) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("test", client, 0), CLIENT_ERROR, "Subscription not found");
-	test_size_eq(client->subs->len, 0, "No subscriptions");
+	check_status_eq(evs_client_sub_client("test", client, 0), CLIENT_ERROR, "Subscription not found");
+	check_size_eq(client->subs->len, 0, "No subscriptions");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 0, "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -439,8 +439,8 @@ END_TEST
 START_TEST(test_evs_client_subscribe_bad_subscription_1) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Subscription not found");
-	test_size_eq(client->subs->len, 0, "No subscriptions");
+	check_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Subscription not found");
+	check_size_eq(client->subs->len, 0, "No subscriptions");
 
 	u_client_free(client);
 }
@@ -449,8 +449,8 @@ END_TEST
 START_TEST(test_evs_client_subscribe_bad_subscription_2) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("", client, 0), CLIENT_ERROR, "Subscription not found");
-	test_size_eq(client->subs->len, 0, "No subscriptions");
+	check_status_eq(evs_client_sub_client("", client, 0), CLIENT_ERROR, "Subscription not found");
+	check_size_eq(client->subs->len, 0, "No subscriptions");
 
 	u_client_free(client);
 }
@@ -459,17 +459,17 @@ END_TEST
 START_TEST(test_evs_client_subscribe_too_many_subscriptions) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
 
 	guint64 max = option_max_subscriptions();
 	while (max--) {
 		g_ptr_array_add(client->subs, NULL);
 	}
 
-	test_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_ERROR, "Subscription not found");
+	check_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_ERROR, "Subscription not found");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0 * option_apps_count(), "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 0 * option_apps_count(), "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -478,15 +478,15 @@ END_TEST
 START_TEST(test_evs_client_subscribe_already_subscribed) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Double subscription ignored");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Double subscription ignored");
 
 	evs_client_sub_t *sub = _subscription_get("/test/event/test", FALSE, FALSE);
-	test_size_eq(client->subs->len, 1, "Only 1 subscription");
-	test_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In subscription");
+	check_size_eq(client->subs->len, 1, "Only 1 subscription");
+	check_ptr_eq(g_ptr_array_index(client->subs, 0), sub, "In subscription");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 0, "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -495,14 +495,14 @@ END_TEST
 START_TEST(test_evs_client_subscribe_reject_child) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/children/reject", client, 0), CLIENT_ERROR, "Rejected");
-	test_status_eq(evs_client_sub_client("/test/children/reject/hi", client, 0), CLIENT_ERROR, "Rejected");
-	test_status_eq(evs_client_sub_client("/test/children/reject/another", client, 0), CLIENT_ERROR, "Rejected");
+	check_status_eq(evs_client_sub_client("/test/children/reject", client, 0), CLIENT_ERROR, "Rejected");
+	check_status_eq(evs_client_sub_client("/test/children/reject/hi", client, 0), CLIENT_ERROR, "Rejected");
+	check_status_eq(evs_client_sub_client("/test/children/reject/another", client, 0), CLIENT_ERROR, "Rejected");
 
-	test_size_eq(client->subs->len, 0, "Only 1 subscription");
+	check_size_eq(client->subs->len, 0, "Only 1 subscription");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscriptions");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscriptions");
+	check_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscriptions");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscriptions");
 
 	u_client_free(client);
 }
@@ -510,14 +510,14 @@ END_TEST
 
 START_TEST(test_evs_client_subscribe_async) {
 	client_t *client = u_client_create(NULL);
-	test_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
-	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
+	check_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
+	check_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 
 	while (client->subs->len != 1);
 
-	test_size_eq(client->subs->len, 1, "Only 1 subscription");
+	check_size_eq(client->subs->len, 1, "Only 1 subscription");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
+	check_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
 
 	u_client_free(client);
 }
@@ -528,18 +528,18 @@ START_TEST(test_evs_client_subscribe_async_with_callback) {
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("/test/async", client, 654987), CLIENT_ASYNC, "Async");
-	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
+	check_status_eq(evs_client_sub_client("/test/async", client, 654987), CLIENT_ASYNC, "Async");
+	check_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 
 	while (client->subs->len != 1);
 
-	test_size_eq(client->subs->len, 1, "Only 1 subscription");
-	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
+	check_size_eq(client->subs->len, 1, "Only 1 subscription");
+	check_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
 
 	char buff[512];
 	memset(buff, 0, sizeof(buff));
-	test_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(ASYNC_CALLBACK)-1, "Correct len");
-	test_bin_eq(buff, ASYNC_CALLBACK, sizeof(ASYNC_CALLBACK)-1, "Correct callback sent");
+	check_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(ASYNC_CALLBACK)-1, "Correct len");
+	check_bin_eq(buff, ASYNC_CALLBACK, sizeof(ASYNC_CALLBACK)-1, "Correct callback sent");
 }
 END_TEST
 
@@ -547,14 +547,14 @@ START_TEST(test_evs_client_subscribe_async_without_callback) {
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
-	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
+	check_status_eq(evs_client_sub_client("/test/async", client, 0), CLIENT_ASYNC, "Async");
+	check_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 
 	while (client->subs->len != 1);
 
-	test_size_eq(client->subs->len, 1, "Only 1 subscription");
+	check_size_eq(client->subs->len, 1, "Only 1 subscription");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
+	check_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "1 sub");
 }
 END_TEST
 
@@ -563,17 +563,17 @@ START_TEST(test_evs_client_subscribe_async_reject) {
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("/test/async/reject", client, 1), CLIENT_ASYNC, "Async");
-	test_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
+	check_status_eq(evs_client_sub_client("/test/async/reject", client, 1), CLIENT_ASYNC, "Async");
+	check_size_eq(client->subs->len, 0, "Not subscribed, gone ASYNC");
 
-	test_size_eq(client->subs->len, 0, "Subscription rejected");
+	check_size_eq(client->subs->len, 0, "Subscription rejected");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 0 * option_apps_count(), "All rejected");
+	check_size_eq(utils_stats()->apps_client_subscribe, 0 * option_apps_count(), "All rejected");
 
 	gchar buff[512];
 	int len = read(socket, buff, sizeof(buff)-1);
-	test_int32_eq(len, sizeof(INVALID_EVENT)-1, "Correct message size sent");
-	test_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct message sent");
+	check_int32_eq(len, sizeof(INVALID_EVENT)-1, "Correct message size sent");
+	check_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct message sent");
 
 	u_client_free(client);
 }
@@ -587,7 +587,7 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 	for (guint32 i = 0; i < option_max_subscriptions(); i++) {
 		char ep[128];
 		snprintf(ep, sizeof(ep), "/test/async/%d", i);
-		test_status_eq(evs_client_sub_client(ep, client, 0), CLIENT_ASYNC, "Async");
+		check_status_eq(evs_client_sub_client(ep, client, 0), CLIENT_ASYNC, "Async");
 	}
 
 	evs_client_sub_t *sub = _subscription_get("/test/async", TRUE, FALSE);
@@ -596,8 +596,8 @@ START_TEST(test_evs_client_subscribe_async_reject_too_many_subscriptions) {
 
 	gchar buff[512];
 	int len = read(socket, buff, sizeof(buff)-1);
-	test_int32_eq(len, sizeof(INVALID_EVENT)-1, "Correct message size sent");
-	test_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct message sent");
+	check_int32_eq(len, sizeof(INVALID_EVENT)-1, "Correct message size sent");
+	check_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct message sent");
 
 	u_client_free(client);
 }
@@ -607,7 +607,7 @@ START_TEST(test_evs_client_subscribe_stupid_path_0) {
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("/", client, 0), CLIENT_ERROR, "Rejected");
+	check_status_eq(evs_client_sub_client("/", client, 0), CLIENT_ERROR, "Rejected");
 
 	u_client_free(client);
 }
@@ -617,7 +617,7 @@ START_TEST(test_evs_client_subscribe_stupid_path_1) {
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("", client, 0), CLIENT_ERROR, "Rejected");
+	check_status_eq(evs_client_sub_client("", client, 0), CLIENT_ERROR, "Rejected");
 
 	u_client_free(client);
 }
@@ -628,7 +628,7 @@ START_TEST(test_evs_client_subscribe_stupid_path_2) {
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Rejected");
+	check_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Rejected");
 
 	u_client_free(client);
 }
@@ -637,12 +637,12 @@ END_TEST
 START_TEST(test_evs_client_unsubscribe) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 
-	test_size_eq(client->subs->len, 0, "No subscriptions");
-	test_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 1 * option_apps_count(), "Only real unsubscribes sent");
+	check_size_eq(client->subs->len, 0, "No subscriptions");
+	check_size_eq(utils_stats()->apps_client_subscribe, 1 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 1 * option_apps_count(), "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -651,7 +651,7 @@ END_TEST
 START_TEST(test_evs_client_unsubscribe_bad_subscription) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_ERROR, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_ERROR, "Subscribed");
 
 	u_client_free(client);
 }
@@ -661,13 +661,13 @@ START_TEST(test_evs_client_unsubscribe_not_subscribed) {
 	client_t *client = u_client_create(NULL);
 
 	evs_client_sub_t *sub = _subscription_get("/test/event/test", TRUE, FALSE);
-	test(sub != NULL, "Subscription created");
+	check(sub != NULL, "Subscription created");
 	g_rw_lock_writer_unlock(&sub->lock);
 
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_ERROR, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_ERROR, "Subscribed");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 0, "No subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 0, "No unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -694,15 +694,15 @@ END_TEST
 START_TEST(test_evs_client_sub_unsub_0) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -711,15 +711,15 @@ END_TEST
 START_TEST(test_evs_client_sub_unsub_1) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test2", client), CLIENT_GOOD, "Unsubscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test3", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test3", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test2", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test3", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test3", client), CLIENT_GOOD, "Unsubscribed");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -728,16 +728,16 @@ END_TEST
 START_TEST(test_evs_client_sub_unsub_2) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test3", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test3", client, 0), CLIENT_GOOD, "Subscribed");
 
-	test_status_eq(evs_client_unsub_client("/test/event/test3", client), CLIENT_GOOD, "Unsubscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test2", client), CLIENT_GOOD, "Unsubscribed");
-	test_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test3", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test2", client), CLIENT_GOOD, "Unsubscribed");
+	check_status_eq(evs_client_unsub_client("/test/event/test", client), CLIENT_GOOD, "Unsubscribed");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
+	check_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Only real unsubscribes sent");
 
 	u_client_free(client);
 }
@@ -746,20 +746,20 @@ END_TEST
 START_TEST(test_evs_client_clean) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event/test1", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_GOOD, "Subscribed");
-	test_status_eq(evs_client_sub_client("/test/event/test3", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test1", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test2", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event/test3", client, 0), CLIENT_GOOD, "Subscribed");
 
 	evs_client_client_close(client);
 
-	test_ptr_eq(client->subs, NULL, "No subscriptions");
+	check_ptr_eq(client->subs, NULL, "No subscriptions");
 
-	test_ptr_eq(_subscription_get("/test/event/test1", FALSE, FALSE), NULL, "No more clients subscribed 1");
-	test_ptr_eq(_subscription_get("/test/event/test2", FALSE, FALSE), NULL, "No more clients subscribed 2");
-	test_ptr_eq(_subscription_get("/test/event/test3", FALSE, FALSE), NULL, "No more clients subscribed 3");
+	check_ptr_eq(_subscription_get("/test/event/test1", FALSE, FALSE), NULL, "No more clients subscribed 1");
+	check_ptr_eq(_subscription_get("/test/event/test2", FALSE, FALSE), NULL, "No more clients subscribed 2");
+	check_ptr_eq(_subscription_get("/test/event/test3", FALSE, FALSE), NULL, "No more clients subscribed 3");
 
-	test_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
-	test_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Unsubscribes sent to client close");
+	check_size_eq(utils_stats()->apps_client_subscribe, 3 * option_apps_count(), "Only real subscribes sent");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 3 * option_apps_count(), "Unsubscribes sent to client close");
 
 	// So that u_client_free doesn't freak out
 	client->subs = g_ptr_array_new();
@@ -793,19 +793,19 @@ START_TEST(test_evs_client_pub_message) {
 	client_t *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
-	test_status_eq(status, CLIENT_GOOD, "Message published");
+	check_status_eq(status, CLIENT_GOOD, "Message published");
 
 	evs_client_tick();
 
 	gchar buff[1000];
 	int len = read(socket, buff, sizeof(buff)-1);
-	test_int32_eq(len, sizeof(PUB_EVENT)-1, "Correct message size sent");
-	test_bin_eq(buff, PUB_EVENT, sizeof(PUB_EVENT)-1, "Correct message sent");
+	check_int32_eq(len, sizeof(PUB_EVENT)-1, "Correct message size sent");
+	check_bin_eq(buff, PUB_EVENT, sizeof(PUB_EVENT)-1, "Correct message sent");
 
 	close(socket);
 	u_client_free(client);
@@ -817,20 +817,20 @@ START_TEST(test_evs_client_tick_closed_client_broadcast) {
 	client_t *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
-	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something"), CLIENT_GOOD, "Message published");
-	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something1"), CLIENT_GOOD, "Message published");
-	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something2"), CLIENT_GOOD, "Message published");
-	test_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something3"), CLIENT_GOOD, "Message published");
+	check_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something"), CLIENT_GOOD, "Message published");
+	check_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something1"), CLIENT_GOOD, "Message published");
+	check_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something2"), CLIENT_GOOD, "Message published");
+	check_status_eq(evs_client_pub_event(handler, NULL, d_plain, "something3"), CLIENT_GOOD, "Message published");
 
 	evs_client_tick();
 	qev_debug_flush();
 
-	test_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed, sub freed");
-	test_size_eq(utils_stats()->evs_client_send_pub_closes, 4, "Client closed in each pub");
+	check_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed, sub freed");
+	check_size_eq(utils_stats()->evs_client_send_pub_closes, 4, "Client closed in each pub");
 }
 END_TEST
 
@@ -847,54 +847,54 @@ START_TEST(test_evs_client_tick_closed_client_single) {
 	evs_client_send_callback(client, 1, 0, d_plain, "test5");
 
 	evs_client_tick();
-	test_size_eq(utils_stats()->evs_client_send_single_closes, 6, "Client closed");
+	check_size_eq(utils_stats()->evs_client_send_single_closes, 6, "Client closed");
 }
 END_TEST
 
 START_TEST(test_evs_client_tick_no_client_handler) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
-	test_status_eq(status, CLIENT_GOOD, "Message published");
+	check_status_eq(status, CLIENT_GOOD, "Message published");
 
 	evs_client_tick();
 	qev_debug_flush();
 
 	// Client not allocated with a socket, so will be closed
-	test_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed");
+	check_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed");
 
-	test_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
-	test_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
+	check_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
+	check_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
 }
 END_TEST
 
 START_TEST(test_evs_client_tick_clear_subscription) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
+	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test(handler != NULL, "Got handler");
+	check(handler != NULL, "Got handler");
 
 	status_t status = evs_client_pub_event(handler, NULL, d_plain, "something");
-	test_status_eq(status, CLIENT_GOOD, "Message published");
+	check_status_eq(status, CLIENT_GOOD, "Message published");
 
 	conns_client_close(client);
 
 	// Attempt to publish to an empty subscription
 	evs_client_tick();
 
-	test_size_eq(utils_stats()->evs_client_pubd_messages, 0, "No messages sent");
-	test_size_eq(utils_stats()->evs_client_send_pub_closes, 0, "Client closed");
+	check_size_eq(utils_stats()->evs_client_pubd_messages, 0, "No messages sent");
+	check_size_eq(utils_stats()->evs_client_send_pub_closes, 0, "Client closed");
 }
 END_TEST
 
 START_TEST(test_evs_client_tick_no_handler) {
 	status_t status = evs_client_pub_event(NULL, NULL, d_plain, "something");
-	test_status_eq(status, CLIENT_ERROR, "Message published");
+	check_status_eq(status, CLIENT_ERROR, "Message published");
 }
 END_TEST
 
@@ -905,12 +905,12 @@ START_TEST(test_evs_client_send_0) {
 	client->state = cstate_running;
 
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test_status_eq(evs_client_send(client, handler, NULL, 0, d_plain, ""), CLIENT_GOOD, "Message sent");
+	check_status_eq(evs_client_send(client, handler, NULL, 0, d_plain, ""), CLIENT_GOOD, "Message sent");
 
 	gchar buff[128];
 	int len = read(socket, buff, sizeof(buff)-1);
-	test_int32_eq(len, sizeof(CLIENT_SEND)-1, "Got right message size");
-	test_bin_eq(buff, CLIENT_SEND, sizeof(CLIENT_SEND)-1, "Correct message sent");
+	check_int32_eq(len, sizeof(CLIENT_SEND)-1, "Got right message size");
+	check_bin_eq(buff, CLIENT_SEND, sizeof(CLIENT_SEND)-1, "Correct message sent");
 
 	u_client_free(client);
 }
@@ -920,7 +920,7 @@ START_TEST(test_evs_client_send_1) {
 	client_t *client = u_client_create(NULL);
 
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test_status_eq(evs_client_send(client, handler, NULL, 0, d_plain, ""), CLIENT_FATAL, "Message rejected");
+	check_status_eq(evs_client_send(client, handler, NULL, 0, d_plain, ""), CLIENT_FATAL, "Message rejected");
 
 	u_client_free(client);
 }
@@ -929,7 +929,7 @@ END_TEST
 START_TEST(test_evs_client_send_2) {
 	client_t *client = u_client_create(NULL);
 
-	test_status_eq(evs_client_send(client, NULL, NULL, 0, d_plain, ""), CLIENT_FATAL, "Message rejected");
+	check_status_eq(evs_client_send(client, NULL, NULL, 0, d_plain, ""), CLIENT_FATAL, "Message rejected");
 
 	u_client_free(client);
 }
@@ -945,7 +945,7 @@ START_TEST(test_evs_client_async_message_invalid_event_0) {
 
 	evs_client_tick();
 
-	test_size_eq(utils_stats()->evs_client_async_messages, 0, "0 messages sent");
+	check_size_eq(utils_stats()->evs_client_async_messages, 0, "0 messages sent");
 }
 END_TEST
 
@@ -960,12 +960,12 @@ START_TEST(test_evs_client_async_message_invalid_event_1) {
 
 	evs_client_tick();
 
-	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
+	check_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
 
 	gchar buff[1000];
 	int len = read(socket, buff, sizeof(buff)-1);
-	test_int32_eq(len, sizeof(INVALID_EVENT)-1, "Message sent");
-	test_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct invalid response");
+	check_int32_eq(len, sizeof(INVALID_EVENT)-1, "Message sent");
+	check_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct invalid response");
 }
 END_TEST
 
@@ -983,12 +983,12 @@ START_TEST(test_evs_client_async_message_invalid_event_extra) {
 
 	evs_client_tick();
 
-	test_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
+	check_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
 
 	gchar buff[1000];
 	int len = read(socket, buff, sizeof(buff)-1);
-	test_int32_eq(len, sizeof(INVALID_EVENT)-1, "Message sent");
-	test_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct invalid response");
+	check_int32_eq(len, sizeof(INVALID_EVENT)-1, "Message sent");
+	check_bin_eq(buff, INVALID_EVENT, sizeof(INVALID_EVENT)-1, "Correct invalid response");
 }
 END_TEST
 
@@ -996,7 +996,7 @@ START_TEST(test_evs_client_number_subscribed_0) {
 	client_t *client = u_client_create(NULL);
 
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test_uint64_eq(evs_client_number_subscribed(handler, NULL), 0, "No Subscriptions");
+	check_uint64_eq(evs_client_number_subscribed(handler, NULL), 0, "No Subscriptions");
 
 	u_client_free(client);
 }
@@ -1007,7 +1007,7 @@ START_TEST(test_evs_client_number_subscribed_1) {
 
 	evs_client_sub_client("/test/event", client, 0);
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test_uint64_eq(evs_client_number_subscribed(handler, NULL), 1, "Single subscription");
+	check_uint64_eq(evs_client_number_subscribed(handler, NULL), 1, "Single subscription");
 
 	u_client_free(client);
 }
@@ -1021,7 +1021,7 @@ START_TEST(test_evs_client_number_subscribed_2) {
 
 	evs_client_sub_client("/test/event/something", client, 0);
 	event_handler_t *handler = evs_server_get_handler("/test/event", NULL);
-	test_uint64_eq(evs_client_number_subscribed(handler, extra), 1, "Single subscription");
+	check_uint64_eq(evs_client_number_subscribed(handler, extra), 1, "Single subscription");
 
 	g_ptr_array_free(extra, TRUE);
 	u_client_free(client);

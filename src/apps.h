@@ -21,7 +21,7 @@
 #define PATH_STARTERS "./\\~"
 
 /**
- * How to reference the current directory.
+ * Where we expect all apps to live, by default
  */
 #define PATH_LIB_DIR "/usr/lib/quickio"
 
@@ -269,15 +269,11 @@ void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handle
  */
 void apps_stats_gather(stats_app_append_cb app_append);
 
-#ifdef APP_TESTING
-
 /**
  * ONLY FOR TESTING APPLICATIONS.  The server MUST be started with A SINGLE application,
  * and that application will have its app_test() function hit.
  */
 gboolean apps_test();
-
-#endif
 
 #ifdef TESTING
 #include "../test/test_apps.h"

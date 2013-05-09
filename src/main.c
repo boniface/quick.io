@@ -133,11 +133,11 @@ int main(int argc, gchar *argv[]) {
 		g_thread_new(buff, qev_run_thread, NULL);
 	}
 
-	#ifdef APP_TESTING
+	if (option_run_app_test()) {
 		return apps_test() != TRUE;
-	#else
+	} else {
 		qev_run();
-	#endif
+	}
 
 	return 1;
 }

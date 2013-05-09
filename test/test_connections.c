@@ -22,7 +22,7 @@ void _test_conns_setup() {
 	evs_server_init();
 	conns_init();
 	apps_run();
-	test(stats_init());
+	check(stats_init());
 }
 
 START_TEST(test_conns_client_closed_0) {
@@ -31,7 +31,7 @@ START_TEST(test_conns_client_closed_0) {
 	client->state = cstate_dead;
 
 	g_string_append(client->message->socket_buffer, MESSAGE);
-	test_not(conns_client_data(client), "Client dead");
+	check_not(conns_client_data(client), "Client dead");
 
 	u_client_free(client);
 }
@@ -59,8 +59,8 @@ START_TEST(test_conns_message_clean_0) {
 	g_string_append(sb, PING);
 	conns_message_clean(client, TRUE, TRUE);
 
-	test_size_eq(sb->len, 0, "Socket Buffer truncated");
-	test_size_eq(b->len, 0, "Buffer truncated");
+	check_size_eq(sb->len, 0, "Socket Buffer truncated");
+	check_size_eq(b->len, 0, "Buffer truncated");
 
 	u_client_free(client);
 }
@@ -76,8 +76,8 @@ START_TEST(test_conns_message_clean_1) {
 	g_string_append(sb, PING);
 	conns_message_clean(client, TRUE, FALSE);
 
-	test_size_eq(sb->len, 0, "Socket Buffer truncated");
-	test_size_eq(b->len, sizeof(PING)-1, "Buffer not truncated");
+	check_size_eq(sb->len, 0, "Socket Buffer truncated");
+	check_size_eq(b->len, sizeof(PING)-1, "Buffer not truncated");
 
 	u_client_free(client);
 }
@@ -93,8 +93,8 @@ START_TEST(test_conns_message_clean_2) {
 	g_string_append(sb, PING);
 	conns_message_clean(client, FALSE, TRUE);
 
-	test_size_eq(sb->len, sizeof(PING)-1, "Socket Buffer truncated");
-	test_size_eq(b->len, 0, "Buffer not truncated");
+	check_size_eq(sb->len, sizeof(PING)-1, "Socket Buffer truncated");
+	check_size_eq(b->len, 0, "Buffer not truncated");
 
 	u_client_free(client);
 }
@@ -110,8 +110,8 @@ START_TEST(test_conns_message_clean_3) {
 	g_string_append(sb, PING);
 	conns_message_clean(client, FALSE, FALSE);
 
-	test_size_eq(sb->len, sizeof(PING)-1, "Socket Buffer not truncated");
-	test_size_eq(b->len, sizeof(PING)-1, "Buffer not truncated");
+	check_size_eq(sb->len, sizeof(PING)-1, "Socket Buffer not truncated");
+	check_size_eq(b->len, sizeof(PING)-1, "Buffer not truncated");
 
 	u_client_free(client);
 }
@@ -146,7 +146,7 @@ START_TEST(test_conns_clients_foreach) {
 	}
 
 	conns_clients_foreach(_callback);
-	test_uint32_eq(i, CONNS_YIELD+1, "Correct number of clients called");
+	check_uint32_eq(i, CONNS_YIELD+1, "Correct number of clients called");
 }
 END_TEST
 
@@ -178,7 +178,7 @@ START_TEST(test_conns_clients_foreach_race) {
 
 	qev_lock_write_unlock(&_clients_lock);
 
-	test_int32_eq(calls, 0, "No callbacks");
+	check_int32_eq(calls, 0, "No callbacks");
 }
 END_TEST
 
@@ -208,7 +208,7 @@ START_TEST(test_conns_clients_foreach_null) {
 
 	conns_clients_foreach(_callback);
 
-	test_int32_eq(calls, 1, "Ignored empty client");
+	check_int32_eq(calls, 1, "Ignored empty client");
 }
 END_TEST
 
@@ -219,14 +219,14 @@ START_TEST(test_conns_clients_remove_0) {
 		conns_client_new(client);
 		client->state = cstate_running;
 
-		test_uint64_eq(client->clients_pos, i + 1, "Correct position");
+		check_uint64_eq(client->clients_pos, i + 1, "Correct position");
 	}
 
 	for (guint i = 10; i > 0; i--) {
 		client_t *client = _clients[i - 1];
 		_conns_clients_remove(client);
 
-		test_uint64_eq(client->clients_pos, 0, "Correct position");
+		check_uint64_eq(client->clients_pos, 0, "Correct position");
 	}
 }
 END_TEST
@@ -243,14 +243,14 @@ START_TEST(test_conns_clients_remove_1) {
 
 	_conns_clients_remove(client2);
 
-	test_uint64_eq(client3->clients_pos, 2, "Correct position");
+	check_uint64_eq(client3->clients_pos, 2, "Correct position");
 }
 END_TEST
 
 START_TEST(test_conns_balance_0) {
 	conns_balance(100, "test");
 
-	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
+	check_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 }
 END_TEST
 
@@ -263,14 +263,14 @@ START_TEST(test_conns_balance_1) {
 	client->handler = h_rfc6455;
 	client->state = cstate_running;
 
-	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
+	check_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 	_conns_balance();
-	test_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
+	check_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
 
 	char buff[sizeof(MOVE)+128];
 	memset(buff, 0, sizeof(buff));
-	test_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
-	test_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
+	check_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
+	check_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
 }
 END_TEST
 
@@ -290,24 +290,24 @@ START_TEST(test_conns_balance_2) {
 	client2->handler = h_rfc6455;
 	client2->state = cstate_running;
 
-	test_int64_eq(g_async_queue_length(_balances), 2, "Two requests");
+	check_int64_eq(g_async_queue_length(_balances), 2, "Two requests");
 	_conns_balance();
-	test_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
+	check_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
 
 	char buff1[sizeof(MOVE)+128];
 	char buff2[sizeof(MOVE2)+128];
 	memset(buff1, 0, sizeof(buff1));
 	memset(buff2, 0, sizeof(buff2));
 
-	test(read(socket1, buff1, sizeof(buff1)-1) != -1, "Got MOVE length");
-	test(read(socket2, buff2, sizeof(buff2)-1) != -1, "Got MOVE length");
+	check(read(socket1, buff1, sizeof(buff1)-1) != -1, "Got MOVE length");
+	check(read(socket2, buff2, sizeof(buff2)-1) != -1, "Got MOVE length");
 
 	if (strcmp(buff1, MOVE) == 0) {
-		test_bin_eq(buff1, MOVE, sizeof(MOVE), "Correct MOVE sent");
-		test_bin_eq(buff2, MOVE2, sizeof(MOVE2), "Correct MOVE sent");
+		check_bin_eq(buff1, MOVE, sizeof(MOVE), "Correct MOVE sent");
+		check_bin_eq(buff2, MOVE2, sizeof(MOVE2), "Correct MOVE sent");
 	} else {
-		test_bin_eq(buff1, MOVE2, sizeof(MOVE2), "Correct MOVE sent");
-		test_bin_eq(buff2, MOVE, sizeof(MOVE), "Correct MOVE sent");
+		check_bin_eq(buff1, MOVE2, sizeof(MOVE2), "Correct MOVE sent");
+		check_bin_eq(buff2, MOVE, sizeof(MOVE), "Correct MOVE sent");
 	}
 }
 END_TEST
@@ -323,14 +323,14 @@ START_TEST(test_conns_balance_yield) {
 		client->state = cstate_running;
 	}
 
-	test_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
+	check_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 	_conns_balance();
-	test_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
+	check_int64_eq(g_async_queue_length(_balances), 0, "Requests cleared");
 
 	char buff[sizeof(MOVE)+128];
 	memset(buff, 0, sizeof(buff));
-	test_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
-	test_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
+	check_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
+	check_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
 }
 END_TEST
 
@@ -343,7 +343,7 @@ START_TEST(test_conns_max_clients) {
 		client->state = cstate_running;
 	}
 
-	test_uint64_eq(_clients_len, 500, "Only 500 accepted");
+	check_uint64_eq(_clients_len, 500, "Only 500 accepted");
 }
 END_TEST
 
@@ -359,7 +359,7 @@ START_TEST(test_conns_client_close_free) {
 	// The notification should be fired immediately
 	conns_client_close(client);
 
-	test_size_eq(utils_stats()->apps_client_close, 2, "Single client disconnected, 2 apps fired");
+	check_size_eq(utils_stats()->apps_client_close, 2, "Single client disconnected, 2 apps fired");
 
 	u_client_free(client);
 }

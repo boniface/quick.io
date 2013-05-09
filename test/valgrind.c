@@ -11,7 +11,7 @@ void _setup() {
 	evs_server_init();
 	conns_init();
 	apps_run();
-	test(stats_init());
+	check(stats_init());
 }
 
 START_TEST(test_client_bad_headers) {
@@ -26,7 +26,7 @@ START_TEST(test_client_bad_headers) {
 		"Origin: ""\x00""\r\n\r\n";
 
 	g_string_overwrite_len(client->message->socket_buffer, 0, headers, sizeof(headers)-1);
-	test_status_eq(client_handshake(client), CLIENT_WRITE, "Null byte ignored");
+	check_status_eq(client_handshake(client), CLIENT_WRITE, "Null byte ignored");
 
 	u_client_free(client);
 }
@@ -41,13 +41,13 @@ START_TEST(test_rfc6455_messages) {
 	const char msg2[] = "\x07""\x10""\x10""\x81\x84""abcd";
 
 	g_string_overwrite_len(client->message->socket_buffer, 0, msg, strlen(msg));
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Waiting for more");
+	check_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Waiting for more");
 
 	g_string_overwrite_len(client->message->socket_buffer, 0, msg2, strlen(msg2));
-	test_status_eq(h_rfc6455_continue(client), CLIENT_GOOD, "Read the entire message");
+	check_status_eq(h_rfc6455_continue(client), CLIENT_GOOD, "Read the entire message");
 
 	g_string_truncate(client->message->buffer, 0);
-	test_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Waiting for more");
+	check_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT, "Waiting for more");
 
 	u_client_free(client);
 }
@@ -59,7 +59,7 @@ START_TEST(test_conns_clients) {
 		conns_client_new(client);
 	}
 
-	test_uint64_eq(stats.clients, 500, "Only 500 accepted");
+	check_uint64_eq(stats.clients, 500, "Only 500 accepted");
 }
 END_TEST
 

@@ -57,9 +57,9 @@ void u_client_free(client_t *client) {
 	g_slice_free1(sizeof(*client), client);
 }
 
-void u_main_setup(pid_t *pid) {
+void u_main_setup(pid_t *pid, gchar* config_path) {
 	int out[2];
-	test_int32_eq(pipe(out), 0, "Pipes ready");
+	check_int32_eq(pipe(out), 0, "Pipes ready");
 
 	utils_stats_setup();
 
@@ -81,7 +81,7 @@ void u_main_setup(pid_t *pid) {
 			memset(&buff, 0, sizeof(buff));
 			if (read(out[0], buff, sizeof(buff)) > 0) {
 				DEBUG("%s", buff);
-				test_str_eq(buff, "QIO READY\n", "Server inited");
+				check_str_eq(buff, "QIO READY\n", "Server inited");
 			}
 
 			close(out[0]);
@@ -89,16 +89,26 @@ void u_main_setup(pid_t *pid) {
 			return;
 		}
 
-		test(FALSE, "Server failed to init");
+		check(FALSE, "Server failed to init");
 	} else {
 		close(out[0]);
 
 		// Setup the child's stdout to be readable for the "QIO READY" command
 		dup2(out[1], STDOUT_FILENO);
 
-		char *args[] = {"."};
-		init_main(1, args);
-		close(out[1]);
+		int argc;
+		char **argv;
+		if (config_path == NULL) {
+			gchar *_argv[] = {"."};
+			argv = _argv;
+			argc = 1;
+		} else {
+			gchar *_argv[] = {".", "-c", config_path};
+			argv = _argv;
+			argc = 3;
+		}
+
+		exit(init_main(argc, argv));
 	}
 }
 
@@ -135,11 +145,11 @@ int u_ws_connect() {
 	char buff[sizeof(U_HANDSHAKE_RESPONSE)];
 	memset(&buff, 0, sizeof(buff));
 
-	test(sock, "Connection established");
-	test_int32_eq(send(sock, U_HANDSHAKE, sizeof(U_HANDSHAKE)-1, 0), sizeof(U_HANDSHAKE)-1, "Handshake sent");
-	test_int32_eq(read(sock, buff, sizeof(buff)), sizeof(U_HANDSHAKE_RESPONSE)-1, "Correct response length read");
+	check(sock, "Connection established");
+	check_int32_eq(send(sock, U_HANDSHAKE, sizeof(U_HANDSHAKE)-1, 0), sizeof(U_HANDSHAKE)-1, "Handshake sent");
+	check_int32_eq(read(sock, buff, sizeof(buff)), sizeof(U_HANDSHAKE_RESPONSE)-1, "Correct response length read");
 
-	test_str_eq(buff, U_HANDSHAKE_RESPONSE, "Correct response sent");
+	check_str_eq(buff, U_HANDSHAKE_RESPONSE, "Correct response sent");
 
 	return sock;
 }

@@ -262,10 +262,8 @@ test: test-build
 	@$(GCOVR) $(GCOVR_SRC_ARGS)
 	@$(GCOVR) $(GCOVR_APP_ARGS)
 
-test-apps: export BUILD_DIR = $(BUILD_DIR_APP_TEST)
-test-apps: export CFLAGS += -DAPP_TESTING
-test-apps:
-	@$(MAKE) _test-apps
+test-apps: debug $(APP_TESTS) $(RUNAPPTESTS)
+	$(RUNAPPTESTS) $(BUILD_DIR)/quickio $(APP_TESTS)
 
 test-build: export CFLAGS += $(CFLAGS_TEST)
 test-build: export OBJECTS += $(TEST_OBJECTS)
@@ -295,9 +293,6 @@ test-valgrind: clean test-build
 
 _build:
 	$(MAKE) $(TARGET)
-
-_test-apps: debug $(APP_TESTS) $(RUNAPPTESTS)
-	$(RUNAPPTESTS) $(BUILD_DIR)/quickio $(APP_TESTS)
 
 #
 # Compilation rules

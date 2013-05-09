@@ -229,8 +229,6 @@ void apps_stats_gather(stats_app_append_cb app_append) {
 	)
 }
 
-#ifdef APP_TESTING
-
 gboolean apps_test() {
 	if (_apps->len != 1) {
 		FATAL("Can only test 1 app at a time, not %u", _apps->len);
@@ -244,8 +242,6 @@ gboolean apps_test() {
 
 	return app->test();
 }
-
-#endif
 
 #ifdef TESTING
 #include "../test/test_apps.c"
