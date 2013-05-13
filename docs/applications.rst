@@ -24,7 +24,7 @@ The thread will first be spooled up during server initialization: during this ti
 Running
 -------
 
-After all of the applications have been initialized, the server will begin running and accepting connections, and the applications will each receive a call to `app_run()`. This is where the application should run its main loop, do all its work, process events, and so forth.
+After all of the applications have been initialized, the server will begin running and accepting connections, and the applications will each receive a call to `app_run()`. This is where the application should run its main loop, do all its work, process events, and so forth. This function is called in a new thread, and it is where the application should perform all of its work. This is the ONLY function that will be called from its own thread; all other callbacks and functions will be called from a server thread, so they should do their best not to block anything.
 
 .. tip:: To synchronize events coming from the main thread to the application, `GLib Asynchronous Queues <http://developer.gnome.org/glib/2.32/glib-Asynchronous-Queues.html>`_ are awesome.
 
@@ -38,10 +38,10 @@ Registering Events
 Since the server is built entirely around events, it might be useful to know to register them. The call is incredibly simple (from the `app_init()` or `app_run()` functions):
 
 .. code-block:: c
-	
+
 	on("/path/to/event", handler_function, on_subscribe_callback, on_unsubscribe_callback, should_handle_children)
 
-This function returns an `event_handler_t`, which is used to broadcast events to all clients subscribed to the event. 
+This function returns an `event_handler_t`, which is used to broadcast events to all clients subscribed to the event.
 
 .. important:: You will NEVER receive the event name again in the application; it will be referred to exclusively by the pointer to the handler. As applications can be namespaced without their knowledge, passing event paths back to the applications would create way too many problems.
 
@@ -59,9 +59,9 @@ The `handler_function` parameter is a function that will be called when the even
 `should_handle_children` is a boolean value indicating if child events should also be handled by this event handler. For example:
 
 .. code-block:: c
-	
-	evs_server_on("/test/event", NULL, NULL, NULL, TRUE)
-	evs_server_on("/test/alone", NULL, NULL, NULL, FALSE)
+
+	on("/test/event", NULL, NULL, NULL, TRUE)
+	on("/test/alone", NULL, NULL, NULL, FALSE)
 
 The event handler at `/test/event` will handle children events, in the form of:
 
@@ -73,32 +73,34 @@ It is completely up to the event handler if it wants to handle events with these
 
 The event handler at `/test/alone` will ONLY accept events to `/test/alone`; all others will be rejected.
 
+Handling Events
+---------------
+
+When a client sends an event to the server, it is routed to the registered handler. The handler callback looks like:
+
+.. code-block:: c
+
+	typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event_t *event, GString *response);
+
+This function is expected to return a status, as described above, and is given the following:
+
+1. client: The client that sent the event
+2. handler: A reference to the handler (the same handler returned from `on`)
+3. event: All of the event information: check out `the struct docs in doxygen <./doxygen/structevent__s.html>`_
+4. response: Data to be sent to the client's callback; use CLIENT_WRITE to make sure it's sent. The data type in `event->data_type` is used to determine what this data is.
+
 Sending Callbacks
 =================
 
 So what if you have an event subscription callback that does asynchronous verification of events, and you want to send the proper callbacks? There are a set of callback functions to help you out here.
 
 .. code-block:: c
-	
+
 	evs_client_app_sub_cb()
 	evs_client_send_callback()
 	evs_client_send_error_callback()
 
 Check out `the Application Functions in Doxygen <./doxygen/group__AppFunctions.html>`_ for more information.
-
-Example
-=======
-
-In this example, we (fakely) track the population of the world, sending out an updated population event every time a baby is born. 
-
-Code
-----
-
-Enough talk, let's see what we can do here!
-
-.. literalinclude:: app_skeleton.c
-	:language: c
-	:linenos:
 
 Creating Server Callbacks
 =========================
@@ -106,39 +108,39 @@ Creating Server Callbacks
 Client callbacks are simple enough to understand, but what about when you want to be able to have a callback on the server? The easiest way to see these is to look at some code:
 
 .. code-block:: c
-	
+
 	// Whatever data needs to be passed to callback handler
 	struct callback_data {
 		int id;
 		gchar *name;
 		float percent;
 	};
-	
+
 	status_t _callback(client_t *client, void *data, event_t *event) {
 		return CLIENT_GOOD;
 	}
-	
+
 	void _free(void *data) {
 		struct callback_data *d = data;
 		g_free(d->name);
 		g_slice_free1(sizeof(*d), d);
 	}
-	
+
 	status_t handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
 		struct callback_data *d = g_slice_alloc0(sizeof(*d));
 		event->server_callback = evs_server_callback_new(client, _callback, d, _free);
-		
+
 		// Set some data to be sent to the client
 		event->data_type = d_json;
 		g_string_assign(response, "{\"key1\": \"value\", \"key2\": 2393}");
-		
+
 		return CLIENT_GOOD;
 	}
-	
+
 	... snip ...
-	
+
 	on("/event", handler, NULL, NULL, FALSE);
-	
+
 	... snip ...
 
 The event flow will be as follows:
@@ -152,3 +154,17 @@ The event flow will be as follows:
 7. Once _callback() is done, the event is free'd
 
 .. note:: A server callback might *never* be called: a client has a limited number of server callbacks it can have registered simultaneously, so if it exceeds the number its allowed, then old callbacks will be culled to make room for the new. Chances are this will never happen, but it is a possibility.
+
+Example
+=======
+
+In this example, we (fakely) track the population of the world, sending out an updated population event every time a baby is born.
+
+Code
+----
+
+Enough talk, let's see what we can do here!
+
+.. literalinclude:: app_skeleton.c
+	:language: c
+	:linenos:

@@ -226,7 +226,7 @@ GCOVR_JENKINS_APP_ARGS = \
 # -------------------------------------------------------------------------
 #
 
-.PHONY: app debug test
+.PHONY: app debug docs test
 
 all: debug
 
@@ -234,6 +234,7 @@ clean:
 	rm -rf build_*
 	rm -f *.gcno *.gcda
 	rm -f gmon.out
+	$(MAKE) -C docs clean
 
 deb:
 	dpkg-buildpackage $(DPKG_BUILDPACKAGE_ARGS)
@@ -243,6 +244,9 @@ deps:
 	@echo '-------- Checking compile requirements --------'
 	pkg-config --exists '$(LIBS_REQUIREMENTS)'
 	@echo '-------- All good. Compiling... --------'
+
+docs:
+	while [ true ]; do inotifywait -r docs; make -C docs html; doxygen; sleep .5; done
 
 debug: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
 debug: export QIOINI = quickio.ini
