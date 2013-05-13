@@ -246,7 +246,11 @@ deps:
 	@echo '-------- All good. Compiling... --------'
 
 docs:
-	while [ true ]; do inotifywait -r docs; make -C docs html; doxygen; sleep .5; done
+	$(MAKE) -C docs html
+	doxygen
+
+docs-watch:
+	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
 
 debug: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
 debug: export QIOINI = quickio.ini
