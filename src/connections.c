@@ -180,17 +180,19 @@ void conns_client_new(client_t *client) {
 	client_ref(client);
 
 	qev_lock_read_lock(&_clients_lock);
+	guint pos = __sync_add_and_fetch(&_clients_len_next, 1);
 
-	if (((guint)g_atomic_int_get(&_clients_len_next)) + 1 > option_max_clients()) {
+	if (pos > option_max_clients()) {
 		WARN("More clients than `max-clients` trying to connect");
 
 		qev_lock_read_unlock(&_clients_lock);
+		__sync_sub_and_fetch(&_clients_len_next, 1);
 		qev_close(client);
 		return;
 	}
 
-	client->clients_pos = __sync_add_and_fetch(&_clients_len_next, 1);
-	g_atomic_pointer_set(&_clients[client->clients_pos - 1], client);
+	client->clients_pos = pos;
+	g_atomic_pointer_set(&_clients[pos - 1], client);
 	g_atomic_int_inc(&_clients_len);
 	qev_lock_read_unlock(&_clients_lock);
 
