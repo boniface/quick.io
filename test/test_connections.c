@@ -344,6 +344,19 @@ START_TEST(test_conns_max_clients) {
 	}
 
 	check_uint64_eq(_clients_len, 500, "Only 500 accepted");
+
+	for (int i = 0; i < 100; i++) {
+		conns_client_close(_clients[0]);
+	}
+
+	for (int i = 0; i < 10; i++) {
+		client_t *client = u_client_create(&socket);
+		conns_client_new(client);
+		client->handler = h_rfc6455;
+		client->state = cstate_running;
+	}
+
+	check_uint64_eq(_clients_len, 410, "Accepted after going back down");
 }
 END_TEST
 
