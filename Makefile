@@ -236,6 +236,11 @@ clean:
 	rm -f gmon.out
 	$(MAKE) -C docs clean
 
+clean-all: clean
+	$(MAKE) -C client/c clean
+	$(MAKE) -C client/java clean
+	$(MAKE) -C tools clean
+
 deb:
 	dpkg-buildpackage $(DPKG_BUILDPACKAGE_ARGS)
 	lintian
