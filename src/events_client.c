@@ -438,7 +438,7 @@ status_t evs_client_send(client_t *client, const event_handler_t *handler, path_
 		return CLIENT_FATAL;
 	}
 
-	GString *message = g_string_sized_new(100);
+	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
 	status_t status = evs_client_format_message(handler, 0, server_callback, extra, type, data, message);
 
 	if (status == CLIENT_GOOD) {
@@ -457,7 +457,7 @@ status_t evs_client_send(client_t *client, const event_handler_t *handler, path_
 
 status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extra, const enum data_t type, const gchar *data) {
 	// Format the message that will be sent to the clients
-	GString *message = g_string_sized_new(100);
+	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
 	gchar *event_path;
 
 	// There are no callbacks for broadcast messages
@@ -492,7 +492,7 @@ gboolean evs_client_init() {
 	_heartbeat = evs_server_on("/qio/heartbeat", NULL, evs_no_subscribe, NULL, FALSE);
 
 	_heartbeat_amsg = g_slice_alloc0(sizeof(*_heartbeat_amsg));
-	_heartbeat_amsg->message = g_string_sized_new(100);
+	_heartbeat_amsg->message = g_string_sized_new(STRING_BUFFER_SIZE);
 	_heartbeat_amsg->message_opcode = op_text;
 	_evs_client_format_message(_heartbeat, 0, 0, NULL, d_plain, "", _heartbeat_amsg->message, NULL);
 
@@ -528,7 +528,8 @@ void evs_client_send_callback(client_t *client, const callback_t client_callback
 		return;
 	}
 
-	GString *message = g_string_sized_new(100);
+	#warning use a thread local buffer? Along with all other g_string_sized_new()'s here?
+	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
 
 	// No error condition when sending a callback, and since we do the error check here,
 	// there's no need to do any other error checks
@@ -567,7 +568,7 @@ void evs_client_heartbeat() {
 	// The message used to write to clients
 	message_t m;
 	m.type = op_text;
-	m.buffer = g_string_sized_new(100);
+	m.buffer = g_string_sized_new(STRING_BUFFER_SIZE);
 
 	gboolean _cb(client_t *client) {
 		// This is just a work around for a crazy bug: some browsers and proxies SUCK at closing

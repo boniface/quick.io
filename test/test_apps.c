@@ -341,8 +341,6 @@ START_TEST(test_testing_runs) {
 	int status;
 	waitpid(pid, &status, 0);
 
-DEBUG("Status: %d", WEXITSTATUS(status));
-
 	check(WIFEXITED(status), "Tests ran normally");
 	check(WEXITSTATUS(status) == 0, "Exited well");
 	check(!WIFSIGNALED(status), "Fatally exited when couldn't run");

@@ -1,6 +1,4 @@
 /**
- * @file apps.h
- *
  * Deals with apps in bulk.
  * The general design pattern behind the applications is that they are entirely independent
  * from the server. Anything the apps do should have no impact on the rest of the server
@@ -9,6 +7,8 @@
  * and vis-versa. That being said, the only reference the apps share with the main server
  * is `client`, but that is ref-counted and void* in the apps (in other words, it may not be
  * modified for any reason).
+ *
+ * @file apps.h
  */
 #ifndef QIO_APPS_H
 #define QIO_APPS_H
@@ -97,9 +97,11 @@ typedef gboolean (*app_on_cb)(app_on on);
 /**
  * Called to run all test cases against an app from inside the app.
  *
+ * @param port The port the server is running on localhost.
+ *
  * @return If all the tests passed as expected.
  */
-typedef gboolean (*app_test_cb)();
+typedef gboolean (*app_test_cb)(int port);
 
 /**
  * The callbacks that the apps will recieve for different events.

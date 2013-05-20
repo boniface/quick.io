@@ -14,11 +14,6 @@
 #include <unistd.h>
 
 /**
- * The number of milliseconds between maintenance ticks
- */
-#define MAINTENANCE_TICK 100
-
-/**
  * Defined in events_client.h
  */
 typedef struct evs_client_sub_s evs_client_sub_t;

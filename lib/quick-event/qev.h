@@ -72,7 +72,7 @@
  * An approximation of the current time, in seconds since Jan 1, 1970.
  * This is updated every so often to reflect a fairly-recent system time.
  */
-gint64 qev_time;
+__attribute__((__visibility__("default"))) gint64 qev_time;
 
 /**
  * So that the flags can be changed on a whim everywhere

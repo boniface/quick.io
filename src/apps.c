@@ -240,7 +240,7 @@ gboolean apps_test() {
 		FATAL("App \"%s\" did not define `app_test()`", app->name);
 	}
 
-	return app->test();
+	return app->test(option_bind_port());
 }
 
 #ifdef TESTING

@@ -169,7 +169,8 @@ CFLAGS_TEST ?= \
 
 CFLAGS_APP_TEST ?= \
 	$(CFLAGS_APP) \
-	-DAPP_TESTING
+	-DAPP_TESTING \
+	-DAPP_DEBUG
 
 LDFLAGS ?= \
 	-Wl,-E \
@@ -282,6 +283,8 @@ test: test-build
 	@$(GCOVR) $(GCOVR_APP_ARGS)
 
 test-apps: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
+test-apps: export LIBS += check
+test-apps: export LIBS_REQUIREMENTS += check < 0.9.9
 test-apps:
 	$(MAKE) _test-apps
 
@@ -363,8 +366,8 @@ $(BUILD_QIOINI): $(QIOINI) $(BUILD_DEP_DIR)
 
 $(BUILD_APP_DIR)/cluster.so: $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads)
+	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
 
 $(BUILD_APP_DIR)/test_cluster_server.so: $(APP)/test_cluster_server.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads)
+	$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
