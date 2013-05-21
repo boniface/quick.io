@@ -368,6 +368,6 @@ $(BUILD_APP_DIR)/cluster.so: $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
 	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
 
-$(BUILD_APP_DIR)/test_cluster_server.so: $(APP)/test_cluster_server.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
+$(BUILD_APP_DIR)/test_cluster.so: $(APP)/test_cluster.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
 	$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
