@@ -10,3 +10,9 @@ Architecture: i386 amd64
 Depends: adduser, ${misc:Depends}, ${shlibs:Depends}
 Description: Quick WebSocket server
  QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
+
+Package: quickio-cluster
+Architecture: i386 amd64
+Depends: quickio (= 1.0.0), ${misc:Depends}, ${shlibs:Depends}
+Description: Quick WebSocket server
+ Cluster-control application for quickio.

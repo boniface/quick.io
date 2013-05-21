@@ -1,7 +1,6 @@
 build_release/quickio usr/bin/
-build_release/app/*.so /usr/lib/quickio
 app/qio_app.h /usr/include
-debian/quickio.ini etc/quickio/
-debian/quickio-limits.conf etc/security/limits.d/
-debian/quickio-sysctl.conf etc/sysctl.d/
-debian/quickio-logrotate etc/logrotate.d
+app/qio_app_test.h /usr/include
+debian/quickio.files/quickio.ini etc/quickio/
+debian/quickio.files/limits.conf etc/security/limits.d/
+debian/quickio.files/sysctl.conf etc/sysctl.d/

@@ -1,6 +1,6 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          qio
+# Provides:          quickio
 # Required-Start:    $all
 # Required-Stop:     $all
 # Default-Start:     2 3 4 5
@@ -44,7 +44,7 @@ status() {
 		PID=`cat $PIDFILE`
 		echo "Quick.IO is running with pid $PID"
 	else
-		echo "Quick.IO is not running"	
+		echo "Quick.IO is not running"
 	fi
 }
 

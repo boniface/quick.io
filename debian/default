@@ -1,8 +1,0 @@
-# Path to the QuickIO binary
-BINARY=/usr/bin/quickio
-
-# Path to the PID file
-PIDFILE=/var/run/quickio.pid
-
-# Path to the configuration file
-CONFIG_FILE=/etc/quickio/quickio.ini
