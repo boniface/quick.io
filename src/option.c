@@ -213,31 +213,36 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 		}
 	}
 
+
 	for (size_t i = 0; i < opts_len; i++) {
+		GError *error = NULL;
 		config_file_entry_t e = opts[i];
 
 		if (e.arg == e_string) {
-			gchar *opt = g_key_file_get_string(conf, group_name, e.name, NULL);
-			if (opt != NULL && strlen(opt) > 0) {
+			gchar *opt = g_key_file_get_string(conf, group_name, e.name, &error);
+			if (error == NULL && strlen(opt) > 0) {
 				*((gchar**)e.arg_data) = opt;
 			}
 		} else if (e.arg == e_string_array) {
-			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, NULL);
-			if (opt != NULL) {
+			gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, &error);
+			if (error == NULL) {
 				*((gchar***)e.arg_data) = opt;
 			}
 		} else if (e.arg == e_int) {
-			gint opt = g_key_file_get_integer(conf, group_name, e.name, NULL);
-			if (opt != 0) {
+			gint opt = g_key_file_get_integer(conf, group_name, e.name, &error);
+			if (error == NULL) {
 				*((gint*)e.arg_data) = opt;
 			}
 		} else if (e.arg == e_uint64) {
-			gint opt = g_key_file_get_uint64(conf, group_name, e.name, NULL);
-			if (opt != 0) {
+			gint opt = g_key_file_get_uint64(conf, group_name, e.name, &error);
+			if (error == NULL) {
 				*((guint64*)e.arg_data) = opt;
 			}
 		} else if (e.arg == e_boolean) {
-			*((gboolean*)e.arg_data) = g_key_file_get_boolean(conf, group_name, e.name, NULL);
+			gboolean opt = g_key_file_get_boolean(conf, group_name, e.name, &error);
+			if (error == NULL) {
+				*((gboolean*)e.arg_data) = opt;
+			}
 		}
 	}
 

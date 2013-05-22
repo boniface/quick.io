@@ -168,9 +168,7 @@ CFLAGS_APP_TEST ?= \
 
 LDFLAGS ?= \
 	-Wl,-E \
-	-Wl,-z,relro
-
-LD_LIBS ?= \
+	-Wl,-z,relro \
 	$(shell pkg-config --libs $(LIBS))
 
 #
@@ -323,7 +321,7 @@ _test-apps: debug $(APP_TESTS) $(RUNAPPTESTS)
 
 $(TARGET): $(BUILD_DIR_DEP) $(BUILD_QIOINI) $(OBJECTS) $(APP_OBJECTS)
 	@echo '-------- Compiling server --------'
-	@$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS) $(LD_LIBS)
+	@$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
 
 $(BUILD_LIB_DIR)/%.o: $(LIB)/%.c $(LIB)/%.h $(BUILD_LIB_DEP_DIR)
 	@echo '-------- Compiling $< --------'
@@ -347,7 +345,7 @@ $(BUILD_TEST_DIR)/valgrind.o: $(TEST)/valgrind.c $(BUILD_TEST_DEP_DIR)
 
 $(RUNAPPTESTS): $(TOOLS)/runapptests.c
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS) $(LD_LIBS)
+	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 $(BUILD_DIRS):
 	@mkdir -p $@
@@ -362,8 +360,8 @@ $(BUILD_QIOINI): $(QIOINI) $(BUILD_DEP_DIR)
 
 $(BUILD_APP_DIR)/cluster.so: $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads glib-2.0) -lm
+	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
 
 $(BUILD_APP_DIR)/test_cluster.so: $(APP)/test_cluster.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads glib-2.0) -lm
+	@$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
