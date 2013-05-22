@@ -1,9 +1,3 @@
-VERSION = 1
-REVLEVEL = 0
-SUBLEVEL = 0
-EXTRAVERSION =
-NAME = Loner Jellyfish
-
 #
 # Disable implicit rules
 #
