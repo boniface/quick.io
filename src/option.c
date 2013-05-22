@@ -244,6 +244,10 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 				*((gboolean*)e.arg_data) = opt;
 			}
 		}
+
+		if (error != NULL) {
+			g_error_free(error);
+		}
 	}
 
 	// Determine if the number is a power of 2
