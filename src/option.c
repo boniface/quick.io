@@ -24,7 +24,7 @@ static gchar *_ssl_cert_chain = NULL;
 static gchar *_stats_graphite_address = NULL;
 static gint _stats_graphite_port = 2003;
 static gchar *_stats_graphite_prefix = "qio";
-static gint _support_flash = 0;
+static gboolean _support_flash = FALSE;
 static gint _threads = 2;
 static gint _timeout = 5;
 static gchar *_user = NULL;
@@ -45,7 +45,7 @@ static config_file_entry_t _config_options[] = {
 	{"stats-graphite-address", e_string, &_stats_graphite_address},
 	{"stats-graphite-port", e_int, &_stats_graphite_port},
 	{"stats-graphite-prefix", e_string, &_stats_graphite_prefix},
-	{"support-flash", e_int, &_support_flash},
+	{"support-flash", e_boolean, &_support_flash},
 	{"threads", e_int, &_threads},
 	{"timeout", e_int, &_timeout},
 	{"user", e_string, &_user},
