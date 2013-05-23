@@ -3,4 +3,4 @@ app/qio_app.h /usr/include
 app/qio_app_test.h /usr/include
 debian/quickio.files/quickio.ini etc/quickio/
 debian/quickio.files/limits.conf etc/security/limits.d/
-debian/quickio.files/sysctl.conf etc/sysctl.d/
+debian/quickio.files/quickio.conf etc/sysctl.d/
