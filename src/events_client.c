@@ -85,6 +85,8 @@ static void _sub_unref(evs_client_sub_t *sub) {
 		g_free(sub->event_path);
 
 		g_slice_free1(sizeof(*sub), sub);
+
+		STATS_INC(evs_client_subscription_freed);
 	}
 }
 
@@ -120,6 +122,8 @@ static evs_client_sub_t* _subscription_create(const gchar *event_path, event_han
 		_sub_ref(sub);
 
 		g_hash_table_insert(_events, sub->event_path, sub);
+
+		STATS_INC(evs_client_subscription_new);
 	}
 
 	return sub;
@@ -229,23 +233,25 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 		return CLIENT_ERROR;
 	}
 
+	status_t status = CLIENT_GOOD;
+
 	qev_client_lock(client);
 
-	gboolean too_many = client->subs->len >= option_max_subscriptions();
-	gboolean already = g_hash_table_contains(sub->clients, client);
-	if (too_many || already) {
-		g_rw_lock_writer_unlock(&sub->lock);
-		qev_client_unlock(client);
-		return too_many ? CLIENT_ERROR : CLIENT_GOOD;
+	if (client->subs->len >= option_max_subscriptions()) {
+		status = CLIENT_ERROR;
+		goto done;
+	}
+
+	if (g_hash_table_contains(sub->clients, client)) {
+		goto done;
 	}
 
 	if (!from_app) {
-		status_t status = apps_evs_client_check_subscribe(client, sub->handler, sub->extra, client_callback);
+		status = apps_evs_client_check_subscribe(client, sub->handler, sub->extra, client_callback);
 
 		if (status == CLIENT_ASYNC || status != CLIENT_GOOD) {
-			g_rw_lock_writer_unlock(&sub->lock);
-			qev_client_unlock(client);
-			return status == CLIENT_ASYNC ? CLIENT_ASYNC : CLIENT_ERROR;
+			status = (status == CLIENT_ASYNC) ? CLIENT_ASYNC : CLIENT_ERROR;
+			goto done;
 		}
 	}
 
@@ -265,7 +271,20 @@ static status_t _evs_client_sub_client(const gchar *event_path, client_t *client
 
 	_sub_unref(sub);
 
+	STATS_INC(evs_client_subscribes);
+
 	return CLIENT_GOOD;
+
+done:
+
+	g_rw_lock_writer_unlock(&sub->lock);
+	qev_client_unlock(client);
+
+	if (status == CLIENT_ERROR) {
+		STATS_INC(evs_client_subscribes_rejected);
+	}
+
+	return status;
 }
 
 /**
@@ -332,7 +351,10 @@ static status_t _evs_client_format_message(const event_handler_t *handler, const
  * @param iter A function that loops through all the clients and calls the passed in
  * function on them.
  */
-static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(client_t*))) {
+static void _evs_client_pub_message(
+	_async_message_t *amsg,
+	void(*iter)(_async_message_t *amsg, void(*)(client_t*))
+) {
 	gchar *msgs[h_len];
 	gsize msglen[h_len];
 
@@ -355,13 +377,13 @@ static void _evs_client_pub_message(_async_message_t *amsg, void(*iter)(void(*)(
 		enum handlers handler = client->handler;
 
 		if (handler == h_none || client_write_frame(client, msgs[handler], msglen[handler]) == CLIENT_FATAL) {
-			TEST_STATS_INC(evs_client_send_pub_closes);
+			STATS_INC(evs_client_messages_broadcasted_client_fatal);
 			qev_close(client);
 		}
 	}
 
 	// Go through all the clients and give them their messages
-	iter(_write);
+	iter(amsg, _write);
 
 	for (int i = 0; i < h_len; i++) {
 		g_free(msgs[i]);
@@ -408,6 +430,8 @@ status_t evs_client_unsub_client(const gchar *event_path, client_t *client) {
 	_sub_unref(sub);
 
 	_subscription_cleanup(event_path);
+
+	STATS_INC(evs_client_unsubscribes);
 
 	return CLIENT_GOOD;
 }
@@ -538,17 +562,19 @@ void evs_client_send_callback(client_t *client, const callback_t client_callback
 		m.type = op_text;
 		m.buffer = message;
 
-		TEST_STATS_INC(evs_client_async_messages);
+		STATS_INC(evs_client_messages_callback);
 		if (client_write(client, &m) != CLIENT_GOOD) {
-			TEST_STATS_INC(evs_client_send_single_closes);
+			STATS_INC(evs_client_messages_callbacks_failure);
 			qev_close(client);
 		}
 	}
 
 	g_string_free(message, TRUE);
 }
+
 void evs_client_send_error_callback(client_t *client, const callback_t client_callback) {
 	evs_client_send_callback(client, client_callback, 0, d_plain, QIO_ERROR);
+	STATS_INC(evs_client_messages_callbacks_qio_error);
 }
 
 void evs_client_heartbeat() {
@@ -587,13 +613,13 @@ void evs_client_heartbeat() {
 		//   3) If the client doesn't respond, close him, becuase there's probably no QIO client
 		//      logic sitting on the other side.
 		if (client->last_receive < inactive_dead) {
-			STATS_INC(heartbeats_inactive_closed);
+			STATS_INC(evs_client_heartbeats_inactive_closed);
 			qev_close(client);
 			return TRUE;
 		}
 
 		if (client->last_receive < inactive_before) {
-			STATS_INC(heartbeats_inactive_challenges);
+			STATS_INC(evs_client_heartbeats_inactive_challenges);
 
 			callback_t server_callback = evs_server_callback_new(client, _evs_client_cb_noop, NULL, NULL);
 			_evs_client_format_message(_heartbeat, 0, server_callback, NULL, d_plain, "", m.buffer, NULL);
@@ -606,13 +632,13 @@ void evs_client_heartbeat() {
 		}
 
 		// If we get here, we're just sending a standard heartbeat
-		STATS_INC(heartbeats);
+		STATS_INC(evs_client_heartbeats);
 		_write(client);
 
 		return TRUE;
 	}
 
-	void _iter(void(*write)(client_t*)) {
+	void _iter(_async_message_t *amsg, void(*write)(client_t*)) {
 		_write = write;
 		conns_clients_foreach(_cb);
 	}
@@ -625,20 +651,20 @@ void evs_client_heartbeat() {
 void evs_client_tick() {
 	_async_message_t *amsg;
 
-	void _iter(void(*_write)(client_t*)) {
+	void _iter(_async_message_t *amsg, void(*_write)(client_t*)) {
 		evs_client_sub_t *sub = _subscription_get(amsg->event_path, FALSE, TRUE);
 
 		if (sub == NULL) {
 			return;
 		}
 
-		TEST_STATS_INC(evs_client_pubd_messages);
+		STATS_INC(evs_client_messages_broadcasted);
 
 		GHashTableIter iter;
 		client_t *client;
 		g_hash_table_iter_init(&iter, sub->clients);
 		while (g_hash_table_iter_next(&iter, (gpointer)&client, NULL)) {
-			STATS_INC(messages_broadcast);
+			STATS_INC(evs_client_messages_broadcasted_to_client);
 			_write(client);
 		}
 

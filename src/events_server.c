@@ -172,6 +172,8 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 		return CLIENT_ERROR;
 	}
 
+	STATS_INC(evs_server_callback);
+
 	callback_t compacted = g_ascii_strtoull(g_ptr_array_index(event->extra, 0), NULL, 10);
 	guint8 slot, id;
 	SERVER_CALLBACK_PARTS(client, compacted, slot, id);
@@ -202,11 +204,13 @@ static status_t _evs_server_ping(client_t *client, event_handler_t *handler, eve
 	// This command just needs to send back whatever text we recieved
 	// Only do this if a callback is given (the logic in the handler takes
 	// care of that)
+	STATS_INC(evs_server_ping);
 	g_string_append(response, event->data);
 	return CLIENT_GOOD;
 }
 
 static status_t _evs_server_noop(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	STATS_INC(evs_server_noop);
 	g_string_set_size(response, 0);
 	return CLIENT_GOOD;
 }
@@ -312,6 +316,7 @@ status_t evs_server_handle(client_t *client) {
 	status_t status = _event_new(client->message, &handler, &event);
 
 	DEBUG("Event: %s", event.path);
+	STATS_INC(evs_server_event);
 
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
@@ -459,6 +464,8 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 
 		return 0;
 	}
+
+	STATS_INC(evs_server_callback_created);
 
 	qev_client_lock(client);
 

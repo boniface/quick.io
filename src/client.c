@@ -147,7 +147,7 @@ status_t client_message(client_t* client) {
 	}
 
 	if (status == CLIENT_GOOD) {
-		STATS_INC(messages_received);
+		STATS_INC(client_message_received);
 		client->last_receive = qev_time;
 		status = evs_server_handle(client);
 	}
@@ -188,7 +188,7 @@ status_t client_write(client_t *client, message_t *message) {
 		return CLIENT_FATAL;
 	}
 
-	STATS_INC(messages_sent);
+	STATS_INC(client_message_sent);
 	status_t status = client_write_frame(client, frame, frame_len);
 
 	g_free(frame);

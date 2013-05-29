@@ -58,6 +58,8 @@ static status_t _h_rfc6455_start(client_t *client) {
 	int header_len;
 	status_t status = h_rfc6455_read_header(client, &header_len);
 
+	STATS_INC(handler_rfc6455_start);
+
 	if (status != CLIENT_GOOD) {
 		return status;
 	}
@@ -212,6 +214,8 @@ status_t h_rfc6455_handshake(client_t *client, int flags, GHashTable *headers) {
 	g_string_printf(client->message->buffer, HEADERS, key);
 	g_free(key);
 
+	STATS_INC(handler_rfc6455_handshake);
+
 	return CLIENT_WRITE;
 }
 
@@ -294,6 +298,8 @@ gchar* h_rfc6455_prepare_frame(const gboolean broadcast, const opcode_t type, co
 		memcpy((frame + header_size), payload, payload_len);
 	}
 
+	STATS_INC(handler_rfc6455_frames_prepared);
+
 	return frame;
 }
 
@@ -311,6 +317,8 @@ gchar* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len
 status_t h_rfc6455_continue(client_t *client) {
 	// There are no headers when continuing
 	status_t status = h_rfc6455_read(client, 0);
+
+	STATS_INC(handler_rfc6455_start);
 
 	if (status != CLIENT_GOOD) {
 		return status;
@@ -383,6 +391,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 }
 
 gchar* h_rfc6455_close_frame(gsize *frame_len) {
+	STATS_INC(handler_rfc6455_close);
 	*frame_len = sizeof(CLOSE_FRAME)-1;
 	return (gchar*)CLOSE_FRAME;
 }

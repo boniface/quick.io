@@ -6,7 +6,7 @@
 
 #include "test.h"
 
-#define TEST_EPOLL_WAIT 100
+#define TEST_EPOLL_WAIT (100 * 2)
 
 #define PING "/qio/ping:123:plain=pingeth"
 #define PING_RESPONSE "\x81""\x21""/qio/callback/123:0:plain=pingeth"
@@ -67,8 +67,8 @@ START_TEST(test_main_timeout) {
 	// Wait for the timeout, and then some to avoid race conditions
 	usleep(SEC_TO_USEC(option_timeout() + 1) + MS_TO_USEC(TEST_EPOLL_WAIT));
 
-	check_size_eq(utils_stats()->conns_messages, 0, "Server didn't process message");
-	check_size_eq(utils_stats()->conns_timeouts, 1, "Client timed out");
+	check_size_eq(stats->client_message_received, 0, "Server didn't process message");
+	check_size_eq(stats->conns_timeouts, 1, "Client timed out");
 }
 END_TEST
 
@@ -100,8 +100,8 @@ START_TEST(test_main_ping) {
 
 	close(sock);
 
-	check_size_eq(utils_stats()->conns_messages, 1, "Server processed 1 message");
-	check_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
+	check_size_eq(stats->client_message_received, 1, "Server processed 1 message");
+	check_size_eq(stats->conns_client_wait, 0, "Client was not waited for");
 }
 END_TEST
 
@@ -126,12 +126,12 @@ START_TEST(test_main_too_much_data) {
 
 	check_int32_eq(send(sock, buff, sizeof(buff), MSG_NOSIGNAL), -1, "Socket closed");
 
-	close(sock);
+	check_size_eq(stats->client_message_received, 0, "Server accepted no messages");
+	check_size_eq(stats->conns_client_wait, 0, "Client was not waited for");
+	check_size_eq(stats->conns_closed, 1, "Client closed");
+	check_size_eq(stats->conns_ratelimited, 1, "Client was forcibly closed");
 
-	check_size_eq(utils_stats()->conns_messages, 0, "Server accepted no messages");
-	check_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
-	check_size_eq(utils_stats()->conns_hups, 0, "Client didn't close");
-	check_size_eq(utils_stats()->conns_bad_clients, 1, "Client was forcibly closed");
+	close(sock);
 }
 END_TEST
 
@@ -164,8 +164,8 @@ START_TEST(test_main_two_messages) {
 	g_string_free(f, TRUE);
 	close(sock);
 
-	check_size_eq(utils_stats()->conns_messages, 2, "Server processed 2 messages");
-	check_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
+	check_size_eq(stats->client_message_received, 2, "Server processed 2 messages");
+	check_size_eq(stats->conns_client_wait, 0, "Client was not waited for");
 }
 END_TEST
 
@@ -187,9 +187,12 @@ START_TEST(test_main_close_partial_message) {
 
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 
-	check_size_eq(utils_stats()->conns_messages, 1, "Partial message recieved");
-	check_size_eq(utils_stats()->conns_bad_clients, 0, "Server left client open");
-	check_size_eq(utils_stats()->conns_client_wait, 1, "Client was waited for");
+	// conns_buffer_read == 2, once for the handshake, once for the partial
+	check_size_eq(stats->conns_buffer_read, 2, "Got a read from the client");
+	check_size_eq(stats->client_message_received, 0, "Partial message recieved");
+
+	check_size_eq(stats->conns_client_fatal, 0, "Server left client open");
+	check_size_eq(stats->conns_client_wait, 1, "Client was waited for");
 }
 END_TEST
 
@@ -216,10 +219,12 @@ START_TEST(test_main_close_bad_message) {
 
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 
-	check_size_eq(utils_stats()->conns_messages, 1, "Bad message accepted");
-	check_size_eq(utils_stats()->conns_hups, 0, "Client did not HUP");
-	check_size_eq(utils_stats()->conns_bad_clients, 1, "Server left client open");
-	check_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
+	check_size_eq(stats->conns_buffer_read, 2, "Bad message read");
+	check_size_eq(stats->client_message_received, 0, "Bad message rejected");
+
+	check_size_eq(stats->conns_closed, 1, "Client killed");
+	check_size_eq(stats->conns_client_fatal, 1, "Client killed");
+	check_size_eq(stats->conns_client_wait, 0, "Client was not waited for");
 }
 END_TEST
 
@@ -232,10 +237,13 @@ START_TEST(test_main_close_with_frame) {
 	char buff[sizeof(RFC6455_CLOSE_FRAME)];
 	check_int32_eq(read(sock, buff, sizeof(buff)), sizeof(RFC6455_CLOSE_FRAME)-1, "Close frame sent");
 
-	check_size_eq(utils_stats()->conns_messages, 1, "Bad message accepted");
-	check_size_eq(utils_stats()->conns_hups, 0, "Client did not HUP");
-	check_size_eq(utils_stats()->conns_bad_clients, 1, "Server left client open");
-	check_size_eq(utils_stats()->conns_client_wait, 0, "Client was not waited for");
+	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
+
+	check_size_eq(stats->conns_buffer_read, 2, "Bad message read");
+	check_size_eq(stats->client_message_received, 0, "Bad message not routed");
+	check_size_eq(stats->conns_closed, 1, "Client killed");
+	check_size_eq(stats->conns_client_fatal, 1, "Client killed");
+	check_size_eq(stats->conns_client_wait, 0, "Client was not waited for");
 
 	close(sock);
 }
@@ -265,9 +273,9 @@ START_TEST(test_main_two_partial_messages) {
 	send(sock, frame + loc, 5, MSG_NOSIGNAL);
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 
-	check_size_eq(utils_stats()->conns_messages, 3, "Partial messages recieved");
-	check_size_eq(utils_stats()->conns_bad_clients, 0, "Server left client open");
-	check_size_eq(utils_stats()->conns_client_wait, 2, "Client was waited for");
+	check_size_eq(stats->client_message_received, 1, "Partial messages recieved");
+	check_size_eq(stats->conns_client_fatal, 0, "Server left client open");
+	check_size_eq(stats->conns_client_wait, 2, "Client was waited for");
 
 	close(sock);
 }
@@ -287,9 +295,10 @@ START_TEST(test_main_flash_policy) {
 	check_size_eq(read(sock, buff, sizeof(buff)-1), sizeof(H_FLASH_POLICY_RESPONSE)-1, "XML recieved");
 	check_str_eq(buff, H_FLASH_POLICY_RESPONSE, "Correct XML sent");
 
-	check_size_eq(utils_stats()->conns_handshakes, 1, "Only handshake sent");
-	check_size_eq(utils_stats()->conns_bad_clients, 1, "Client killed");
-	check_size_eq(utils_stats()->conns_client_wait, 0, "No waiting");
+	check_size_eq(stats->handler_flash_handshake, 1, "Only flash handshake sent");
+	check_size_eq(stats->conns_handshakes, 0, "Only flash handshake sent");
+	check_size_eq(stats->conns_client_fatal, 1, "Client killed");
+	check_size_eq(stats->conns_client_wait, 0, "No waiting");
 }
 END_TEST
 
@@ -314,8 +323,8 @@ START_TEST(test_main_invalid_subscription) {
 		usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 	}
 
-	check_size_eq(utils_stats()->conns_messages, 4, "All messages processed");
-	check_size_eq(utils_stats()->conns_bad_clients, 0, "Client killed");
+	check_size_eq(stats->client_message_received, 4, "All messages processed");
+	check_size_eq(stats->conns_closed, 0, "Client killed");
 }
 END_TEST
 

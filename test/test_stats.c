@@ -17,17 +17,17 @@ START_TEST(test_stats_sane_tick) {
 	check(stats_init());
 
 	STATS_INC(clients);
-	STATS_INC(clients_new);
+	STATS_INC(conns_new);
 
-	check_size_eq(stats.clients, 1, "Clients set");
+	check_size_eq(stats->clients, 1, "Clients set");
 	check_size_eq(stats_clients(), 1, "Clients accessor works");
-	check_size_eq(stats.clients_new, 1, "Connections set");
+	check_size_eq(stats->conns_new, 1, "Connections set");
 
 	stats_flush();
 
-	check_size_eq(stats.clients, 1, "Clients not reset");
+	check_size_eq(stats->clients, 1, "Clients not reset");
 	check_size_eq(stats_clients(), 1, "Clients accessor works");
-	check_size_eq(stats.clients_new, 0, "Connections reset");
+	check_size_eq(stats->conns_new, 0, "Connections reset");
 }
 END_TEST
 
@@ -41,7 +41,7 @@ static gpointer _stats_tick(gpointer nothing) {
 
 START_TEST(test_stats_sane_tick_graphite) {
 	STATS_INC(clients);
-	STATS_INC(clients_new);
+	STATS_INC(conns_new);
 
 	struct addrinfo hints, *res;
 	memset(&hints, 0, sizeof hints);
@@ -115,13 +115,13 @@ START_TEST(test_stats_sane_tick_no_graphite) {
 	check(stats_init());
 	check(_graphite == NULL);
 
-	STATS_INC(clients_new);
+	STATS_INC(conns_new);
 
-	check_size_eq(stats.clients_new, 1, "Clients right");
+	check_size_eq(stats->conns_new, 1, "Clients right");
 
 	stats_flush();
 
-	check_size_eq(stats.clients_new, 1, "Clients not reset");
+	check_size_eq(stats->conns_new, 1, "Clients not reset");
 }
 END_TEST
 

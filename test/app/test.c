@@ -1,4 +1,20 @@
-#include "app/qio_app.h"
+/**
+ * THIS IS REALLY DIRTY AND I CAN'T BELIEVE I'M DOING THIS, but it's cleaner to do it this way
+ * than to attempt to modify qio_app.h to work with test stuffs that are ONLY EVER needed
+ * in this single application, so just include all QIO stuffs (included with utils_stats.h),
+ * and cry yourself to sleep.
+ */
+
+#include "test/utils_stats.h"
+
+static guint _app_id = 0;
+static gchar *_app_name = NULL;
+static gchar *_app_dir = NULL;
+void qio_set_app_opts(const guint app_id, const gchar *name, const gchar *dir) {
+	_app_id = app_id;
+	_app_name = g_strdup(name);
+	_app_dir = g_strdup(dir);
+}
 
 static GAsyncQueue *_work;
 

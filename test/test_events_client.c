@@ -278,7 +278,7 @@ START_TEST(test_evs_heartbeat) {
 	check_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	check_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 
-	check_size_eq(stats.heartbeats, 1, "Got 1 heartbeat");
+	check_size_eq(stats->evs_client_heartbeats, 1, "Got 1 heartbeat");
 
 	close(socket);
 	u_client_free(client);
@@ -308,7 +308,7 @@ START_TEST(test_evs_heartbeat_yield) {
 	check_size_eq(read(socket, buff, sizeof(buff)-1), sizeof(HEARTBEAT_EVENT)-1, "Correct len");
 	check_bin_eq(buff, HEARTBEAT_EVENT, sizeof(HEARTBEAT_EVENT)-1, "Correct event sent");
 
-	check_size_eq(stats.heartbeats, CONNS_YIELD*2, "Heartbeats sent");
+	check_size_eq(stats->evs_client_heartbeats, CONNS_YIELD*2, "Heartbeats sent");
 }
 END_TEST
 
@@ -320,15 +320,15 @@ START_TEST(test_evs_heartbeat_already_written) {
 	client->state = cstate_running;
 
 	evs_client_heartbeat();
-	check_size_eq(stats.heartbeats, 1, "Got heartbeat");
+	check_size_eq(stats->evs_client_heartbeats, 1, "Got heartbeat");
 
-	stats.heartbeats = 0;
+	stats->evs_client_heartbeats = 0;
 
 	client_write_frame(client, "test", 4);
 
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats, 0, "Got no heartbeat");
+	check_size_eq(stats->evs_client_heartbeats, 0, "Got no heartbeat");
 
 	close(socket);
 	u_client_free(client);
@@ -345,18 +345,18 @@ START_TEST(test_evs_heartbeat_inactive_0) {
 	qev_time = client->last_receive = 1000;
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 0, "No challenges sent");
 
 	qev_time += HEARTBEAT_INACTIVE + 1;
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 1, "Challenge sent");
 
 	qev_time += HEARTBEAT_INACTIVE;
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
-	check_size_eq(stats.heartbeats_inactive_closed, 1, "Client closed on failed challenge");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_closed, 1, "Client closed on failed challenge");
 
 	close(socket);
 	u_client_free(client);
@@ -373,12 +373,12 @@ START_TEST(test_evs_heartbeat_inactive_1) {
 	qev_time = client->last_receive = 1000;
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 0, "No challenges sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 0, "No challenges sent");
 
 	qev_time += HEARTBEAT_INACTIVE + 1;
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 1, "Challenge sent");
 
 	g_string_append_len(client->message->socket_buffer, HEARTBEAT_EVENT_MASKED, sizeof(HEARTBEAT_EVENT_MASKED)-1);
 
@@ -387,8 +387,8 @@ START_TEST(test_evs_heartbeat_inactive_1) {
 
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
-	check_size_eq(stats.heartbeats_inactive_closed, 0, "Client not closed");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_closed, 0, "Client not closed");
 
 	close(socket);
 	u_client_free(client);
@@ -406,7 +406,7 @@ START_TEST(test_evs_heartbeat_inactive_2) {
 	client->last_receive = 0;
 	evs_client_heartbeat();
 
-	check_size_eq(stats.heartbeats_inactive_challenges, 1, "Challenge sent");
+	check_size_eq(stats->evs_client_heartbeats_inactive_challenges, 1, "Challenge sent");
 
 	char buff[1024];
 	memset(buff, 0, sizeof(buff));
@@ -830,7 +830,7 @@ START_TEST(test_evs_client_tick_closed_client_broadcast) {
 	qev_debug_flush();
 
 	check_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed, sub freed");
-	check_size_eq(utils_stats()->evs_client_send_pub_closes, 4, "Client closed in each pub");
+	check_size_eq(stats->evs_client_messages_broadcasted_client_fatal, 4, "Client closed in each pub");
 }
 END_TEST
 
@@ -847,7 +847,7 @@ START_TEST(test_evs_client_tick_closed_client_single) {
 	evs_client_send_callback(client, 1, 0, d_plain, "test5");
 
 	evs_client_tick();
-	check_size_eq(utils_stats()->evs_client_send_single_closes, 6, "Client closed");
+	check_size_eq(stats->evs_client_messages_callbacks_failure, 6, "Client closed");
 }
 END_TEST
 
@@ -867,8 +867,8 @@ START_TEST(test_evs_client_tick_no_client_handler) {
 	// Client not allocated with a socket, so will be closed
 	check_ptr_eq(_subscription_get("/test/event", FALSE, FALSE), NULL, "Client closed");
 
-	check_size_eq(utils_stats()->evs_client_pubd_messages, 1, "1 message sent");
-	check_size_eq(utils_stats()->evs_client_send_pub_closes, 1, "Client closed");
+	check_size_eq(stats->evs_client_messages_broadcasted, 1, "1 message sent");
+	check_size_eq(stats->evs_client_messages_broadcasted_client_fatal, 1, "Client closed");
 }
 END_TEST
 
@@ -887,8 +887,8 @@ START_TEST(test_evs_client_tick_clear_subscription) {
 	// Attempt to publish to an empty subscription
 	evs_client_tick();
 
-	check_size_eq(utils_stats()->evs_client_pubd_messages, 0, "No messages sent");
-	check_size_eq(utils_stats()->evs_client_send_pub_closes, 0, "Client closed");
+	check_size_eq(stats->evs_client_messages_broadcasted, 0, "No messages sent");
+	check_size_eq(stats->evs_client_messages_broadcasted_client_fatal, 0, "Client closed");
 }
 END_TEST
 
@@ -945,7 +945,7 @@ START_TEST(test_evs_client_async_message_invalid_event_0) {
 
 	evs_client_tick();
 
-	check_size_eq(utils_stats()->evs_client_async_messages, 0, "0 messages sent");
+	check_size_eq(stats->evs_client_messages_callback, 0, "0 messages sent");
 }
 END_TEST
 
@@ -960,7 +960,7 @@ START_TEST(test_evs_client_async_message_invalid_event_1) {
 
 	evs_client_tick();
 
-	check_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
+	check_size_eq(stats->evs_client_messages_callback, 1, "1 message sent");
 
 	gchar buff[1000];
 	int len = read(socket, buff, sizeof(buff)-1);
@@ -983,7 +983,7 @@ START_TEST(test_evs_client_async_message_invalid_event_extra) {
 
 	evs_client_tick();
 
-	check_size_eq(utils_stats()->evs_client_async_messages, 1, "1 message sent");
+	check_size_eq(stats->evs_client_messages_callback, 1, "1 message sent");
 
 	gchar buff[1000];
 	int len = read(socket, buff, sizeof(buff)-1);

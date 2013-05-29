@@ -85,8 +85,7 @@ static void _conns_client_timeout_clean() {
 	g_hash_table_iter_init(&iter, _client_timeouts);
 	while (g_hash_table_iter_next(&iter, (void*)&client, NULL)) {
 		if (--client->timer == 0) {
-			TEST_STATS_INC(conns_timeouts);
-			STATS_INC(client_timeouts);
+			STATS_INC(conns_timeouts);
 
 			DEBUG("Timer on client expired: %p", &client->qevclient);
 			qev_close(client);
@@ -152,7 +151,7 @@ static void _conns_balance() {
 				client_write(client, &message);
 			}
 
-			STATS_INC(clients_balanced);
+			STATS_INC(conns_balanced);
 			qev_close(client);
 
 			return TRUE;
@@ -203,7 +202,7 @@ void conns_client_new(client_t *client) {
 	apps_client_connect(client);
 	conns_client_timeout_set(client);
 
-	STATS_INC(clients_new);
+	STATS_INC(conns_new);
 	STATS_INC(clients);
 }
 
@@ -240,7 +239,7 @@ void conns_client_close(client_t *client) {
 
 	client_unref(client);
 
-	STATS_INC(clients_closed);
+	STATS_INC(conns_closed);
 	STATS_DEC(clients);
 }
 
@@ -271,8 +270,7 @@ gboolean conns_client_data(client_t *client) {
 
 		// If the client needs to enhance his calm, kill the connection.
 		if (sbuff->len > (size * MAX_BUFFER_SIZE_MULTIPLIER)) {
-			TEST_STATS_INC(conns_bad_clients);
-			STATS_INC(clients_ratelimited);
+			STATS_INC(conns_ratelimited);
 
 			DEBUG("Client needs to enhance his calm");
 			return FALSE;
@@ -283,14 +281,15 @@ gboolean conns_client_data(client_t *client) {
 	while (sbuff->len > 0) {
 		status_t status;
 
+		STATS_INC(conns_buffer_read);
+
 		if (client->state == cstate_initing) {
-			TEST_STATS_INC(conns_handshakes);
 			DEBUG("Client handshake");
 			status = client_handshake(client);
 
 			// Headers are sent without encoding, don't use the client_write wrapper
 			if (status == CLIENT_WRITE) {
-				STATS_INC(client_handshakes);
+				STATS_INC(conns_handshakes);
 				status = client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
 
 				// The handshake is complete, we're done here.
@@ -298,8 +297,6 @@ gboolean conns_client_data(client_t *client) {
 				evs_client_client_ready(client);
 			}
 		} else {
-			TEST_STATS_INC(conns_messages);
-
 			DEBUG("Message from client");
 			status = client_message(client);
 
@@ -313,7 +310,7 @@ gboolean conns_client_data(client_t *client) {
 			conns_message_clean(client, FALSE, TRUE);
 
 		} else if (status == CLIENT_WAIT) {
-			TEST_STATS_INC(conns_client_wait);
+			STATS_INC(conns_client_wait);
 
 			conns_client_timeout_set(client);
 
@@ -321,7 +318,7 @@ gboolean conns_client_data(client_t *client) {
 			break;
 
 		} else if (status == CLIENT_FATAL) {
-			TEST_STATS_INC(conns_bad_clients);
+			STATS_INC(conns_client_fatal);
 
 			DEBUG("Bad client, closing: status=%d", status);
 			qev_close(client);
