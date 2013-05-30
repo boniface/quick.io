@@ -44,3 +44,7 @@ sudo sysctl -w fs.epoll.max_user_watches=4194304
 ```
 
 Don't forget to update the number of files you're allowed to have open.
+
+## Coding Style
+
+Most of the ideas are taken from: https://www.kernel.org/doc/Documentation/CodingStyle. As long as your code fits in, we're good.
