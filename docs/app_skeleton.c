@@ -4,22 +4,22 @@
 /**
  * The structure representing the events in the queue.
  */
-typedef struct {
+struct pending_event {
 	/**
 	 * The number of babies born in this event.
 	 */
 	guint64 babies_born;
-	
+
 	/**
 	 * A reference to the client, for the callback
 	 */
 	client_t *client;
-	
+
 	/**
 	 * For if we want to send a callback
 	 */
 	callback_t client_callback;
-} pending_event_t;
+};
 
 /**
  * The location where the configuration options are stored.
@@ -42,6 +42,7 @@ static gchar **_friends = NULL;
  *   - e_string
  *   - e_string_array
  *   - e_uint64
+ *   - e_boolean
  */
 static config_file_entry_t _config_options[] = {
 	{"age", e_int, &_age},
@@ -64,23 +65,28 @@ static GAsyncQueue *_events;
 /**
  * Handles babies being born.
  */
-static status_t _baby_born(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
-	pending_event_t *e = g_slice_alloc0(sizeof(*e));
-	
+static enum status _baby_born(
+	client_t *client,
+	event_handler_t *handler,
+	struct event *event,
+	GString *response)
+{
+	struct pending_event *e = g_slice_alloc0(sizeof(*e));
+
 	// You should probably do error checking here
 	e->babies_born = g_ascii_strtoull(event->data);
-	
+
 	// Client is reference counted, so be sure to increment him
 	e->client = client;
 	client_ref(client);
-	
+
 	// This is guaranteed to be right, no error checking needed
 	e->client_callback = event->client_callback;
-	
+
 	// Put the birth into the async queue for processing in the app's thread
 	// This is just a good way to synchronize threads
 	g_async_queue_push(_events, e);
-	
+
 	// Indicate that we are going async with this event
 	return CLIENT_ASYNC;
 }
@@ -88,45 +94,43 @@ static status_t _baby_born(client_t *client, event_handler_t *handler, event_t *
 /**
  * The `on` parameter here is the equivalent of evs_server_on
  */
-gboolean app_init(app_on on) {
-	GError *error = NULL;
-	if (!option_parse_config_file(_app_name, _config_options, G_N_ELEMENTS(_config_options), &error)) {
-		ERRORF("Could not load configuration for app \"ihr\": %s", error->message);
-		return FALSE;
-	}
-	
+gboolean app_init(app_on on)
+{
+	APP_PARSE_CONFIG(_config_options);
+
 	_events = g_async_queue_new();
-	
+
 	// Don't let anyone subscribe to this event
 	_baby_born = on("/baby/born", _baby_born, evs_no_subscribe, NULL, FALSE);
-	
+
 	// People subscribe to the updated population
 	_population = on("/population", NULL, NULL, NULL, FALSE);
-	
+
 	return TRUE;
 }
 
 /**
  * Time to run the application loop, just waiting for events.
  */
-gboolean app_run(app_on on) {
+gboolean app_run(app_on on)
+{
 	while (TRUE) {
-		pending_event_t *e = g_async_queue_pop(_events);
-		
+		struct pending_event *e = g_async_queue_pop(_events);
+
 		_earth_population += e->babies_born;
-		
+
 		// Send a blank callback to the client, indicating the event is processed
 		evs_client_send_callback(e->client, e->client_callback, 0, d_plain, "");
-		
+
 		// Send out a message to everyone subscribed to /population with the updated
 		// population of the earth
 		gchar buff[16];
 		snprintf(buff, sizeof(buff), "%" G_GUINT64_FORMAT, _earth_population);
 		evs_client_pub_event(_population, NULL, d_plain, _earth_population);
-		
+
 		// Done with our reference to the client, if we don't do this, that's a memory leak
 		client_unref(e->client);
-		
+
 		g_slice_free1(sizeof(*e), e);
 	}
 }

@@ -80,7 +80,11 @@ When a client sends an event to the server, it is routed to the registered handl
 
 .. code-block:: c
 
-	typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event_t *event, GString *response);
+	typedef enum status (*handler_fn)(
+		client_t *client,
+		event_handler_t *handler,
+		struct event *event,
+		GString *response);
 
 This function is expected to return a status, as described above, and is given the following:
 
@@ -116,17 +120,24 @@ Client callbacks are simple enough to understand, but what about when you want t
 		float percent;
 	};
 
-	status_t _callback(client_t *client, void *data, event_t *event) {
+	enum status _callback(client_t *client, void *data, event_t *event)
+	{
 		return CLIENT_GOOD;
 	}
 
-	void _free(void *data) {
+	void _free(void *data)
+	{
 		struct callback_data *d = data;
 		g_free(d->name);
 		g_slice_free1(sizeof(*d), d);
 	}
 
-	status_t handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	enum status handler(
+		client_t *client,
+		event_handler_t *handler,
+		struct event *event,
+		GString *response)
+	{
 		struct callback_data *d = g_slice_alloc0(sizeof(*d));
 		event->server_callback = evs_server_callback_new(client, _callback, d, _free);
 
