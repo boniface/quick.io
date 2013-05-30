@@ -37,10 +37,11 @@ make test
 If you're going to have a crap-ton (yes, that is a metric) of clients connected, you're going to need to tune some kernel parameters.
 
 ```bash
-sudo sysctl -w net.ipv4.tcp_mem="2820736 3031648 3533472"
+sudo sysctl -w fs.epoll.max_user_watches=4194304
 sudo sysctl -w fs.file-max=4197304
 sudo sysctl -w fs.nr_open=4197304
-sudo sysctl -w fs.epoll.max_user_watches=4194304
+sudo sysctl -w net.core.somaxconn=1024
+sudo sysctl -w net.ipv4.tcp_mem="2820736 3031648 3533472"
 ```
 
 Don't forget to update the number of files you're allowed to have open.
