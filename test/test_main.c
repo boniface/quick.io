@@ -18,20 +18,24 @@
 
 static pid_t _server;
 
-void _main_setup() {
+void _main_setup()
+{
 	u_main_setup(&_server, NULL);
 }
 
-void _main_teardown() {
+void _main_teardown()
+{
 	u_main_teardown(_server);
 }
 
-START_TEST(test_main_init) {
+START_TEST(test_main_init)
+{
 	// Yep, that's pretty much it, just make sure everything inits
 }
 END_TEST
 
-START_TEST(test_main_accept) {
+START_TEST(test_main_accept)
+{
 	int sock = u_connect();
 
 	check(sock, "Connection established");
@@ -43,7 +47,8 @@ END_TEST
 /**
  * For coverage, just make sure that a HUP gets to the server.
  */
-START_TEST(test_main_close) {
+START_TEST(test_main_close)
+{
 	int sock = u_connect();
 
 	check(sock, "Connection established");
@@ -54,13 +59,15 @@ START_TEST(test_main_close) {
 }
 END_TEST
 
-START_TEST(test_main_timeout) {
+START_TEST(test_main_timeout)
+{
 	int sock = u_connect();
 
 	check(sock, "Connection established");
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+							PING, sizeof(PING)-1, &frame_len);
 
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 
@@ -72,20 +79,24 @@ START_TEST(test_main_timeout) {
 }
 END_TEST
 
-START_TEST(test_main_handshake) {
+START_TEST(test_main_handshake)
+{
 	int sock = u_ws_connect();
 	close(sock);
 }
 END_TEST
 
-START_TEST(test_main_ping) {
+START_TEST(test_main_ping)
+{
 	int sock = u_ws_connect();
 
 	check(sock, "Connection established");
 
-	// Time to cheat: there's an rfc6455 constructor that works, so use that for framing
+	// Time to cheat: there's an rfc6455 constructor that works,
+	// so use that for framing
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+							PING, sizeof(PING)-1, &frame_len);
 
 	send(sock, frame, frame_len, MSG_NOSIGNAL);
 	free(frame);
@@ -105,7 +116,8 @@ START_TEST(test_main_ping) {
 }
 END_TEST
 
-START_TEST(test_main_too_much_data) {
+START_TEST(test_main_too_much_data)
+{
 	int sock = u_ws_connect();
 
 	check(sock, "Connection established");
@@ -135,13 +147,15 @@ START_TEST(test_main_too_much_data) {
 }
 END_TEST
 
-START_TEST(test_main_two_messages) {
+START_TEST(test_main_two_messages)
+{
 	int sock = u_ws_connect();
 
 	check(sock, "Connection established");
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+							PING, sizeof(PING)-1, &frame_len);
 
 	GString *f = g_string_new_len(frame, frame_len);
 	g_string_append_len(f, frame, frame_len);
@@ -169,7 +183,8 @@ START_TEST(test_main_two_messages) {
 }
 END_TEST
 
-START_TEST(test_main_close_partial_message) {
+START_TEST(test_main_close_partial_message)
+{
 	int sock = u_ws_connect();
 
 	check(sock, "Connection established");
@@ -179,7 +194,8 @@ START_TEST(test_main_close_partial_message) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+								PING, sizeof(PING)-1, &frame_len);
 
 	send(sock, frame, frame_len-5, MSG_NOSIGNAL);
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
@@ -196,7 +212,8 @@ START_TEST(test_main_close_partial_message) {
 }
 END_TEST
 
-START_TEST(test_main_close_bad_message) {
+START_TEST(test_main_close_bad_message)
+{
 	// Steps:
 	//    1) Client sends a bad message
 	//    2) Before the server can close the client, client closes
@@ -228,14 +245,16 @@ START_TEST(test_main_close_bad_message) {
 }
 END_TEST
 
-START_TEST(test_main_close_with_frame) {
+START_TEST(test_main_close_with_frame)
+{
 	int sock = u_ws_connect();
 	check(sock, "Connection established");
 
 	send(sock, RFC6455_CLOSE_FRAME, sizeof(RFC6455_CLOSE_FRAME)-1, MSG_NOSIGNAL);
 
 	char buff[sizeof(RFC6455_CLOSE_FRAME)];
-	check_int32_eq(read(sock, buff, sizeof(buff)), sizeof(RFC6455_CLOSE_FRAME)-1, "Close frame sent");
+	check_int32_eq(read(sock, buff, sizeof(buff)),
+			sizeof(RFC6455_CLOSE_FRAME)-1, "Close frame sent");
 
 	usleep(MS_TO_USEC(TEST_EPOLL_WAIT));
 
@@ -249,7 +268,8 @@ START_TEST(test_main_close_with_frame) {
 }
 END_TEST
 
-START_TEST(test_main_two_partial_messages) {
+START_TEST(test_main_two_partial_messages)
+{
 	int sock = u_ws_connect();
 
 	check(sock, "Connection established");
@@ -259,7 +279,8 @@ START_TEST(test_main_two_partial_messages) {
 	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, PING, sizeof(PING)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+							PING, sizeof(PING)-1, &frame_len);
 
 	gsize loc = 0;
 	send(sock, frame, frame_len - 10, MSG_NOSIGNAL);
@@ -281,7 +302,8 @@ START_TEST(test_main_two_partial_messages) {
 }
 END_TEST
 
-START_TEST(test_main_flash_policy) {
+START_TEST(test_main_flash_policy)
+{
 	int sock = u_connect();
 
 	check(sock, "Connection established");
@@ -292,7 +314,8 @@ START_TEST(test_main_flash_policy) {
 
 	gchar buff[sizeof(H_FLASH_POLICY_RESPONSE)+10];
 	memset(&buff, 0, sizeof(buff));
-	check_size_eq(read(sock, buff, sizeof(buff)-1), sizeof(H_FLASH_POLICY_RESPONSE)-1, "XML recieved");
+	check_size_eq(read(sock, buff, sizeof(buff)-1),
+				sizeof(H_FLASH_POLICY_RESPONSE)-1, "XML recieved");
 	check_str_eq(buff, H_FLASH_POLICY_RESPONSE, "Correct XML sent");
 
 	check_size_eq(stats->handler_flash_handshake, 1, "Only flash handshake sent");
@@ -302,13 +325,16 @@ START_TEST(test_main_flash_policy) {
 }
 END_TEST
 
-START_TEST(test_main_invalid_subscription) {
+START_TEST(test_main_invalid_subscription)
+{
 	int sock = u_ws_connect();
 
 	check(sock, "Connection established");
 
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE, INVALID_SUBSCRIPTION, sizeof(INVALID_SUBSCRIPTION)-1, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+					INVALID_SUBSCRIPTION, sizeof(INVALID_SUBSCRIPTION)-1,
+					&frame_len);
 	check_int32_eq(send(sock, frame, frame_len, MSG_NOSIGNAL), frame_len, "Subscription sent");
 	free(frame);
 
@@ -328,7 +354,8 @@ START_TEST(test_main_invalid_subscription) {
 }
 END_TEST
 
-Suite* main_suite() {
+Suite* main_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Option");
 

@@ -3,7 +3,8 @@
 #include "check.h"
 #include "test.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	if (!log_init()) {
 		CRITICAL("Could not init log");
 		return 1;

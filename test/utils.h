@@ -27,13 +27,13 @@
 	"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
 
 /**
- * Convert a status_t to a string, for printing.
+ * Convert a enum status to a string, for printing.
  *
  * @param status The status to look for.
  *
  * @return A printable string that names the status, or NULL if not found / multiple statuses.
  */
-char* test_status_to_str(status_t status);
+char* test_status_to_str(enum status status);
 
 /**
  * Create a new client for tests.
@@ -42,14 +42,14 @@ char* test_status_to_str(status_t status);
  *
  * @return A client that can be used.
  */
-client_t* u_client_create(int *socket);
+struct client* u_client_create(int *socket);
 
 /**
  * Free the client allocated in u_client_create().
  *
  * @param client The client to free.
  */
-void u_client_free(client_t *client);
+void u_client_free(struct client *client);
 
 /**
  * Setup the server and get it running.  Returns once the server is ready to function.

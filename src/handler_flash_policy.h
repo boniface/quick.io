@@ -38,7 +38,7 @@ gboolean h_flash_policy_handles(gchar *req);
  *
  * @return If the handshake succeeded.
  */
-status_t h_flash_policy_handshake(client_t *client);
+enum status h_flash_policy_handshake(struct client *client);
 
 #ifdef TESTING
 #include "../test/test_handler_flash_policy.h"

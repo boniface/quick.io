@@ -20,52 +20,61 @@
 #define MESSAGE_RFC6455_NOOP_0 "\x81\x91""abcd"
 #define MESSAGE_RFC6455_NOOP_1 "N""\x13""\n""\x0b""N""\x0c""\x0c""\x0b""\x11""X""Y""\x14""\r""\x03""\n""\n""\\"
 
-static void _test_message_setup() {
+static void _test_message_setup()
+{
 	evs_server_init();
 	apps_run();
 	check(stats_init());
 }
 
-static void _test_refcount_setup() {
+static void _test_refcount_setup()
+{
 	evs_server_init();
 	conns_init();
 	apps_run();
 	check(stats_init());
 }
 
-START_TEST(test_client_incomplete_handshake_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_incomplete_handshake_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, INCOMPLETE_HANDSHAKE_HTTP);
-	check_status_eq(client_handshake(client), CLIENT_WAIT, "Waiting for complete handshake");
+	check_status_eq(client_handshake(client), CLIENT_WAIT,
+			"Waiting for complete handshake");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_incomplete_handshake_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_incomplete_handshake_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, INCOMPLETE_HANDSHAKE_WS);
-	check_status_eq(client_handshake(client), CLIENT_WAIT, "Waiting for complete handshake");
+	check_status_eq(client_handshake(client), CLIENT_WAIT,
+			"Waiting for complete handshake");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_empty_handshake) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_empty_handshake)
+{
+	struct client *client = u_client_create(NULL);
 
 	// Make sure that soup_headers_parse_request is fine parsing empty strings
 	g_string_assign(client->message->socket_buffer, "");
-	check_status_eq(client_handshake(client), CLIENT_WAIT, "Waiting for complete headers");
+	check_status_eq(client_handshake(client), CLIENT_WAIT,
+			"Waiting for complete headers");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_no_handlers_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_no_handlers_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, NO_HANDLER_HANDSHAKE_KEYS);
 	check_status_eq(client_handshake(client), CLIENT_FATAL, "No handler found");
@@ -74,8 +83,9 @@ START_TEST(test_client_no_handlers_0) {
 }
 END_TEST
 
-START_TEST(test_client_no_handlers_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_no_handlers_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, NO_HANDLER_HANDSHAKE_HORRIBLE);
 	check_status_eq(client_handshake(client), CLIENT_FATAL, "Rejected headers");
@@ -84,8 +94,9 @@ START_TEST(test_client_no_handlers_1) {
 }
 END_TEST
 
-START_TEST(test_client_bad_headers) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_bad_headers)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
 	check_status_eq(client_handshake(client), CLIENT_FATAL, "Headers rejected");
@@ -94,8 +105,9 @@ START_TEST(test_client_bad_headers) {
 }
 END_TEST
 
-START_TEST(test_client_bad_path) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_bad_path)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, BAD_PATH);
 	check_status_eq(client_handshake(client), CLIENT_FATAL, "Path rejected");
@@ -104,56 +116,67 @@ START_TEST(test_client_bad_path) {
 }
 END_TEST
 
-START_TEST(test_client_message_no_handler_incoming) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_message_no_handler_incoming)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
-	check_status_eq(client_message(client), CLIENT_FATAL, "Client rejected: no handler");
+	check_status_eq(client_message(client), CLIENT_FATAL,
+			"Client rejected: no handler");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_message_no_handler_continue) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_message_no_handler_continue)
+{
+	struct client *client = u_client_create(NULL);
 	client->message->remaining_length = 100;
 
 	g_string_assign(client->message->socket_buffer, BAD_HANDSHAKE);
-	check_status_eq(client_message(client), CLIENT_FATAL, "Client rejected: no handler");
+	check_status_eq(client_message(client), CLIENT_FATAL,
+			"Client rejected: no handler");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_message_incoming) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_message_incoming)
+{
+	struct client *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP, sizeof(MESSAGE_RFC6455_NOOP)-1);
+	g_string_overwrite_len(client->message->socket_buffer,
+			0, MESSAGE_RFC6455_NOOP, sizeof(MESSAGE_RFC6455_NOOP)-1);
 	check_status_eq(client_message(client), CLIENT_GOOD, "Read message");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_message_continue) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_message_continue)
+{
+	struct client *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
-	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP_0, sizeof(MESSAGE_RFC6455_NOOP_0)-1);
+	g_string_overwrite_len(client->message->socket_buffer,
+				0, MESSAGE_RFC6455_NOOP_0,
+				sizeof(MESSAGE_RFC6455_NOOP_0)-1);
 	check_status_eq(client_message(client), CLIENT_WAIT, "Read message");
 	check_size_eq(client->message->socket_buffer->len, 0, "Socket buffer emptied");
 
-	g_string_overwrite_len(client->message->socket_buffer, 0, MESSAGE_RFC6455_NOOP_1, sizeof(MESSAGE_RFC6455_NOOP_1)-1);
+	g_string_overwrite_len(client->message->socket_buffer,
+				0, MESSAGE_RFC6455_NOOP_1, sizeof(MESSAGE_RFC6455_NOOP_1)-1);
 	check_status_eq(client_message(client), CLIENT_GOOD, "Read message");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_client_no_message) {
-	client_t *client = u_client_create(NULL);
-	message_t *message = client->message;
+START_TEST(test_client_no_message)
+{
+	struct client *client = u_client_create(NULL);
+	struct message *message = client->message;
 	client->message = NULL;
 
 	check_status_eq(client_write(client, NULL), CLIENT_FATAL, "No message to write");
@@ -163,8 +186,9 @@ START_TEST(test_client_no_message) {
 }
 END_TEST
 
-START_TEST(test_client_no_handler) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_no_handler)
+{
+	struct client *client = u_client_create(NULL);
 
 	check_status_eq(client_write(client, NULL), CLIENT_FATAL, "No handler");
 
@@ -172,8 +196,9 @@ START_TEST(test_client_no_handler) {
 }
 END_TEST
 
-START_TEST(test_client_oversized_message) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_oversized_message)
+{
+	struct client *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
 	gchar *really_long = g_strnfill(0xFFFF + 1, 'a');
@@ -186,8 +211,9 @@ START_TEST(test_client_oversized_message) {
 }
 END_TEST
 
-START_TEST(test_client_no_frame_len) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_no_frame_len)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_write_frame(client, NULL, 0);
 
@@ -195,8 +221,9 @@ START_TEST(test_client_no_frame_len) {
 }
 END_TEST
 
-START_TEST(test_client_refcount_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_refcount_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_ref(client);
 	check_size_eq(client->ref_count, 2, "Correct ref count");
@@ -205,8 +232,9 @@ START_TEST(test_client_refcount_0) {
 }
 END_TEST
 
-START_TEST(test_client_refcount_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_refcount_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_ref(client);
 	client_ref(client);
@@ -223,8 +251,9 @@ START_TEST(test_client_refcount_1) {
 }
 END_TEST
 
-START_TEST(test_client_refcount_2) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_refcount_2)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_ref(client);
 	check_size_eq(client->ref_count, 2, "Correct ref count");
@@ -233,8 +262,9 @@ START_TEST(test_client_refcount_2) {
 }
 END_TEST
 
-START_TEST(test_client_refcount_3) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_refcount_3)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_ref(client);
 	client_ref(client);
@@ -248,8 +278,9 @@ START_TEST(test_client_refcount_3) {
 }
 END_TEST
 
-START_TEST(test_client_killed_closed) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_killed_closed)
+{
+	struct client *client = u_client_create(NULL);
 	client->state = cstate_running;
 
 	conns_client_close(client);
@@ -260,8 +291,9 @@ START_TEST(test_client_killed_closed) {
 }
 END_TEST
 
-START_TEST(test_client_external_data_sane) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_external_data_sane)
+{
+	struct client *client = u_client_create(NULL);
 
 	check_ptr_eq(client_get(client, "test"), NULL, "No data set");
 	check_not(client_has(client, "test"), "Not set");
@@ -281,8 +313,9 @@ START_TEST(test_client_external_data_sane) {
 }
 END_TEST
 
-START_TEST(test_client_external_data_overwrite) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_external_data_overwrite)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_set(client, "test", "test");
 	client_set(client, "test", "test2");
@@ -293,8 +326,9 @@ START_TEST(test_client_external_data_overwrite) {
 }
 END_TEST
 
-START_TEST(test_client_external_data_delete) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_external_data_delete)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_set(client, "test", "test");
 	client_set(client, "test", NULL);
@@ -303,14 +337,16 @@ START_TEST(test_client_external_data_delete) {
 }
 END_TEST
 
-START_TEST(test_client_external_data_client_unref_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_external_data_client_unref_0)
+{
+	struct client *client = u_client_create(NULL);
 	client_unref(client);
 }
 END_TEST
 
-START_TEST(test_client_external_data_client_unref_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_external_data_client_unref_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	client_set(client, "test", "test");
 	check(client_has(client, "test"), "Key set");
@@ -319,7 +355,8 @@ START_TEST(test_client_external_data_client_unref_1) {
 }
 END_TEST
 
-Suite* client_suite() {
+Suite* client_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Client");
 

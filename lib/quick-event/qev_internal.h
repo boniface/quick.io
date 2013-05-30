@@ -128,7 +128,10 @@ typedef struct {
  *
  * @return The underlying socket that was created.
  */
-qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client);
+qev_socket_t qev_sys_listen(
+	const char *ip_address,
+	const uint16_t port,
+	QEV_CLIENT_T **client);
 
 /**
  * Listen on a ip address and port (system-specific) for UDP messages.

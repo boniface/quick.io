@@ -65,7 +65,8 @@ static void _apps_teardown() {
 	utils_stats_teardown();
 }
 
-START_TEST(test_apps_events_register_bad) {
+START_TEST(test_apps_events_register_bad)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(BAD_CONFIG, 1, sizeof(BAD_CONFIG), f);
 	fclose(f);
@@ -80,7 +81,8 @@ START_TEST(test_apps_events_register_bad) {
 }
 END_TEST
 
-START_TEST(test_apps_events_register_nonexistent) {
+START_TEST(test_apps_events_register_nonexistent)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(BAD_CONFIG_NONEXISTENT, 1, sizeof(BAD_CONFIG_NONEXISTENT), f);
 	fclose(f);
@@ -95,9 +97,11 @@ START_TEST(test_apps_events_register_nonexistent) {
 }
 END_TEST
 
-START_TEST(test_apps_events_register_nonexistent_default) {
+START_TEST(test_apps_events_register_nonexistent_default)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
-	fwrite(BAD_CONFIG_NONEXISTENT_DEFAULT, 1, sizeof(BAD_CONFIG_NONEXISTENT_DEFAULT), f);
+	fwrite(BAD_CONFIG_NONEXISTENT_DEFAULT, 1,
+			sizeof(BAD_CONFIG_NONEXISTENT_DEFAULT),f);
 	fclose(f);
 
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
@@ -110,59 +114,71 @@ START_TEST(test_apps_events_register_nonexistent_default) {
 }
 END_TEST
 
-START_TEST(test_apps_events_on_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_events_on_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	check_status_eq(evs_client_sub_client("/test/event", client, 0), CLIENT_GOOD, "Subscribed");
 
-	check_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	check_size_eq(utils_stats()->apps_client_handler_on, 1,
+			"Single client subscribed");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_apps_events_on_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_events_on_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	evs_client_sub_client("/event", client, 0);
 
-	check_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	check_size_eq(utils_stats()->apps_client_handler_on, 1,
+			"Single client subscribed");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_apps_events_off_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_events_off_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	evs_client_sub_client("/test/event", client, 0);
-	check_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	check_size_eq(utils_stats()->apps_client_handler_on, 1,
+			"Single client subscribed");
 
 	evs_client_unsub_client("/test/event", client);
-	check_size_eq(utils_stats()->apps_client_handler_off, 1, "Single client unsubscribed");
+	check_size_eq(utils_stats()->apps_client_handler_off, 1,
+			"Single client unsubscribed");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_apps_events_off_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_events_off_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	evs_client_sub_client("/event", client, 0);
-	check_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	check_size_eq(utils_stats()->apps_client_handler_on, 1,
+			"Single client subscribed");
 
 	evs_client_unsub_client("/event", client);
-	check_size_eq(utils_stats()->apps_client_handler_off, 1, "Single client unsubscribed");
+	check_size_eq(utils_stats()->apps_client_handler_off, 1,
+			"Single client unsubscribed");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_apps_events_handle_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_events_handle_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	evs_client_sub_client("/test/event", client, 0);
-	check_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	check_size_eq(utils_stats()->apps_client_handler_on, 1,
+			"Single client subscribed");
 
 	g_string_assign(client->message->buffer, "/test/event:0:plain=");
 	evs_server_handle(client);
@@ -172,11 +188,13 @@ START_TEST(test_apps_events_handle_0) {
 }
 END_TEST
 
-START_TEST(test_apps_events_handle_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_events_handle_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	evs_client_sub_client("/event", client, 0);
-	check_size_eq(utils_stats()->apps_client_handler_on, 1, "Single client subscribed");
+	check_size_eq(utils_stats()->apps_client_handler_on, 1,
+			"Single client subscribed");
 
 	g_string_assign(client->message->buffer, "/event:0:plain=");
 	evs_server_handle(client);
@@ -186,11 +204,12 @@ START_TEST(test_apps_events_handle_1) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_register) {
+START_TEST(test_apps_cb_register)
+{
 	// Make sure our only app was registered
 	check_size_eq(_apps->len, 2, "App registered");
 
-	app_t *app = g_ptr_array_index(_apps, 0);
+	struct app *app = g_ptr_array_index(_apps, 0);
 	check_str_eq(app->name, "test", "Test app registered");
 	check_str_eq(app->event_prefix, "/test", "Test app registered");
 
@@ -200,7 +219,8 @@ START_TEST(test_apps_cb_register) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_run) {
+START_TEST(test_apps_cb_run)
+{
 	// Give the apps time to get going
 	usleep(MS_TO_USEC(100));
 
@@ -208,7 +228,8 @@ START_TEST(test_apps_cb_run) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_run_good) {
+START_TEST(test_apps_cb_run_good)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(GOOD_RUN, 1, sizeof(GOOD_RUN), f);
 	fclose(f);
@@ -223,7 +244,8 @@ START_TEST(test_apps_cb_run_good) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_run_fatal) {
+START_TEST(test_apps_cb_run_fatal)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(BAD_RUN, 1, sizeof(BAD_RUN), f);
 	fclose(f);
@@ -242,35 +264,41 @@ START_TEST(test_apps_cb_run_fatal) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_client_connect) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_cb_client_connect)
+{
+	struct client *client = u_client_create(NULL);
 
 	apps_client_connect(client);
-	check_size_eq(utils_stats()->apps_client_connect, 2, "Single client connected, 2 apps fired");
+	check_size_eq(utils_stats()->apps_client_connect, 2,
+			"Single client connected, 2 apps fired");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_apps_cb_client_close) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_apps_cb_client_close)
+{
+	struct client *client = u_client_create(NULL);
 
 	apps_client_close(client);
-	check_size_eq(utils_stats()->apps_client_close, 2, "Single client disconnected, 2 apps fired");
+	check_size_eq(utils_stats()->apps_client_close, 2,
+			"Single client disconnected, 2 apps fired");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_apps_cb_client_subscribe) {
-	client_t *client = u_client_create(NULL);
-	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
+START_TEST(test_apps_cb_client_subscribe)
+{
+	struct client *client = u_client_create(NULL);
+	struct evs_client_sub *sub = g_malloc0(sizeof(*sub));
 	sub->event_path = "/test";
 	sub->extra = NULL;
 	sub->handler = g_malloc0(sizeof(*(sub->handler)));
 
 	apps_evs_client_subscribe(client, sub->event_path, sub->extra);
-	check_size_eq(utils_stats()->apps_client_subscribe, 2, "Single client subscribed, 2 apps fired");
+	check_size_eq(utils_stats()->apps_client_subscribe, 2,
+			"Single client subscribed, 2 apps fired");
 
 	g_free(sub->handler);
 	g_free(sub);
@@ -278,15 +306,17 @@ START_TEST(test_apps_cb_client_subscribe) {
 }
 END_TEST
 
-START_TEST(test_apps_cb_client_unsubscribe) {
-	client_t *client = u_client_create(NULL);
-	evs_client_sub_t *sub = g_malloc0(sizeof(*sub));
+START_TEST(test_apps_cb_client_unsubscribe)
+{
+	struct client *client = u_client_create(NULL);
+	struct evs_client_sub *sub = g_malloc0(sizeof(*sub));
 	sub->event_path = "/test";
 	sub->extra = NULL;
 	sub->handler = g_malloc0(sizeof(*(sub->handler)));
 
 	apps_evs_client_unsubscribe(client, sub->handler, sub->event_path, sub->extra);
-	check_size_eq(utils_stats()->apps_client_unsubscribe, 2, "Single client unsubscribed, 2 apps fired");
+	check_size_eq(utils_stats()->apps_client_unsubscribe, 2,
+			"Single client unsubscribed, 2 apps fired");
 
 	g_free(sub->handler);
 	g_free(sub);
@@ -294,7 +324,8 @@ START_TEST(test_apps_cb_client_unsubscribe) {
 }
 END_TEST
 
-START_TEST(test_testing_too_many_apps) {
+START_TEST(test_testing_too_many_apps)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(TESTING_CONFIG_TOOMANY, 1, sizeof(TESTING_CONFIG_TOOMANY), f);
 	fclose(f);
@@ -312,7 +343,8 @@ START_TEST(test_testing_too_many_apps) {
 }
 END_TEST
 
-START_TEST(test_testing_no_test_function) {
+START_TEST(test_testing_no_test_function)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(TESTING_CONFIG_NOTTEST, 1, sizeof(TESTING_CONFIG_NOTTEST), f);
 	fclose(f);
@@ -330,7 +362,8 @@ START_TEST(test_testing_no_test_function) {
 }
 END_TEST
 
-START_TEST(test_testing_runs) {
+START_TEST(test_testing_runs)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(TESTING_CONFIG, 1, sizeof(TESTING_CONFIG), f);
 	fclose(f);
@@ -349,7 +382,8 @@ START_TEST(test_testing_runs) {
 }
 END_TEST
 
-Suite* apps_suite() {
+Suite* apps_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Apps");
 

@@ -2,16 +2,16 @@
 
 #define APP_FOREACH(body) \
 	for (gsize i = 0; i < _apps->len; i++) {\
-		app_t *app = g_ptr_array_index(_apps, i); \
+		struct app *app = g_ptr_array_index(_apps, i); \
 		body \
 	}
 
 /**
  * The callbacks that we're going to be using
  */
-typedef struct _app_callbacks_s {
+struct _app_callbacks {
 	/**
-	 * The offset of the callback position in the app_t struct
+	 * The offset of the callback position in the struct app
 	 */
 	int offset;
 
@@ -19,23 +19,23 @@ typedef struct _app_callbacks_s {
 	 * The name of the function in the module
 	 */
 	gchar *name;
-} _app_callbacks_t;
+};
 
-static _app_callbacks_t callbacks[] = {
+static struct _app_callbacks callbacks[] = {
 	// Called to setup basic constants in the app
-	{offsetof(app_t, _set_app_opts), "qio_set_app_opts"},
+	{offsetof(struct app, _set_app_opts), "qio_set_app_opts"},
 
 	// For running the app in its own thread
-	{offsetof(app_t, init), "app_init"},
-	{offsetof(app_t, run), "app_run"},
-	{offsetof(app_t, test), "app_test"},
+	{offsetof(struct app, init), "app_init"},
+	{offsetof(struct app, run), "app_run"},
+	{offsetof(struct app, test), "app_test"},
 
 	// Called in the main thread when the app is running
-	{offsetof(app_t, client_connect), "app_client_connect"},
-	{offsetof(app_t, client_close), "app_client_close"},
-	{offsetof(app_t, subscribe), "app_evs_client_subscribe"},
-	{offsetof(app_t, unsubscribe), "app_evs_client_unsubscribe"},
-	{offsetof(app_t, stats_flush), "app_stats_flush"},
+	{offsetof(struct app, client_connect), "app_client_connect"},
+	{offsetof(struct app, client_close), "app_client_close"},
+	{offsetof(struct app, subscribe), "app_evs_client_subscribe"},
+	{offsetof(struct app, unsubscribe), "app_evs_client_unsubscribe"},
+	{offsetof(struct app, stats_flush), "app_stats_flush"},
 };
 
 /**
@@ -51,17 +51,26 @@ static gboolean _apps_init_success = TRUE;
 /**
  * Runs the thread that controls an entire application.
  */
-static gpointer _app_run(gpointer void_app) {
-	app_t *app = void_app;
-	event_handler_t* on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
-		event_handler_t* handler;
+static gpointer _app_run(gpointer void_app)
+{
+	struct app *app = void_app;
+	struct event_handler* on(
+		const gchar *event_path,
+		const handler_fn fn,
+		const on_subscribe_handler_cb on_subscribe,
+		const on_unsubscribe_handler_cb on_unsubscribe,
+		const gboolean handle_children)
+	{
+		struct event_handler* handler;
 
 		if (app->event_prefix != NULL) {
 			gchar *e = g_strdup_printf("%s%s", app->event_prefix, event_path);
-			handler = evs_server_on(e, fn, on_subscribe, on_unsubscribe, handle_children);
+			handler = evs_server_on(e, fn, on_subscribe,
+								on_unsubscribe, handle_children);
 			g_free(e);
 		} else {
-			handler = evs_server_on(event_path, fn, on_subscribe, on_unsubscribe, handle_children);
+			handler = evs_server_on(event_path, fn, on_subscribe,
+								on_unsubscribe, handle_children);
 		}
 
 		return handler;
@@ -80,13 +89,14 @@ static gpointer _app_run(gpointer void_app) {
 	return NULL;
 }
 
-gboolean apps_run() {
-	const opt_app_t **apps = option_apps();
+gboolean apps_run()
+{
+	const struct opt_app **apps = option_apps();
 	_apps = g_ptr_array_new();
 
 	guint16 app_count = option_apps_count();
 	for (guint16 i = 0; i < app_count; i++) {
-		const opt_app_t *o_app = *(apps + i);
+		const struct opt_app *o_app = *(apps + i);
 
 		// Check to see if an absolute path to a module was given
 		// If it was not, assuming looking in ./, so add that to the
@@ -104,13 +114,12 @@ gboolean apps_run() {
 		// libraries (Python, JS, etc) have access to the necessary symbols +
 		// resolve them on load
 		GModule *module = g_module_open(path, 0);
-
 		if (module == NULL) {
 			CRITICAL("Could not open app (%s): %s", path, g_module_error());
 			return FALSE;
 		}
 
-		app_t *app = g_malloc0(sizeof(*app));
+		struct app *app = g_malloc0(sizeof(*app));
 		g_ptr_array_add(_apps, app);
 		app->module = module;
 		app->id = i;
@@ -161,7 +170,8 @@ gboolean apps_run() {
 	return _apps_init_success;
 }
 
-void apps_client_connect(client_t *client) {
+void apps_client_connect(struct client *client)
+{
 	APP_FOREACH(
 		app_cb_client cb = app->client_connect;
 
@@ -171,7 +181,8 @@ void apps_client_connect(client_t *client) {
 	)
 }
 
-void apps_client_close(client_t *client) {
+void apps_client_close(struct client *client)
+{
 	APP_FOREACH(
 		app_cb_client cb = app->client_close;
 
@@ -181,15 +192,25 @@ void apps_client_close(client_t *client) {
 	)
 }
 
-status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
+enum status apps_evs_client_check_subscribe(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback)
+{
 	if (handler->on_subscribe) {
-		return handler->on_subscribe(client, handler, extra, client_callback);
+		return handler->on_subscribe(client, handler,
+						extra, client_callback);
 	}
 
 	return CLIENT_GOOD;
 }
 
-gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t *extra) {
+gboolean apps_evs_client_subscribe(
+	struct client *client,
+	const gchar *event_path,
+	path_extra_t *extra)
+{
 	APP_FOREACH(
 		on_subscribe_cb cb = app->subscribe;
 
@@ -201,7 +222,12 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
 	return TRUE;
 }
 
-void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const gchar *event_path, path_extra_t *extra) {
+void apps_evs_client_unsubscribe(
+	struct client *client,
+	const struct event_handler *handler,
+	const gchar *event_path,
+	path_extra_t *extra)
+{
 	if (handler->on_unsubscribe != NULL) {
 		handler->on_unsubscribe(client, handler, extra);
 	}
@@ -215,7 +241,8 @@ void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handle
 	)
 }
 
-void apps_stats_gather(stats_app_append_cb app_append) {
+void apps_stats_gather(stats_app_append_cb app_append)
+{
 	APP_FOREACH(
 		apps_stats_app_cb cb = app->stats_flush;
 
@@ -229,12 +256,13 @@ void apps_stats_gather(stats_app_append_cb app_append) {
 	)
 }
 
-gboolean apps_test() {
+gboolean apps_test()
+{
 	if (_apps->len != 1) {
 		FATAL("Can only test 1 app at a time, not %u", _apps->len);
 	}
 
-	app_t *app = g_ptr_array_index(_apps, 0);
+	struct app *app = g_ptr_array_index(_apps, 0);
 
 	if (app->test == NULL) {
 		FATAL("App \"%s\" did not define `app_test()`", app->name);

@@ -24,12 +24,12 @@
  * @param client The client to read from
  * @param[out] header_len The length of the header. This is only set on CLIENT_GOOD.
  */
-status_t h_rfc6455_read_header(client_t *client, int *header_len);
+enum status h_rfc6455_read_header(struct client *client, int *header_len);
 
 /**
  * Reads the header off the data and populates all message information.
  */
-status_t h_rfc6455_read(client_t *client, int header_len);
+enum status h_rfc6455_read(struct client *client, int header_len);
 
 /**
  * If, given the headers, we support this client.
@@ -50,7 +50,7 @@ int h_rfc6455_handles(gchar *path, GHashTable *headers);
  *
  * @return The key for Sec-WebSocket-Key. This MUST be freed.  NULL on failure.
  */
-gchar* h_rfc6455_header_key(client_t *client, GHashTable *headers);
+gchar* h_rfc6455_header_key(struct client *client, GHashTable *headers);
 
 /**
  * Handshake with the client.
@@ -64,7 +64,7 @@ gchar* h_rfc6455_header_key(client_t *client, GHashTable *headers);
  *
  * @return If the handshake succeeded.
  */
-status_t h_rfc6455_handshake(client_t *client, int flags, GHashTable *headers);
+enum status h_rfc6455_handshake(struct client *client, int flags, GHashTable *headers);
 
 /**
  * Prepare a frame to be sent to the client.
@@ -80,14 +80,20 @@ status_t h_rfc6455_handshake(client_t *client, int flags, GHashTable *headers);
  * frame creation.
  * @attention The return of this function MUST be free'd
  */
-gchar* h_rfc6455_prepare_frame(const gboolean broadcast, const opcode_t type, const gboolean masked, const gchar *payload, const guint64 payload_len, gsize *frame_len);
+gchar* h_rfc6455_prepare_frame(
+	const gboolean broadcast,
+	const opcode_t type,
+	const gboolean masked,
+	const gchar *payload,
+	const guint64 payload_len,
+	gsize *frame_len);
 
 /**
  * An accessor for h_rfc6455_prepare_frame.
  *
  * @see h_rfc6455_prepare_frame
  */
-gchar* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len);
+gchar* h_rfc6455_prepare_frame_from_message(struct message *message, gsize *frame_len);
 
 /**
  * Read incoming data from the client.
@@ -98,7 +104,7 @@ gchar* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len
  * @return Any client status.
  * @return CLIENT_WAIT indicates that there wasn't enough data in the socket to create a message.
  */
-status_t h_rfc6455_incoming(client_t *client);
+enum status h_rfc6455_incoming(struct client *client);
 
 /**
  * After a CLIENT_WAIT and remaining_length are set, this will be called to
@@ -106,7 +112,7 @@ status_t h_rfc6455_incoming(client_t *client);
  *
  * @param client The client sending data.
  */
-status_t h_rfc6455_continue(client_t *client);
+enum status h_rfc6455_continue(struct client *client);
 
 /**
  * The frame to write to a client when it closes.

@@ -1,9 +1,10 @@
 #include "qio.h"
 
-status_t client_handshake(client_t *client) {
+enum status client_handshake(struct client *client)
+{
 	static GPrivate priv_headers;
 
-	status_t status = CLIENT_GOOD;
+	enum status status = CLIENT_GOOD;
 	GString *buffer = client->message->socket_buffer;
 
 	// Now this is just absurd: flash sends a request for a policy file as:
@@ -20,7 +21,9 @@ status_t client_handshake(client_t *client) {
 
 	// If the client hasn't yet sent the terminating \n\n or \r\n\r\n, then just
 	// don't parse anything, because it's not complete
-	if (!g_string_ends_with(buffer, HTTP_HEADER_TERMINATOR) && !g_string_ends_with(buffer, WEB_SOCKET_HEADER_TERMINATOR)) {
+	if (!g_string_ends_with(buffer, HTTP_HEADER_TERMINATOR) &&
+		!g_string_ends_with(buffer, WEB_SOCKET_HEADER_TERMINATOR)) {
+
 		return CLIENT_WAIT;
 	}
 
@@ -82,7 +85,8 @@ status_t client_handshake(client_t *client) {
 	memset(&parser, 0, sizeof(parser));
 	http_parser_init(&parser, HTTP_REQUEST);
 
-	if (http_parser_execute(&parser, &settings, buffer->str, buffer->len) == buffer->len) {
+	gsize len = http_parser_execute(&parser, &settings, buffer->str, buffer->len);
+	if (len == buffer->len) {
 		client->last_receive = qev_time;
 		int flags = 0;
 
@@ -111,8 +115,9 @@ status_t client_handshake(client_t *client) {
 	return status;
 }
 
-status_t client_message(client_t* client) {
-	status_t status = CLIENT_ERROR;
+enum status client_message(struct client *client)
+{
+	enum status status = CLIENT_ERROR;
 
 	if (client->message->remaining_length) {
 		switch (client->handler) {
@@ -155,7 +160,8 @@ status_t client_message(client_t* client) {
 	return status;
 }
 
-status_t client_write(client_t *client, message_t *message) {
+enum status client_write(struct client *client, struct message *message)
+{
 	if (message == NULL) {
 		if (client->message == NULL) {
 			return CLIENT_FATAL;
@@ -189,13 +195,14 @@ status_t client_write(client_t *client, message_t *message) {
 	}
 
 	STATS_INC(client_message_sent);
-	status_t status = client_write_frame(client, frame, frame_len);
+	enum status status = client_write_frame(client, frame, frame_len);
 
 	g_free(frame);
 	return status;
 }
 
-void client_write_close(client_t *client) {
+void client_write_close(struct client *client)
+{
 	gchar *frame = NULL;
 	gsize frame_len = 0;
 
@@ -216,7 +223,8 @@ void client_write_close(client_t *client) {
 	client_write_frame(client, frame, frame_len);
 }
 
-status_t client_write_frame(client_t *client, gchar *frame, gsize frame_len) {
+enum status client_write_frame(struct client *client, gchar *frame, gsize frame_len)
+{
 	// Frames MUST ALWAYS be larger than 0, there MUST be a header
 	// Since we're doing an equality check, casting to signed is all right
 	if (frame_len > 0 && qev_write(client, frame, frame_len) == (gssize)frame_len) {
@@ -228,11 +236,13 @@ status_t client_write_frame(client_t *client, gchar *frame, gsize frame_len) {
 	}
 }
 
-void client_ref(client_t *client) {
+void client_ref(struct client *client)
+{
 	g_atomic_int_inc(&client->ref_count);
 }
 
-void client_unref(client_t *client) {
+void client_unref(struct client *client)
+{
 	if (g_atomic_int_dec_and_test(&client->ref_count)) {
 		// Allow the close handler to access client data before freeing
 		GHashTable *data = client->external_data;
@@ -245,7 +255,8 @@ void client_unref(client_t *client) {
 	}
 }
 
-const gchar* client_set(client_t *client, const gchar *key, const gchar *value) {
+const gchar* client_set(struct client *client, const gchar *key, const gchar *value)
+{
 	qev_client_lock(client);
 
 	if (client->external_data == NULL) {
@@ -265,7 +276,8 @@ const gchar* client_set(client_t *client, const gchar *key, const gchar *value) 
 	return ret;
 }
 
-const gchar* client_get(client_t *client, const gchar *key) {
+const gchar* client_get(struct client *client, const gchar *key)
+{
 	qev_client_lock(client);
 
 	gchar *value = NULL;
@@ -278,7 +290,8 @@ const gchar* client_get(client_t *client, const gchar *key) {
 	return value;
 }
 
-gboolean client_has(client_t *client, const gchar *key) {
+gboolean client_has(struct client *client, const gchar *key)
+{
 	qev_client_lock(client);
 
 	gboolean has = FALSE;

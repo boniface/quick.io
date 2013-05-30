@@ -37,7 +37,11 @@ static const gchar event_path_chars[] = {
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
-static status_t _event_new(message_t *message, event_handler_t **handler, event_t *event) {
+static enum status _event_new(
+	struct message *message,
+	struct event_handler **handler,
+	struct event *event)
+{
 	// Clear out the event we're setting
 	memset(event, 0, sizeof(*event));
 
@@ -149,7 +153,8 @@ static status_t _event_new(message_t *message, event_handler_t **handler, event_
 /**
  * Free up all the allocated memory for an event.
  */
-static void _event_free(event_t *event) {
+static void _event_free(struct event *event)
+{
 	// Since all the pointers in the event struct are just into the original buffer,
 	// we don't need to free anything but this one string, and everything else is done
 	g_free(event->path);
@@ -161,21 +166,27 @@ static void _event_free(event_t *event) {
 	}
 }
 
-static void _evs_server_callback_free(struct client_cb_s cb) {
+static void _evs_server_callback_free(struct client_cb cb)
+{
 	if (cb.data != NULL && cb.free_fn != NULL) {
 		cb.free_fn(cb.data);
 	}
 }
 
-static status_t _evs_server_callback(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+static enum status _evs_server_callback(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response)
+{
 	if (event->extra->len != 1) {
 		return CLIENT_ERROR;
 	}
 
 	STATS_INC(evs_server_callback);
 
-	callback_t compacted = g_ascii_strtoull(g_ptr_array_index(event->extra, 0), NULL, 10);
 	guint8 slot, id;
+	callback_t compacted = g_ascii_strtoull(g_ptr_array_index(event->extra, 0), NULL, 10);
 	SERVER_CALLBACK_PARTS(client, compacted, slot, id);
 
 	qev_client_lock(client);
@@ -187,20 +198,25 @@ static status_t _evs_server_callback(client_t *client, event_handler_t *handler,
 	}
 
 	// Get a copy of the callback so we can unlock faster
-	struct client_cb_s cb = client->callbacks[slot];
+	struct client_cb cb = client->callbacks[slot];
 
 	// Mark the callback as empty
 	client->callbacks[slot].fn = NULL;
 
 	qev_client_unlock(client);
 
-	status_t status = cb.fn(client, cb.data, event);
+	enum status status = cb.fn(client, cb.data, event);
 	_evs_server_callback_free(cb);
 
 	return status;
 }
 
-static status_t _evs_server_ping(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+static enum status _evs_server_ping(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response)
+{
 	// This command just needs to send back whatever text we recieved
 	// Only do this if a callback is given (the logic in the handler takes
 	// care of that)
@@ -209,34 +225,52 @@ static status_t _evs_server_ping(client_t *client, event_handler_t *handler, eve
 	return CLIENT_GOOD;
 }
 
-static status_t _evs_server_noop(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+static enum status _evs_server_noop(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response)
+{
 	STATS_INC(evs_server_noop);
 	g_string_set_size(response, 0);
 	return CLIENT_GOOD;
 }
 
-static status_t _evs_server_subscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+static enum status _evs_server_subscribe(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response)
+{
 	DEBUG("event_subscribe: %s; callback: %u", event->data, event->client_callback);
 
 	gchar *event_path = evs_server_format_path(event->data, NULL);
-	status_t status = evs_client_sub_client(event_path, client, event->client_callback);
+	enum status status = evs_client_sub_client(event_path, client, event->client_callback);
 	g_free(event_path);
 
 	return status;
 }
 
-static status_t _evs_server_unsubscribe(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+static enum status _evs_server_unsubscribe(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response)
+{
 	DEBUG("event_unsubscribe: %s", event->data);
 
 	gchar *event_path = evs_server_format_path(event->data, NULL);
-	status_t status = evs_client_unsub_client(event_path, client);
+	enum status status = evs_client_unsub_client(event_path, client);
 	g_free(event_path);
 
 	return status;
 }
 
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **extra) {
-	event_handler_t *handler = NULL;
+struct event_handler* evs_server_get_handler(
+	const gchar *event_path,
+	path_extra_t **extra)
+{
+	struct event_handler *handler = NULL;
 
 	// Internal extras
 	path_extra_t *iextra = g_ptr_array_new_with_free_func(g_free);
@@ -254,14 +288,15 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **
 		// the buffer as a series of strings
 		*end = '\0';
 
-		// Attempt to find the handler
-		handler = (event_handler_t*)g_hash_table_lookup(_events_by_path, ep);
+		handler = (struct event_handler*)g_hash_table_lookup(_events_by_path, ep);
 
 		// If we found the most-specific command
 		// This one is a bit hard to read: if there is a handler and any extra parameters,
 		// then make sure the handler supports it; if there are no extra parameters, then
 		// it's good
-		if (handler != NULL && (iextra->len == 0 || (iextra->len > 0 && handler->handle_children))) {
+		if (handler != NULL &&
+			(iextra->len == 0 || (iextra->len > 0 && handler->handle_children))) {
+
 			break;
 		}
 
@@ -310,10 +345,11 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **
 	return handler;
 }
 
-status_t evs_server_handle(client_t *client) {
-	event_t event;
-	event_handler_t *handler = NULL;
-	status_t status = _event_new(client->message, &handler, &event);
+enum status evs_server_handle(struct client *client)
+{
+	struct event event;
+	struct event_handler *handler = NULL;
+	enum status status = _event_new(client->message, &handler, &event);
 
 	DEBUG("Event: %s", event.path);
 	STATS_INC(evs_server_event);
@@ -337,11 +373,14 @@ status_t evs_server_handle(client_t *client) {
 			g_string_free(client->message->buffer, FALSE);
 			client->message->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
 
-			status = evs_client_format_message(handler, event.client_callback, event.server_callback, event.extra, event.data_type, data, client->message->buffer);
+			status = evs_client_format_message(handler, event.client_callback,
+								event.server_callback, event.extra, event.data_type,
+								data, client->message->buffer);
 
 			g_free(data);
 		} else if (status == CLIENT_ERROR) {
-			status = evs_client_format_message(handler, event.client_callback, 0, NULL, d_plain, QIO_ERROR, client->message->buffer);
+			status = evs_client_format_message(handler, event.client_callback,
+								0, NULL, d_plain, QIO_ERROR, client->message->buffer);
 		}
 
 		if (status == CLIENT_GOOD) {
@@ -366,14 +405,22 @@ status_t evs_server_handle(client_t *client) {
 	return status;
 }
 
-event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, const on_subscribe_handler_cb on_subscribe, const on_unsubscribe_handler_cb on_unsubscribe, const gboolean handle_children) {
+struct event_handler* evs_server_on(
+	const gchar *event_path,
+	const handler_fn fn,
+	const on_subscribe_handler_cb on_subscribe,
+	const on_unsubscribe_handler_cb on_unsubscribe,
+	const gboolean handle_children)
+{
 	if (g_strstr_len(event_path, -1, EVENT_DELIMITER) != NULL) {
-		CRITICAL("Could not add event \"%s\", \""EVENT_DELIMITER"\" not allowed in event names.", event_path);
+		CRITICAL("Could not add event \"%s\", \"" EVENT_DELIMITER
+					"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 
 	if (g_strstr_len(event_path, -1, EVENT_DATA_DELIMITER) != NULL) {
-		CRITICAL("Could not add event \"%s\", \""EVENT_DATA_DELIMITER"\" not allowed in event names.", event_path);
+		CRITICAL("Could not add event \"%s\", \"" EVENT_DATA_DELIMITER
+					"\" not allowed in event names.", event_path);
 		return NULL;
 	}
 
@@ -387,7 +434,7 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 		return NULL;
 	}
 
-	event_handler_t *handler = g_malloc0(sizeof(*handler));
+	struct event_handler *handler = g_malloc0(sizeof(*handler));
 	handler->fn = fn;
 	handler->on_subscribe = on_subscribe;
 	handler->on_unsubscribe = on_unsubscribe;
@@ -401,11 +448,13 @@ event_handler_t* evs_server_on(const gchar *event_path, const handler_fn fn, con
 	return handler;
 }
 
-gchar* evs_server_path_from_handler(const event_handler_t *handler) {
+gchar* evs_server_path_from_handler(const struct event_handler *handler)
+{
 	return g_hash_table_lookup(_events_by_handler, handler);
 }
 
-gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
+gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra)
+{
 	GString *ep = g_string_new(event_path);
 
 	// Make sure it starts with a slash
@@ -450,13 +499,24 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra) {
 	return path;
 }
 
-status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
+enum status evs_no_subscribe(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback)
+{
 	return CLIENT_ERROR;
 }
 
-callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn) {
+callback_t evs_server_callback_new(
+	struct client *client,
+	callback_fn fn,
+	void *data,
+	callback_free_fn free_fn)
+{
 	if (fn == NULL) {
-		CRITICAL("No callback function passed into evs_server_callback_new(). You probably didn't mean that.");
+		CRITICAL("No callback function passed into evs_server_callback_new()."
+					" You probably didn't mean that.");
 
 		if (data != NULL && free_fn != NULL) {
 			free_fn(data);
@@ -501,7 +561,8 @@ callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data,
 	return id;
 }
 
-void evs_server_callback_free(client_t *client, callback_t server_callback) {
+void evs_server_callback_free(struct client *client, callback_t server_callback)
+{
 	guint8 slot, id;
 	SERVER_CALLBACK_PARTS(client, server_callback, slot, id);
 
@@ -510,7 +571,8 @@ void evs_server_callback_free(client_t *client, callback_t server_callback) {
 	}
 }
 
-void evs_server_client_close(client_t *client) {
+void evs_server_client_close(struct client *client)
+{
 	for (callback_t i = 0; i < G_N_ELEMENTS(client->callbacks); i++) {
 		if (client->callbacks[i].fn != NULL) {
 			_evs_server_callback_free(client->callbacks[i]);
@@ -518,7 +580,8 @@ void evs_server_client_close(client_t *client) {
 	}
 }
 
-gboolean evs_server_init() {
+gboolean evs_server_init()
+{
 	_events_by_path = g_hash_table_new(g_str_hash, g_str_equal);
 	_events_by_handler = g_hash_table_new(NULL, NULL);
 

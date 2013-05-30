@@ -14,31 +14,21 @@
 #include <unistd.h>
 
 /**
- * Defined in events_client.h
- */
-typedef struct evs_client_sub_s evs_client_sub_t;
-
-/**
  * Defined in events_server.h
  */
-typedef struct event_handler_s event_handler_t;
-
-/**
- * Defined in events_server.h
- */
-typedef struct client_cb_s client_cb_t;
+struct event_handler;
 
 /**
  * Defined in client.h
  */
-typedef struct client_s client_t;
+struct client;
 
 /**
  * Defined in client.h
  */
-typedef guint16 status_t;
+enum status;
 
-#define QEV_CLIENT_T client_t
+#define QEV_CLIENT_T struct client
 #define QEV_CLIENT_SLOT qevclient
 #define QEV_CLIENT_NEVER_FREE
 
@@ -47,8 +37,6 @@ typedef guint16 status_t;
 #include "lib/reconnecting_socket.h"
 
 #include "module.h"
-
-#include "test/utils_stats.h"
 
 // Some out-of-order guys for dependencies
 #include "stats.h"
@@ -64,5 +52,7 @@ typedef guint16 status_t;
 #include "main.h"
 #include "monkey.h"
 #include "option.h"
+
+#include "test/utils_stats.h"
 
 #endif

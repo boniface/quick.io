@@ -14,17 +14,18 @@ static GString *_builder;
 /**
  * The address structure indicating where UDP packets should be sent with Graphite info.
  */
-static rsocket *_graphite = NULL;
+static rsocket_t *_graphite = NULL;
 
 /**
  * In order to be able to override global stats for testing (we need to use shared memory),
  * we define stats here as just a pointer to our static struct. This allows the tests
  * to override the global `stats` variable to be whatever they want.
  */
-static stats_t _stats;
-stats_t *stats = &_stats;
+static struct stats _stats;
+struct stats *stats = &_stats;
 
-void stats_flush() {
+void stats_flush()
+{
 	if (!_graphite) {
 		return;
 	}
@@ -36,7 +37,10 @@ void stats_flush() {
 			prefix = "";
 		}
 
-		g_string_printf(_builder, GRAPHITE_FORMAT, option_stats_graphite_prefix(), option_hostname(), prefix, key, val, time);
+		g_string_printf(_builder, GRAPHITE_FORMAT,
+					option_stats_graphite_prefix(),
+					option_hostname(),
+					prefix, key, val, time);
 
 		// It's legal for the paths to graphite to be in the form qio.host/app/prefix.key,
 		// so clean that up
@@ -58,7 +62,11 @@ void stats_flush() {
 	// The counters have a few different stats we calculate, so we need this holder
 	double val;
 
-	#define X(slot, name) val = g_atomic_pointer_and(&stats->slot, 0); _append(NULL, name ".count", val); _append(NULL, name ".mean", val / STATS_INTERVAL);
+	#define X(slot, name) \
+		val = g_atomic_pointer_and(&stats->slot, 0); \
+		_append(NULL, name ".count", val); \
+		_append(NULL, name ".mean", val / STATS_INTERVAL);
+
 		STATS_S_COUNTERS
 	#undef X
 
@@ -68,14 +76,21 @@ void stats_flush() {
 	g_string_truncate(_buffer, 0);
 }
 
-gsize stats_clients() {
+gsize stats_clients()
+{
 	return (gsize)g_atomic_pointer_get(&stats->clients);
 }
 
-gboolean stats_init() {
+gboolean stats_init()
+{
 	// Since graphite is optional, only emit a warning if anything fails
-	if (option_stats_graphite_address() != NULL && rsocket_connect(option_stats_graphite_address(), option_stats_graphite_port(), &_graphite) == -1) {
-		WARN("Could not lookup graphite address. Graphite will not be used.");
+	if (option_stats_graphite_address() != NULL) {
+		int ret = rsocket_connect(option_stats_graphite_address(),
+								option_stats_graphite_port(),
+								&_graphite);
+		if (ret == -1) {
+			WARN("Could not lookup graphite address. Graphite will not be used.");
+		}
 	}
 
 	_buffer = g_string_sized_new(128);

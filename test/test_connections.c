@@ -14,7 +14,8 @@
 #define MOVE "\x81\x16""/qio/move:0:plain=test" CLOSE_FRAME
 #define MOVE2 "\x81\x17""/qio/move:0:plain=test2" CLOSE_FRAME
 
-void _test_conns_setup() {
+void _test_conns_setup()
+{
 	qev_init();
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
@@ -25,8 +26,9 @@ void _test_conns_setup() {
 	check(stats_init());
 }
 
-START_TEST(test_conns_client_closed_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_client_closed_0)
+{
+	struct client *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	client->state = cstate_dead;
 
@@ -37,8 +39,9 @@ START_TEST(test_conns_client_closed_0) {
 }
 END_TEST
 
-START_TEST(test_conns_client_closed_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_client_closed_1)
+{
+	struct client *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 	client->state = cstate_running;
 
@@ -49,8 +52,9 @@ START_TEST(test_conns_client_closed_1) {
 }
 END_TEST
 
-START_TEST(test_conns_message_clean_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_message_clean_0)
+{
+	struct client *client = u_client_create(NULL);
 
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -66,8 +70,9 @@ START_TEST(test_conns_message_clean_0) {
 }
 END_TEST
 
-START_TEST(test_conns_message_clean_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_message_clean_1)
+{
+	struct client *client = u_client_create(NULL);
 
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -83,8 +88,9 @@ START_TEST(test_conns_message_clean_1) {
 }
 END_TEST
 
-START_TEST(test_conns_message_clean_2) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_message_clean_2)
+{
+	struct client *client = u_client_create(NULL);
 
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -100,8 +106,9 @@ START_TEST(test_conns_message_clean_2) {
 }
 END_TEST
 
-START_TEST(test_conns_message_clean_3) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_message_clean_3)
+{
+	struct client *client = u_client_create(NULL);
 
 	GString *b = client->message->buffer;
 	GString *sb = client->message->socket_buffer;
@@ -117,11 +124,12 @@ START_TEST(test_conns_message_clean_3) {
 }
 END_TEST
 
-START_TEST(test_conns_clients_foreach) {
+START_TEST(test_conns_clients_foreach)
+{
 	guint32 i = 0;
 
 	// Remove a ton of clients to make sure the iterator keeps up
-	gboolean _callback(client_t *client) {
+	gboolean _callback(struct client *client) {
 		static gboolean remove = TRUE;
 
 		if (remove) {
@@ -139,7 +147,7 @@ START_TEST(test_conns_clients_foreach) {
 	}
 
 	for (int i = 0; i < CONNS_YIELD*2; i++) {
-		client_t *client = u_client_create(NULL);
+		struct client *client = u_client_create(NULL);
 		client->handler = h_rfc6455;
 		conns_client_new(client);
 		client->state = cstate_running;
@@ -150,13 +158,14 @@ START_TEST(test_conns_clients_foreach) {
 }
 END_TEST
 
-START_TEST(test_conns_clients_foreach_race) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_clients_foreach_race)
+{
+	struct client *client = u_client_create(NULL);
 	conns_client_new(client);
 
 	int calls = 0;
 
-	gboolean _callback(client_t *client) {
+	gboolean _callback(struct client *client) {
 		calls++;
 		return TRUE;
 	}
@@ -182,12 +191,13 @@ START_TEST(test_conns_clients_foreach_race) {
 }
 END_TEST
 
-START_TEST(test_conns_clients_foreach_null) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_conns_clients_foreach_null)
+{
+	struct client *client = u_client_create(NULL);
 	conns_client_new(client);
 	client->state = cstate_running;
 
-	client_t *client2 = u_client_create(NULL);
+	struct client *client2 = u_client_create(NULL);
 	conns_client_new(client2);
 	client2->state = cstate_running;
 
@@ -201,7 +211,7 @@ START_TEST(test_conns_clients_foreach_null) {
 	_clients_len += 5;
 
 	int calls = 0;
-	gboolean _callback(client_t *client) {
+	gboolean _callback(struct client *client) {
 		calls++;
 		return TRUE;
 	}
@@ -212,9 +222,10 @@ START_TEST(test_conns_clients_foreach_null) {
 }
 END_TEST
 
-START_TEST(test_conns_clients_remove_0) {
+START_TEST(test_conns_clients_remove_0)
+{
 	for (guint i = 0; i < 10; i++) {
-		client_t *client = u_client_create(NULL);
+		struct client *client = u_client_create(NULL);
 		client->handler = h_rfc6455;
 		conns_client_new(client);
 		client->state = cstate_running;
@@ -223,7 +234,7 @@ START_TEST(test_conns_clients_remove_0) {
 	}
 
 	for (guint i = 10; i > 0; i--) {
-		client_t *client = _clients[i - 1];
+		struct client *client = _clients[i - 1];
 		_conns_clients_remove(client);
 
 		check_uint64_eq(client->clients_pos, 0, "Correct position");
@@ -231,14 +242,15 @@ START_TEST(test_conns_clients_remove_0) {
 }
 END_TEST
 
-START_TEST(test_conns_clients_remove_1) {
-	client_t *client1 = u_client_create(NULL);
+START_TEST(test_conns_clients_remove_1)
+{
+	struct client *client1 = u_client_create(NULL);
 	conns_client_new(client1);
 
-	client_t *client2 = u_client_create(NULL);
+	struct client *client2 = u_client_create(NULL);
 	conns_client_new(client2);
 
-	client_t *client3 = u_client_create(NULL);
+	struct client *client3 = u_client_create(NULL);
 	conns_client_new(client3);
 
 	_conns_clients_remove(client2);
@@ -247,18 +259,20 @@ START_TEST(test_conns_clients_remove_1) {
 }
 END_TEST
 
-START_TEST(test_conns_balance_0) {
+START_TEST(test_conns_balance_0)
+{
 	conns_balance(100, "test");
 
 	check_int64_eq(g_async_queue_length(_balances), 1, "One balance request");
 }
 END_TEST
 
-START_TEST(test_conns_balance_1) {
+START_TEST(test_conns_balance_1)
+{
 	conns_balance(100, "test");
 
 	int socket = 0;
-	client_t *client = u_client_create(&socket);
+	struct client *client = u_client_create(&socket);
 	conns_client_new(client);
 	client->handler = h_rfc6455;
 	client->state = cstate_running;
@@ -269,23 +283,25 @@ START_TEST(test_conns_balance_1) {
 
 	char buff[sizeof(MOVE)+128];
 	memset(buff, 0, sizeof(buff));
-	check_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
+	check_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1,
+			"Got MOVE length");
 	check_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
 }
 END_TEST
 
-START_TEST(test_conns_balance_2) {
+START_TEST(test_conns_balance_2)
+{
 	conns_balance(1, "test");
 	conns_balance(1, "test2");
 
 	int socket1 = 0;
-	client_t *client1 = u_client_create(&socket1);
+	struct client *client1 = u_client_create(&socket1);
 	conns_client_new(client1);
 	client1->handler = h_rfc6455;
 	client1->state = cstate_running;
 
 	int socket2 = 0;
-	client_t *client2 = u_client_create(&socket2);
+	struct client *client2 = u_client_create(&socket2);
 	conns_client_new(client2);
 	client2->handler = h_rfc6455;
 	client2->state = cstate_running;
@@ -312,12 +328,13 @@ START_TEST(test_conns_balance_2) {
 }
 END_TEST
 
-START_TEST(test_conns_balance_yield) {
+START_TEST(test_conns_balance_yield)
+{
 	conns_balance(200, "test");
 
 	int socket = 0;
 	for (int i = 0; i < 200; i++) {
-		client_t *client = u_client_create(&socket);
+		struct client *client = u_client_create(&socket);
 		conns_client_new(client);
 		client->handler = h_rfc6455;
 		client->state = cstate_running;
@@ -329,15 +346,17 @@ START_TEST(test_conns_balance_yield) {
 
 	char buff[sizeof(MOVE)+128];
 	memset(buff, 0, sizeof(buff));
-	check_int32_eq(read(socket, buff, sizeof(buff)-1), sizeof(MOVE)-1, "Got MOVE length");
+	check_int32_eq(read(socket, buff, sizeof(buff)-1),
+			sizeof(MOVE)-1, "Got MOVE length");
 	check_bin_eq(buff, MOVE, sizeof(MOVE), "Correct MOVE sent");
 }
 END_TEST
 
-START_TEST(test_conns_max_clients) {
+START_TEST(test_conns_max_clients)
+{
 	int socket = 0;
 	for (int i = 0; i < 510; i++) {
-		client_t *client = u_client_create(&socket);
+		struct client *client = u_client_create(&socket);
 		conns_client_new(client);
 		client->handler = h_rfc6455;
 		client->state = cstate_running;
@@ -350,7 +369,7 @@ START_TEST(test_conns_max_clients) {
 	}
 
 	for (int i = 0; i < 10; i++) {
-		client_t *client = u_client_create(&socket);
+		struct client *client = u_client_create(&socket);
 		conns_client_new(client);
 		client->handler = h_rfc6455;
 		client->state = cstate_running;
@@ -360,11 +379,12 @@ START_TEST(test_conns_max_clients) {
 }
 END_TEST
 
-START_TEST(test_conns_client_close_free) {
+START_TEST(test_conns_client_close_free)
+{
 	// Tests the case when an app has client_ref'd a client: it MUST still receive a close
 	// callback when the client leaves
 
-	client_t *client = u_client_create(NULL);
+	struct client *client = u_client_create(NULL);
 	client_ref(client);
 	client_ref(client);
 	client_ref(client);
@@ -378,7 +398,8 @@ START_TEST(test_conns_client_close_free) {
 }
 END_TEST
 
-Suite* conns_suite() {
+Suite* conns_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Connections");
 

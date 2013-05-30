@@ -1,6 +1,7 @@
 #include "test.h"
 
-static void _test_events_setup() {
+static void _test_events_setup()
+{
 	utils_stats_setup();
 	evs_server_init();
 	evs_client_init();
@@ -9,32 +10,37 @@ static void _test_events_setup() {
 	check(stats_init());
 }
 
-static void _test_events_teardown() {
+static void _test_events_teardown()
+{
 	utils_stats_teardown();
 }
 
-START_TEST(test_evs_server_format_path_0) {
+START_TEST(test_evs_server_format_path_0)
+{
 	gchar *path = evs_server_format_path("///some////slashes//////////", NULL);
 	check_str_eq(path, "/some/slashes", "Extra slashes removed");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_1) {
+START_TEST(test_evs_server_format_path_1)
+{
 	gchar *path = evs_server_format_path("some/slashes", NULL);
 	check_str_eq(path, "/some/slashes", "Starting slash added");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_2) {
+START_TEST(test_evs_server_format_path_2)
+{
 	gchar *path = evs_server_format_path("/some/slashes/", NULL);
 	check_str_eq(path, "/some/slashes", "Trailing slash removed");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_3) {
+START_TEST(test_evs_server_format_path_3)
+{
 	path_extra_t *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with");
 	g_ptr_array_add(extra, "path");
@@ -47,7 +53,8 @@ START_TEST(test_evs_server_format_path_3) {
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_4) {
+START_TEST(test_evs_server_format_path_4)
+{
 	path_extra_t *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with");
 	g_ptr_array_add(extra, "path");
@@ -60,14 +67,16 @@ START_TEST(test_evs_server_format_path_4) {
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_5) {
+START_TEST(test_evs_server_format_path_5)
+{
 	gchar *path = evs_server_format_path("/these/**are***/%%%not%%/valid/", NULL);
 	check_str_eq(path, "/these/are/not/valid", "Bad characters removed");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_6) {
+START_TEST(test_evs_server_format_path_6)
+{
 	path_extra_t *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with^^%^#^^#*@*@&");
 	g_ptr_array_add(extra, "path/////////");
@@ -80,34 +89,38 @@ START_TEST(test_evs_server_format_path_6) {
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_7) {
+START_TEST(test_evs_server_format_path_7)
+{
 	gchar *path = evs_server_format_path("/these/^^are-valid@@/chars_yep/", NULL);
 	check_str_eq(path, "/these/are-valid/chars_yep", "Bad characters removed");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_8) {
+START_TEST(test_evs_server_format_path_8)
+{
 	gchar *path = evs_server_format_path("", NULL);
 	check_str_eq(path, NULL, "No path found");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_server_format_path_9) {
+START_TEST(test_evs_server_format_path_9)
+{
 	gchar *path = evs_server_format_path("a", NULL);
 	check_str_eq(path, "/a", "Bad characters removed");
 	g_free(path);
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_valid_minimal) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_valid_minimal)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop::plain=");
 
@@ -121,7 +134,7 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 	check_str_eq(event.data, "", "No data set");
 
 	// Test the side-effects
-	event_handler_t *right_handler = evs_server_get_handler(event.path, NULL);
+	struct event_handler *right_handler = evs_server_get_handler(event.path, NULL);
 	check_ptr_eq(handler, right_handler, "Correct handler retrieved");
 	check_size_eq(message->buffer->len, 0, "Buffer cleared");
 
@@ -130,13 +143,14 @@ START_TEST(test_evs_event_creation_valid_minimal) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_valid_single_digit_callback) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_valid_single_digit_callback)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:1:plain=");
 
@@ -150,7 +164,7 @@ START_TEST(test_evs_event_creation_valid_single_digit_callback) {
 	check_str_eq(event.data, "", "No data set");
 
 	// Test the side-effects
-	event_handler_t *right_handler = evs_server_get_handler(event.path, NULL);
+	struct event_handler *right_handler = evs_server_get_handler(event.path, NULL);
 	check_ptr_eq(handler, right_handler, "Correct handler retrieved");
 	check_size_eq(message->buffer->len, 0, "Buffer cleared");
 
@@ -159,13 +173,14 @@ START_TEST(test_evs_event_creation_valid_single_digit_callback) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_valid_callback) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_valid_callback)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 
@@ -178,13 +193,14 @@ START_TEST(test_evs_event_creation_valid_callback) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_valid_json) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_valid_json)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:123:json={\"test\":1}");
 
@@ -198,13 +214,14 @@ START_TEST(test_evs_event_creation_valid_json) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_no_data) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_no_data)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 
@@ -218,15 +235,16 @@ START_TEST(test_evs_event_creation_no_data) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_handle_children) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_handle_children)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_handler_t *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
+	struct event_handler *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/multi/something:123:plain=test");
 
@@ -249,12 +267,13 @@ START_TEST(test_evs_event_creation_handle_children) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "::=");
 
@@ -265,12 +284,13 @@ START_TEST(test_evs_event_creation_invalid) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid_with_event) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid_with_event)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop::=");
 
@@ -281,12 +301,13 @@ START_TEST(test_evs_event_creation_invalid_with_event) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid_callback_id) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid_callback_id)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:abcd1234:=");
 
@@ -298,12 +319,13 @@ START_TEST(test_evs_event_creation_invalid_callback_id) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid_callback) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid_callback)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:=");
 
@@ -314,12 +336,13 @@ START_TEST(test_evs_event_creation_invalid_callback) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid_junk) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid_junk)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:\x11\x01\x12\xab\x00:=hi");
 
@@ -330,12 +353,13 @@ START_TEST(test_evs_event_creation_invalid_junk) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid_data) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid_data)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/qio/noop:123:plain");
 
@@ -346,12 +370,13 @@ START_TEST(test_evs_event_creation_invalid_data) {
 }
 END_TEST
 
-START_TEST(test_evs_event_creation_invalid_handler) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_event_creation_invalid_handler)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
-	message_t *message = client->message;
+	struct event event;
+	struct event_handler *handler = NULL;
+	struct message *message = client->message;
 
 	g_string_assign(message->buffer, "/:123:plain");
 
@@ -362,26 +387,30 @@ START_TEST(test_evs_event_creation_invalid_handler) {
 }
 END_TEST
 
-START_TEST(test_evs_new_handler_bad_path_0) {
+START_TEST(test_evs_new_handler_bad_path_0)
+{
 	check_ptr_eq(evs_server_on("/:event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
 }
 END_TEST
 
-START_TEST(test_evs_new_handler_bad_path_1) {
+START_TEST(test_evs_new_handler_bad_path_1)
+{
 	check_ptr_eq(evs_server_on("/=event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
 }
 END_TEST
 
-START_TEST(test_evs_new_handler_bad_path_2) {
+START_TEST(test_evs_new_handler_bad_path_2)
+{
 	check_ptr_eq(evs_server_on("/=:event", NULL, NULL, NULL, FALSE), NULL, "Bad path");
 }
 END_TEST
 
-START_TEST(test_evs_new_handler_no_fn) {
-	event_handler_t *handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
+START_TEST(test_evs_new_handler_no_fn)
+{
+	struct event_handler *handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
 	check(handler != NULL, "Handler created");
 
-	client_t *client = u_client_create(NULL);
+	struct client *client = u_client_create(NULL);
 	g_string_assign(client->message->buffer, "/another/event:0:plain=");
 
 	check_status_eq(evs_server_handle(client), CLIENT_GOOD, "No handler called");
@@ -390,8 +419,9 @@ START_TEST(test_evs_new_handler_no_fn) {
 }
 END_TEST
 
-START_TEST(test_evs_new_handler_already_exists) {
-	event_handler_t *handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
+START_TEST(test_evs_new_handler_already_exists)
+{
+	struct event_handler *handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
 	check(handler != NULL, "Handler created");
 
 	handler = evs_server_on("/another/event", NULL, NULL, NULL, FALSE);
@@ -399,66 +429,74 @@ START_TEST(test_evs_new_handler_already_exists) {
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_0) {
+START_TEST(test_evs_get_handler_0)
+{
 	path_extra_t *extra;
 
-	event_handler_t *handler = evs_server_get_handler("qio/noop", &extra);
+	struct event_handler *handler = evs_server_get_handler("qio/noop", &extra);
 	check_ptr_eq(handler, NULL, "Correct handler retrieved");
 	check_ptr_eq(extra, NULL, "No extra segments");
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_1) {
+START_TEST(test_evs_get_handler_1)
+{
 	path_extra_t *extra;
 
-	event_handler_t *handler = evs_server_get_handler("qio/noop/", &extra);
+	struct event_handler *handler = evs_server_get_handler("qio/noop/", &extra);
 	check_ptr_eq(handler, NULL, "Correct handler retrieved");
 	check_ptr_eq(extra, NULL, "No extra segments");
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_2) {
+START_TEST(test_evs_get_handler_2)
+{
 	path_extra_t *extra;
 
-	event_handler_t *handler = evs_server_get_handler("/qio/noop/", &extra);
+	struct event_handler *handler = evs_server_get_handler("/qio/noop/", &extra);
 	check_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
 	check_uint64_eq(extra->len, 0, "No extra segments");
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_3) {
+START_TEST(test_evs_get_handler_3)
+{
 	path_extra_t *extra;
 
-	event_handler_t *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra);
+	struct event_handler *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra);
 	check_ptr_eq(handler, NULL, "Correct handler retrieved");
 	check_ptr_eq(extra, NULL, "No extra segments");
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_4) {
+START_TEST(test_evs_get_handler_4)
+{
 	path_extra_t *extra;
 
-	event_handler_t *handler = evs_server_get_handler("/qio/noop/////", &extra);
+	struct event_handler *handler = evs_server_get_handler("/qio/noop/////", &extra);
 	check_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
 	check_uint64_eq(extra->len, 0, "No extra segments");
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_5) {
+START_TEST(test_evs_get_handler_5)
+{
 	path_extra_t *extra;
 
-	event_handler_t *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra);
+	struct event_handler *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra);
 	check_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
 	check_uint64_eq(extra->len, 0, "No extra segments");
 }
 END_TEST
 
-START_TEST(test_evs_get_handler_6) {
+START_TEST(test_evs_get_handler_6)
+{
 	path_extra_t *extra;
 
-	event_handler_t *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
+	struct event_handler *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
 
-	event_handler_t *handler = evs_server_get_handler("/multi/handler/another/segment", &extra);
+	struct event_handler *handler = evs_server_get_handler("/multi/handler/another/segment",
+														 &extra);
 	check_ptr_eq(handler, expected, "Correct handler retrieved");
 	check_uint16_eq(extra->len, 3, "3 extra segments");
 	check_str_eq(g_ptr_array_index(extra, 0), "handler", "Correct extra segment");
@@ -469,15 +507,17 @@ START_TEST(test_evs_get_handler_6) {
 }
 END_TEST
 
-START_TEST(test_evs_path_from_handler) {
-	event_handler_t *handler = g_hash_table_lookup(_events_by_path, "/qio/noop");
+START_TEST(test_evs_path_from_handler)
+{
+	struct event_handler *handler = g_hash_table_lookup(_events_by_path, "/qio/noop");
 
 	check_str_eq(evs_server_path_from_handler(handler), "/qio/noop", "Found correct event");
 }
 END_TEST
 
-START_TEST(test_evs_handler_noop) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_noop)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/noop:0:plain=test");
 
@@ -488,68 +528,78 @@ START_TEST(test_evs_handler_noop) {
 }
 END_TEST
 
-START_TEST(test_evs_handler_noop_callback) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_noop_callback)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/noop:123:plain=test");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Noop recieved");
-	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=", "Callback with no data");
+	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=",
+			"Callback with no data");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_ping) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_ping)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/ping:123:plain=test");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Data sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=test", "Ping sent back correct data");
+	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=test",
+			"Ping sent back correct data");
 
 	u_client_free(client);
 }
 END_TEST
 
 START_TEST(test_evs_handler_ping_no_data) {
-	client_t *client = u_client_create(NULL);
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/ping:123:plain=");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Data sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=", "Ping sent back correct data");
+	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=",
+			"Ping sent back correct data");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_subscribe) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_subscribe)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/doesnt/exist");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error",
+			"Bad event");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_subscribe_to_bad_format) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_subscribe_to_bad_format)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=0");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error",
+			"Bad event");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_subscribe_too_many_subs) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_subscribe_too_many_subs)
+{
+	struct client *client = u_client_create(NULL);
 
 	guint64 max = option_max_subscriptions();
 	while (max--) {
@@ -559,14 +609,16 @@ START_TEST(test_evs_handler_subscribe_too_many_subs) {
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error",
+			"Bad event");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_subscribe_already_subscribed) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_subscribe_already_subscribed)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/sub:0:plain=/qio/noop");
 	check_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
@@ -574,26 +626,30 @@ START_TEST(test_evs_handler_subscribe_already_subscribed) {
 
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/qio/noop");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Duplicate ignored");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=", "Server played along");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=",
+			"Server played along");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_subscribe_rejected) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_subscribe_rejected)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/sub:456:plain=/doesnt/exist");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error",
+			"Bad event");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_unsubscribe) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_unsubscribe)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/sub:0:plain=/qio/noop");
 	check_status_eq(evs_server_handle(client), CLIENT_GOOD, "Subscribed");
@@ -607,30 +663,35 @@ START_TEST(test_evs_handler_unsubscribe) {
 }
 END_TEST
 
-START_TEST(test_evs_handler_unsubscribe_not_subscribed) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_unsubscribe_not_subscribed)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=/qio/noop");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error",
+			"Bad event");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_handler_unsubscribe_bad_event) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_handler_unsubscribe_bad_event)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/unsub:456:plain=0");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Error sent back");
-	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error", "Bad event");
+	check_str_eq(client->message->buffer->str, "/qio/callback/456:0:plain=qio_error",
+			"Bad event");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_server_default_callbacks_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_default_callbacks_0)
+{
+	struct client *client = u_client_create(NULL);
 	g_string_append(client->message->buffer, "/qio/ping:0:plain=");
 
 	check_status_eq(evs_server_handle(client), CLIENT_GOOD, "No callback sent");
@@ -639,8 +700,9 @@ START_TEST(test_evs_server_default_callbacks_0) {
 }
 END_TEST
 
-START_TEST(test_evs_server_default_callbacks_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_default_callbacks_1)
+{
+	struct client *client = u_client_create(NULL);
 	g_string_append(client->message->buffer, "/qio/ping:0:plain=test");
 
 	check_status_eq(evs_server_handle(client), CLIENT_GOOD, "No callback sent");
@@ -649,21 +711,24 @@ START_TEST(test_evs_server_default_callbacks_1) {
 }
 END_TEST
 
-START_TEST(test_evs_server_default_callbacks_2) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_default_callbacks_2)
+{
+	struct client *client = u_client_create(NULL);
 	g_string_append(client->message->buffer, "/qio/ping:123:plain=test");
 
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent");
-	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=test", "Correct data sent");
+	check_str_eq(client->message->buffer->str, "/qio/callback/123:0:plain=test",
+			"Correct data sent");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_sane_0) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_sane_0)
+{
+	struct client *client = u_client_create(NULL);
 
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event) {
 		return CLIENT_GOOD;
 	}
 
@@ -673,10 +738,11 @@ START_TEST(test_evs_server_server_callback_sane_0) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_sane_1) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_sane_1)
+{
+	struct client *client = u_client_create(NULL);
 
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event) {
 		return CLIENT_GOOD;
 	}
 
@@ -688,8 +754,9 @@ START_TEST(test_evs_server_server_callback_sane_1) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_evict) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_evict)
+{
+	struct client *client = u_client_create(NULL);
 
 	callback_t cbs[MAX_CALLBACKS+2];
 
@@ -700,7 +767,7 @@ START_TEST(test_evs_server_server_callback_evict) {
 	}
 
 	guint16 calls = 0;
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event) {
 		calls++;
 		return CLIENT_GOOD;
 	}
@@ -712,7 +779,7 @@ START_TEST(test_evs_server_server_callback_evict) {
 	}
 
 	// 2: Find one of them, just to make sure
-	client_cb_t *cb;
+	struct client_cb *cb;
 	for (guint i = 0; i < MAX_CALLBACKS; i++) {
 		if (client->callbacks[i].id > 1) {
 			cb = &(client->callbacks[i]);
@@ -735,8 +802,9 @@ START_TEST(test_evs_server_server_callback_evict) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_no_callback) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_no_callback)
+{
+	struct client *client = u_client_create(NULL);
 
 	guint16 frees = 0;
 	void _free(void *data) {
@@ -754,8 +822,9 @@ START_TEST(test_evs_server_server_callback_no_callback) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_client_close) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_client_close)
+{
+	struct client *client = u_client_create(NULL);
 
 	callback_t cbs[MAX_CALLBACKS];
 
@@ -766,7 +835,7 @@ START_TEST(test_evs_server_server_callback_client_close) {
 	}
 
 	guint16 calls = 0;
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event) {
 		calls++;
 		return CLIENT_GOOD;
 	}
@@ -786,8 +855,9 @@ START_TEST(test_evs_server_server_callback_client_close) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_bad_id) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_bad_id)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/callback/:1112:plain=");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback coming");
@@ -798,8 +868,9 @@ START_TEST(test_evs_server_server_callback_bad_id) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_huge_id) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_huge_id)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/callback/4294967295:0:plain=");
 	check_status_eq(evs_server_handle(client), CLIENT_ERROR, "Callback coming");
@@ -808,8 +879,9 @@ START_TEST(test_evs_server_server_callback_huge_id) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_subscribe_to_callback) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_subscribe_to_callback)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/qio/sub:0:plain=/qio/callback/");
 	check_status_eq(evs_server_handle(client), CLIENT_ERROR, "Rejected");
@@ -820,8 +892,9 @@ START_TEST(test_evs_server_server_callback_subscribe_to_callback) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_subscribe_to_bad_event) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_subscribe_to_bad_event)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_assign(client->message->buffer, "/abcd/:1:plain=/asdf/");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Rejected");
@@ -832,10 +905,16 @@ START_TEST(test_evs_server_server_callback_subscribe_to_bad_event) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_fatal) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_fatal)
+{
+	struct client *client = u_client_create(NULL);
 
-	status_t _on(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	enum status _on(
+		struct client *client,
+		struct event_handler *handler,
+		struct event *event,
+		GString *response)
+	{
 		return CLIENT_FATAL;
 	}
 
@@ -846,12 +925,14 @@ START_TEST(test_evs_server_server_callback_fatal) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_id_overflow) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_id_overflow)
+{
+	struct client *client = u_client_create(NULL);
 
 	void _free(void *data) {}
 
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event)
+	{
 		return CLIENT_GOOD;
 	}
 
@@ -866,17 +947,19 @@ START_TEST(test_evs_server_server_callback_id_overflow) {
 
 	g_string_printf(client->message->buffer, F_CALLBACK_PATH ":1:plain=", callback);
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Lame callback rejected");
-	check_str_eq(client->message->buffer->str, "/qio/callback/1:0:plain=qio_error", "Correct callback sent");
+	check_str_eq(client->message->buffer->str, "/qio/callback/1:0:plain=qio_error",
+			"Correct callback sent");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_chain) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_chain)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
-	event_handler_t *handler = NULL;
+	struct event event;
+	struct event_handler *handler = NULL;
 
 	guint frees = 0;
 	void _free(void *data) {
@@ -885,7 +968,8 @@ START_TEST(test_evs_server_server_callback_chain) {
 	}
 
 	guint calls = 0;
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event)
+	{
 		calls++;
 
 		void *t = g_malloc(sizeof(*t));
@@ -898,7 +982,12 @@ START_TEST(test_evs_server_server_callback_chain) {
 		return CLIENT_GOOD;
 	}
 
-	status_t _handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	enum status _handler(
+		struct client *client,
+		struct event_handler *handler,
+		struct event *event,
+		GString *response)
+	{
 		void *t = g_malloc(sizeof(*t));
 		callback_t callback = evs_server_callback_new(client, _on, t, _free);
 
@@ -920,7 +1009,8 @@ START_TEST(test_evs_server_server_callback_chain) {
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent");
 
 	// Check the message on the client
-	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len, "/qio/callback/900") == client->message->buffer->str);
+	check(g_strstr_len(client->message->buffer->str,
+			client->message->buffer->len, "/qio/callback/900") == client->message->buffer->str);
 	_event_new(client->message, &handler, &event);
 
 	// Make sure we have a server callback
@@ -936,7 +1026,8 @@ START_TEST(test_evs_server_server_callback_chain) {
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent to server");
 
 	// Expect a server callback on the client
-	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len, "/qio/callback/901") == client->message->buffer->str);
+	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len,
+			"/qio/callback/901") == client->message->buffer->str);
 	_event_new(client->message, &handler, &event);
 
 	// Make sure we have a server callback
@@ -952,7 +1043,8 @@ START_TEST(test_evs_server_server_callback_chain) {
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback sent to server");
 
 	// Expect a server callback on the client
-	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len, "/qio/callback/902") == client->message->buffer->str);
+	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len,
+				"/qio/callback/902") == client->message->buffer->str);
 	_event_new(client->message, &handler, &event);
 
 	// Make sure we have a server callback
@@ -977,13 +1069,14 @@ START_TEST(test_evs_server_server_callback_chain) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_chain_async) {
+START_TEST(test_evs_server_server_callback_chain_async)
+{
 	int socket = 0;
-	client_t *client = u_client_create(&socket);
+	struct client *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 
-	event_t event;
-	event_handler_t *handler = NULL;
+	struct event event;
+	struct event_handler *handler = NULL;
 	callback_t server_callback;
 	callback_t client_callback;
 
@@ -994,7 +1087,7 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 	}
 
 	guint calls = 0;
-	status_t _on(client_t *client, void *data, event_t *event) {
+	enum status _on(struct client *client, void *data, struct event *event) {
 		calls++;
 
 		void *t = g_malloc(sizeof(*t));
@@ -1008,7 +1101,12 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 		return CLIENT_ASYNC;
 	}
 
-	status_t _handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	enum status _handler(
+		struct client *client,
+		struct event_handler *handler,
+		struct event *event,
+		GString *response)
+	{
 		void *t = g_malloc(sizeof(*t));
 		server_callback = evs_server_callback_new(client, _on, t, _free);
 
@@ -1095,12 +1193,18 @@ START_TEST(test_evs_server_server_callback_chain_async) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_bad_status) {
+START_TEST(test_evs_server_server_callback_bad_status)
+{
 	int socket = 0;
-	client_t *client = u_client_create(&socket);
+	struct client *client = u_client_create(&socket);
 	client->handler = h_rfc6455;
 
-	status_t _on(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+	enum status _on(
+		struct client *client,
+		struct event_handler *handler,
+		struct event *event,
+		GString *response)
+	{
 		event->server_callback = 123;
 		return 99;
 	}
@@ -1115,10 +1219,11 @@ START_TEST(test_evs_server_server_callback_bad_status) {
 }
 END_TEST
 
-START_TEST(test_evs_server_server_callback_uninitialized) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_evs_server_server_callback_uninitialized)
+{
+	struct client *client = u_client_create(NULL);
 
-	event_t event;
+	struct event event;
 	memset(&event, 0, sizeof(event));
 	event.extra = g_ptr_array_sized_new(1);
 	g_ptr_array_add(event.extra, "0");
@@ -1135,7 +1240,8 @@ START_TEST(test_evs_server_server_callback_uninitialized) {
 }
 END_TEST
 
-Suite* events_server_suite() {
+Suite* events_server_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Events - Server");
 

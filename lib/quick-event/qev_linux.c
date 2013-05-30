@@ -29,7 +29,8 @@ static int _epoll;
 /**
  * Accept connections on the socket.
  */
-static void _qev_accept(QEV_CLIENT_T *server) {
+static void _qev_accept(QEV_CLIENT_T *server)
+{
 	struct epoll_event ev;
 	ev.events = EPOLL_READ_EVENTS;
 
@@ -40,21 +41,24 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 				return;
 			}
 
-			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Could not accept client: %s", strerror(errno));
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL,
+					"Could not accept client: %s", strerror(errno));
 
 			// If anything else goes wrong, be sure to re-arm the listen FD so that the OS
 			// knows it should fire it again, otherwise it will NEVER be triggered again
 			// (this is edge triggering, not level)
 			ev.data.ptr = server;
 			if (epoll_ctl(_epoll, EPOLL_CTL_MOD, QEV_CSLOT(server, socket), &ev) == -1) {
-				g_log(QEV_DOMAIN, G_LOG_LEVEL_ERROR, "Could not re-arm listen FD: %s", strerror(errno));
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_ERROR, "Could not re-arm listen FD: %s",
+						 strerror(errno));
 			}
 
 			return;
 		}
 
 		if (fcntl(client_sock, F_SETFL, O_NONBLOCK) == -1) {
-			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "Could not set client non-blocking (fd %d)", client_sock);
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING,
+					"Could not set client non-blocking (fd %d)", client_sock);
 			close(client_sock);
 			continue;
 		}
@@ -67,7 +71,8 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 
 			int err;
 			if ((err = SSL_set_fd(ctx, client_sock)) == 0) {
-				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_set_fd failed: %s", ERR_reason_error_string(SSL_get_error(ctx, err)));
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_set_fd failed: %s",
+						ERR_reason_error_string(SSL_get_error(ctx, err)));
 				close(client_sock);
 				SSL_free(ctx);
 				continue;
@@ -89,7 +94,8 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 
 		ev.data.ptr = client;
 		if (epoll_ctl(_epoll, EPOLL_CTL_ADD, client_sock, &ev) == -1) {
-			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "EPOLL_ADD(fd %d): %s", client_sock, strerror(errno));
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "EPOLL_ADD(fd %d): %s",
+					client_sock, strerror(errno));
 
 			close(client_sock);
 			SSL_free(ctx);
@@ -101,7 +107,13 @@ static void _qev_accept(QEV_CLIENT_T *server) {
 	}
 }
 
-static int _qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client, int socket_type, char flags) {
+static int _qev_sys_listen(
+	const char *ip_address,
+	const uint16_t port,
+	QEV_CLIENT_T **client,
+	int socket_type,
+	char flags)
+{
 	qev_socket_t sock;
 
 	if ((sock = socket(AF_INET, socket_type, 0)) == -1) {
@@ -165,15 +177,18 @@ static int _qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIE
 	return 0;
 }
 
-qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client) {
+qev_socket_t qev_sys_listen(const char *ip_address, const uint16_t port, QEV_CLIENT_T **client)
+{
 	return _qev_sys_listen(ip_address, port, client, SOCK_STREAM, QEV_CMASK_LISTENING);
 }
 
-qev_socket_t qev_sys_listen_udp(const char *ip_address, const uint16_t port) {
+qev_socket_t qev_sys_listen_udp(const char *ip_address, const uint16_t port)
+{
 	return _qev_sys_listen(ip_address, port, NULL, SOCK_DGRAM, QEV_CMASK_UDP);
 }
 
-void qev_dispatch() {
+void qev_dispatch()
+{
 	// Where the OS will put events for us
 	struct epoll_event events[QEV_MAX_EVENTS];
 
@@ -227,7 +242,8 @@ void qev_dispatch() {
 			} else if (events & EPOLLIN) {
 				qev_client_read(client);
 			} else {
-				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "qev_dispatch: Unknown event from epoll: %d", events);
+				g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING,
+						"qev_dispatch: Unknown event from epoll: %d", events);
 			}
 		}
 	}
@@ -241,7 +257,8 @@ void qev_dispatch() {
 	#endif
 }
 
-int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
+int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size)
+{
 	if (QEV_CSLOT(client, socket) == -1) {
 		return 0;
 	}
@@ -256,7 +273,8 @@ int qev_read(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 	return read(QEV_CSLOT(client, socket), buff, buff_size);
 }
 
-int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
+int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size)
+{
 	if (QEV_CSLOT(client, socket) == -1) {
 		return -1;
 	}
@@ -276,7 +294,8 @@ int qev_write(QEV_CLIENT_T *client, char *buff, size_t buff_size) {
 	return ret;
 }
 
-void qev_sys_client_closed(QEV_CLIENT_T *client) {
+void qev_sys_client_closed(QEV_CLIENT_T *client)
+{
 	qev_client_lock(client);
 
 	// This will also remove it from epoll!
@@ -286,7 +305,8 @@ void qev_sys_client_closed(QEV_CLIENT_T *client) {
 	qev_client_unlock(client);
 }
 
-int qev_sys_init() {
+int qev_sys_init()
+{
 	// 1 -> a positive, int size must be given; ignored by new kernels
 	_epoll = epoll_create(1);
 	if (_epoll < 1) {
@@ -333,7 +353,8 @@ int qev_sys_init() {
 	return 0;
 }
 
-int qev_chuser(const char *username) {
+int qev_chuser(const char *username)
+{
 	struct passwd *user = getpwnam(username);
 
 	if (user == NULL) {
@@ -342,7 +363,8 @@ int qev_chuser(const char *username) {
 	}
 
 	if (user->pw_gid == 0 || user->pw_uid == 0) {
-		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Cowardly refusing to run as root: %s", strerror(errno));
+		g_log(QEV_DOMAIN, G_LOG_LEVEL_CRITICAL, "Cowardly refusing to run as root: %s",
+				strerror(errno));
 		return -1;
 	}
 

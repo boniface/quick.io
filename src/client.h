@@ -32,39 +32,44 @@
 #define QIO_ERROR "qio_error"
 
 /**
- * Everything went as expected. Send any callbacks, include any data in buffers, and move on.
+ * Possible status for clients, in response to events
  */
-#define CLIENT_GOOD (1 << 0)
+enum status {
+	/**
+	 * Everything went as expected. Send any callbacks, include any data in buffers, and move on.
+	 */
+	CLIENT_GOOD,
 
-/**
- * That bastard of a client aborted / should be aborted, or did something incredibly stupid, so
- * he should just be killed.
- */
-#define CLIENT_FATAL (1 << 1)
+	/**
+	 * That bastard of a client aborted / should be aborted, or did something incredibly stupid, so
+	 * he should just be killed.
+ 	 */
+	CLIENT_FATAL,
 
-/**
- * A non-fatal error occurred while processing. This response trips the event handler
- * to respond with an error event to callbacks.
- */
-#define CLIENT_ERROR (1 << 2)
+	/**
+	 * A non-fatal error occurred while processing. This response trips the event handler
+	 * to respond with an error event to callbacks.
+	 */
+	CLIENT_ERROR,
 
-/**
- * An async operation is being performed. This should be treated like CLIENT_GOOD in
- * most cases, but it MUST NOT send back any information to the client. The function that returned
- * this status becomes responsible for that.
- */
-#define CLIENT_ASYNC (1 << 3)
+	/**
+	 * An async operation is being performed. This should be treated like CLIENT_GOOD in
+	 * most cases, but it MUST NOT send back any information to the client. The function
+	 * that returned this status becomes responsible for that.
+	 */
+	CLIENT_ASYNC,
 
-/**
- * There is data in the response buffer that should be written back to the client.
- */
-#define CLIENT_WRITE (1 << 4)
+	/**
+	 * There is data in the response buffer that should be written back to the client.
+	 */
+	CLIENT_WRITE,
 
-/**
- * Something happened that we need to wait for more from the client. Set a wait,
- * and notify us later.
- */
-#define CLIENT_WAIT (1 << 5)
+	/**
+	 * Something happened that we need to wait for more from the client. Set a wait,
+	 * and notify us later.
+	 */
+	CLIENT_WAIT,
+};
 
 /**
  * All of the handlers for different client types
@@ -91,7 +96,7 @@ typedef enum opcode {
  * The currently-processing message.  Kept as part of client becuase the client
  * populates the message, then passes it off to command_handle() for processing.
  */
-typedef struct message_s {
+struct message {
 	/**
 	 * The remaining length of the incoming message to read
 	 */
@@ -119,7 +124,7 @@ typedef struct message_s {
 	 * Buffer of data procesed from socket_buffer (demasked).
 	 */
 	GString *buffer;
-} message_t;
+};
 
 /**
  * The websocket handlers.
@@ -165,7 +170,7 @@ enum client_state {
 /**
  * Basic information about a connected client.
  */
-struct client_s {
+struct client {
 	/**
 	 * The quick-event data
 	 */
@@ -206,7 +211,7 @@ struct client_s {
 	/**
 	 * The current message(s) that the client is sending / are being processed.
 	 */
-	message_t *message;
+	struct message *message;
 
 	/**
 	 * Extra data that is stored on the client.  This exists until ref_count == 0.
@@ -225,7 +230,7 @@ struct client_s {
 	/**
 	 * The callbacks registered on the client.
 	 */
-	struct client_cb_s callbacks[MAX_CALLBACKS];
+	struct client_cb callbacks[MAX_CALLBACKS];
 
 	/**
 	 * The number of references the client has.
@@ -239,15 +244,15 @@ struct client_s {
  *
  * @param client The client being handled.
  */
-status_t client_handshake(client_t *client);
+enum status client_handshake(struct client *client);
 
 /**
- * Process a message from the client.  If the message isn't complete return STATUS_WAIT
+ * Process a message from the client.  If the message isn't complete return CLIENT_WAIT
  * and hope it completes itself.
  *
  * @param client The client being handled.
  */
-status_t client_message(client_t *client);
+enum status client_message(struct client *client);
 
 /**
  * Write a specific message to a client.
@@ -256,14 +261,14 @@ status_t client_message(client_t *client);
  * @param message The messages to send to the client. If this paramter is null, it will
  * attempt to extract the message from the client.
  */
-status_t client_write(client_t *client, message_t *message);
+enum status client_write(struct client *client, struct message *message);
 
 /**
  * A client has closed: send the proper notification to the user.
  *
  * @param client The client that closed.
  */
-void client_write_close(client_t *client);
+void client_write_close(struct client *client);
 
 /**
  * Write the given message to the underlying client socket.
@@ -275,12 +280,12 @@ void client_write_close(client_t *client);
  * @param frame The string that should be sent.
  * @param frame_len The length of the string.
  */
-status_t client_write_frame(client_t *client, gchar *frame, gsize frame_len);
+enum status client_write_frame(struct client *client, gchar *frame, gsize frame_len);
 
 /**
  * Increment the reference count on the client.
  */
-APP_EXPORT void client_ref(client_t *client);
+APP_EXPORT void client_ref(struct client *client);
 
 /**
  * Decrement the reference count on the client.
@@ -288,7 +293,7 @@ APP_EXPORT void client_ref(client_t *client);
  * @attention Once you call this function, you MUST consider your pointer to the client to be
  * invalid, and you MAY NEVER use it again.
  */
-APP_EXPORT void client_unref(client_t *client);
+APP_EXPORT void client_unref(struct client *client);
 
 /**
  * Sets a piece of information on a client. All strings will be duplicated before being
@@ -305,7 +310,7 @@ APP_EXPORT void client_unref(client_t *client);
  * @return A pointer to the new, duplicated value. This value MUST NOT be altered, free'd, or
  * anything: if you need to do any operations on it, make a copy.
  */
-APP_EXPORT const gchar* client_set(client_t *client, const gchar *key, const gchar *value);
+APP_EXPORT const gchar* client_set(struct client *client, const gchar *key, const gchar *value);
 
 /**
  * Gets a piece of information on a client.
@@ -316,7 +321,7 @@ APP_EXPORT const gchar* client_set(client_t *client, const gchar *key, const gch
  * @return The value, or NULL if not found. This value MUST NOT be altered, free'd, or anything:
  * if you need to do any operations on it, make a copy.
  */
-APP_EXPORT const gchar* client_get(client_t *client, const gchar *key);
+APP_EXPORT const gchar* client_get(struct client *client, const gchar *key);
 
 /**
  * Determines if a piece of information exists on a client.
@@ -326,7 +331,7 @@ APP_EXPORT const gchar* client_get(client_t *client, const gchar *key);
  *
  * @return TRUE if the information if there, FALSE otherwise;
  */
-APP_EXPORT gboolean client_has(client_t *client, const gchar *key);
+APP_EXPORT gboolean client_has(struct client *client, const gchar *key);
 
 #ifdef TESTING
 #include "../test/test_client.h"

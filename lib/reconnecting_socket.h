@@ -16,28 +16,13 @@
  */
 
 /**
- * All of the data needed to maintain a connection to a server.
+ * Everything behind the reconnecting socket
  */
-typedef struct {
-	/**
-	 * The underlying socket.
-	 */
-	int socket;
-	
-	/**
-	 * The address info that should be used to reconnect on disconnect.
-	 */
-	struct addrinfo *addrs;
-	
-	/**
-	 * The current address that we're looking at in the address chain.
-	 */
-	struct addrinfo *curr_addr;
-} rsocket;
+typedef struct rsocket rsocket_t;
 
 /**
  * Create a new connection.
- * 
+ *
  * @param host The hostname to connect to.
  * @param port The port to connect to.
  * @param[out] rsocket Where the new persistent socket should be put.
@@ -45,14 +30,14 @@ typedef struct {
  * @return 0 on success.
  * @return -1 on address lookup error.
  */
-int rsocket_connect(const char *host, const int port, rsocket **rsocket);
+int rsocket_connect(const char *host, const int port, rsocket_t **rsocket);
 
 /**
  * Closes a rsocket connection.
  *
  * @param rsocket The persistent socket to close.
  */
-void rsocket_close(rsocket *rsocket);
+void rsocket_close(rsocket_t *rsocket);
 
 /**
  * Send some data out to the server.
@@ -61,7 +46,7 @@ void rsocket_close(rsocket *rsocket);
  * @param msg The message to send
  * @param len The length of the message
  */
-void rsocket_send(rsocket *rsocket, char *msg, int len);
+void rsocket_send(rsocket_t *rsocket, char *msg, int len);
 
 /**
  * Read data from the server.
@@ -72,4 +57,4 @@ void rsocket_send(rsocket *rsocket, char *msg, int len);
  *
  * @return The length of data read from the socket, 0 or greater.
  */
-int rsocket_read(rsocket *rsocket, char *buff, size_t len);
+int rsocket_read(rsocket_t *rsocket, char *buff, size_t len);

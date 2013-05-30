@@ -1,6 +1,7 @@
 #include "qio.h"
 
-gboolean h_flash_policy_handles(gchar *req) {
+gboolean h_flash_policy_handles(gchar *req)
+{
 	if (*req == '<') {
 		return strncmp(req, H_FLASH_POLICY_REQUEST, sizeof(H_FLASH_POLICY_REQUEST)) == 0;
 	}
@@ -8,7 +9,8 @@ gboolean h_flash_policy_handles(gchar *req) {
 	return FALSE;
 }
 
-status_t h_flash_policy_handshake(client_t *client) {
+enum status h_flash_policy_handshake(struct client *client)
+{
 	g_string_append(client->message->buffer, H_FLASH_POLICY_RESPONSE);
 
 	// While I absolutely abhor putting a write in a handler, it is far cleaner than the
@@ -17,7 +19,8 @@ status_t h_flash_policy_handshake(client_t *client) {
 	// connections have weird conditions about it.
 	// UGHHHHHH
 	STATS_INC(handler_flash_handshake);
-	client_write_frame(client, client->message->buffer->str, client->message->buffer->len);
+	client_write_frame(client, client->message->buffer->str,
+					client->message->buffer->len);
 
 	return CLIENT_FATAL;
 }

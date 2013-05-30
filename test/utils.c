@@ -1,20 +1,22 @@
 #include "test.h"
 
-char* test_status_to_str(status_t status) {
+char* test_status_to_str(enum status status)
+{
 	switch (status) {
-		case 1 << 0: return "CLIENT_GOOD";
-		case 1 << 1: return "CLIENT_FATAL";
-		case 1 << 2: return "CLIENT_ERROR";
-		case 1 << 3: return "CLIENT_ASYNC";
-		case 1 << 4: return "CLIENT_WRITE";
-		case 1 << 5: return "CLIENT_WAIT";
+		case CLIENT_GOOD: return "CLIENT_GOOD";
+		case CLIENT_FATAL: return "CLIENT_FATAL";
+		case CLIENT_ERROR: return "CLIENT_ERROR";
+		case CLIENT_ASYNC: return "CLIENT_ASYNC";
+		case CLIENT_WRITE: return "CLIENT_WRITE";
+		case CLIENT_WAIT: return "CLIENT_WAIT";
 	}
 	return "UNKNOWN";
 }
 
-client_t* u_client_create(int *socket) {
-	client_t *client = g_slice_alloc0(sizeof(*client));
-	message_t *message = g_slice_alloc0(sizeof(*message));
+struct client* u_client_create(int *socket)
+{
+	struct client *client = g_slice_alloc0(sizeof(*client));
+	struct message *message = g_slice_alloc0(sizeof(*message));
 
 	message->socket_buffer = g_string_sized_new(1);
 	message->buffer = g_string_sized_new(1);
@@ -39,7 +41,8 @@ client_t* u_client_create(int *socket) {
 	return client;
 }
 
-void u_client_free(client_t *client) {
+void u_client_free(struct client *client)
+{
 	if (client->qevclient.socket != 0) {
 		close(client->qevclient.socket);
 	}
@@ -57,7 +60,8 @@ void u_client_free(client_t *client) {
 	g_slice_free1(sizeof(*client), client);
 }
 
-void u_main_setup(pid_t *pid, gchar* config_path) {
+void u_main_setup(pid_t *pid, gchar* config_path)
+{
 	int out[2];
 	check_int32_eq(pipe(out), 0, "Pipes ready");
 
@@ -112,12 +116,14 @@ void u_main_setup(pid_t *pid, gchar* config_path) {
 	}
 }
 
-void u_main_teardown(pid_t pid) {
+void u_main_teardown(pid_t pid)
+{
 	kill(pid, SIGTERM);
 	utils_stats_teardown();
 }
 
-int u_connect() {
+int u_connect()
+{
 	int sock;
 
 	struct sockaddr_in addy;
@@ -139,7 +145,8 @@ int u_connect() {
 	return sock;
 }
 
-int u_ws_connect() {
+int u_ws_connect()
+{
 	int sock = u_connect();
 
 	char buff[sizeof(U_HANDSHAKE_RESPONSE)];

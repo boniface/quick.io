@@ -29,7 +29,8 @@ static GMutex *_ssl_locks;
 /**
  * SSL handshakes can take multiple read/write cycles
  */
-static inline int _qev_ssl_handshake(SSL *ctx, qev_flags_t *flags) {
+static inline int _qev_ssl_handshake(SSL *ctx, qev_flags_t *flags)
+{
 	int err;
 
 	// Had to break this into multiple lines...it was unreadable as one
@@ -41,7 +42,8 @@ static inline int _qev_ssl_handshake(SSL *ctx, qev_flags_t *flags) {
 		__sync_or_and_fetch(flags, QEV_CMASK_SSL_HANDSHAKING);
 		err = SSL_get_error(ctx, err);
 		if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
-			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_accept failed: %s", ERR_error_string(err, NULL));
+			g_log(QEV_DOMAIN, G_LOG_LEVEL_WARNING, "SSL_accept failed: %s",
+					ERR_error_string(err, NULL));
 			return -1;
 		}
 	}
@@ -52,7 +54,8 @@ static inline int _qev_ssl_handshake(SSL *ctx, qev_flags_t *flags) {
 /**
  * OpenSSL callback for getting the DH params for the given size.
  */
-static DH* _qev_ssl_get_tmpdh(SSL *s, int is_export, int key_len) {
+static DH* _qev_ssl_get_tmpdh(SSL *s, int is_export, int key_len)
+{
 	switch (key_len) {
 		#define QEV_DH_SIZES_X(size) \
 			case size: \
@@ -87,7 +90,8 @@ static gboolean _qev_setup_ecdh(SSL_CTX *ctx) {
  *
  * @return If everything was setup correctly
  */
-static gboolean _qev_setup_dh(SSL_CTX *ctx) {
+static gboolean _qev_setup_dh(SSL_CTX *ctx)
+{
 	#define QEV_DH_SIZES_X(size) \
 		if ((_qev_dh ## size = DH_new()) == NULL) { \
 			return FALSE; \
@@ -104,7 +108,8 @@ static gboolean _qev_setup_dh(SSL_CTX *ctx) {
 	return TRUE;
 }
 
-static void _ssl_lock_fn(int mode, int lock_num, const char *file, int line) {
+static void _ssl_lock_fn(int mode, int lock_num, const char *file, int line)
+{
 	if (mode & CRYPTO_LOCK) {
 		g_mutex_lock((_ssl_locks + lock_num));
 	} else {
@@ -112,7 +117,8 @@ static void _ssl_lock_fn(int mode, int lock_num, const char *file, int line) {
 	}
 }
 
-static void _qev_client_free(void *c) {
+static void _qev_client_free(void *c)
+{
 	QEV_CLIENT_T *client = c;
 	if (QEV_CSLOT(client, _flags) & QEV_CMASK_SSL) {
 		int mode = SSL_get_shutdown(QEV_CSLOT(client, ssl_ctx));
@@ -132,17 +138,24 @@ static void _qev_client_free(void *c) {
 	#endif
 }
 
-int qev_init() {
+int qev_init()
+{
 	qev_time = g_get_real_time() / 1000000;
 	_closed = qev_wqueue_init(_qev_client_free);
 	return qev_sys_init();
 }
 
-int qev_listen(const char *ip_address, const uint16_t port) {
+int qev_listen(const char *ip_address, const uint16_t port)
+{
 	return qev_sys_listen(ip_address, port, NULL);
 }
 
-int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert_path, const char *key_path) {
+int qev_listen_ssl(
+	const char *ip_address,
+	const uint16_t port,
+	const char *cert_path,
+	const char *key_path)
+{
 	QEV_CLIENT_T *client;
 	qev_socket_t sock = qev_sys_listen(ip_address, port, &client);
 
@@ -215,11 +228,13 @@ int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert
 	return 0;
 }
 
-qev_socket_t qev_listen_udp(const char *ip_address, const uint16_t port) {
+qev_socket_t qev_listen_udp(const char *ip_address, const uint16_t port)
+{
 	return qev_sys_listen_udp(ip_address, port);
 }
 
-void qev_run() {
+void qev_run()
+{
 	static int ticks = 0;
 
 	int id = qev_wqueue_register(_closed);
@@ -238,16 +253,19 @@ void qev_run() {
 	}
 }
 
-void* qev_run_thread(void *arg) {
+void* qev_run_thread(void *arg)
+{
 	qev_run();
 	return NULL;
 }
 
-QEV_CLIENT_T* qev_client_create() {
+QEV_CLIENT_T* qev_client_create()
+{
 	return g_slice_alloc0(sizeof(QEV_CLIENT_T));
 }
 
-void qev_client_read(QEV_CLIENT_T *client) {
+void qev_client_read(QEV_CLIENT_T *client)
+{
 	// In order to synchronize actions across threads, we keep a counter
 	// of the number of actions on a client: if it is greater than 1, it means
 	// another thread is working on it, if it is 0, then it means we
@@ -274,7 +292,8 @@ void qev_client_read(QEV_CLIENT_T *client) {
 }
 
 #ifdef QEV_CLIENT_READ_UDP_FN
-	void qev_client_read_udp(QEV_CLIENT_T *client) {
+	void qev_client_read_udp(QEV_CLIENT_T *client)
+	{
 		int len;
 		char buff[QEV_MAX_UDP_SIZE];
 
@@ -285,7 +304,8 @@ void qev_client_read(QEV_CLIENT_T *client) {
 	}
 #endif
 
-void qev_timer_fire(_timer_t *timer) {
+void qev_timer_fire(_timer_t *timer)
+{
 	if (timer->flags & QEV_TIMER_EXCLUSIVE) {
 		if (__sync_fetch_and_add(&timer->operations, 1) == 0) {
 			do {
@@ -297,7 +317,8 @@ void qev_timer_fire(_timer_t *timer) {
 	}
 }
 
-void qev_close(QEV_CLIENT_T *client) {
+void qev_close(QEV_CLIENT_T *client)
+{
 	QEV_TEST_LOCK(qev_close_before);
 	// Don't put the client into the list if he is already being closed
 	if (!(__sync_fetch_and_or(&QEV_CSLOT(client, _flags), QEV_CMASK_CLOSING) & QEV_CMASK_CLOSING)) {
@@ -310,7 +331,8 @@ void qev_close(QEV_CLIENT_T *client) {
 	}
 }
 
-void qev_client_lock(QEV_CLIENT_T *client) {
+void qev_client_lock(QEV_CLIENT_T *client)
+{
 	if (g_atomic_pointer_get(&QEV_CSLOT(client, _locking_thread)) == g_thread_self()) {
 		g_atomic_int_inc(&QEV_CSLOT(client, _lock));
 		return;
@@ -326,7 +348,8 @@ void qev_client_lock(QEV_CLIENT_T *client) {
 	g_atomic_pointer_set(&QEV_CSLOT(client, _locking_thread), g_thread_self());
 }
 
-void qev_client_unlock(QEV_CLIENT_T *client) {
+void qev_client_unlock(QEV_CLIENT_T *client)
+{
 	if (g_atomic_int_get(&QEV_CSLOT(client, _lock)) == 1) {
 		g_atomic_pointer_set(&QEV_CSLOT(client, _locking_thread), NULL);
 	}
@@ -334,7 +357,8 @@ void qev_client_unlock(QEV_CLIENT_T *client) {
 	g_atomic_int_add(&QEV_CSLOT(client, _lock), -1);
 }
 
-void qev_debug_flush() {
+void qev_debug_flush()
+{
 	qev_wqueue_debug_flush(_closed);
 }
 

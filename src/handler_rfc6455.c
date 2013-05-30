@@ -54,9 +54,10 @@
 /**
  * Starts processing a new, incoming request.
  */
-static status_t _h_rfc6455_start(client_t *client) {
+static enum status _h_rfc6455_start(struct client *client)
+{
 	int header_len;
-	status_t status = h_rfc6455_read_header(client, &header_len);
+	enum status status = h_rfc6455_read_header(client, &header_len);
 
 	STATS_INC(handler_rfc6455_start);
 
@@ -70,8 +71,9 @@ static status_t _h_rfc6455_start(client_t *client) {
 /**
  * Read masked text from the socket buffer.
  */
-status_t h_rfc6455_read(client_t *client, int header_len) {
-	message_t *message = client->message;
+enum status h_rfc6455_read(struct client *client, int header_len)
+{
+	struct message *message = client->message;
 	gchar *sbuff = message->socket_buffer->str;
 
 	// Advance the buffer past the header, we can't read it
@@ -115,7 +117,8 @@ status_t h_rfc6455_read(client_t *client, int header_len) {
 	return CLIENT_GOOD;
 }
 
-status_t h_rfc6455_read_header(client_t *client, int *header_len) {
+enum status h_rfc6455_read_header(struct client *client, int *header_len)
+{
 	GString *sb = client->message->socket_buffer;
 	gchar *buff = sb->str;
 
@@ -177,12 +180,14 @@ status_t h_rfc6455_read_header(client_t *client, int *header_len) {
 	return CLIENT_GOOD;
 }
 
-gboolean h_rfc6455_handles(gchar *path, GHashTable *headers) {
+gboolean h_rfc6455_handles(gchar *path, GHashTable *headers)
+{
 	const gchar *id = g_hash_table_lookup(headers, VERSION_KEY);
 	return (id != NULL && strncmp(id, "13", 2) == 0) ? 1 : -1;
 }
 
-gchar* h_rfc6455_header_key(client_t *client, GHashTable *headers) {
+gchar* h_rfc6455_header_key(struct client *client, GHashTable *headers)
+{
 	const gchar *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
 	if (key == NULL) {
 		return NULL;
@@ -205,7 +210,8 @@ gchar* h_rfc6455_header_key(client_t *client, GHashTable *headers) {
 	return b64;
 }
 
-status_t h_rfc6455_handshake(client_t *client, int flags, GHashTable *headers) {
+enum status h_rfc6455_handshake(struct client *client, int flags, GHashTable *headers)
+{
 	gchar *key = h_rfc6455_header_key(client, headers);
 	if (key == NULL) {
 		return CLIENT_FATAL;
@@ -219,7 +225,14 @@ status_t h_rfc6455_handshake(client_t *client, int flags, GHashTable *headers) {
 	return CLIENT_WRITE;
 }
 
-gchar* h_rfc6455_prepare_frame(const gboolean broadcast, const opcode_t type, const gboolean masked, const gchar *payload, const guint64 payload_len, gsize *frame_len) {
+gchar* h_rfc6455_prepare_frame(
+	const gboolean broadcast,
+	const opcode_t type,
+	const gboolean masked,
+	const gchar *payload,
+	const guint64 payload_len,
+	gsize *frame_len)
+{
 	gchar *frame;
 
 	// If masked, then start the header off with room from the mask
@@ -303,7 +316,8 @@ gchar* h_rfc6455_prepare_frame(const gboolean broadcast, const opcode_t type, co
 	return frame;
 }
 
-gchar* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len) {
+gchar* h_rfc6455_prepare_frame_from_message(struct message *message, gsize *frame_len)
+{
 	return h_rfc6455_prepare_frame(
 		FALSE,
 		message->type,
@@ -314,9 +328,10 @@ gchar* h_rfc6455_prepare_frame_from_message(message_t *message, gsize *frame_len
 	);
 }
 
-status_t h_rfc6455_continue(client_t *client) {
+enum status h_rfc6455_continue(struct client *client)
+{
 	// There are no headers when continuing
-	status_t status = h_rfc6455_read(client, 0);
+	enum status status = h_rfc6455_read(client, 0);
 
 	STATS_INC(handler_rfc6455_start);
 
@@ -333,7 +348,8 @@ status_t h_rfc6455_continue(client_t *client) {
 	return status;
 }
 
-status_t h_rfc6455_incoming(client_t *client) {
+enum status h_rfc6455_incoming(struct client *client)
+{
 	// If we haven't even finished reading the header from the socket
 	if (client->message->socket_buffer->len < HEADER_LEN) {
 		return CLIENT_WAIT;
@@ -377,7 +393,7 @@ status_t h_rfc6455_incoming(client_t *client) {
 		client->message->type = op_pong;
 
 		// If the message wasn't correctly processed, then return that
-		status_t status;
+		enum status status;
 		if ((status =_h_rfc6455_start(client)) != CLIENT_GOOD) {
 			return status;
 		}
@@ -390,7 +406,8 @@ status_t h_rfc6455_incoming(client_t *client) {
 	return CLIENT_FATAL;
 }
 
-gchar* h_rfc6455_close_frame(gsize *frame_len) {
+gchar* h_rfc6455_close_frame(gsize *frame_len)
+{
 	STATS_INC(handler_rfc6455_close);
 	*frame_len = sizeof(CLOSE_FRAME)-1;
 	return (gchar*)CLOSE_FRAME;

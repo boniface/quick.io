@@ -5,7 +5,8 @@
 	"stats-graphite-address = \n" \
 	"[quick.io-apps]\n"
 
-static void _stats_setup() {
+static void _stats_setup()
+{
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0, NULL);
@@ -13,7 +14,8 @@ static void _stats_setup() {
 	check(apps_run());
 }
 
-START_TEST(test_stats_sane_tick) {
+START_TEST(test_stats_sane_tick)
+{
 	check(stats_init());
 
 	STATS_INC(clients);
@@ -31,7 +33,8 @@ START_TEST(test_stats_sane_tick) {
 }
 END_TEST
 
-static gpointer _stats_tick(gpointer nothing) {
+static gpointer _stats_tick(gpointer nothing)
+{
 	usleep(MS_TO_USEC(100));
 
 	stats_flush();
@@ -39,7 +42,8 @@ static gpointer _stats_tick(gpointer nothing) {
 	return NULL;
 }
 
-START_TEST(test_stats_sane_tick_graphite) {
+START_TEST(test_stats_sane_tick_graphite)
+{
 	STATS_INC(clients);
 	STATS_INC(conns_new);
 
@@ -90,7 +94,8 @@ START_TEST(test_stats_sane_tick_graphite) {
 	check_uint64_eq(messages_len, field_count, "Got all the fields");
 
 	// BAHAHAHAHAHA, use regex to match lines.  OHHHH man, this is awesome
-	GRegex* pattern = g_regex_new("qio\\..* \\d+\\.\\d* \\d+", G_REGEX_OPTIMIZE, 0, NULL);
+	GRegex* pattern = g_regex_new("qio\\..* \\d+\\.\\d* \\d+",
+			 G_REGEX_OPTIMIZE, 0, NULL);
 
 	for (uint i = 0; i < messages_len; i++) {
 		check(g_regex_match(pattern, *(messages + i), 0, NULL), "Matches");
@@ -101,7 +106,8 @@ START_TEST(test_stats_sane_tick_graphite) {
 }
 END_TEST
 
-START_TEST(test_stats_sane_tick_no_graphite) {
+START_TEST(test_stats_sane_tick_no_graphite)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(CONFIG_NO_GRAPHITE, 1, sizeof(CONFIG_NO_GRAPHITE), f);
 	fclose(f);
@@ -125,7 +131,8 @@ START_TEST(test_stats_sane_tick_no_graphite) {
 }
 END_TEST
 
-Suite* stats_suite() {
+Suite* stats_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Stats");
 

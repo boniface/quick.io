@@ -71,7 +71,7 @@ enum data_t {
 /**
  * An event from the client. Contains everything the handler needs to process it.
  */
-typedef struct event_s {
+struct event {
 	/**
 	 * The underlying buffer that the event is constructed from.
 	 *
@@ -116,7 +116,7 @@ typedef struct event_s {
 	 * NOT be free'd
 	 */
 	gchar *data;
-} event_t;
+};
 
 /**
  * The handler function type.
@@ -134,7 +134,11 @@ typedef struct event_s {
  * or drop the request if there is no callback. With this return value, `response` will
  * be ignored.
  */
-typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event_t *event, GString *response);
+typedef enum status (*handler_fn)(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response);
 
 /**
  * A callback for when a client subscribes to a specific event.
@@ -151,7 +155,11 @@ typedef status_t (*handler_fn)(client_t *client, event_handler_t *handler, event
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_ERROR if the subscription should be rejected
  */
-typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
+typedef enum status (*on_subscribe_handler_cb)(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback);
 
 /**
  * A callback for when a client unsubscribes to a specific event.
@@ -163,7 +171,10 @@ typedef status_t (*on_subscribe_handler_cb)(client_t *client, const event_handle
  * @param handler The event handler, so that references don't have to be stored in the app.
  * @param extra Any extra parameters that came in with the subscription that should be killed.
  */
-typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_t *handler, path_extra_t *extra);
+typedef void (*on_unsubscribe_handler_cb)(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra);
 
 /**
  * The function type that is called when a client sends a callback to the server.
@@ -174,7 +185,7 @@ typedef void (*on_unsubscribe_handler_cb)(client_t *client, const event_handler_
  *
  * @return A status code for the callback.
  */
-typedef status_t (*callback_fn)(client_t *client, void *data, event_t *event);
+typedef enum status (*callback_fn)(struct client *client, void *data, struct event *event);
 
 /**
  * The function to be called to free the passed into evs_server_new_callback().
@@ -187,7 +198,7 @@ typedef void (*callback_free_fn)(void *data);
 /**
  * The information necessary for maintaining server callbacks.
  */
-struct client_cb_s {
+struct client_cb {
 	/**
 	 * The current ID of the callback.  Makes sure that callbacks don't overlap
 	 * when one has been evicted and its still active on the client.
@@ -215,7 +226,7 @@ struct client_cb_s {
 /**
  * All of the handlers and callbacks for an event.
  */
-struct event_handler_s {
+struct event_handler {
 	/**
 	 * The handler function for the event.
 	 * @note If this is NULL, then there will be no handler.
@@ -254,7 +265,7 @@ struct event_handler_s {
  *
  * @return The event handler. If null, extra will also be NULL.
  */
-event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **extra);
+struct event_handler* evs_server_get_handler(const gchar *event_path, path_extra_t **extra);
 
 /**
  * Handle an event from a client.
@@ -265,7 +276,7 @@ event_handler_t* evs_server_get_handler(const gchar *event_path, path_extra_t **
  * @return CLIENT_WRITE Data should be sent back to the client.
  * @return CLIENT_ARBORTED The client should be closed.
  */
-status_t evs_server_handle(client_t *client);
+enum status evs_server_handle(struct client *client);
 
 /**
  * Listen for an event from clients.
@@ -279,7 +290,12 @@ status_t evs_server_handle(client_t *client);
  *
  * @see event_info_s
  */
-event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscribe_handler_cb on_subscribe, on_unsubscribe_handler_cb on_unsubscribe, gboolean handle_children);
+struct event_handler* evs_server_on(
+	const gchar *event_path,
+	handler_fn fn,
+	on_subscribe_handler_cb on_subscribe,
+	on_unsubscribe_handler_cb on_unsubscribe,
+	gboolean handle_children);
 
 /**
  * Gets the name of an event from the handler.
@@ -292,7 +308,7 @@ event_handler_t* evs_server_on(const gchar *event_path, handler_fn fn, on_subscr
  *
  * @return The path of the event, NULL if not found. THIS MUST NOT BE free()'d
  */
-gchar* evs_server_path_from_handler(const event_handler_t *handler);
+gchar* evs_server_path_from_handler(const struct event_handler *handler);
 
 /**
  * Cleans up and formats the path, with any extra path elements added on.
@@ -315,7 +331,11 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra);
  *
  * @return CLIENT_INVALID_SUBSCRIPTION The client is not allowed to subscribe.
  */
-APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
+APP_EXPORT enum status evs_no_subscribe(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback);
 
 /**
  * Create a new callback on the client that the client can call back to.
@@ -329,7 +349,11 @@ APP_EXPORT status_t evs_no_subscribe(client_t *client, const event_handler_t *ha
  *
  * @return The callback ID.
  */
-APP_EXPORT callback_t evs_server_callback_new(client_t *client, callback_fn fn, void *data, callback_free_fn free_fn);
+APP_EXPORT callback_t evs_server_callback_new(
+	struct client *client,
+	callback_fn fn,
+	void *data,
+	callback_free_fn free_fn);
 
 /**
  * Free a previously-created server callback.
@@ -339,14 +363,16 @@ APP_EXPORT callback_t evs_server_callback_new(client_t *client, callback_fn fn, 
  * @param client The client to add a callback to.
  * @param server_callback The id of the callback to remove.
  */
-APP_EXPORT void evs_server_callback_free(client_t *client, callback_t server_callback);
+APP_EXPORT void evs_server_callback_free(
+	struct client *client,
+	callback_t server_callback);
 
 /**
  * Alert that a client has closed so that it can free all its stuffs.
  *
  * @param client The client that closed.
  */
-void evs_server_client_close(client_t *client);
+void evs_server_client_close(struct client *client);
 
 /**
  * Init the event listening interface.

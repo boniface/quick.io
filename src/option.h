@@ -26,7 +26,7 @@
 /**
  * The types of entries that are in the configuration file.
  */
-typedef enum entry_t {
+enum opt_entry {
 	/**
 	 * The entry is a 32bit integer.
 	 */
@@ -51,12 +51,12 @@ typedef enum entry_t {
 	 * The entry is a boolean
 	 */
 	e_boolean,
-} entry_t;
+};
 
 /**
  * The struct for the config file directive definitions.
  */
-typedef struct config_file_entry_s {
+struct config_file_entry {
 	/**
 	 * The name of the option in the configuration file.
 	 */
@@ -65,7 +65,7 @@ typedef struct config_file_entry_s {
 	/**
 	 * The type of the option in the configuration file.
 	 */
-	entry_t arg;
+	enum opt_entry arg;
 
 	/**
 	 * Where the value from the configration file should be stored.
@@ -76,12 +76,12 @@ typedef struct config_file_entry_s {
 	 * If an array, the number of items read from the configuration file.
 	 */
 	gpointer len;
-} config_file_entry_t;
+};
 
 /**
  * Applications have two pieces of information: their path and prefix
  */
-typedef struct opt_app_s {
+struct opt_app {
 	/**
 	 * The name of the configuration section for the app.
 	 */
@@ -96,7 +96,7 @@ typedef struct opt_app_s {
 	 * The prefix that the app should be under.
 	 */
 	gchar *prefix;
-} opt_app_t;
+};
 
 /**
  * Gets the apps that should run.
@@ -105,7 +105,7 @@ typedef struct opt_app_s {
  * An array of null-terminated strings, containing the names of the apps from the
  * configuration file.
  */
-const opt_app_t** option_apps();
+const struct opt_app** option_apps();
 
 /**
  * The number of apps specififed.
@@ -233,7 +233,11 @@ const gchar* option_user();
  * @param opts_len The number of options being passed in.
  * @param[out] error Any GError that might happen parsing the options.
  */
-APP_EXPORT gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error);
+APP_EXPORT gboolean option_parse_config_file(
+	gchar *group_name,
+	struct config_file_entry opts[],
+	size_t opts_len,
+	GError **error);
 
 /**
  * Parses all the command line options.

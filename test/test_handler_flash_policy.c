@@ -3,25 +3,28 @@
 #define PARTIAL_REQUEST_0 "<policy-fil"
 #define PARTIAL_REQUEST_1 "e-request/>"
 
-START_TEST(test_h_flash_policy_handshake) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_h_flash_policy_handshake)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_append(client->message->socket_buffer, H_FLASH_POLICY_REQUEST);
 
-	status_t status = client_handshake(client);
+	enum status status = client_handshake(client);
 
-	check_str_eq(client->message->buffer->str, H_FLASH_POLICY_RESPONSE, "Response sent");
+	check_str_eq(client->message->buffer->str, H_FLASH_POLICY_RESPONSE,
+			"Response sent");
 	check_status_eq(status, CLIENT_FATAL, "Aborting");
 
 	u_client_free(client);
 }
 END_TEST
 
-START_TEST(test_h_flash_policy_partial_handshake) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_h_flash_policy_partial_handshake)
+{
+	struct client *client = u_client_create(NULL);
 
 	g_string_append(client->message->socket_buffer, PARTIAL_REQUEST_0);
-	status_t status = client_handshake(client);
+	enum status status = client_handshake(client);
 
 	check_size_eq(client->message->buffer->len, 0, "No response sent");
 	check_status_eq(status, CLIENT_WAIT, "Waiting for rest of header");
@@ -29,7 +32,8 @@ START_TEST(test_h_flash_policy_partial_handshake) {
 	g_string_append(client->message->socket_buffer, PARTIAL_REQUEST_1);
 	status = client_handshake(client);
 
-	check_str_eq(client->message->buffer->str, H_FLASH_POLICY_RESPONSE, "Response sent");
+	check_str_eq(client->message->buffer->str, H_FLASH_POLICY_RESPONSE,
+			"Response sent");
 	check_status_eq(status, CLIENT_FATAL, "Aborting");
 
 	u_client_free(client);

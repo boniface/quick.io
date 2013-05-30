@@ -56,7 +56,7 @@
  * The value that is stored in the hash table so that we can access
  * the pointer to the key for passing around to events.
  */
-struct evs_client_sub_s {
+struct evs_client_sub {
 	/**
 	 * The name of the event.
 	 * This is a duplicated string that is referenced all over the place.
@@ -82,7 +82,7 @@ struct evs_client_sub_s {
 	 * The handler for this event. Keep this around to save us on lookups to
 	 * evs_server_get_handler().
 	 */
-	event_handler_t *handler;
+	struct event_handler *handler;
 
 	/**
 	 * For protecting writes to the client list in this subscription
@@ -111,14 +111,17 @@ gboolean evs_client_init();
  * @return CLIENT_ASYNC The app has gone async with the request.
  * @return CLIENT_ERROR Subscribe miserably failed.
  */
-status_t evs_client_sub_client(const gchar *event_path, client_t *client, const callback_t client_callback);
+enum status evs_client_sub_client(
+	const gchar *event_path,
+	struct client *client,
+	const callback_t client_callback);
 
 /**
  * Set up internal structures for the client.
  *
  * @param client The client that just became ready.
  */
-void evs_client_client_ready(client_t* client);
+void evs_client_client_ready(struct client *client);
 
 /**
  * The client has been closed and should be cleaned up.
@@ -128,7 +131,7 @@ void evs_client_client_ready(client_t* client);
  *
  * @param client The client that should be free'd
  */
-void evs_client_client_close(client_t *client);
+void evs_client_client_close(struct client *client);
 
 /**
  * Removes the client from the room.
@@ -139,7 +142,7 @@ void evs_client_client_close(client_t *client);
  * @return CLIENT_CANNOT_UNSUBSCRIBE - The client was either not subscribed to the event of
  * the event didn't exist.  Either way, the client will not recieve notifications for this event.
  */
-status_t evs_client_unsub_client(const gchar *event_path, client_t *client);
+enum status evs_client_unsub_client(const gchar *event_path, struct client *client);
 
 /**
  * Publish the entire message queue immediately.
@@ -158,7 +161,9 @@ void evs_client_send_async_messages();
  *
  * @return The number of people subscribed; 0 if event does not exist.
  */
-APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, path_extra_t *extra);
+APP_EXPORT guint evs_client_number_subscribed(
+	const struct event_handler *handler,
+	path_extra_t *extra);
 
 /**
  * Send a message to everyone subscribed to the event. This just adds to the list of
@@ -174,7 +179,11 @@ APP_EXPORT guint evs_client_number_subscribed(const event_handler_t *handler, pa
  *
  * @attention IS thread safe.
  */
-APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, path_extra_t *extra, const enum data_t type, const gchar *data);
+APP_EXPORT enum status evs_client_pub_event(
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const enum data_t type,
+	const gchar *data);
 
 /**
  * Send a single event to the given client.
@@ -190,7 +199,13 @@ APP_EXPORT status_t evs_client_pub_event(const event_handler_t *handler, path_ex
  *
  * @attention IS thread safe.
  */
-APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t server_callback, const enum data_t type, const gchar *data);
+APP_EXPORT enum status evs_client_send(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t server_callback,
+	const enum data_t type,
+	const gchar *data);
 
 /**
  * Prepare a message to be sent to 1 individual user.
@@ -208,7 +223,14 @@ APP_EXPORT status_t evs_client_send(client_t *client, const event_handler_t *han
  * @return CLIENT_GOOD If the message was prepared and formatted successfully.
  * @return CLIENT_ERROR If anything went wrong.
  */
-status_t evs_client_format_message(const event_handler_t *handler, const callback_t client_callback, const callback_t server_callback, path_extra_t *extra, const enum data_t type, const gchar *data, GString *buffer);
+enum status evs_client_format_message(
+	const struct event_handler *handler,
+	const callback_t client_callback,
+	const callback_t server_callback,
+	path_extra_t *extra,
+	const enum data_t type,
+	const gchar *data,
+	GString *buffer);
 
 /**
  * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST
@@ -223,7 +245,12 @@ status_t evs_client_format_message(const event_handler_t *handler, const callbac
  * @param valid If the susbcription is valid; determines if the client will be subscribed
  * or rejected.
  */
-APP_EXPORT void evs_client_app_sub_cb(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback, const gboolean valid);
+APP_EXPORT void evs_client_app_sub_cb(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback,
+	const gboolean valid);
 
 /**
  * Send a callback to a user. This is mainly used for async events that need to send stuff back.
@@ -236,7 +263,12 @@ APP_EXPORT void evs_client_app_sub_cb(client_t *client, const event_handler_t *h
  * @param type The data type
  * @param data The data to send with the callback
  */
-APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t client_callback, const callback_t server_callback, const enum data_t type, const gchar *data);
+APP_EXPORT void evs_client_send_callback(
+	struct client *client,
+	const callback_t client_callback,
+	const callback_t server_callback,
+	const enum data_t type,
+	const gchar *data);
 
 /**
  * Sends an error callback to the user.
@@ -246,7 +278,9 @@ APP_EXPORT void evs_client_send_callback(client_t *client, const callback_t clie
  * @param client The client to send the callback to
  * @param client_callback The id of the callback the client is expecting
  */
-APP_EXPORT void evs_client_send_error_callback(client_t *client, const callback_t client_callback);
+APP_EXPORT void evs_client_send_error_callback(
+	struct client *client,
+	const callback_t client_callback);
 
 /**
  * Send a heartbeat out to all users subscribed to the heartbeat event.

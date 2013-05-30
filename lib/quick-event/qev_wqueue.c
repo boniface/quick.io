@@ -59,7 +59,8 @@ struct qev_wqueue_s {
 	GMutex lock;
 };
 
-qev_wqueue_t* qev_wqueue_init(qev_wqueue_free_fn free_fn) {
+qev_wqueue_t* qev_wqueue_init(qev_wqueue_free_fn free_fn)
+{
 	qev_wqueue_t *wq = g_malloc0(sizeof(*wq));
 
 	g_mutex_init(&wq->lock);
@@ -72,7 +73,8 @@ qev_wqueue_t* qev_wqueue_init(qev_wqueue_free_fn free_fn) {
 	return wq;
 }
 
-void qev_wqueue_add(qev_wqueue_t *wq, void *item) {
+void qev_wqueue_add(qev_wqueue_t *wq, void *item)
+{
 	g_mutex_lock(&wq->lock);
 
 	g_queue_push_tail(wq->queue[wq->curr_queue], item);
@@ -80,13 +82,15 @@ void qev_wqueue_add(qev_wqueue_t *wq, void *item) {
 	g_mutex_unlock(&wq->lock);
 }
 
-tick_id_t qev_wqueue_register(qev_wqueue_t *wq) {
+tick_id_t qev_wqueue_register(qev_wqueue_t *wq)
+{
 	tick_id_t thread = ((tick_id_t)1) << __sync_fetch_and_add(&wq->threads, 1);
 	__sync_or_and_fetch(&wq->threads_mask, thread);
 	return thread;
 }
 
-void qev_wqueue_tick(qev_wqueue_t *wq, tick_id_t id) {
+void qev_wqueue_tick(qev_wqueue_t *wq, tick_id_t id)
+{
 	// If the current tick is all synced
 	GQueue *q = NULL;
 
@@ -120,7 +124,8 @@ void qev_wqueue_tick(qev_wqueue_t *wq, tick_id_t id) {
 	}
 }
 
-void qev_wqueue_debug_flush(qev_wqueue_t *wq) {
+void qev_wqueue_debug_flush(qev_wqueue_t *wq)
+{
 	g_mutex_lock(&wq->lock);
 
 	void *item;

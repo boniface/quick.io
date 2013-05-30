@@ -37,7 +37,7 @@
 /**
  * The balance request.
  */
-typedef struct conns_balance_request_s {
+struct conns_balance_request {
 	/**
 	 * The number of clients to move.
 	 */
@@ -47,7 +47,7 @@ typedef struct conns_balance_request_s {
 	 * The external address (with port) that the clients should be moved to.
 	 */
 	gchar *to;
-} conns_balance_request_t;
+};
 
 /**
  * Put a new balance request into the queue.
@@ -69,7 +69,7 @@ APP_EXPORT void conns_balance(guint count, gchar *to);
  *
  * @param client The client to accept.
  */
-void conns_client_new(client_t *client);
+void conns_client_new(struct client *client);
 
 /**
  * A notification that a client has been killed.
@@ -78,7 +78,7 @@ void conns_client_new(client_t *client);
  *
  * @param client The client that was killed.
  */
-void conns_client_killed(client_t *client);
+void conns_client_killed(struct client *client);
 
 /**
  * Closes and cleans up the client.
@@ -87,14 +87,14 @@ void conns_client_killed(client_t *client);
  *
  * @param client The client to close clean up.
  */
-void conns_client_close(client_t *client);
+void conns_client_close(struct client *client);
 
 /**
  * Does the final freeing of all the client stuff once the ref count == 0.
  *
  * @param client The client to free.
  */
-void conns_client_free(client_t *client);
+void conns_client_free(struct client *client);
 
 /**
  * There is data waiting in a client.
@@ -103,14 +103,14 @@ void conns_client_free(client_t *client);
  *
  * @return If the client should be closed.
  */
-gboolean conns_client_data(client_t *client);
+gboolean conns_client_data(struct client *client);
 
 /**
  * Clears any timeout that has been set on a client.
  *
  * @param client The client to be cleared.
  */
-void conns_client_timeout_clear(client_t *client);
+void conns_client_timeout_clear(struct client *client);
 
 /**
  * Sets a timeout on the client, for closure if the timer elapses.
@@ -118,7 +118,7 @@ void conns_client_timeout_clear(client_t *client);
  *
  * @param client The client to be timed.
  */
-void conns_client_timeout_set(client_t *client);
+void conns_client_timeout_set(struct client *client);
 
 /**
  * Setup any internal structures needed.
@@ -157,7 +157,7 @@ void conns_maintenance_tick();
  * @param _callback The function to be called with the current client. Return FALSE any
  * time to cancel the iteration
  */
-void conns_clients_foreach(gboolean(*_callback)(client_t*));
+void conns_clients_foreach(gboolean(*_callback)(struct client*));
 
 /**
  * Clean up the client message buffers.
@@ -166,14 +166,17 @@ void conns_clients_foreach(gboolean(*_callback)(client_t*));
  * @param truncate_buffer If the buffer should be truncated.
  * @param truncate_socket_buffer If the socket buffer should be truncated.
  */
-void conns_message_clean(client_t *client, gboolean truncate_socket_buffer, gboolean truncate_buffer);
+void conns_message_clean(
+	struct client *client,
+	gboolean truncate_socket_buffer,
+	gboolean truncate_buffer);
 
 /**
  * Free the client's message buffers and remove the message.
  *
  * @param client The client whose message buffers should be removed.
  */
-void conns_message_free(client_t *client);
+void conns_message_free(struct client *client);
 
 #ifdef TESTING
 #include "../test/test_connections.h"

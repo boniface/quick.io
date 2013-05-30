@@ -33,13 +33,15 @@
 #define QIOINI_STRING_ARRAY "[test-app]\n" \
 	"string-array = three;different;values"
 
-static void _test_option_setup() {
+static void _test_option_setup()
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI, 1, sizeof(QIOINI), f);
 	fclose(f);
 }
 
-START_TEST(test_option_cl_args_short) {
+START_TEST(test_option_cl_args_short)
+{
 	char *argv[] = {"./server", "-c", CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 
@@ -54,7 +56,8 @@ START_TEST(test_option_cl_args_short) {
 }
 END_TEST
 
-START_TEST(test_option_cl_args_long) {
+START_TEST(test_option_cl_args_long)
+{
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 
@@ -69,7 +72,8 @@ START_TEST(test_option_cl_args_long) {
 }
 END_TEST
 
-START_TEST(test_option_cl_args_fail) {
+START_TEST(test_option_cl_args_fail)
+{
 	char *argv[] = {"./server", "--config-f ile="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 
@@ -77,7 +81,8 @@ START_TEST(test_option_cl_args_fail) {
 }
 END_TEST
 
-START_TEST(test_option_bad_config) {
+START_TEST(test_option_bad_config)
+{
 	char *argv[] = {"./server", "--config-file=this_cant_exist_EVER.ini"};
 	int argc = G_N_ELEMENTS(argv);
 
@@ -86,7 +91,8 @@ START_TEST(test_option_bad_config) {
 }
 END_TEST
 
-START_TEST(test_option_all) {
+START_TEST(test_option_all)
+{
 	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
 	int argc = G_N_ELEMENTS(argv);
 
@@ -110,7 +116,7 @@ START_TEST(test_option_all) {
 	check_int32_eq(option_timeout(), 15, "Tons of timeout time");
 	check_str_eq(option_user(), "test", "Correct user");
 
-	const opt_app_t **apps = option_apps();
+	const struct opt_app **apps = option_apps();
 
 	check_str_eq((*apps)->config_group, "skeleton", "First is skeleton");
 	check_str_eq((*apps)->path, "skeleton", "Skeleton has simple path");
@@ -122,11 +128,13 @@ START_TEST(test_option_all) {
 
 	check_str_eq((*(apps + 2))->config_group, "test2", "Third is test2");
 	check_str_eq((*(apps + 2))->path, "/some/path", "Test2 has absolute path");
-	check_str_eq((*(apps + 2))->prefix, "/two/things", "Test2 prefixed with /two/things");
+	check_str_eq((*(apps + 2))->prefix, "/two/things",
+			"Test2 prefixed with /two/things");
 }
 END_TEST
 
-START_TEST(test_option_empty) {
+START_TEST(test_option_empty)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite("", 1, 0, f);
 	fclose(f);
@@ -135,11 +143,13 @@ START_TEST(test_option_empty) {
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "Options parsed");
-	check_not(option_parse_config_file(NULL, NULL, 0, NULL), "Could not parse empty file");
+	check_not(option_parse_config_file(NULL, NULL, 0, NULL),
+			"Could not parse empty file");
 }
 END_TEST
 
-START_TEST(test_option_bad_subs) {
+START_TEST(test_option_bad_subs)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_BAD_MAX_SUBS, 1, sizeof(QIOINI_BAD_MAX_SUBS), f);
 	fclose(f);
@@ -152,7 +162,8 @@ START_TEST(test_option_bad_subs) {
 }
 END_TEST
 
-START_TEST(test_option_bad_timeout) {
+START_TEST(test_option_bad_timeout)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_BAD_TIMEOUT, 1, sizeof(QIOINI_BAD_TIMEOUT), f);
 	fclose(f);
@@ -165,7 +176,8 @@ START_TEST(test_option_bad_timeout) {
 }
 END_TEST
 
-START_TEST(test_option_string_array) {
+START_TEST(test_option_string_array)
+{
 	FILE *f = fopen(CONFIG_FILE, "w");
 	fwrite(QIOINI_STRING_ARRAY, 1, sizeof(QIOINI_STRING_ARRAY), f);
 	fclose(f);
@@ -176,11 +188,12 @@ START_TEST(test_option_string_array) {
 
 	gchar **array = NULL;
 	gint len = 0;
-	config_file_entry_t opts[] = {
+	struct config_file_entry opts[] = {
 		{"string-array", e_string_array, &array, &len}
 	};
 
-	check(option_parse_config_file("test-app", opts, G_N_ELEMENTS(opts), NULL), "Config file parsed");
+	check(option_parse_config_file("test-app", opts,
+					G_N_ELEMENTS(opts), NULL), "Config file parsed");
 
 	check_int32_eq(len, 3, "Correct string length");
 	check_str_eq(*array, "three", "First value right");
@@ -189,7 +202,8 @@ START_TEST(test_option_string_array) {
 }
 END_TEST
 
-Suite* option_suite() {
+Suite* option_suite()
+{
 	TCase *tc;
 	Suite *s = suite_create("Option");
 

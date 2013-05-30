@@ -46,7 +46,7 @@ typedef void (*app_cb_str)();
  *
  * @param client The client to do work on.
  */
-typedef void (*app_cb_client)(client_t *client);
+typedef void (*app_cb_client)(struct client *client);
 
 /**
  * A global on subscribe callback: the type of function called whena user subscribes
@@ -56,7 +56,10 @@ typedef void (*app_cb_client)(client_t *client);
  * @param event_path The path of the event that was subscribed to.
  * @param extra Any extra parameters that came in with the subscription
  */
-typedef void (*on_subscribe_cb)(const client_t *client, const gchar *event_path, const path_extra_t *extra);
+typedef void (*on_subscribe_cb)(
+	const struct client *client,
+	const gchar *event_path,
+	const path_extra_t *extra);
 
 /**
  * For closured "on" functions.
@@ -70,7 +73,12 @@ typedef void (*on_subscribe_cb)(const client_t *client, const gchar *event_path,
  *
  * @see event_info_s
  */
-typedef event_handler_t* (*app_on)(const gchar *event_path, handler_fn handler, on_subscribe_handler_cb on_subscribe, on_unsubscribe_handler_cb on_unsubscribe, gboolean handle_children);
+typedef struct event_handler* (*app_on)(
+	const gchar *event_path,
+	handler_fn handler,
+	on_subscribe_handler_cb on_subscribe,
+	on_unsubscribe_handler_cb on_unsubscribe,
+	gboolean handle_children);
 
 /**
  * The callback function for adding stats to be sent to graphite.
@@ -106,7 +114,7 @@ typedef gboolean (*app_test_cb)(int port);
 /**
  * The callbacks that the apps will recieve for different events.
  */
-typedef struct app_s {
+struct app {
 	/**
 	 * The app's internal ID.
 	 */
@@ -204,7 +212,7 @@ typedef struct app_s {
 	 * Tells the application to register its events with events_server.
 	 */
 	apps_stats_app_cb stats_flush;
-} app_t;
+};
 
 /**
  * Initialize and run the applications.  This function goes through all the apps, and gives
@@ -217,7 +225,7 @@ gboolean apps_run();
  *
  * @param client The client that was accepted.
  */
-void apps_client_connect(client_t *client);
+void apps_client_connect(struct client *client);
 
 /**
  * Inform all the apps that a client has closed so that he can be removed from
@@ -225,7 +233,7 @@ void apps_client_connect(client_t *client);
  *
  * @param client The client that closed.
  */
-void apps_client_close(client_t *client);
+void apps_client_close(struct client *client);
 
 /**
  * Ask the app if the given subscription is okay.
@@ -240,7 +248,11 @@ void apps_client_close(client_t *client);
  * @return CLIENT_ASYNC Doing async verification, will send the callback internally.
  * @return CLIENT_INVALID_SUBSCRIPTION if the subscription should be rejected
  */
-status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback);
+enum status apps_evs_client_check_subscribe(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback);
 
 /**
  * Inform all the apps when a client has added a subscription.
@@ -252,7 +264,10 @@ status_t apps_evs_client_check_subscribe(client_t *client, const event_handler_t
  * @return True if the client subscribed to a valid event, false otherwise,
  * indicating the subscription should be canceled.
  */
-gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t *extra);
+gboolean apps_evs_client_subscribe(
+	struct client *client,
+	const gchar *event_path,
+	path_extra_t *extra);
 
 /**
  * Inform all the apps when a client has dropped a subscription.
@@ -262,7 +277,11 @@ gboolean apps_evs_client_subscribe(client_t *client, const gchar *event_path, pa
  * @param event_path The event path the client dropped.
  * @param extra The extra path segments.
  */
-void apps_evs_client_unsubscribe(client_t *client, const event_handler_t *handler, const gchar *event_path, path_extra_t *extra);
+void apps_evs_client_unsubscribe(
+	struct client *client,
+	const struct event_handler *handler,
+	const gchar *event_path,
+	path_extra_t *extra);
 
 /**
  * Triggers the stats callback in all the apps.

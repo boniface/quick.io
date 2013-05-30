@@ -7,7 +7,7 @@ static GOptionEntry command_options[] = {
 	{NULL}
 };
 
-static opt_app_t **_apps = NULL;
+static struct opt_app **_apps = NULL;
 static guint16 _apps_count = 0;
 static gchar *_bind_address = NULL;
 static gchar *_bind_address_ssl = NULL;
@@ -29,7 +29,7 @@ static gint _threads = 2;
 static gint _timeout = 5;
 static gchar *_user = NULL;
 
-static config_file_entry_t _config_options[] = {
+static struct config_file_entry _config_options[] = {
 	{"bind-address", e_string, &_bind_address},
 	{"bind-address-ssl", e_string, &_bind_address_ssl},
 	{"bind-port", e_int, &_bind_port},
@@ -51,7 +51,8 @@ static config_file_entry_t _config_options[] = {
 	{"user", e_string, &_user},
 };
 
-static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
+static gboolean _option_parse_apps(GKeyFile *conf, GError **error)
+{
 	gsize key_len = 0;
 	gchar **keys = g_key_file_get_keys(conf, OPT_APPS_GROUP_NAME, &key_len, error);
 
@@ -77,7 +78,7 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 
 			_apps_count++;
 
-			opt_app_t *app = g_malloc0(sizeof(*app));
+			struct opt_app *app = g_malloc0(sizeof(*app));
 			app->config_group = g_strdup(key);
 			app->path = path;
 			app->prefix = prefix;
@@ -105,95 +106,122 @@ static gboolean _option_parse_apps(GKeyFile *conf, GError **error) {
 	return TRUE;
 }
 
-const opt_app_t** option_apps() {
-	return (const opt_app_t**)_apps;
+const struct opt_app** option_apps()
+{
+	return (const struct opt_app**)_apps;
 }
 
-const guint16 option_apps_count() {
+const guint16 option_apps_count()
+{
 	return _apps_count;
 }
 
-const gchar* option_bind_address() {
+const gchar* option_bind_address()
+{
 	return _bind_address;
 }
 
-const gchar* option_bind_address_ssl() {
+const gchar* option_bind_address_ssl()
+{
 	return _bind_address_ssl;
 }
 
-const gint option_bind_port() {
+const gint option_bind_port()
+{
 	return _bind_port;
 }
 
-const gint option_bind_port_ssl() {
+const gint option_bind_port_ssl()
+{
 	return _bind_port_ssl;
 }
 
-const gchar* option_config_file() {
+const gchar* option_config_file()
+{
 	return _config_file;
 }
 
-const gchar* option_hostname() {
+const gchar* option_hostname()
+{
 	return _hostname;
 }
 
-const gchar* option_log_file() {
+const gchar* option_log_file()
+{
 	return _log_file;
 }
 
-const guint64 option_max_clients() {
+const guint64 option_max_clients()
+{
 	return _max_clients;
 }
 
-const guint64 option_max_message_size() {
+const guint64 option_max_message_size()
+{
 	return _max_mess_size;
 }
 
-const guint64 option_max_subscriptions() {
+const guint64 option_max_subscriptions()
+{
 	return _max_subs;
 }
 
-const gboolean option_run_app_test() {
+const gboolean option_run_app_test()
+{
 	return _run_app_test;
 }
 
-const gchar* option_ssl_cert_chain() {
+const gchar* option_ssl_cert_chain()
+{
 	return _ssl_cert_chain;
 }
 
-const gchar* option_ssl_private_key() {
+const gchar* option_ssl_private_key()
+{
 	return _ssl_private_key;
 }
 
-const gchar* option_stats_graphite_address() {
+const gchar* option_stats_graphite_address()
+{
 	return _stats_graphite_address;
 }
 
-const gint option_stats_graphite_port() {
+const gint option_stats_graphite_port()
+{
 	return _stats_graphite_port;
 }
 
-const gchar* option_stats_graphite_prefix() {
+const gchar* option_stats_graphite_prefix()
+{
 	return _stats_graphite_prefix;
 }
 
-const gint option_support_flash() {
+const gint option_support_flash()
+{
 	return _support_flash;
 }
 
-const gint option_threads() {
+const gint option_threads()
+{
 	return _threads;
 }
 
-const gint option_timeout() {
+const gint option_timeout()
+{
 	return _timeout;
 }
 
-const gchar* option_user() {
+const gchar* option_user()
+{
 	return _user;
 }
 
-gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[], size_t opts_len, GError **error) {
+gboolean option_parse_config_file(
+	gchar *group_name,
+	struct config_file_entry opts[],
+	size_t opts_len,
+	GError **error)
+{
 	GKeyFile *conf = g_key_file_new();
 
 	if (!g_key_file_load_from_file(conf, _config_file, 0, error)) {
@@ -216,7 +244,7 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 
 	for (size_t i = 0; i < opts_len; i++) {
 		GError *error = NULL;
-		config_file_entry_t e = opts[i];
+		struct config_file_entry e = opts[i];
 
 		if (e.arg == e_string) {
 			gchar *opt = g_key_file_get_string(conf, group_name, e.name, &error);
@@ -283,7 +311,8 @@ gboolean option_parse_config_file(gchar *group_name, config_file_entry_t opts[],
 	return TRUE;
 }
 
-gboolean option_parse_args(int argc, gchar *argv[], GError **error) {
+gboolean option_parse_args(int argc, gchar *argv[], GError **error)
+{
 	gboolean success = TRUE;
 
 	GOptionContext *context = g_option_context_new("");

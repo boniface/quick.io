@@ -18,33 +18,53 @@ void qio_set_app_opts(const guint app_id, const gchar *name, const gchar *dir) {
 
 static GAsyncQueue *_work;
 
-typedef struct {
-	client_t *client;
-	event_handler_t *handler;
+struct work {
+	struct client *client;
+	struct event_handler *handler;
 	path_extra_t *extra;
 	callback_t client_callback;
 	gboolean success;
-} work_t;
+};
 
-static status_t _test_handler(client_t *client, event_handler_t *handler, event_t *event, GString *response) {
+static enum status _test_handler(
+	struct client *client,
+	struct event_handler *handler,
+	struct event *event,
+	GString *response)
+{
 	TEST_STATS_INC(apps_client_handler);
 	return CLIENT_GOOD;
 }
 
-static status_t _test_handler_on(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
+static enum status _test_handler_on(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback)
+{
 	TEST_STATS_INC(apps_client_handler_on);
 
 	return CLIENT_GOOD;
 }
 
-static status_t _test_handler_on_reject(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
+static enum status _test_handler_on_reject(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback)
+{
 	return CLIENT_ERROR;
 }
 
-static status_t _test_handler_on_async(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
-	work_t *work = g_slice_alloc0(sizeof(*work));
+static enum status _test_handler_on_async(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback)
+{
+	struct work *work = g_slice_alloc0(sizeof(*work));
 	work->client = client;
-	work->handler = (event_handler_t*)handler;
+	work->handler = (struct event_handler*)handler;
 	work->extra = extra;
 	work->client_callback = client_callback;
 	work->success = TRUE;
@@ -57,10 +77,15 @@ static status_t _test_handler_on_async(client_t *client, const event_handler_t *
 	return CLIENT_ASYNC;
 }
 
-static status_t _test_handler_on_async_reject(client_t *client, const event_handler_t *handler, path_extra_t *extra, const callback_t client_callback) {
-	work_t *work = g_slice_alloc0(sizeof(*work));
+static enum status _test_handler_on_async_reject(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra,
+	const callback_t client_callback)
+{
+	struct work *work = g_slice_alloc0(sizeof(*work));
 	work->client = client;
-	work->handler = (event_handler_t*)handler;
+	work->handler = (struct event_handler*)handler;
 	work->extra = extra;
 	work->client_callback = client_callback;
 	work->success = FALSE;
@@ -73,11 +98,16 @@ static status_t _test_handler_on_async_reject(client_t *client, const event_hand
 	return CLIENT_ASYNC;
 }
 
-static void _test_handler_off(client_t *client, const event_handler_t *handler, path_extra_t *extra) {
+static void _test_handler_off(
+	struct client *client,
+	const struct event_handler *handler,
+	path_extra_t *extra)
+{
 	TEST_STATS_INC(apps_client_handler_off);
 }
 
-gboolean app_init(app_on on) {
+gboolean app_init(app_on on)
+{
 	_work = g_async_queue_new();
 
 	on("/event", _test_handler, _test_handler_on, _test_handler_off, TRUE);
@@ -87,13 +117,16 @@ gboolean app_init(app_on on) {
 	return TRUE;
 }
 
-gboolean app_run() {
+gboolean app_run()
+{
 	TEST_STATS_INC(apps_run);
 
 	while (TRUE) {
-		work_t *work = g_async_queue_pop(_work);
+		struct work *work = g_async_queue_pop(_work);
 
-		evs_client_app_sub_cb(work->client, work->handler, work->extra, work->client_callback, work->success);
+		evs_client_app_sub_cb(work->client, work->handler,
+						work->extra, work->client_callback,
+						work->success);
 		client_unref(work->client);
 		g_ptr_array_unref(work->extra);
 
@@ -103,13 +136,15 @@ gboolean app_run() {
 	return TRUE;
 }
 
-void app_client_connect(client_t *client) {
+void app_client_connect(struct client *client)
+{
 	TEST_STATS_INC(apps_client_connect);
 
 	client_set(client, "test", "test");
 }
 
-void app_client_close(client_t *client) {
+void app_client_close(struct client *client)
+{
 	TEST_STATS_INC(apps_client_close);
 
 	// Access data on the client to ensure it's accessible to callbacks
@@ -117,15 +152,26 @@ void app_client_close(client_t *client) {
 	client_get(client, "test");
 }
 
-void app_evs_client_subscribe(client_t *client, const gchar *event_path, path_extra_t *extra, const guint extra_len) {
+void app_evs_client_subscribe(
+	struct client *client,
+	const gchar *event_path,
+	path_extra_t *extra,
+	const guint extra_len)
+{
 	TEST_STATS_INC(apps_client_subscribe);
 }
 
-void app_evs_client_unsubscribe(client_t *client, const gchar *event_path, path_extra_t *extra, const guint extra_len) {
+void app_evs_client_unsubscribe(
+	struct client *client,
+	const gchar *event_path,
+	path_extra_t *extra,
+	const guint extra_len)
+{
 	TEST_STATS_INC(apps_client_unsubscribe);
 }
 
-void app_stats_flush(apps_stats_cb stat) {
+void app_stats_flush(apps_stats_cb stat)
+{
 	stat("test.key", 2);
 	stat("test.some.craziness0", 2567234);
 	stat("test.some.craziness1", 2567234);

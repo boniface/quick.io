@@ -13,10 +13,11 @@
 #include "qio.h"
 
 #ifdef TESTING
-int init_main(int argc, gchar *argv[]) {
+int init_main(int argc, gchar *argv[])
 #else
-int main(int argc, gchar *argv[]) {
+int main(int argc, gchar *argv[])
 #endif
+{
 	if (qev_init() == 0) {
 		DEBUG("Quick-event inited");
 	} else {
@@ -80,7 +81,8 @@ int main(int argc, gchar *argv[]) {
 	}
 
 	if (option_bind_address() == NULL && option_bind_address_ssl() == NULL) {
-		CRITICAL("Neither bind-address nor bind-address-ssl was specified. Can't run a server without listening for connections.  Exiting.");
+		CRITICAL("Neither bind-address nor bind-address-ssl was specified. "
+			"Can't run a server without listening for connections.  Exiting.");
 		return 1;
 	}
 
@@ -88,16 +90,23 @@ int main(int argc, gchar *argv[]) {
 		if (qev_listen(option_bind_address(), option_bind_port()) == 0) {
 			DEBUG("Listening on: %s:%d", option_bind_address(), option_bind_port());
 		} else {
-			CRITICAL("Could not listen on %s:%d", option_bind_address(), option_bind_port());
+			CRITICAL("Could not listen on %s:%d", option_bind_address(),
+						option_bind_port());
 			return 1;
 		}
 	}
 
 	if (option_bind_address_ssl() != NULL) {
-		if (qev_listen_ssl(option_bind_address_ssl(), option_bind_port_ssl(), option_ssl_cert_chain(), option_ssl_private_key()) == 0) {
-			DEBUG("SSL Listening on: %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+		int ret = qev_listen_ssl(option_bind_address_ssl(),
+						option_bind_port_ssl(),
+						option_ssl_cert_chain(),
+						option_ssl_private_key());
+		if (ret == 0) {
+			DEBUG("SSL Listening on: %s:%d", option_bind_address_ssl(),
+					option_bind_port_ssl());
 		} else {
-			CRITICAL("SSL could not run on %s:%d", option_bind_address_ssl(), option_bind_port_ssl());
+			CRITICAL("SSL could not run on %s:%d", option_bind_address_ssl(),
+					option_bind_port_ssl());
 			return 1;
 		}
 	}

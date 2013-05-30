@@ -158,7 +158,7 @@
  *
  * @warning Each member of the struct MUST be a size_t, or this won't work.
  */
-typedef struct {
+struct stats {
 
 	/**
 	 * All of the stats are in one struct
@@ -168,7 +168,7 @@ typedef struct {
 		STATS_S_COUNTERS
 	#undef X
 
-} stats_t;
+};
 
 /**
  * The callback type sent to apps for easy appending to the current set of stats.
@@ -184,7 +184,7 @@ typedef void (*stats_app_append_cb)(gchar *prefix, gchar *key, double val);
  *
  * @note Globally accessible.
  */
-stats_t *stats;
+struct stats *stats;
 
 /**
  * Flushes all the stats to graphite.

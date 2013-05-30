@@ -182,7 +182,11 @@ int qev_listen(const char *ip_address, const uint16_t port);
  * @return 0 on success.
  * @return -1 on error.
  */
-int qev_listen_ssl(const char *ip_address, const uint16_t port, const char *cert_path, const char *key_path);
+int qev_listen_ssl(
+	const char *ip_address,
+	const uint16_t port,
+	const char *cert_path,
+	const char *key_path);
 
 /**
  * Instruct quick event to listen on on a UDP socket for messages.
