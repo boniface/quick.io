@@ -1,6 +1,7 @@
 #include "test.h"
 
-void _setup() {
+void _setup()
+{
 	char *argv[] = {"./server", "-c", "../quickio.valgrind.ini"};
 	int argc = G_N_ELEMENTS(argv);
 
@@ -14,8 +15,9 @@ void _setup() {
 	check(stats_init());
 }
 
-START_TEST(test_client_bad_headers) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_client_bad_headers)
+{
+	struct client *client = u_client_create(NULL);
 
 	const char headers[] = "GET /qio HTTP/1.1\r\n"
 		"Host: server.example.com\r\n"
@@ -32,8 +34,9 @@ START_TEST(test_client_bad_headers) {
 }
 END_TEST
 
-START_TEST(test_rfc6455_messages) {
-	client_t *client = u_client_create(NULL);
+START_TEST(test_rfc6455_messages)
+{
+	struct client *client = u_client_create(NULL);
 
 	const char msg[] = "\x81\x84""abcd""\x15";
 
@@ -53,17 +56,19 @@ START_TEST(test_rfc6455_messages) {
 }
 END_TEST
 
-START_TEST(test_conns_clients) {
+START_TEST(test_conns_clients)
+{
 	for (int i = 0; i < 510; i++) {
-		client_t *client = u_client_create(NULL);
+		struct client *client = u_client_create(NULL);
 		conns_client_new(client);
 	}
 
-	check_uint64_eq(stats.clients, 500, "Only 500 accepted");
+	check_uint64_eq(stats->clients, 500, "Only 500 accepted");
 }
 END_TEST
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	if (!log_init()) {
 		CRITICAL("Could not init log");
 		return 1;

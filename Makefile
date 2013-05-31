@@ -303,7 +303,7 @@ test-jenkins: clean test-build
 
 test-valgrind: export BUILD_DIR = $(BUILD_DIR_VALGRIND)
 test-valgrind: export TEST_OBJECTS = $(TEST_UTILS_OBJECTS) $(BUILD_TEST_DIR)/valgrind.o
-test-valgrind: clean test-build
+test-valgrind: test-build
 	@G_SLICE=always-malloc G_DEBUG=gc-friendly valgrind --quiet --tool=memcheck --leak-check=full --leak-resolution=high --num-callers=20 $(VALGRIND_XML) $(BUILD_DIR)/quickio
 
 #
