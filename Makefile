@@ -139,16 +139,6 @@ CFLAGS ?= \
 	-I$(SRC) \
 	$(shell pkg-config --cflags $(LIBS))
 
-CFLAGS_OBJ ?= \
-	$(CFLAGS) \
-	-c \
-	-fvisibility=hidden
-
-CFLAGS_APP ?= \
-	$(CFLAGS) \
-	-fPIC \
-	-shared
-
 CFLAGS_DEBUG ?= \
 	-rdynamic \
 	-fno-inline \
@@ -160,6 +150,14 @@ CFLAGS_TEST ?= \
 	-fno-default-inline \
 	--coverage \
 	-DTESTING=1
+
+CFLAGS_OBJ ?= \
+	-c \
+	-fvisibility=hidden
+
+CFLAGS_APP ?= \
+	-fPIC \
+	-shared
 
 CFLAGS_APP_TEST ?= \
 	$(CFLAGS_APP) \
@@ -232,6 +230,7 @@ clean:
 	rm -rf build_*
 	rm -f *.gcno *.gcda
 	rm -f gmon.out
+	rm -f *.xml
 	$(MAKE) -C docs clean
 
 clean-all: clean
@@ -255,7 +254,7 @@ docs:
 docs-watch:
 	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
 
-debug: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
+debug: export BUILD_DIR = $(BUILD_DIR_DEBUG)
 debug: export QIOINI = quickio.ini
 debug: export CFLAGS += $(CFLAGS_DEBUG)
 debug: deps _build
@@ -264,7 +263,7 @@ profile: export BUILD_DIR = $(BUILD_DIR_PROFILE)
 profile: export CFLAGS += -pg -O2 -DPROFILING=1
 profile: deps _build
 
-release: export BUILD_DIR ?= $(BUILD_DIR_RELEASE)
+release: export BUILD_DIR = $(BUILD_DIR_RELEASE)
 release: export CFLAGS += -O2
 release: deps app _build
 	strip -s $(BUILD_DIR)/$(BINARY)
@@ -273,13 +272,13 @@ release: deps app _build
 run: debug
 	$(BUILD_DIR_DEBUG)/$(BINARY)
 
-test: export BUILD_DIR ?= $(BUILD_DIR_TEST)
+test: export BUILD_DIR = $(BUILD_DIR_TEST)
 test: test-build
 	@G_SLICE=debug-blocks $(BUILD_DIR)/quickio
 	@$(GCOVR) $(GCOVR_SRC_ARGS)
 	@$(GCOVR) $(GCOVR_APP_ARGS)
 
-test-apps: export BUILD_DIR ?= $(BUILD_DIR_DEBUG)
+test-apps: export BUILD_DIR = $(BUILD_DIR_DEBUG)
 test-apps: export LIBS += check
 test-apps: export LIBS_REQUIREMENTS += check < 0.9.9
 test-apps:
@@ -294,12 +293,13 @@ test-build: export LIBS += check
 test-build: export LIBS_REQUIREMENTS += check < 0.9.9
 test-build: deps _build
 
-test-jenkins: export BUILD_DIR ?= $(BUILD_DIR_TEST)
+test-jenkins: export BUILD_DIR = $(BUILD_DIR_TEST)
 test-jenkins: export CFLAGS += -DTEST_OUTPUT_XML=1
 test-jenkins: clean test-build
 	@G_SLICE=debug-blocks $(BUILD_DIR)/quickio
 	@$(GCOVR) $(GCOVR_JENKINS_SRC_ARGS)
 	@$(GCOVR) $(GCOVR_JENKINS_APP_ARGS)
+	$(MAKE) test-apps
 
 test-valgrind: export BUILD_DIR = $(BUILD_DIR_VALGRIND)
 test-valgrind: export TEST_OBJECTS = $(TEST_UTILS_OBJECTS) $(BUILD_TEST_DIR)/valgrind.o
@@ -329,15 +329,15 @@ $(TARGET): $(BUILD_DIR_DEP) $(BUILD_QIOINI) $(OBJECTS) $(APP_OBJECTS)
 
 $(BUILD_LIB_DIR)/%.o: $(LIB)/%.c $(LIB)/%.h $(BUILD_LIB_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
 $(BUILD_SRC_DIR)/%.o: $(SRC)/%.c $(SRC)/%.h test/test_%.c $(BUILD_SRC_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
 $(BUILD_TEST_DIR)/%.o: $(TEST)/%.c $(TEST)/%.h $(BUILD_TEST_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
 $(BUILD_TEST_APP_DIR)/%.so: $(TEST_APP)/%.c $(BUILD_TEST_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
@@ -345,7 +345,7 @@ $(BUILD_TEST_APP_DIR)/%.so: $(TEST_APP)/%.c $(BUILD_TEST_APP_DEP_DIR)
 
 $(BUILD_TEST_DIR)/valgrind.o: $(TEST)/valgrind.c $(BUILD_TEST_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
 $(RUNAPPTESTS): $(TOOLS)/runapptests.c
 	@echo '-------- Compiling $< --------'
@@ -364,8 +364,8 @@ $(BUILD_QIOINI): $(QIOINI) $(BUILD_DEP_DIR)
 
 $(BUILD_APP_DIR)/cluster.so: $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
+	@$(CC) $(CFLAGS) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
 
 $(BUILD_APP_DIR)/test_cluster.so: $(APP)/test_cluster.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
 	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
+	@$(CC) $(CFLAGS) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
