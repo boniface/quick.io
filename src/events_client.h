@@ -233,6 +233,20 @@ enum status evs_client_format_message(
 	GString *buffer);
 
 /**
+ * Gets a thread-local buffer that should only be used for quick formatting operations
+ * with evs_client_format_message(). Rather than doing an alloc for when you need to call
+ * evs_client_format_message(), you may use this.
+ *
+ * @note The buffer is truncated every time this function is called.
+ * @attention You MAY NEVER free the returned value, steal its underlying string, or in
+ * any way change the underlying pointers. You MAY ONLY manipulate the string and its
+ * contents.
+ *
+ * @return A thread-local buffer
+ */
+GString* evs_client_get_message_buff();
+
+/**
  * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST
  * be called to fire off the callback and subscribe (or not) the user to the event.
  *

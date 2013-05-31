@@ -136,7 +136,7 @@ static void _conns_balance()
 
 	struct message message;
 	message.type = op_text;
-	message.buffer = g_string_sized_new(100);
+	message.buffer = evs_client_get_message_buff();
 
 	struct conns_balance_request *req;
 	while ((req = g_async_queue_try_pop(_balances)) != NULL) {
@@ -153,9 +153,7 @@ static void _conns_balance()
 				return FALSE;
 			}
 
-			if (message.buffer->len > 0) {
-				client_write(client, &message);
-			}
+			client_write(client, &message);
 
 			STATS_INC(conns_balanced);
 			qev_close(client);
@@ -167,8 +165,6 @@ static void _conns_balance()
 		g_free(req->to);
 		g_slice_free1(sizeof(*req), req);
 	}
-
-	g_string_free(message.buffer, TRUE);
 }
 
 void conns_balance(guint count, gchar *to)

@@ -124,7 +124,8 @@ START_TEST(test_evs_event_creation_valid_minimal)
 
 	g_string_assign(message->buffer, "/qio/noop::plain=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_GOOD,
+					"Valid message");
 
 	// Test the event data
 	check_str_eq(event.path, "/qio/noop", "Correct event name");
@@ -138,7 +139,7 @@ START_TEST(test_evs_event_creation_valid_minimal)
 	check_ptr_eq(handler, right_handler, "Correct handler retrieved");
 	check_size_eq(message->buffer->len, 0, "Buffer cleared");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -154,7 +155,8 @@ START_TEST(test_evs_event_creation_valid_single_digit_callback)
 
 	g_string_assign(message->buffer, "/qio/noop:1:plain=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_GOOD,
+					"Valid message");
 
 	// Test the event data
 	check_str_eq(event.path, "/qio/noop", "Correct event name");
@@ -168,7 +170,7 @@ START_TEST(test_evs_event_creation_valid_single_digit_callback)
 	check_ptr_eq(handler, right_handler, "Correct handler retrieved");
 	check_size_eq(message->buffer->len, 0, "Buffer cleared");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -184,11 +186,12 @@ START_TEST(test_evs_event_creation_valid_callback)
 
 	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_GOOD,
+				"Valid message");
 	check_uint32_eq(event.client_callback, 123, "Callback gotten!");
 	check_str_eq(event.data, "", "No data set");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -204,12 +207,13 @@ START_TEST(test_evs_event_creation_valid_json)
 
 	g_string_assign(message->buffer, "/qio/noop:123:json={\"test\":1}");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_GOOD,
+				"Valid message");
 	check_uint32_eq(event.client_callback, 123, "Callback gotten!");
 	check(event.data_type == d_json, "JSON data type set");
 	check_str_eq(event.data, "{\"test\":1}", "JSON data recieved");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -225,12 +229,13 @@ START_TEST(test_evs_event_creation_no_data)
 
 	g_string_assign(message->buffer, "/qio/noop:123:plain=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_GOOD,
+					"Valid message");
 	check_uint32_eq(event.client_callback, 123, "Callback gotten!");
 	check(event.data_type == d_plain, "Plain data type set");
 	check_str_eq(event.data, "", "No data set");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -248,7 +253,8 @@ START_TEST(test_evs_event_creation_handle_children)
 
 	g_string_assign(message->buffer, "/multi/something:123:plain=test");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_GOOD, "Valid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_GOOD,
+					"Valid message");
 	check_ptr_eq(handler, expected, "Got correct handler");
 	check_uint32_eq(event.client_callback, 123, "Callback gotten!");
 	check(event.data_type == d_plain, "Plain data type set");
@@ -258,7 +264,7 @@ START_TEST(test_evs_event_creation_handle_children)
 	check_uint16_eq(event.extra->len, 1, "1 extra segment");
 	check_str_eq(g_ptr_array_index(event.extra, 0), "something", "Correct extra segment");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	check_ptr_eq(event.path, NULL, "Name free'd");
 	check_ptr_eq(event.extra, NULL, "Extra segments free'd");
@@ -277,9 +283,10 @@ START_TEST(test_evs_event_creation_invalid)
 
 	g_string_assign(message->buffer, "::=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_FATAL,
+					"Invalid message");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -294,9 +301,10 @@ START_TEST(test_evs_event_creation_invalid_with_event)
 
 	g_string_assign(message->buffer, "/qio/noop::=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_FATAL,
+					"Invalid message");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -311,10 +319,11 @@ START_TEST(test_evs_event_creation_invalid_callback_id)
 
 	g_string_assign(message->buffer, "/qio/noop:abcd1234:=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_FATAL,
+					"Invalid message");
 	check_uint32_eq(event.client_callback, 0, "Callback parsed");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -329,9 +338,10 @@ START_TEST(test_evs_event_creation_invalid_callback)
 
 	g_string_assign(message->buffer, "/qio/noop:=");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_FATAL,
+					"Invalid message");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -346,9 +356,10 @@ START_TEST(test_evs_event_creation_invalid_junk)
 
 	g_string_assign(message->buffer, "/qio/noop:\x11\x01\x12\xab\x00:=hi");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_FATAL,
+					"Invalid message");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -363,9 +374,10 @@ START_TEST(test_evs_event_creation_invalid_data)
 
 	g_string_assign(message->buffer, "/qio/noop:123:plain");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_FATAL, "Invalid message");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_FATAL,
+					"Invalid message");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -380,9 +392,10 @@ START_TEST(test_evs_event_creation_invalid_handler)
 
 	g_string_assign(message->buffer, "/:123:plain");
 
-	check_status_eq(_event_new(message, &handler, &event), CLIENT_ERROR, "Invalid event");
+	check_status_eq(_evs_server_event_fill(message, &handler, &event), CLIENT_ERROR,
+					"Invalid event");
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	u_client_free(client);
 }
 END_TEST
@@ -862,7 +875,8 @@ START_TEST(test_evs_server_server_callback_bad_id)
 	g_string_assign(client->message->buffer, "/qio/callback/:1112:plain=");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Callback coming");
 
-	check_str_eq(client->message->buffer->str, "/qio/callback/1112:0:plain=qio_error", "Correct response sent");
+	check_str_eq(client->message->buffer->str, "/qio/callback/1112:0:plain=qio_error",
+					"Correct response sent");
 
 	u_client_free(client);
 }
@@ -899,7 +913,8 @@ START_TEST(test_evs_server_server_callback_subscribe_to_bad_event)
 	g_string_assign(client->message->buffer, "/abcd/:1:plain=/asdf/");
 	check_status_eq(evs_server_handle(client), CLIENT_WRITE, "Rejected");
 
-	check_str_eq(client->message->buffer->str, "/qio/callback/1:0:plain=qio_error", "Error callback sent");
+	check_str_eq(client->message->buffer->str, "/qio/callback/1:0:plain=qio_error",
+					"Error callback sent");
 
 	u_client_free(client);
 }
@@ -1011,11 +1026,11 @@ START_TEST(test_evs_server_server_callback_chain)
 	// Check the message on the client
 	check(g_strstr_len(client->message->buffer->str,
 			client->message->buffer->len, "/qio/callback/900") == client->message->buffer->str);
-	_event_new(client->message, &handler, &event);
+	_evs_server_event_fill(client->message, &handler, &event);
 
 	// Make sure we have a server callback
 	check(event.client_callback > 0, "Server callback sent");
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	// ----------------------
 	// Second callbacks
@@ -1028,11 +1043,11 @@ START_TEST(test_evs_server_server_callback_chain)
 	// Expect a server callback on the client
 	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len,
 			"/qio/callback/901") == client->message->buffer->str);
-	_event_new(client->message, &handler, &event);
+	_evs_server_event_fill(client->message, &handler, &event);
 
 	// Make sure we have a server callback
 	check(event.client_callback > 0, "Server callback sent");
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	// ----------------------
 	// Third callbacks
@@ -1045,11 +1060,11 @@ START_TEST(test_evs_server_server_callback_chain)
 	// Expect a server callback on the client
 	check(g_strstr_len(client->message->buffer->str, client->message->buffer->len,
 				"/qio/callback/902") == client->message->buffer->str);
-	_event_new(client->message, &handler, &event);
+	_evs_server_event_fill(client->message, &handler, &event);
 
 	// Make sure we have a server callback
 	check(event.client_callback > 0, "Server callback sent");
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	// ----------------------
 	// Fourth callbacks
@@ -1135,9 +1150,9 @@ START_TEST(test_evs_server_server_callback_chain_async)
 
 	// Get the server callback to call
 	g_string_assign(client->message->buffer, buff+2);
-	_event_new(client->message, &handler, &event);
+	_evs_server_event_fill(client->message, &handler, &event);
 	check(event.client_callback > 0, "Server callback sent");
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	// ----------------------
 	// Second callbacks
@@ -1154,9 +1169,9 @@ START_TEST(test_evs_server_server_callback_chain_async)
 
 	// Get the server callback to call
 	g_string_assign(client->message->buffer, buff+2);
-	_event_new(client->message, &handler, &event);
+	_evs_server_event_fill(client->message, &handler, &event);
 	check(event.client_callback > 0, "Server callback sent");
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	// ----------------------
 	// Third callbacks
@@ -1173,9 +1188,9 @@ START_TEST(test_evs_server_server_callback_chain_async)
 
 	// Get the server callback to call
 	g_string_assign(client->message->buffer, buff+2);
-	_event_new(client->message, &handler, &event);
+	_evs_server_event_fill(client->message, &handler, &event);
 	check(event.client_callback > 0, "Server callback sent");
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 
 	// ----------------------
 	// Fourth callbacks
@@ -1228,13 +1243,15 @@ START_TEST(test_evs_server_server_callback_uninitialized)
 	event.extra = g_ptr_array_sized_new(1);
 	g_ptr_array_add(event.extra, "0");
 
-	check_status_eq(_evs_server_callback(client, NULL, &event, NULL), CLIENT_ERROR, "Callback doesn't exist");
+	check_status_eq(_evs_server_callback(client, NULL, &event, NULL), CLIENT_ERROR,
+					"Callback doesn't exist");
 
 	g_ptr_array_unref(event.extra);
 	event.extra = g_ptr_array_sized_new(1);
 	g_ptr_array_add(event.extra, "256");
 
-	check_status_eq(_evs_server_callback(client, NULL, &event, NULL), CLIENT_ERROR, "Callback doesn't exist");
+	check_status_eq(_evs_server_callback(client, NULL, &event, NULL), CLIENT_ERROR,
+					"Callback doesn't exist");
 
 	u_client_free(client);
 }

@@ -37,7 +37,7 @@ static const gchar event_path_chars[] = {
  * Given a message, it parses out all the different aspects of the event
  * and populates the event
  */
-static enum status _event_new(
+static enum status _evs_server_event_fill(
 	struct message *message,
 	struct event_handler **handler,
 	struct event *event)
@@ -153,7 +153,7 @@ static enum status _event_new(
 /**
  * Free up all the allocated memory for an event.
  */
-static void _event_free(struct event *event)
+static void _evs_server_event_empty(struct event *event)
 {
 	// Since all the pointers in the event struct are just into the original buffer,
 	// we don't need to free anything but this one string, and everything else is done
@@ -349,7 +349,7 @@ enum status evs_server_handle(struct client *client)
 {
 	struct event event;
 	struct event_handler *handler = NULL;
-	enum status status = _event_new(client->message, &handler, &event);
+	enum status status = _evs_server_event_fill(client->message, &handler, &event);
 
 	DEBUG("Event: %s", event.path);
 	STATS_INC(evs_server_event);
@@ -357,7 +357,7 @@ enum status evs_server_handle(struct client *client)
 	// If everything went according to plan, then there's a handler and it's safe to
 	// send the handler everything
 	if (status == CLIENT_GOOD && handler->fn != NULL) {
-		// The client->message->buffer is now empty, as free'd by _event_new
+		// The client->message->buffer is now empty, as free'd by _evs_server_event_fill
 		status = handler->fn(client, handler, &event, client->message->buffer);
 	}
 
@@ -369,15 +369,12 @@ enum status evs_server_handle(struct client *client)
 		status = CLIENT_GOOD;
 	} else if (event.client_callback > 0) {
 		if (status == CLIENT_GOOD) {
-			gchar *data = client->message->buffer->str;
-			g_string_free(client->message->buffer, FALSE);
-			client->message->buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+			GString *mbuff = evs_client_get_message_buff();
+			g_string_assign(mbuff, client->message->buffer->str);
 
 			status = evs_client_format_message(handler, event.client_callback,
 								event.server_callback, event.extra, event.data_type,
-								data, client->message->buffer);
-
-			g_free(data);
+								mbuff->str, client->message->buffer);
 		} else if (status == CLIENT_ERROR) {
 			status = evs_client_format_message(handler, event.client_callback,
 								0, NULL, d_plain, QIO_ERROR, client->message->buffer);
@@ -401,7 +398,7 @@ enum status evs_server_handle(struct client *client)
 		}
 	}
 
-	_event_free(&event);
+	_evs_server_event_empty(&event);
 	return status;
 }
 

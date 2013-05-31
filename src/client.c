@@ -170,6 +170,10 @@ enum status client_write(struct client *client, struct message *message)
 		message = client->message;
 	}
 
+	if (message->buffer->len == 0) {
+		return CLIENT_GOOD;
+	}
+
 	// The actual frame to send to the client
 	gchar *frame = NULL;
 

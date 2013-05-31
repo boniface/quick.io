@@ -61,12 +61,12 @@ static struct event_handler *_heartbeat;
  * The asynchronous heartbeat message, so that we don't have to regen the same message
  * on every heart beat.
  */
-struct _async_message *_heartbeat_amsg;
+static struct _async_message *_heartbeat_amsg;
 
 /**
  * Increments the reference count on a struct evs_client_sub
  */
-static void _sub_ref(struct evs_client_sub *sub)
+static void _evs_client_sub_ref(struct evs_client_sub *sub)
 {
 	g_atomic_int_inc(&sub->ref_count);
 }
@@ -77,7 +77,7 @@ static void _sub_ref(struct evs_client_sub *sub)
  * @attention YOU MUST NOT HOLD THE LOCK ON `sub` WHEN YOU CALL THIS FUNCTION. In other words,
  * release your lock on `sub` before calling this function.
  */
-static void _sub_unref(struct evs_client_sub *sub)
+static void _evs_client_sub_unref(struct evs_client_sub *sub)
 {
 	if (g_atomic_int_dec_and_test(&sub->ref_count)) {
 		g_ptr_array_unref(sub->extra);
@@ -95,7 +95,7 @@ static void _sub_unref(struct evs_client_sub *sub)
 /**
  * Creates a subscription from a handler and friends.
  */
-static struct evs_client_sub* _subscription_create(
+static struct evs_client_sub* _evs_client_subscription_create(
 	const gchar *event_path,
 	struct event_handler *handler,
 	path_extra_t *extra)
@@ -125,7 +125,7 @@ static struct evs_client_sub* _subscription_create(
 		sub->extra = extra;
 
 		g_rw_lock_init(&sub->lock);
-		_sub_ref(sub);
+		_evs_client_sub_ref(sub);
 
 		g_hash_table_insert(_events, sub->event_path, sub);
 
@@ -151,7 +151,7 @@ static struct evs_client_sub* _subscription_create(
  * hold that lock; once you release the lock, you may no longer operate on sub; if you wish
  * to hold a reference to sub after releasing the lock, use _sub_(un)ref().
  */
-static struct evs_client_sub* _subscription_get(
+static struct evs_client_sub* _evs_client_subscription_get(
 	const gchar *event_path,
 	const gboolean and_create,
 	const gboolean read_only)
@@ -179,7 +179,7 @@ static struct evs_client_sub* _subscription_get(
 		}
 
 		is_writer = TRUE;
-		sub = _subscription_create(event_path, handler, extra);
+		sub = _evs_client_subscription_create(event_path, handler, extra);
 	}
 
 	if (sub != NULL) {
@@ -202,7 +202,7 @@ static struct evs_client_sub* _subscription_get(
 /**
  * Check and cleanup a subscription if it has no more subscribers.
  */
-static void _subscription_cleanup(const gchar *event_path)
+static void _evs_client_subscription_cleanup(const gchar *event_path)
 {
 	g_rw_lock_writer_lock(&_events_lock);
 
@@ -222,7 +222,7 @@ static void _subscription_cleanup(const gchar *event_path)
 		g_rw_lock_writer_unlock(&_events_lock);
 		g_rw_lock_writer_unlock(&sub->lock);
 
-		_sub_unref(sub);
+		_evs_client_sub_unref(sub);
 	} else {
 		g_rw_lock_writer_unlock(&_events_lock);
 		g_rw_lock_writer_unlock(&sub->lock);
@@ -243,7 +243,7 @@ static enum status _evs_client_sub_client(
 	const callback_t client_callback,
 	const gboolean from_app)
 {
-	struct evs_client_sub *sub = _subscription_get(event_path, TRUE, FALSE);
+	struct evs_client_sub *sub = _evs_client_subscription_get(event_path, TRUE, FALSE);
 
 	if (sub == NULL) {
 		return CLIENT_ERROR;
@@ -277,7 +277,7 @@ static enum status _evs_client_sub_client(
 
 	g_hash_table_add(sub->clients, client);
 
-	_sub_ref(sub);
+	_evs_client_sub_ref(sub);
 
 	g_rw_lock_writer_unlock(&sub->lock);
 
@@ -287,7 +287,7 @@ static enum status _evs_client_sub_client(
 
 	apps_evs_client_subscribe(client, sub->event_path, sub->extra);
 
-	_sub_unref(sub);
+	_evs_client_sub_unref(sub);
 
 	STATS_INC(evs_client_subscribes);
 
@@ -432,7 +432,7 @@ enum status evs_client_sub_client(
 
 enum status evs_client_unsub_client(const gchar *event_path, struct client *client)
 {
-	struct evs_client_sub *sub = _subscription_get(event_path, FALSE, FALSE);
+	struct evs_client_sub *sub = _evs_client_subscription_get(event_path, FALSE, FALSE);
 
 	if (sub == NULL) {
 		return CLIENT_ERROR;
@@ -444,7 +444,7 @@ enum status evs_client_unsub_client(const gchar *event_path, struct client *clie
 		return CLIENT_ERROR;
 	}
 
-	_sub_ref(sub);
+	_evs_client_sub_ref(sub);
 
 	// The client lock must be acquired before releasing the sub lock to ensure serializability
 	// of subscribe and unsubscribe events
@@ -456,9 +456,9 @@ enum status evs_client_unsub_client(const gchar *event_path, struct client *clie
 
 	apps_evs_client_unsubscribe(client, sub->handler, sub->event_path, sub->extra);
 
-	_sub_unref(sub);
+	_evs_client_sub_unref(sub);
 
-	_subscription_cleanup(event_path);
+	_evs_client_subscription_cleanup(event_path);
 
 	STATS_INC(evs_client_unsubscribes);
 
@@ -500,21 +500,20 @@ enum status evs_client_send(
 		return CLIENT_FATAL;
 	}
 
-	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
+	GString *mbuff = evs_client_get_message_buff();
 	enum status status = evs_client_format_message(handler, 0, server_callback,
-								extra, type, data, message);
+								extra, type, data, mbuff);
 
 	if (status == CLIENT_GOOD) {
 		struct message m;
 		m.type = op_text;
-		m.buffer = message;
+		m.buffer = mbuff;
 
-		DEBUG("Sending message: %s", message->str);
+		DEBUG("Sending message: %s", mbuff->str);
 
 		client_write(client, &m);
 	}
 
-	g_string_free(message, TRUE);
 	return status;
 }
 
@@ -525,8 +524,8 @@ enum status evs_client_pub_event(
 	const gchar *data)
 {
 	// Format the message that will be sent to the clients
-	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
 	gchar *event_path;
+	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
 
 	// There are no callbacks for broadcast messages
 	enum status status = _evs_client_format_message(handler, 0, 0,
@@ -563,6 +562,26 @@ enum status evs_client_format_message(
 	return _evs_client_format_message(handler, client_callback,
 							server_callback, extra, type,
 							data, buffer, NULL);
+}
+
+/**
+ * Gets a thread-local buffer that should only be used for quick formatting operations
+ * with evs_client_format_message(). Theoretically, it's safe to use this for quick operations
+ * that don't pass the value to any other evs_client_* functions.
+ */
+GString* evs_client_get_message_buff()
+{
+	static GPrivate msg_buff;
+
+	GString *buff = g_private_get(&msg_buff);
+	if (G_UNLIKELY(buff == NULL)) {
+		buff = g_string_sized_new(STRING_BUFFER_SIZE);
+		g_private_set(&msg_buff, buff);
+	}
+
+	g_string_truncate(buff, 0);
+
+	return buff;
 }
 
 gboolean evs_client_init()
@@ -623,18 +642,17 @@ void evs_client_send_callback(
 		return;
 	}
 
-	#warning use a thread local buffer? Along with all other g_string_sized_new()'s here?
-	GString *message = g_string_sized_new(STRING_BUFFER_SIZE);
+	GString *mbuff = evs_client_get_message_buff();
 
 	// No error condition when sending a callback, and since we do the error check here,
 	// there's no need to do any other error checks
 	enum status status = evs_client_format_message(NULL, client_callback,
 									server_callback, NULL,
-									type, data, message);
+									type, data, mbuff);
 	if (status == CLIENT_GOOD) {
 		struct message m;
 		m.type = op_text;
-		m.buffer = message;
+		m.buffer = mbuff;
 
 		STATS_INC(evs_client_messages_callback);
 		if (client_write(client, &m) != CLIENT_GOOD) {
@@ -642,8 +660,6 @@ void evs_client_send_callback(
 			qev_close(client);
 		}
 	}
-
-	g_string_free(message, TRUE);
 }
 
 void evs_client_send_error_callback(struct client *client, const callback_t client_callback)
@@ -670,7 +686,7 @@ void evs_client_heartbeat()
 	// The message used to write to clients
 	struct message m;
 	m.type = op_text;
-	m.buffer = g_string_sized_new(STRING_BUFFER_SIZE);
+	m.buffer = evs_client_get_message_buff();
 
 	gboolean _cb(struct client *client) {
 		// This is just a work around for a crazy bug: some browsers and proxies SUCK at closing
@@ -722,8 +738,6 @@ void evs_client_heartbeat()
 	}
 
 	_evs_client_pub_message(_heartbeat_amsg, _iter);
-
-	g_string_free(m.buffer, TRUE);
 }
 
 void evs_client_tick()
@@ -731,7 +745,7 @@ void evs_client_tick()
 	struct _async_message *amsg;
 
 	void _iter(struct _async_message *amsg, void(*_write)(struct client*)) {
-		struct evs_client_sub *sub = _subscription_get(amsg->event_path, FALSE, TRUE);
+		struct evs_client_sub *sub = _evs_client_subscription_get(amsg->event_path, FALSE, TRUE);
 
 		if (sub == NULL) {
 			return;
@@ -767,7 +781,7 @@ guint evs_client_number_subscribed(
 
 	gchar *event_path = evs_server_path_from_handler(handler);
 	gchar *ep = evs_server_format_path(event_path, extra);
-	struct evs_client_sub *sub = _subscription_get(ep, FALSE, TRUE);
+	struct evs_client_sub *sub = _evs_client_subscription_get(ep, FALSE, TRUE);
 	g_free(ep);
 
 	if (sub != NULL) {

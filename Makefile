@@ -171,6 +171,9 @@ LDFLAGS ?= \
 	-Wl,-z,relro \
 	$(shell pkg-config --libs $(LIBS))
 
+LDFLAGS_TEST ?= \
+	-lrt
+
 #
 # .deb configuration
 #
@@ -283,6 +286,7 @@ test-apps:
 	$(MAKE) _test-apps
 
 test-build: export CFLAGS += $(CFLAGS_TEST)
+test-build: export LDFLAGS += $(LDFLAGS_TEST)
 test-build: export OBJECTS += $(TEST_OBJECTS)
 test-build: export APP_OBJECTS += $(TEST_APP_OBJECTS)
 test-build: export QIOINI = quickio.test.ini

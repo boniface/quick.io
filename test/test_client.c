@@ -186,9 +186,21 @@ START_TEST(test_client_no_message)
 }
 END_TEST
 
+START_TEST(test_client_empty_message)
+{
+	struct client *client = u_client_create(NULL);
+
+	check_status_eq(client_write(client, NULL), CLIENT_GOOD, "Cool story, bro");
+	check_int64_eq(stats->client_message_sent, 0, "No messages sent");
+
+	u_client_free(client);
+}
+END_TEST
+
 START_TEST(test_client_no_handler)
 {
 	struct client *client = u_client_create(NULL);
+	g_string_assign(client->message->buffer, "hi");
 
 	check_status_eq(client_write(client, NULL), CLIENT_FATAL, "No handler");
 
@@ -381,6 +393,7 @@ Suite* client_suite()
 
 	tc = tcase_create("Writing");
 	tcase_add_test(tc, test_client_no_message);
+	tcase_add_test(tc, test_client_empty_message);
 	tcase_add_test(tc, test_client_no_handler);
 	tcase_add_test(tc, test_client_no_frame_len);
 	suite_add_tcase(s, tc);
