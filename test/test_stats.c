@@ -40,7 +40,7 @@ START_TEST(test_stats_sane_tick_graphite)
 
 	struct addrinfo hints, *res;
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
 	gchar port[6];
