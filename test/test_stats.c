@@ -33,15 +33,6 @@ START_TEST(test_stats_sane_tick)
 }
 END_TEST
 
-static gpointer _stats_tick(gpointer nothing)
-{
-	usleep(MS_TO_USEC(100));
-
-	stats_flush();
-
-	return NULL;
-}
-
 START_TEST(test_stats_sane_tick_graphite)
 {
 	STATS_INC(clients);
@@ -68,11 +59,9 @@ START_TEST(test_stats_sane_tick_graphite)
 	freeaddrinfo(res);
 
 	check(stats_init());
-
-	// Put the tick into a new thread so that the recvfrom will get something
-	g_thread_new("stats_ticker", _stats_tick, NULL);
-
 	int client = accept(sock, NULL, NULL);
+
+	stats_flush();
 
 	gchar buff[8192];
 	memset(&buff, 0, sizeof(buff));
