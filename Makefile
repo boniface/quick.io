@@ -210,12 +210,12 @@ GCOVR_JENKINS_ARGS = \
 GCOVR_JENKINS_SRC_ARGS = \
 	$(GCOVR_SRC_ARGS) \
 	$(GCOVR_JENKINS_ARGS) \
-	-o $(BUILD_DIR)/test_coverage.xml
+	-o $(BUILD_DIR)/coverage.xml
 
 GCOVR_JENKINS_APP_ARGS = \
 	$(GCOVR_APP_ARGS) \
 	$(GCOVR_JENKINS_ARGS) \
-	-o $(BUILD_DIR)/test_coverage_apps.xml
+	-o $(BUILD_DIR)/coverage_apps.xml
 
 #
 # High-level rules
