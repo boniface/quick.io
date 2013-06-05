@@ -50,7 +50,7 @@ static void _qev_accept(QEV_CLIENT_T *server)
 			ev.data.ptr = server;
 			if (epoll_ctl(_epoll, EPOLL_CTL_MOD, QEV_CSLOT(server, socket), &ev) == -1) {
 				g_log(QEV_DOMAIN, G_LOG_LEVEL_ERROR, "Could not re-arm listen FD: %s",
-						 strerror(errno));
+						strerror(errno));
 			}
 
 			return;
@@ -349,6 +349,9 @@ int qev_sys_init()
 
 		QEV_TIMERS
 	#undef QEV_TIMER
+
+	// OpenSSL sends SIGPIPE which kills the server == bad
+	signal(SIGPIPE, SIG_IGN);
 
 	return 0;
 }

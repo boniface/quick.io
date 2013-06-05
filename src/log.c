@@ -106,9 +106,6 @@ static void _log(
 
 gboolean log_init()
 {
-	// OpenSSL sends SIGPIPE which kills the server == bad
-	signal(SIGPIPE, SIG_IGN);
-
 	#if DEBUGGING || PROFILING
 		signal(SIGINT, _sigint_handler);
 		signal(SIGSEGV, _sigsev_handler);

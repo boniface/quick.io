@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
