@@ -4,12 +4,15 @@
 #define CONFIG_NO_GRAPHITE "[quick.io]\n" \
 	"stats-graphite-address = \n" \
 	"[quick.io-apps]\n"
+#define CONFIG_BAD_ADDRESS "[quick.io]\n" \
+	"stats-graphite-address = a.b.c.d.e.f.g.h.i.j.k.l.m.n.p.nope\n" \
+	"[quick.io-apps]\n"
 
 static void _stats_setup()
 {
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
-	option_parse_config_file(NULL, NULL, 0, NULL);
+	option_parse_config_file(NULL, NULL, 0);
 	check(evs_server_init());
 	check(apps_run());
 }
@@ -105,7 +108,7 @@ START_TEST(test_stats_sane_tick_no_graphite)
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "File ready");
-	check(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
 
 	check(stats_init());
 	check(_graphite == NULL);
@@ -117,6 +120,23 @@ START_TEST(test_stats_sane_tick_no_graphite)
 	stats_flush();
 
 	check_size_eq(stats->conns_new, 1, "Clients not reset");
+}
+END_TEST
+
+START_TEST(test_stats_sane_tick_bad_graphite_address)
+{
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(CONFIG_BAD_ADDRESS, 1, sizeof(CONFIG_BAD_ADDRESS), f);
+	fclose(f);
+
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+
+	check(option_parse_args(argc, argv, NULL), "File ready");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
+
+	check(stats_init());
+	check(_graphite == NULL);
 }
 END_TEST
 
@@ -133,6 +153,7 @@ Suite* stats_suite()
 
 	tc = tcase_create("Sanity (no fixtures)");
 	tcase_add_test(tc, test_stats_sane_tick_no_graphite);
+	tcase_add_test(tc, test_stats_sane_tick_bad_graphite_address);
 	suite_add_tcase(s, tc);
 
 	return s;

@@ -70,9 +70,8 @@ void u_main_setup(pid_t *pid, gchar* config_path)
 	*pid = fork();
 	if (*pid) {
 		// Parse the config options so they can be used locally
-		GError *error = NULL;
 		option_parse_args(0, NULL, NULL);
-		option_parse_config_file(NULL, NULL, 0, &error);
+		option_parse_config_file(NULL, NULL, 0);
 
 		close(out[1]);
 

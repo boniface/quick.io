@@ -239,8 +239,7 @@ clean-all: clean
 	$(MAKE) -C tools clean
 
 deb:
-	dpkg-buildpackage $(DPKG_BUILDPACKAGE_ARGS)
-	lintian
+	debuild $(DPKG_BUILDPACKAGE_ARGS)
 
 deps:
 	@echo '-------- Checking compile requirements --------'

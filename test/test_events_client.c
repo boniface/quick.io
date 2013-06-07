@@ -23,7 +23,7 @@ void _test_evs_client_setup()
 	qev_init();
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
-	option_parse_config_file(NULL, NULL, 0, NULL);
+	option_parse_config_file(NULL, NULL, 0);
 	evs_server_init();
 	evs_client_init();
 	conns_init();

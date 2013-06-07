@@ -1,0 +1,5 @@
+# Which configuration file should be loaded by default
+CONFIG_FILE=/etc/quickio/quickio.ini
+
+# Which directory should be scanned for extra configuration files
+CONFIG_DIR=/etc/quickio/apps

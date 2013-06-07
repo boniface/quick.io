@@ -1,1 +1,3 @@
-usr/share/doc/quickio-cluster
+/usr/share/doc/quickio-cluster
+/usr/lib/quickio
+/etc/quickio/apps

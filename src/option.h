@@ -38,9 +38,9 @@ enum opt_entry {
 	e_string,
 
 	/**
-	 * The entry is an array of string.
+	 * The entry is a NULL-terminated vector of strings (ie. {"one", "two", NULL})
 	 */
-	e_string_array,
+	e_stringv,
 
 	/**
 	 * The entry is an unsigned 64bit integer.
@@ -141,11 +141,6 @@ const gint option_bind_port();
 const gint option_bind_port_ssl();
 
 /**
- * Gets the config file being used.
- */
-const gchar* option_config_file();
-
-/**
  * Gets the hostname of the running instance.
  *
  * @ingroup AppFunctions
@@ -224,6 +219,17 @@ const gint option_timeout();
 const gchar* option_user();
 
 /**
+ * If you are ever going to use any static strings in your default config, you MUST
+ * call this function before calling option_parse_config_file(). Because options can
+ * be overriden all over the place, it is necessary to move all options into the data
+ * segment so that they can be free'd at will.
+ *
+ * @param opts The options to make safe to free.
+ * @param opts_len The number of options being passed in.
+ */
+APP_EXPORT void option_setup_config(struct config_file_entry opts[], gsize opts_len);
+
+/**
  * Loads the config file and populates all the options.
  *
  * @ingroup AppFunctions
@@ -231,13 +237,11 @@ const gchar* option_user();
  * @param group_name The name of the group that should be read and processed.
  * @param opts The options that should be populated.
  * @param opts_len The number of options being passed in.
- * @param[out] error Any GError that might happen parsing the options.
  */
 APP_EXPORT gboolean option_parse_config_file(
 	gchar *group_name,
 	struct config_file_entry opts[],
-	size_t opts_len,
-	GError **error);
+	gsize opts_len);
 
 /**
  * Parses all the command line options.

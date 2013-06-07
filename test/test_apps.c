@@ -55,7 +55,7 @@
 static void _apps_setup() {
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
-	option_parse_config_file(NULL, NULL, 0, NULL);
+	option_parse_config_file(NULL, NULL, 0);
 	evs_server_init();
 	evs_client_init();
 	apps_run();
@@ -75,7 +75,7 @@ START_TEST(test_apps_events_register_bad)
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "File ready");
-	check(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
 
 	check_not(apps_run(), "Bad app failed to init");
 }
@@ -91,7 +91,7 @@ START_TEST(test_apps_events_register_nonexistent)
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "File ready");
-	check(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
 
 	check_not(apps_run(), "Bad app failed to init");
 }
@@ -108,7 +108,7 @@ START_TEST(test_apps_events_register_nonexistent_default)
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "File ready");
-	check(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
 
 	check_not(apps_run(), "Bad app failed to init");
 }
@@ -238,7 +238,7 @@ START_TEST(test_apps_cb_run_good)
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "File ready");
-	check(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
 
 	apps_run();
 }
@@ -254,7 +254,7 @@ START_TEST(test_apps_cb_run_fatal)
 	int argc = G_N_ELEMENTS(argv);
 
 	check(option_parse_args(argc, argv, NULL), "File ready");
-	check(option_parse_config_file(NULL, NULL, 0, NULL), "Config loaded");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
 
 	apps_run();
 

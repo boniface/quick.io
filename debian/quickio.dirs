@@ -1,4 +1,5 @@
-usr/bin
-etc/quickio
-etc/logrotate.d
-usr/share/doc/quickio
+/etc/default
+/etc/logrotate.d
+/etc/quickio
+/usr/bin
+/usr/share/doc/quickio

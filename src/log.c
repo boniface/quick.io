@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <execinfo.h>
 #include <signal.h>
-
 #include "qio.h"
 
 #define BACKTRACE_SIZE 100

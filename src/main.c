@@ -33,10 +33,10 @@ int main(int argc, gchar *argv[])
 		return 1;
 	}
 
-	if (option_parse_config_file(NULL, NULL, 0, &error)) {
+	if (option_parse_config_file(NULL, NULL, 0)) {
 		DEBUG("Config file parsed");
 	} else {
-		CRITICAL("%s", error->message);
+		CRITICAL("Could not parse config file(s).");
 		return 1;
 	}
 

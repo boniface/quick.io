@@ -14,6 +14,7 @@ NAME=quickio
 DESC=Quick.IO
 PIDFILE=/var/run/quickio.pid
 CONFIG_FILE=/etc/quickio/quickio.ini
+CONFIG_DIR=/etc/quickio/apps
 
 if [ -f /etc/default/quickio ]; then
 	. /etc/default/quickio
@@ -30,7 +31,7 @@ _print_status() {
 }
 
 start() {
-	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=$CONFIG_FILE
+	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=$CONFIG_FILE --config-dir=$CONFIG_DIR
 }
 
 stop() {
