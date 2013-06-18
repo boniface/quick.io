@@ -266,6 +266,7 @@ gboolean option_parse_config_file(
 	GKeyFile *conf;
 	gboolean good = TRUE;
 	gboolean apps_parsed = FALSE;
+	gboolean saw_group = FALSE;
 
 	for (guint i = 0; i < _config_files->len; i++) {
 		GError *error = NULL;
@@ -285,11 +286,13 @@ gboolean option_parse_config_file(
 			opts = _config_options;
 			opts_len = G_N_ELEMENTS(_config_options);
 
-			if (_option_parse_apps(conf)) {
-				apps_parsed = TRUE;
-			}
+			apps_parsed |= _option_parse_apps(conf);
 		} else {
 			apps_parsed = TRUE;
+		}
+
+		if (g_key_file_has_group(conf, group_name)) {
+			saw_group = TRUE;
 		}
 
 		for (gsize i = 0; i < opts_len; i++) {
@@ -338,6 +341,10 @@ gboolean option_parse_config_file(
 
 		g_key_file_free(conf);
 		conf = NULL;
+	}
+
+	if (!saw_group) {
+		WARN("Could not find configuration section for app named \"%s\".", group_name);
 	}
 
 	if (!apps_parsed) {
