@@ -7,7 +7,7 @@
 
 #define QEV_TIMERS \
 	QEV_TIMER(conns_maintenance_tick, 1, 0, QEV_TIMER_EXCLUSIVE | QEV_TIMER_DELAYED) \
-	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_TICK, 0, QEV_TIMER_DELAYED) \
+	QEV_TIMER(evs_client_heartbeat, HEARTBEAT_TICK, 0, QEV_TIMER_EXCLUSIVE | QEV_TIMER_DELAYED) \
 	QEV_TIMER(stats_flush, STATS_INTERVAL, 0, QEV_TIMER_EXCLUSIVE)
 
 #include "qio.h"
