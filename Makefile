@@ -265,7 +265,7 @@ profile: deps _build
 release: export BUILD_DIR = $(BUILD_DIR_RELEASE)
 release: export CFLAGS += -O2
 release: deps app _build
-	strip -s $(BUILD_DIR)/$(BINARY)
+	# strip -s $(BUILD_DIR)/$(BINARY)
 	find -name '*.so' -exec strip -s {} \;
 
 run: debug
