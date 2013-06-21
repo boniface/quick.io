@@ -45,18 +45,24 @@ This function returns an `event_handler_t`, which is used to broadcast events to
 
 .. important:: You will NEVER receive the event name again in the application; it will be referred to exclusively by the pointer to the handler. As applications can be namespaced without their knowledge, passing event paths back to the applications would create way too many problems.
 
-The `handler_function` parameter is a function that will be called when the event is triggered from a client; if this is `NULL`, then it is assumed that no handler is wanted.
+`handler_function`
+	a function that will be called when the event is triggered from a client; if this is `NULL`, then it is assumed that no handler is wanted.
 
-`on_subscribe_callback` is called when a client subscribes to an event. If this is NULL, it is assumed that any client will be allowed to subscribe. If it is a function, it may do any of the following:
+`on_subscribe_callback`
+	called when a client subscribes to an event. If this is NULL, it is assumed that any client will be allowed to subscribe. If it is a function, it may do any of the following:
 
 1. Return CLIENT_GOOD, indicating that the client should be subscribed immediately.
 2. Return CLIENT_ERROR, indicating that an error should be sent back to the client. This is indistinguishable from the error sent back when the event does not exist.
 3. Return CLIENT_ASYNC, indicating that no response should be sent back because verification of the event will be processed asynchronously. When issuing this value, it becomes the responsibility of the application to issue the callback to the client. Remember: clients MUST always receive a callback if they ask for one.
 4. Return CLIENT_FATAL, indicating the the client should be terminated immediately.
 
-`on_unsubscribe_callback` is called when a client unsubscribes from an event. This is just a notification that the client left, and it cannot be stopped.
+.. important:: This function MUST execute as fast as possible as it runs in one of the server's main threads. Any background operations, long processing, socket operations, or anything that could potentially block should be done in another thread. Return CLIENT_ASYNC for these operations, and schedule them to run in another thread. Failure to do so will result in performance degradation and possible server stops as this function runs during subscription checks which, by their nature, hold locks.
 
-`should_handle_children` is a boolean value indicating if child events should also be handled by this event handler. For example:
+`on_unsubscribe_callback`
+	called when a client unsubscribes from an event. This is just a notification that the client left, and it cannot be stopped.
+
+`should_handle_children`
+	a boolean value indicating if child events should also be handled by this event handler. For example:
 
 .. code-block:: c
 
