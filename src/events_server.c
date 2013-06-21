@@ -428,6 +428,7 @@ struct event_handler* evs_server_on(
 	if (g_hash_table_contains(_events_by_path, path)) {
 		CRITICAL("Event handler is already registered: %s", path);
 		g_free(path);
+		g_mutex_unlock(&_events_lock);
 		return NULL;
 	}
 
