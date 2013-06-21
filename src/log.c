@@ -93,14 +93,9 @@ static void _log(
 		__gcov_flush();
 	#endif
 
-	#if DEBUGGING && !TESTING
-		fprintf(_log_file, "%s - %s : %s\n", log_domain,
-				_get_level(log_level), message);
-	#else
 		fprintf(_log_file, "%s - %s [%" G_GINT64_FORMAT "] %s\n",
 				log_domain, _get_level(log_level),
 				g_get_real_time(), message);
-	#endif
 }
 
 gboolean log_init()
