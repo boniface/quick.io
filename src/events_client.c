@@ -267,8 +267,7 @@ static enum status _evs_client_sub_client(
 								sub->handler, sub->extra,
 								client_callback);
 
-		if (status == CLIENT_ASYNC || status != CLIENT_GOOD) {
-			status = (status == CLIENT_ASYNC) ? CLIENT_ASYNC : CLIENT_ERROR;
+		if (status != CLIENT_GOOD) {
 			goto done;
 		}
 	}
