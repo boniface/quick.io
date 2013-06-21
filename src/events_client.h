@@ -247,7 +247,7 @@ enum status evs_client_format_message(
 GString* evs_client_get_message_buff();
 
 /**
- * If and application went CLIENT_ASYNC during an on_subscribe callback, this function MUST
+ * If an application went CLIENT_ASYNC during an on_subscribe callback, this function MUST
  * be called to fire off the callback and subscribe (or not) the user to the event.
  *
  * @ingroup AppFunctions
