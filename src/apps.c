@@ -113,7 +113,7 @@ gboolean apps_run()
 		// No flags: expose all the symbols so that any dynamically-loaded
 		// libraries (Python, JS, etc) have access to the necessary symbols +
 		// resolve them on load
-		GModule *module = g_module_open(path, 0);
+		GModule *module = g_module_open(path, G_MODULE_BIND_LOCAL);
 		if (module == NULL) {
 			CRITICAL("Could not open app (%s): %s", path, g_module_error());
 			return FALSE;

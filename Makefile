@@ -143,7 +143,8 @@ CFLAGS_DEBUG ?= \
 	-rdynamic \
 	-fno-inline \
 	-fno-default-inline \
-	-DCOMPILE_DEBUG=1
+	-DCOMPILE_DEBUG=1 \
+	-DAPP_DEBUG
 
 CFLAGS_TEST ?= \
 	-fno-inline \
