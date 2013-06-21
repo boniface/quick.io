@@ -93,7 +93,7 @@ static void _log(
 		__gcov_flush();
 	#endif
 
-	#if DEBUGGING
+	#if DEBUGGING && !TESTING
 		fprintf(_log_file, "%s - %s : %s\n", log_domain,
 				_get_level(log_level), message);
 	#else
