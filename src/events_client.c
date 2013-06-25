@@ -446,7 +446,7 @@ enum status evs_client_unsub_client(const gchar *event_path, struct client *clie
 	_evs_client_sub_ref(sub);
 
 	// The client lock must be acquired before releasing the sub lock to ensure serializability
-	// of subscribe and unsubscribe events
+	// of subscribe and unsubscribe events: async subscribes make this necessary.
 	qev_client_lock(client);
 	g_rw_lock_writer_unlock(&sub->lock);
 

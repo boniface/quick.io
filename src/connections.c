@@ -148,7 +148,8 @@ static void _conns_balance()
 
 		guint cnt = 0;
 
-		gboolean _callback(struct client *client) {
+		gboolean _callback(struct client *client)
+		{
 			if (cnt++ >= req->count) {
 				return FALSE;
 			}
@@ -455,7 +456,7 @@ void conns_message_clean(
 	}
 
 	message->remaining_length = 0;
-	message->type = 0;
+	message->type = op_text;
 	message->mask = 0;
 
 	if (truncate_socket_buffer) {

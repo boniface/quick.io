@@ -82,14 +82,14 @@ enum status {
  */
 typedef enum opcode {
 	/**
-	 * A pong should be sent to the client.
-	 */
-	op_pong,
-
-	/**
 	 * Text is being sent to the client.
 	 */
 	op_text,
+
+	/**
+	 * A pong should be sent to the client.
+	 */
+	op_pong,
 } opcode_t;
 
 /**
