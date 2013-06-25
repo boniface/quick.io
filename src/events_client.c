@@ -301,6 +301,8 @@ done:
 		STATS_INC(evs_client_subscribes_rejected);
 	}
 
+	_evs_client_subscription_cleanup(event_path);
+
 	return status;
 }
 

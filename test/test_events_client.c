@@ -722,13 +722,29 @@ START_TEST(test_evs_client_subscribe_stupid_path_1)
 }
 END_TEST
 
-
 START_TEST(test_evs_client_subscribe_stupid_path_2)
 {
 	struct client *client = u_client_create(NULL);
 	client->handler = h_rfc6455;
 
 	check_status_eq(evs_client_sub_client(NULL, client, 0), CLIENT_ERROR, "Rejected");
+
+	u_client_free(client);
+}
+END_TEST
+
+START_TEST(test_evs_client_sub_fail_cleanup)
+{
+	struct client *client = u_client_create(NULL);
+	client->handler = h_rfc6455;
+
+	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD,
+			"Subscribed");
+	check_size_eq(g_hash_table_size(_events), 1, "1 event created");
+
+	check_status_eq(evs_client_sub_client("/test/children/reject", client, 0), CLIENT_ERROR,
+			"Not Subscribed");
+	check_size_eq(g_hash_table_size(_events), 1, "No events created");
 
 	u_client_free(client);
 }
@@ -1261,6 +1277,7 @@ Suite* events_client_suite()
 	tcase_add_test(tc, test_evs_client_subscribe_stupid_path_0);
 	tcase_add_test(tc, test_evs_client_subscribe_stupid_path_1);
 	tcase_add_test(tc, test_evs_client_subscribe_stupid_path_2);
+	tcase_add_test(tc, test_evs_client_sub_fail_cleanup);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Unsubscribe");
