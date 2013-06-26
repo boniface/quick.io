@@ -18,7 +18,7 @@
  */
 #define STATS_S_COUNTERS \
 	/** Messages from clients */ \
-	X(client_message_received, "client.messages.recieved") \
+	X(client_message_received, "client.messages.received") \
 	\
 	/** Messages to clients */ \
 	X(client_message_sent, "client.messages.sent") \
@@ -128,7 +128,7 @@
 	/** RFC6455 close frames */ \
 	X(handler_rfc6455_close, "handler.rfc6455.closes") \
 	\
-	/** The number of events recieved from the OS */ \
+	/** The number of events received from the OS */ \
 	X(qev_event, "qev.event") \
 	\
 	/** The number of times a QEV client lock spun */ \
