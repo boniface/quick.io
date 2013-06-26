@@ -3,3 +3,6 @@ CONFIG_FILE=/etc/quickio/quickio.ini
 
 # Which directory should be scanned for extra configuration files
 CONFIG_DIR=/etc/quickio/apps
+
+# The value set in /etc/security/limits.d/quickio_limits.conf
+FD_LIMIT=4194304

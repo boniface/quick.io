@@ -1,7 +1,7 @@
 app/qio_app.h /usr/include
 app/qio_app_test.h /usr/include
 build_release/quickio /usr/bin/
-debian/quickio.files/limits.conf /etc/security/limits.d/
+debian/quickio.files/quickio_limits.conf /etc/security/limits.d/
 debian/quickio.files/quickio /etc/default
 debian/quickio.files/quickio.conf /etc/sysctl.d/
 quickio.ini /etc/quickio/

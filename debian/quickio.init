@@ -31,6 +31,7 @@ _print_status() {
 }
 
 start() {
+	ulimit -n "$FD_LIMIT"
 	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=$CONFIG_FILE --config-dir=$CONFIG_DIR
 }
 
