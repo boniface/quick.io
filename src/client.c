@@ -131,7 +131,6 @@ enum status client_message(struct client *client)
 
 			case h_len:
 			case h_none:
-				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
 	} else {
@@ -146,7 +145,6 @@ enum status client_message(struct client *client)
 
 			case h_len:
 			case h_none:
-				CRITICAL("Client went into message processing without a handler");
 				return CLIENT_FATAL;
 		}
 	}
