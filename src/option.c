@@ -307,6 +307,8 @@ gboolean option_parse_config_file(
 						g_free(*val);
 					}
 					*val = opt;
+				} else {
+					g_free(opt);
 				}
 			} else if (e.arg == e_stringv) {
 				gchar **opt = g_key_file_get_string_list(conf, group_name, e.name, e.len, &err);

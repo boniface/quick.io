@@ -151,7 +151,7 @@
  */
 #define STATS_S_VALUES \
 	/** The number of clients connected. */ \
-	X(clients, "clients.connected")
+	X(clients, "clients")
 
 /**
  * The statistics that are recorded.

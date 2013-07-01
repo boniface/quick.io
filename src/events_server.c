@@ -490,9 +490,10 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra)
 	gchar *path = NULL;
 	if (ep->len != 0) {
 		path = ep->str;
+		g_string_free(ep, FALSE);
+	} else {
+		g_string_free(ep, TRUE);
 	}
-
-	g_string_free(ep, FALSE);
 
 	return path;
 }
