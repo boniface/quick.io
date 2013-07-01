@@ -239,7 +239,6 @@ clean:
 
 clean-all: clean
 	$(MAKE) -C client/c clean
-	$(MAKE) -C client/java clean
 	$(MAKE) -C tools clean
 
 deb:
