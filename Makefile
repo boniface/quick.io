@@ -81,6 +81,9 @@ APP_TESTS ?= \
 LIBS ?= glib-2.0 gmodule-2.0 openssl
 LIBS_REQUIREMENTS ?= glib-2.0 >= 2.32 gmodule-2.0 >= 2.32 openssl >= 1
 
+TEST_LIBS ?= check
+TEST_LIBS_REQUIREMENTS ?= check >= 0.9.9
+
 #
 # The name of the binary we're building
 #
@@ -279,8 +282,8 @@ test: test-build
 	@$(GCOVR) $(GCOVR_APP_ARGS)
 
 test-apps: export BUILD_DIR = $(BUILD_DIR_DEBUG)
-test-apps: export LIBS += check
-test-apps: export LIBS_REQUIREMENTS += check < 0.9.9
+test-apps: export LIBS += $(TEST_LIBS)
+test-apps: export LIBS_REQUIREMENTS += $(TEST_LIBS_REQUIREMENTS)
 test-apps:
 	$(MAKE) _test-apps
 
@@ -289,8 +292,8 @@ test-build: export LDFLAGS += $(LDFLAGS_TEST)
 test-build: export OBJECTS += $(TEST_OBJECTS)
 test-build: export APP_OBJECTS += $(TEST_APP_OBJECTS)
 test-build: export QIOINI = quickio.test.ini
-test-build: export LIBS += check
-test-build: export LIBS_REQUIREMENTS += check < 0.9.9
+test-build: export LIBS += $(TEST_LIBS)
+test-build: export LIBS_REQUIREMENTS += $(TEST_LIBS_REQUIREMENTS)
 test-build: deps _build
 
 test-jenkins: export BUILD_DIR = $(BUILD_DIR_TEST)

@@ -17,6 +17,11 @@ static void _stats_setup()
 	check(apps_run());
 }
 
+static void _stats_teardown()
+{
+	unlink(CONFIG_FILE);
+}
+
 START_TEST(test_stats_sane_tick)
 {
 	check(stats_init());
@@ -146,12 +151,13 @@ Suite* stats_suite()
 	Suite *s = suite_create("Stats");
 
 	tc = tcase_create("Sanity");
-	tcase_add_checked_fixture(tc, _stats_setup, NULL);
+	tcase_add_checked_fixture(tc, _stats_setup, _stats_teardown);
 	tcase_add_test(tc, test_stats_sane_tick);
 	tcase_add_test(tc, test_stats_sane_tick_graphite);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Sanity (no fixtures)");
+	tcase_add_checked_fixture(tc, NULL, _stats_teardown);
 	tcase_add_test(tc, test_stats_sane_tick_no_graphite);
 	tcase_add_test(tc, test_stats_sane_tick_bad_graphite_address);
 	suite_add_tcase(s, tc);

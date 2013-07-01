@@ -31,6 +31,9 @@
 // The value indicating we're sending a 16-bit unsigned int as the length
 #define SECOND_BYTE_16BIT_LEN 126
 
+// The value indicating we're sending a 64-bit unsigned int as the length
+#define SECOND_BYTE_64BIT_LEN 127
+
 // The different payload lengths that change the header
 #define PAYLOAD_LEN_SHORT 125
 #define PAYLOAD_LEN_LONG 126
@@ -46,7 +49,10 @@
 #define HEADER_LEN (16 / 8)
 
 // Extended-length header contains an extra 16 bits for payload len
-#define EXTENDED_HEADER_LEN (HEADER_LEN + (16 / 8))
+#define EXTENDED_16BIT_HEADER_LEN (HEADER_LEN + (16 / 8))
+
+// Extended-length header contains an extra 64 bits for payload len
+#define EXTENDED_64BIT_HEADER_LEN (HEADER_LEN + (64 / 8))
 
 // The frame sent once a client closes
 #define CLOSE_FRAME ("\x88" "\x00")
@@ -124,7 +130,7 @@ enum status h_rfc6455_read_header(struct client *client, int *header_len)
 
 	// The first 7 bits of the second byte tell us the length
 	// You can't make this stuff up :(
-	guint16 len = *(buff + 1) & SECOND_BYTE;
+	guint64 len = *(buff + 1) & SECOND_BYTE;
 
 	// The 32bit mask data: position dependent based on the payload len
 	gchar *mask = NULL;
@@ -140,7 +146,7 @@ enum status h_rfc6455_read_header(struct client *client, int *header_len)
 		_header_len = HEADER_LEN + MASK_LEN;
 	} else if (len == PAYLOAD_LEN_LONG) {
 		// We haven't finished reading the extended header from the socket
-		if (sb->len < EXTENDED_HEADER_LEN) {
+		if (sb->len < EXTENDED_16BIT_HEADER_LEN) {
 			return CLIENT_WAIT;
 		}
 
@@ -148,12 +154,24 @@ enum status h_rfc6455_read_header(struct client *client, int *header_len)
 		len = GUINT16_FROM_BE(*((guint16*)(buff + HEADER_LEN)));
 
 		// The mask starts after the header and extended length
-		mask = buff + EXTENDED_HEADER_LEN;
+		mask = buff + EXTENDED_16BIT_HEADER_LEN;
 
 		// Skip the headers, the extended length, and the mask
-		_header_len = EXTENDED_HEADER_LEN + MASK_LEN;
+		_header_len = EXTENDED_16BIT_HEADER_LEN + MASK_LEN;
 	} else {
-		len = option_max_message_size() + 1;
+		// We haven't finished reading the extended header from the socket
+		if (sb->len < EXTENDED_64BIT_HEADER_LEN) {
+			return CLIENT_WAIT;
+		}
+
+		// The next 8 bytes contain the length
+		len = GUINT64_FROM_BE(*((guint64*)(buff + HEADER_LEN)));
+
+		// The mask starts after the header and extended length
+		mask = buff + EXTENDED_64BIT_HEADER_LEN;
+
+		// Skip the headers, the extended length, and the mask
+		_header_len = EXTENDED_64BIT_HEADER_LEN + MASK_LEN;
 	}
 
 	// Advance the buffer to the beginning of the message
@@ -259,7 +277,7 @@ gchar* h_rfc6455_prepare_frame(
 	} else if (payload_len <= PAYLOAD_LONG) {
 		// We need an extra 2 bytes, for 4 bytes in total,
 		// to provide the header for this message
-		header_size += EXTENDED_HEADER_LEN;
+		header_size += EXTENDED_16BIT_HEADER_LEN;
 		*frame_len = payload_len + header_size;
 
 		frame = g_malloc0(*frame_len * sizeof(*frame));
@@ -271,8 +289,17 @@ gchar* h_rfc6455_prepare_frame(
 		*(frame + 1) = SECOND_BYTE_16BIT_LEN;
 		*((guint16*)(frame + 2)) = GUINT16_TO_BE(payload_len);
 	} else {
-		CRITICAL("Msg len > 65535, not implemented");
-		return NULL;
+		header_size += EXTENDED_64BIT_HEADER_LEN;
+		*frame_len = payload_len + header_size;
+
+		frame = g_malloc0(*frame_len * sizeof(*frame));
+
+		// The second frame: the first bit is always 0 (data going
+		// to the client is never masked), and to indicate that we
+		// are sending a 16-bit payload, we need to set this to 126,
+		// which will also set the masking bit to 0
+		*(frame + 1) = SECOND_BYTE_64BIT_LEN;
+		*((guint64*)(frame + 2)) = GUINT64_TO_BE(payload_len);
 	}
 
 	// The first frame of text is ALWAYS the same
@@ -298,8 +325,8 @@ gchar* h_rfc6455_prepare_frame(
 		gint32 randmask = g_random_int();
 		gchar *mask = (gchar*)&randmask;
 
-		// The mask comes directly after the header
-		memcpy((frame + 2), mask, MASK_LEN);
+		// The mask comes directly after the length
+		memcpy((frame + header_size - MASK_LEN), mask, MASK_LEN);
 
 		// The start of the encoded bytes
 		gchar *start = frame + header_size;

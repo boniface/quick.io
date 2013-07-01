@@ -1,5 +1,10 @@
 #include "test.h"
 
+#define CONFIG_FILE "qio.ini"
+#define QIOINI "[quick.io]\n" \
+	"max-message-len = 8388608\n" \
+	"[quick.io-apps]"
+
 #define RFC6455_HANDSHAKE "GET /qio HTTP/1.1\n" \
 	"Host: server.example.com\n" \
 	"Upgrade: websocket\n" \
@@ -43,11 +48,10 @@
 #define RFC6455_MESSAGE_LONG_BROKEN_HEADER_1 "\x81""\xfe""\x00"
 #define RFC6455_MESSAGE_LONG_BROKEN_HEADER_2 "\x9e""abcd\x12\r\x0e""\x01""A\x0f\x06\x17\x12\x03\x04""\x01""A\x16\x0b\x05""\x15""B\x0b\x05\x11\x12\x06\n""\x12""B\x17""\x0b""A\x00""\x06""D\r\r\r\x03\x04""\x10""C\x10\t\x03\rDPPVD\x02\n\x02\x16\x00\x01\x17\x01\x13""\x11""OD\x16\n\n\x07\tB\x0e\x05\n\x07""\x10""D\x08""\x16""C\x10\t""\x07""C\x14\x04\x10\x05\x01\x02""\x16""C\x17\x08\x18""\x06""D\x15\rC\x07\x00\x17\x10""\x01""A""\x03""C\x08\x00\x10\x04\x01""\x13""B\x0b\x01\x00\x06\x06""\x16""A\x16""\x0c""D\x03""\x07""C\x16\x04\x13\x16\r\x13\x07""\x07""D\x15\rC\x17\x04\x0c""\x07""D\x15\n""\x06""D\x0c\x07\x10\x17\x00\x05""\x06""D\r\x07\r\x03\x15\n"
 
-#define RFC6455_MESSAGE_OVERSIZED_MESSAGE "\x81""\xff""\x00""\x9e"
+#define RFC6455_MESSAGE_OVERSIZED_MESSAGE "\x81""\xff""\x80""\x00""\x00""\x00""\x00""\x00""\x00""\x00"
 
 #define RFC6455_FRAMED_SHORT "\x81""\x04"MESSAGE_SHORT
 #define RFC6455_FRAMED_LONG "\x81""\x7e""\x00""\x9e"MESSAGE_LONG
-#define RFC6455_OVERSIZED_LEN 0x100000
 
 #define RFC6455_FRAMED_PONG "\x8A""\x04"MESSAGE_SHORT
 
@@ -249,6 +253,31 @@ START_TEST(test_h_rfc6455_multi_partial_broken_header)
 }
 END_TEST
 
+START_TEST(test_h_rfc6455_multi_partial_broken_header_64bit)
+{
+	struct client *client = u_client_create(NULL);
+
+	GString *buff = g_string_sized_new(0);
+	g_string_set_size(buff, 65792);
+
+	for (guint i = 0; i < buff->len; i++) {
+		buff->str[i] = (char)(i % 127) + 1;
+	}
+
+	gsize frame_len = 0;
+	gchar *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+							buff->str, buff->len, &frame_len);
+
+	g_string_append_len(client->message->socket_buffer, frame, 4);
+	check_status_eq(h_rfc6455_incoming(client), CLIENT_WAIT,
+			"Waiting for the rest of the message");
+
+	u_client_free(client);
+	g_free(frame);
+	g_string_free(buff, TRUE);
+}
+END_TEST
+
 START_TEST(test_h_rfc6455_continuation)
 {
 	struct client *client = u_client_create(NULL);
@@ -407,8 +436,48 @@ START_TEST(test_h_rfc6455_long_message)
 }
 END_TEST
 
+START_TEST(test_h_rfc6455_64bit_message)
+{
+	FILE *f = fopen(CONFIG_FILE, "w");
+	fwrite(QIOINI, 1, sizeof(QIOINI), f);
+	fclose(f);
 
-START_TEST(test_h_rfc6455_oversized_message)
+	char *argv[] = {"./server", "--config-file="CONFIG_FILE};
+	int argc = G_N_ELEMENTS(argv);
+
+	check(option_parse_args(argc, argv, NULL), "File ready");
+	check(option_parse_config_file(NULL, NULL, 0), "Config loaded");
+
+	GString *buff = g_string_sized_new(0);
+	g_string_set_size(buff, 65792);
+
+	for (guint i = 0; i < buff->len; i++) {
+		buff->str[i] = (char)(i % 127) + 1;
+	}
+
+	gsize frame_len = 0;
+	gchar *frame = h_rfc6455_prepare_frame(FALSE, op_text, TRUE,
+							buff->str, buff->len, &frame_len);
+
+	struct client *client = u_client_create(NULL);
+
+	g_string_overwrite_len(client->message->socket_buffer, 0, frame,
+							frame_len);
+
+	check_status_eq(h_rfc6455_incoming(client), CLIENT_GOOD,
+			"Message accepted");
+	check_uint64_eq(buff->len, client->message->buffer->len,
+			"Got right size");
+	check_str_eq(client->message->buffer->str, buff->str,
+			"Strings match");
+
+	u_client_free(client);
+	g_string_free(buff, TRUE);
+	unlink(CONFIG_FILE);
+}
+END_TEST
+
+START_TEST(test_h_rfc6455_max_message_size)
 {
 	struct client *client = u_client_create(NULL);
 
@@ -417,7 +486,7 @@ START_TEST(test_h_rfc6455_oversized_message)
 					sizeof(RFC6455_MESSAGE_OVERSIZED_MESSAGE)-1);
 
 	check_status_eq(h_rfc6455_incoming(client), CLIENT_FATAL,
-			"The message was too large");
+			"Message rejected");
 
 	u_client_free(client);
 }
@@ -426,7 +495,7 @@ END_TEST
 START_TEST(test_h_rfc6455_frame_short)
 {
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE,
+	gchar *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE,
 							MESSAGE_SHORT, sizeof(MESSAGE_SHORT)-1,
 							&frame_len);
 
@@ -434,7 +503,7 @@ START_TEST(test_h_rfc6455_frame_short)
 	check_bin_eq(frame, RFC6455_FRAMED_SHORT, sizeof(RFC6455_FRAMED_SHORT)-1,
 				"Frame contains header");
 
-	free(frame);
+	g_free(frame);
 }
 END_TEST
 
@@ -449,20 +518,25 @@ START_TEST(test_h_rfc6455_frame_long)
 	check_bin_eq(frame, RFC6455_FRAMED_LONG, sizeof(RFC6455_FRAMED_LONG)-1,
 			"Frame contains header");
 
-	free(frame);
+	g_free(frame);
 }
 END_TEST
 
-START_TEST(test_h_rfc6455_frame_oversized)
+START_TEST(test_h_rfc6455_frame_64bit)
 {
+	GString *buff = g_string_sized_new(0);
+	g_string_set_size(buff, 65792);
+
 	gsize frame_len = 0;
-	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE, "",
-						RFC6455_OVERSIZED_LEN, &frame_len);
+	char *frame = h_rfc6455_prepare_frame(FALSE, op_text, FALSE, buff->str,
+						buff->len, &frame_len);
 
-	check_int32_eq(frame_len, 0, "Frame length correct");
-	check_ptr_eq(frame, NULL, "Frame is null");
+	// 2 for WS header, 8 for 64bit len
+	check_int32_eq(frame_len, buff->len + 8 + 2, "Frame length correct");
+	check(frame != NULL, "Frame isn't null");
 
-	free(frame);
+	g_free(frame);
+	g_string_free(buff, TRUE);
 }
 END_TEST
 
@@ -477,7 +551,7 @@ START_TEST(test_h_rfc6455_pong)
 	check_bin_eq(frame, RFC6455_FRAMED_PONG, sizeof(RFC6455_FRAMED_PONG)-1,
 			"Pong frame contains pong");
 
-	free(frame);
+	g_free(frame);
 }
 END_TEST
 
@@ -496,7 +570,7 @@ START_TEST(test_h_rfc6455_frame_from_message)
 			"Short frame correct");
 
 	g_string_free(message.buffer, TRUE);
-	free(frame);
+	g_free(frame);
 }
 END_TEST
 
@@ -513,7 +587,8 @@ Suite* h_rfc6455_suite()
 	tc = tcase_create("Recieve Messages");
 	tcase_add_test(tc, test_h_rfc6455_short_message);
 	tcase_add_test(tc, test_h_rfc6455_long_message);
-	tcase_add_test(tc, test_h_rfc6455_oversized_message);
+	tcase_add_test(tc, test_h_rfc6455_64bit_message);
+	tcase_add_test(tc, test_h_rfc6455_max_message_size);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Partial Messages");
@@ -522,6 +597,7 @@ Suite* h_rfc6455_suite()
 	tcase_add_test(tc, test_h_rfc6455_partial_short_message);
 	tcase_add_test(tc, test_h_rfc6455_multi_partial_short_messages);
 	tcase_add_test(tc, test_h_rfc6455_multi_partial_broken_header);
+	tcase_add_test(tc, test_h_rfc6455_multi_partial_broken_header_64bit);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Continuation Frames");
@@ -541,7 +617,7 @@ Suite* h_rfc6455_suite()
 	tc = tcase_create("Send Frames");
 	tcase_add_test(tc, test_h_rfc6455_frame_short);
 	tcase_add_test(tc, test_h_rfc6455_frame_long);
-	tcase_add_test(tc, test_h_rfc6455_frame_oversized);
+	tcase_add_test(tc, test_h_rfc6455_frame_64bit);
 	tcase_add_test(tc, test_h_rfc6455_pong);
 	tcase_add_test(tc, test_h_rfc6455_unsupported_opcode);
 	suite_add_tcase(s, tc);

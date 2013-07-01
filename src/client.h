@@ -100,7 +100,7 @@ struct message {
 	/**
 	 * The remaining length of the incoming message to read
 	 */
-	guint16 remaining_length;
+	guint64 remaining_length;
 
 	/**
 	 * The opcode from the message.

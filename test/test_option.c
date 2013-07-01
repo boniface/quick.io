@@ -42,6 +42,11 @@ static void _test_option_setup()
 	fclose(f);
 }
 
+static void _test_option_teardown()
+{
+	unlink(CONFIG_FILE);
+}
+
 START_TEST(test_option_cl_args_short)
 {
 	char *argv[] = {"./server", "-c", CONFIG_FILE};
@@ -289,6 +294,8 @@ START_TEST(test_option_multiple_configs)
 	int argc = G_N_ELEMENTS(argv);
 	check(option_parse_args(argc, argv, NULL), "Options parsed");
 	check_uint32_eq(_config_files->len, 2, "Two files loaded");
+
+	unlink("test.ini");
 }
 END_TEST
 
@@ -298,19 +305,20 @@ Suite* option_suite()
 	Suite *s = suite_create("Option");
 
 	tc = tcase_create("Command Line Args");
-	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_option_setup, _test_option_teardown);
 	tcase_add_test(tc, test_option_cl_args_short);
 	tcase_add_test(tc, test_option_cl_args_long);
 	tcase_add_test(tc, test_option_cl_args_fail);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Nonexistent config");
+	tcase_add_checked_fixture(tc, NULL, _test_option_teardown);
 	tcase_add_test(tc, test_option_nonexistent);
 	tcase_add_test(tc, test_option_invalid_config);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("Config File Options");
-	tcase_add_checked_fixture(tc, _test_option_setup, NULL);
+	tcase_add_checked_fixture(tc, _test_option_setup, _test_option_teardown);
 	tcase_add_test(tc, test_option_setup_config);
 	tcase_add_test(tc, test_option_config_dir);
 	tcase_add_test(tc, test_option_config_dir_bad);

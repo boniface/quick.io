@@ -52,7 +52,8 @@
 	"[quick.io-apps]\n" \
 	"test-bad = ./test/app/test_testing"
 
-static void _apps_setup() {
+static void _apps_setup()
+{
 	utils_stats_setup();
 	option_parse_args(0, NULL, NULL);
 	option_parse_config_file(NULL, NULL, 0);
@@ -61,8 +62,10 @@ static void _apps_setup() {
 	apps_run();
 }
 
-static void _apps_teardown() {
+static void _apps_teardown()
+{
 	utils_stats_teardown();
+	unlink(CONFIG_FILE);
 }
 
 START_TEST(test_apps_events_register_bad)
@@ -413,6 +416,7 @@ Suite* apps_suite()
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("App Testing");
+	tcase_add_checked_fixture(tc, NULL, _apps_teardown);
 	tcase_add_test(tc, test_testing_too_many_apps);
 	tcase_add_test(tc, test_testing_no_test_function);
 	tcase_add_test(tc, test_testing_runs);

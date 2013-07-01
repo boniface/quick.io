@@ -189,7 +189,7 @@ enum status client_write(struct client *client, struct message *message)
 
 		case h_len:
 		case h_none:
-			return CLIENT_FATAL;
+			frame = NULL;
 	}
 
 	if (frame == NULL) {
