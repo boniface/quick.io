@@ -82,7 +82,7 @@ LIBS ?= glib-2.0 gmodule-2.0 openssl
 LIBS_REQUIREMENTS ?= glib-2.0 >= 2.32 gmodule-2.0 >= 2.32 openssl >= 1
 
 TEST_LIBS ?= check
-TEST_LIBS_REQUIREMENTS ?= check >= 0.9.9
+TEST_LIBS_REQUIREMENTS ?= check >= 0.9.8
 
 #
 # The name of the binary we're building
