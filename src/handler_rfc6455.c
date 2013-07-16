@@ -15,7 +15,6 @@
 #define OP_CONTINUATION 0x00
 #define OP_TEXT 0x01
 #define OP_BINARY 0x02
-#define OP_CLOSE 0x08
 #define OP_PING 0x09
 #define OP_PONG 0x0A
 
@@ -414,8 +413,6 @@ enum status h_rfc6455_incoming(struct client *client)
 		// This is way too complicated.  Seriously, why?
 		return CLIENT_FATAL;
 		// return _h_rfc6455_start(client);
-	} else if (opcode == OP_CLOSE) {
-		return CLIENT_FATAL;
 	} else if (opcode == OP_PING) {
 		client->message->type = op_pong;
 
