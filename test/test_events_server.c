@@ -41,7 +41,7 @@ END_TEST
 
 START_TEST(test_evs_server_format_path_3)
 {
-	path_extra_t *extra = g_ptr_array_new();
+	GPtrArray *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with");
 	g_ptr_array_add(extra, "path");
 
@@ -55,7 +55,7 @@ END_TEST
 
 START_TEST(test_evs_server_format_path_4)
 {
-	path_extra_t *extra = g_ptr_array_new();
+	GPtrArray *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with");
 	g_ptr_array_add(extra, "path");
 
@@ -77,7 +77,7 @@ END_TEST
 
 START_TEST(test_evs_server_format_path_6)
 {
-	path_extra_t *extra = g_ptr_array_new();
+	GPtrArray *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "with^^%^#^^#*@*@&");
 	g_ptr_array_add(extra, "path/////////");
 
@@ -444,7 +444,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_0)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *handler = evs_server_get_handler("qio/noop", &extra);
 	check_ptr_eq(handler, NULL, "Correct handler retrieved");
@@ -454,7 +454,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_1)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *handler = evs_server_get_handler("qio/noop/", &extra);
 	check_ptr_eq(handler, NULL, "Correct handler retrieved");
@@ -464,7 +464,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_2)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *handler = evs_server_get_handler("/qio/noop/", &extra);
 	check_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
@@ -474,7 +474,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_3)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *handler = evs_server_get_handler("/qio/noop/extra/segs", &extra);
 	check_ptr_eq(handler, NULL, "Correct handler retrieved");
@@ -484,7 +484,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_4)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *handler = evs_server_get_handler("/qio/noop/////", &extra);
 	check_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
@@ -494,7 +494,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_5)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *handler = evs_server_get_handler("/qio/noop\x00/more/items", &extra);
 	check_ptr_eq(handler, evs_server_get_handler("/qio/noop", NULL), "Correct handler retrieved");
@@ -504,7 +504,7 @@ END_TEST
 
 START_TEST(test_evs_get_handler_6)
 {
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	struct event_handler *expected = evs_server_on("/multi", NULL, NULL, NULL, TRUE);
 

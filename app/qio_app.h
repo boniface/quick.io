@@ -114,16 +114,9 @@ void app_test_config();
 	}
 
 /**
- * Nothing useful in this struct.  Just pass it as needed.
+ * Nothing useful in this struct. Just pass it as needed.
  */
 typedef void event_handler_t;
-
-/**
- * The list type used to hold extra path segments.
- *
- * @attention Each item MUST contain a gchar*.
- */
-typedef GPtrArray path_extra_t;
 
 /**
  * The data type for callbacks.
@@ -232,7 +225,7 @@ struct event {
 	 *
 	 * @attention This is ref-counted, so it MUST be g_ptr_array_un/ref()'d
 	 */
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	/**
 	 * The callback number the client sent.
@@ -348,7 +341,7 @@ typedef enum status (*handler_fn)(
 typedef enum status (*on_subscribe_handler_cb)(
 	client_t *client,
 	const event_handler_t *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t callback);
 
 /**
@@ -365,7 +358,7 @@ typedef enum status (*on_subscribe_handler_cb)(
 typedef void (*on_unsubscribe_handler_cb)(
 	client_t *client,
 	const event_handler_t *handler,
-	path_extra_t *extra);
+	GPtrArray *extra);
 
 /**
  * A global on subscribe callback: the type of function called whena user subscribes
@@ -378,7 +371,7 @@ typedef void (*on_unsubscribe_handler_cb)(
 typedef void (*on_subscribe_cb)(
 	const client_t *client,
 	const char *event_path,
-	const path_extra_t *extra);
+	const GPtrArray *extra);
 
 /**
  * The function type that is called when a client sends a callback to the server.
@@ -444,7 +437,7 @@ void conns_balance(guint count, gchar *to);
  */
 gsize evs_client_number_subscribed(
 	const event_handler_t *handler,
-	path_extra_t *extra);
+	GPtrArray *extra);
 
 /**
  * Send a single event to the given client.
@@ -461,7 +454,7 @@ gsize evs_client_number_subscribed(
 enum status evs_client_send(
 	client_t *client,
 	const event_handler_t *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t server_callback,
 	const enum data_t type,
 	const gchar *data);
@@ -480,7 +473,7 @@ enum status evs_client_send(
  */
 enum status evs_client_pub_event(
 	const event_handler_t *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const enum data_t type,
 	const gchar *data);
 
@@ -500,7 +493,7 @@ enum status evs_client_pub_event(
 void evs_client_app_sub_cb(
 	client_t *client,
 	const event_handler_t *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback,
 	const gboolean valid);
 
@@ -538,7 +531,7 @@ void evs_client_send_error_callback(
 enum status evs_no_subscribe(
 	client_t *client,
 	const event_handler_t *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t callback);
 
 /**

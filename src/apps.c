@@ -195,7 +195,7 @@ void apps_client_close(struct client *client)
 enum status apps_evs_client_check_subscribe(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback)
 {
 	if (handler->on_subscribe) {
@@ -209,7 +209,7 @@ enum status apps_evs_client_check_subscribe(
 gboolean apps_evs_client_subscribe(
 	struct client *client,
 	const gchar *event_path,
-	path_extra_t *extra)
+	GPtrArray *extra)
 {
 	APP_FOREACH(
 		on_subscribe_cb cb = app->subscribe;
@@ -226,7 +226,7 @@ void apps_evs_client_unsubscribe(
 	struct client *client,
 	const struct event_handler *handler,
 	const gchar *event_path,
-	path_extra_t *extra)
+	GPtrArray *extra)
 {
 	if (handler->on_unsubscribe != NULL) {
 		handler->on_unsubscribe(client, handler, extra);

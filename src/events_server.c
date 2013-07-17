@@ -268,12 +268,12 @@ static enum status _evs_server_unsubscribe(
 
 struct event_handler* evs_server_get_handler(
 	const gchar *event_path,
-	path_extra_t **extra)
+	GPtrArray **extra)
 {
 	struct event_handler *handler = NULL;
 
 	// Internal extras
-	path_extra_t *iextra = g_ptr_array_new_with_free_func(g_free);
+	GPtrArray *iextra = g_ptr_array_new_with_free_func(g_free);
 
 	// We cannot modify event_path, so let's modify this!
 	gchar *ep = g_strdup(event_path);
@@ -451,7 +451,7 @@ gchar* evs_server_path_from_handler(const struct event_handler *handler)
 	return g_hash_table_lookup(_events_by_handler, handler);
 }
 
-gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra)
+gchar* evs_server_format_path(const gchar *event_path, GPtrArray *extra)
 {
 	GString *ep = g_string_new(event_path);
 
@@ -501,7 +501,7 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra)
 enum status evs_no_subscribe(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback)
 {
 	return CLIENT_ERROR;

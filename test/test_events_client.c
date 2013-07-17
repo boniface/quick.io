@@ -123,7 +123,7 @@ START_TEST(test_evs_client_format_message_2)
 	check_status_eq(evs_client_sub_client("/test/event/test", client, 0),
 			CLIENT_GOOD, "Subscribed");
 
-	path_extra_t *extra = NULL;
+	GPtrArray *extra = NULL;
 	struct event_handler *handler = evs_server_get_handler("/test/event/test", &extra);
 	check(handler != NULL, "Got handler");
 
@@ -187,7 +187,7 @@ START_TEST(test_evs_client_format_message_with_callback)
 	check_status_eq(evs_client_sub_client("/test/event/test", client, 0), CLIENT_GOOD,
 					"Subscribed");
 
-	path_extra_t *extra = NULL;
+	GPtrArray *extra = NULL;
 	struct event_handler *handler = evs_server_get_handler("/test/event/test", &extra);
 	check(handler != NULL, "Got handler");
 
@@ -208,7 +208,7 @@ START_TEST(test_evs_client_format_message_with_server_callback)
 {
 	GString *buffer = g_string_sized_new(1);
 
-	path_extra_t *extra = NULL;
+	GPtrArray *extra = NULL;
 	struct event_handler *handler = evs_server_get_handler("/test/event/test", &extra);
 	check(handler != NULL, "Got handler");
 
@@ -228,7 +228,7 @@ START_TEST(test_evs_client_format_message_not_subscribed)
 {
 	GString *buffer = g_string_sized_new(1);
 
-	path_extra_t *extra = NULL;
+	GPtrArray *extra = NULL;
 	struct event_handler *handler = evs_server_get_handler("/test/event/test", &extra);
 	check(handler != NULL, "Got handler");
 
@@ -246,7 +246,7 @@ START_TEST(test_evs_client_format_message_not_subscribed_callback)
 {
 	GString *buffer = g_string_sized_new(1);
 
-	path_extra_t *extra = NULL;
+	GPtrArray *extra = NULL;
 	struct event_handler *handler = evs_server_get_handler("/test/event/test", &extra);
 	check(handler != NULL, "Got handler");
 
@@ -266,7 +266,7 @@ START_TEST(test_evs_client_format_message_null_data)
 {
 	GString *buffer = g_string_sized_new(1);
 
-	path_extra_t *extra = NULL;
+	GPtrArray *extra = NULL;
 	struct event_handler *handler = evs_server_get_handler("/test/event/test", &extra);
 	check(handler != NULL, "Got handler");
 
@@ -1163,7 +1163,7 @@ START_TEST(test_evs_client_async_message_invalid_event_extra)
 
 	struct event_handler *handler = evs_server_get_handler("/test/event", NULL);
 
-	path_extra_t *extra = g_ptr_array_new_with_free_func(g_free);
+	GPtrArray *extra = g_ptr_array_new_with_free_func(g_free);
 	g_ptr_array_add(extra, "test");
 	g_ptr_array_add(extra, "something");
 	evs_client_app_sub_cb(client, handler, extra, 1, FALSE);
@@ -1206,7 +1206,7 @@ START_TEST(test_evs_client_number_subscribed_2)
 {
 	struct client *client = u_client_create(NULL);
 
-	path_extra_t *extra = g_ptr_array_new();
+	GPtrArray *extra = g_ptr_array_new();
 	g_ptr_array_add(extra, "something");
 
 	evs_client_sub_client("/test/event/something", client, 0);

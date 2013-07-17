@@ -59,7 +59,7 @@ typedef void (*app_cb_client)(struct client *client);
 typedef void (*on_subscribe_cb)(
 	const struct client *client,
 	const gchar *event_path,
-	const path_extra_t *extra);
+	const GPtrArray *extra);
 
 /**
  * For closured "on" functions.
@@ -251,7 +251,7 @@ void apps_client_close(struct client *client);
 enum status apps_evs_client_check_subscribe(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback);
 
 /**
@@ -267,7 +267,7 @@ enum status apps_evs_client_check_subscribe(
 gboolean apps_evs_client_subscribe(
 	struct client *client,
 	const gchar *event_path,
-	path_extra_t *extra);
+	GPtrArray *extra);
 
 /**
  * Inform all the apps when a client has dropped a subscription.
@@ -281,7 +281,7 @@ void apps_evs_client_unsubscribe(
 	struct client *client,
 	const struct event_handler *handler,
 	const gchar *event_path,
-	path_extra_t *extra);
+	GPtrArray *extra);
 
 /**
  * Triggers the stats callback in all the apps.

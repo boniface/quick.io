@@ -46,7 +46,7 @@
  * @attention This may never be modified after it is created.
  * @note Each item is a gchar*.
  */
-typedef GPtrArray path_extra_t;
+typedef GPtrArray GPtrArray;
 
 /**
  * The data type for callbacks.
@@ -92,7 +92,7 @@ struct event {
 	 *
 	 * @attention This is ref-counted, so it MUST be g_ptr_array_un/ref()'d
 	 */
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	/**
 	 * The callback number the client sent.
@@ -158,7 +158,7 @@ typedef enum status (*handler_fn)(
 typedef enum status (*on_subscribe_handler_cb)(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback);
 
 /**
@@ -174,7 +174,7 @@ typedef enum status (*on_subscribe_handler_cb)(
 typedef void (*on_unsubscribe_handler_cb)(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra);
+	GPtrArray *extra);
 
 /**
  * The function type that is called when a client sends a callback to the server.
@@ -265,7 +265,7 @@ struct event_handler {
  *
  * @return The event handler. If null, extra will also be NULL.
  */
-struct event_handler* evs_server_get_handler(const gchar *event_path, path_extra_t **extra);
+struct event_handler* evs_server_get_handler(const gchar *event_path, GPtrArray **extra);
 
 /**
  * Handle an event from a client.
@@ -322,7 +322,7 @@ gchar* evs_server_path_from_handler(const struct event_handler *handler);
  * @return The complete, formatted path, with any extra parameters. If the path is
  * completely invalid, this will return NULL. This MUST be g_free()'d
  */
-gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra);
+gchar* evs_server_format_path(const gchar *event_path, GPtrArray *extra);
 
 /**
  * A shortcut function for not allowing clients to subscribe to an event.
@@ -334,7 +334,7 @@ gchar* evs_server_format_path(const gchar *event_path, path_extra_t *extra);
 APP_EXPORT enum status evs_no_subscribe(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback);
 
 /**

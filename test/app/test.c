@@ -21,7 +21,7 @@ static GAsyncQueue *_work;
 struct work {
 	struct client *client;
 	struct event_handler *handler;
-	path_extra_t *extra;
+	GPtrArray *extra;
 	callback_t client_callback;
 	gboolean success;
 };
@@ -39,7 +39,7 @@ static enum status _test_handler(
 static enum status _test_handler_on(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback)
 {
 	TEST_STATS_INC(apps_client_handler_on);
@@ -50,7 +50,7 @@ static enum status _test_handler_on(
 static enum status _test_handler_on_reject(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback)
 {
 	return CLIENT_ERROR;
@@ -59,7 +59,7 @@ static enum status _test_handler_on_reject(
 static enum status _test_handler_on_async(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback)
 {
 	struct work *work = g_slice_alloc0(sizeof(*work));
@@ -80,7 +80,7 @@ static enum status _test_handler_on_async(
 static enum status _test_handler_on_async_reject(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback)
 {
 	struct work *work = g_slice_alloc0(sizeof(*work));
@@ -101,7 +101,7 @@ static enum status _test_handler_on_async_reject(
 static void _test_handler_off(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra)
+	GPtrArray *extra)
 {
 	TEST_STATS_INC(apps_client_handler_off);
 }
@@ -155,7 +155,7 @@ void app_client_close(struct client *client)
 void app_evs_client_subscribe(
 	struct client *client,
 	const gchar *event_path,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const guint extra_len)
 {
 	TEST_STATS_INC(apps_client_subscribe);
@@ -164,7 +164,7 @@ void app_evs_client_subscribe(
 void app_evs_client_unsubscribe(
 	struct client *client,
 	const gchar *event_path,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const guint extra_len)
 {
 	TEST_STATS_INC(apps_client_unsubscribe);

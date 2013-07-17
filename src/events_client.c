@@ -98,7 +98,7 @@ static void _evs_client_sub_unref(struct evs_client_sub *sub)
 static struct evs_client_sub* _evs_client_subscription_create(
 	const gchar *event_path,
 	struct event_handler *handler,
-	path_extra_t *extra)
+	GPtrArray *extra)
 {
 	g_rw_lock_reader_unlock(&_events_lock);
 	g_rw_lock_writer_lock(&_events_lock);
@@ -169,7 +169,7 @@ static struct evs_client_sub* _evs_client_subscription_get(
 	if (sub == NULL && and_create) {
 		// To validate this event, check the server events to make sure there
 		// is a handler registered
-		path_extra_t *extra;
+		GPtrArray *extra;
 		struct event_handler *handler = evs_server_get_handler(event_path, &extra);
 
 		// If no handler was found, don't create anything
@@ -315,7 +315,7 @@ static enum status _evs_client_format_message(
 	const struct event_handler *handler,
 	const callback_t client_callback,
 	const guint32 server_callback,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const enum data_t type,
 	const gchar *data,
 	GString *buffer,
@@ -492,7 +492,7 @@ void evs_client_client_close(struct client *client)
 enum status evs_client_send(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t server_callback,
 	const enum data_t type,
 	const gchar *data)
@@ -520,7 +520,7 @@ enum status evs_client_send(
 
 enum status evs_client_pub_event(
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const enum data_t type,
 	const gchar *data)
 {
@@ -555,7 +555,7 @@ enum status evs_client_format_message(
 	const struct event_handler *handler,
 	const callback_t client_callback,
 	const guint32 server_callback,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const enum data_t type,
 	const gchar *data,
 	GString *buffer)
@@ -605,7 +605,7 @@ gboolean evs_client_init()
 void evs_client_app_sub_cb(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback,
 	const gboolean valid)
 {
@@ -776,7 +776,7 @@ void evs_client_tick()
 
 guint evs_client_number_subscribed(
 	const struct event_handler *handler,
-	path_extra_t *extra)
+	GPtrArray *extra)
 {
 	guint cnt = 0;
 

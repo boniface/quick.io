@@ -69,7 +69,7 @@ struct evs_client_sub {
 	 *
 	 * @attention MUST be g_ptr_array_free()'d when done.
 	 */
-	path_extra_t *extra;
+	GPtrArray *extra;
 
 	/**
 	 * The hash table (used as a set) of clients.
@@ -163,7 +163,7 @@ void evs_client_send_async_messages();
  */
 APP_EXPORT guint evs_client_number_subscribed(
 	const struct event_handler *handler,
-	path_extra_t *extra);
+	GPtrArray *extra);
 
 /**
  * Send a message to everyone subscribed to the event. This just adds to the list of
@@ -181,7 +181,7 @@ APP_EXPORT guint evs_client_number_subscribed(
  */
 APP_EXPORT enum status evs_client_pub_event(
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const enum data_t type,
 	const gchar *data);
 
@@ -202,7 +202,7 @@ APP_EXPORT enum status evs_client_pub_event(
 APP_EXPORT enum status evs_client_send(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t server_callback,
 	const enum data_t type,
 	const gchar *data);
@@ -227,7 +227,7 @@ enum status evs_client_format_message(
 	const struct event_handler *handler,
 	const callback_t client_callback,
 	const callback_t server_callback,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const enum data_t type,
 	const gchar *data,
 	GString *buffer);
@@ -262,7 +262,7 @@ GString* evs_client_get_message_buff();
 APP_EXPORT void evs_client_app_sub_cb(
 	struct client *client,
 	const struct event_handler *handler,
-	path_extra_t *extra,
+	GPtrArray *extra,
 	const callback_t client_callback,
 	const gboolean valid);
 
