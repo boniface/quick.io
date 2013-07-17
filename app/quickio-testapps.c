@@ -119,8 +119,8 @@ int main(int argc, char **argv)
 
 		gint exit_status;
 		GError *error = NULL;
-		gboolean ok = g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, NULL, NULL,
-								&exit_status, &error);
+		gboolean ok = g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+								NULL, NULL, &exit_status, &error);
 
 		g_unlink(INI_FILE);
 
