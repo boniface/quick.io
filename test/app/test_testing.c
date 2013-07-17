@@ -2,7 +2,7 @@
  * Make sure that all of the app testing functions work properly.
  */
 #define APP_TESTING
-#include "app/qio_app.h"
+#include "app/quickio_app.h"
 
 static gint _some_val = 0;
 static struct config_file_entry _config_options[] = {
