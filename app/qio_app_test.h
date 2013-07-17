@@ -1,10 +1,12 @@
 /**
  * Includes a bunch of shortcuts for test cases.
- *
  * @file qio_app_test.h
  */
+
 #ifndef QIO_APP_TEST_H
 #define QIO_APP_TEST_H
+
+#define APP_TESTING
 
 #include <stdio.h>
 
