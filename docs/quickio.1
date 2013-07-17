@@ -1,5 +1,5 @@
 .\" Manpage for Quick.IO
-.TH man 1 "3 April 2013" "1.0" "quickio man page"
+.TH man 1 "17 July 2013" "0.1" "quickio man page"
 
 .SH NAME
 quickio \- run the quickio server
@@ -14,7 +14,11 @@ QuickIO is a simple, fast, and difficult WebSocket server that focuses on being 
 
 .TP
 \fB\--config-file, \-c\fR
-an absolute path to the quickio.ini configuration file
+Configuration file to load; if not specified, will look in the current directory. This option may be given multiple times to load multiple files.
+
+.TP
+\fB\--config-dir, \-d\fR
+Configuration directory to scan for other config files. Looks for "*.ini".
 
 .SH BUGS
 Report bugs at: https://github.com/iheartradio/quick.io/issues

@@ -3,7 +3,7 @@ Maintainer: Andrew Stone <andrew@clovar.com>
 Section: web
 Priority: optional
 Standards-Version: 3.9.4
-Build-Depends: debhelper (>= 8.0.0), check (= 0.9.8-2), libc6-dev (>= 2.13), libglib2.0-dev (>= 2.32), libssl-dev (>= 1.0.0)
+Build-Depends: debhelper (>= 9), check (>= 0.9.8), libc6-dev (>= 2.13), libglib2.0-dev (>= 2.32), libssl-dev (>= 1.0.0)
 
 Package: quickio
 Architecture: i386 amd64
@@ -11,8 +11,8 @@ Depends: adduser, ${misc:Depends}, ${shlibs:Depends}
 Description: Quick WebSocket server
  QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
 
-Package: quickio-cluster
+Package: quickio-dev
 Architecture: i386 amd64
-Depends: quickio (= 1.0.0), ${misc:Depends}, ${shlibs:Depends}
+Depends: adduser, ${misc:Depends}, ${shlibs:Depends}, quickio (= ${binary:Version})
 Description: Quick WebSocket server
- Cluster-control application for quickio.
+ QuickIO is an incredibly fast, incredibly lightweight WebSocket server.

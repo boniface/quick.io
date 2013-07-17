@@ -11,7 +11,7 @@ clean:
 
 build:
 	dh_testdir
-	$(MAKE) release
+	$(MAKE) -j4 release
 
 install: build
 	dh_testdir

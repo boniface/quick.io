@@ -1,2 +1,0 @@
-build_release/app/cluster.so /usr/lib/quickio
-app/cluster.ini /etc/quickio/apps

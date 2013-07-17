@@ -1,4 +1,4 @@
-#include <wordexp.h>
+#include <glob.h>
 #include "qio.h"
 
 /**
@@ -15,7 +15,7 @@ static GOptionEntry command_options[] = {
 			"This option may be given multiple times to load multiple files.",
 		"./quickio.ini"},
 	{"config-dir", 'd', 0, G_OPTION_ARG_FILENAME, &_config_dir,
-		"Configuration directory to scan for other config files",
+		"Configuration directory to scan for other config files. Looks for \"*.ini\".",
 		"/etc/quickio"},
 	{NULL}
 };
@@ -448,13 +448,13 @@ gboolean option_parse_args(int argc, gchar *argv[], GError **error)
 	}
 
 	if (_config_dir != NULL) {
-		wordexp_t p;
+		glob_t gb;
 		gchar buff[PATH_MAX];
 
 		snprintf(buff, sizeof(buff), "%s/*.ini", _config_dir);
-		if (wordexp(buff, &p, 0) == 0) {
-			for (guint i = 0; i < p.we_wordc; i++) {
-				gchar *path = p.we_wordv[i];
+		if (glob(buff, 0, NULL, &gb) == 0) {
+			for (guint i = 0; i < gb.gl_pathc; i++) {
+				gchar *path = gb.gl_pathv[i];
 
 				// No real need for error checking here: the system told us the file
 				// exists; barring any malicious deleting of config files, we'll be fine
@@ -462,7 +462,7 @@ gboolean option_parse_args(int argc, gchar *argv[], GError **error)
 			}
 		}
 
-		wordfree(&p);
+		globfree(&gb);
 		g_free(_config_dir);
 		_config_dir = NULL;
 	}

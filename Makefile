@@ -12,14 +12,12 @@ MAKEFLAGS += -rR --no-print-directory
 # Where the different files live
 #
 APP = app
+EXT = ext
 LIB = lib
 SRC = src
 TEST = test
 TEST_APP = $(TEST)/app
-TOOLS = tools
 
-BUILD_APP_DIR = $(BUILD_DIR)/$(APP)
-BUILD_APP_DIR = $(BUILD_DIR)/$(APP)
 BUILD_LIB_DIR = $(BUILD_DIR)/$(LIB)
 BUILD_SRC_DIR = $(BUILD_DIR)/$(SRC)
 BUILD_TEST_DIR = $(BUILD_DIR)/$(TEST)
@@ -27,17 +25,10 @@ BUILD_TEST_APP_DIR = $(BUILD_DIR)/$(TEST_APP)
 
 BUILD_DIRS = \
 	$(BUILD_DIR) \
-	$(BUILD_APP_DIR) \
 	$(BUILD_LIB_DIR) \
 	$(BUILD_SRC_DIR) \
 	$(BUILD_TEST_DIR) \
 	$(BUILD_TEST_APP_DIR)
-
-#
-# Which apps to build by default
-#
-APPS ?= \
-	cluster.so
 
 #
 # External dependencies for the server
@@ -67,19 +58,14 @@ TEST_OBJECTS ?= \
 TEST_APP_OBJECTS ?= \
 	$(patsubst %.c, $(BUILD_DIR)/%.so, $(wildcard $(TEST_APP)/*.c))
 
-# The apps in app/
-APP_OBJECTS ?= \
-	$(patsubst %.so, $(BUILD_APP_DIR)/%.so, $(APPS))
-
-# The test apps in app/test_*
-APP_TESTS ?= \
-	$(patsubst %.c, $(BUILD_DIR)/%.so, $(wildcard $(APP)/test_*.c))
-
 #
 # Server dependencies
 #
-LIBS ?= glib-2.0 gmodule-2.0 openssl
-LIBS_REQUIREMENTS ?= glib-2.0 >= 2.32 gmodule-2.0 >= 2.32 openssl >= 1
+BASE_LIBS ?= glib-2.0
+BASE_LIBS_REQUIREMENTS ?= glib-2.0 >= 2.32
+
+LIBS ?= $(BASE_LIBS) gmodule-2.0 openssl
+LIBS_REQUIREMENTS ?= $(BASE_LIBS_REQUIREMENTS) gmodule-2.0 >= 2.32 openssl >= 1
 
 TEST_LIBS ?= check
 TEST_LIBS_REQUIREMENTS ?= check >= 0.9.8
@@ -96,12 +82,11 @@ TARGET = $(BUILD_DIR)/$(BINARY)
 QIOINI ?= quickio.ini
 BUILD_QIOINI = $(BUILD_DIR)/quickio.ini
 
-RUNAPPTESTS = $(BUILD_DIR)/runapptests
+QIO_TESTAPPS = $(BUILD_DIR)/quickio-testapps
 
 #
 # Where all of the different build files are placed
 #
-BUILD_DIR_APP_TEST = build_app_test
 BUILD_DIR_DEBUG = build_debug
 BUILD_DIR_PROFILE = build_profile
 BUILD_DIR_RELEASE = build_release
@@ -113,7 +98,6 @@ BUILD_DIR_VALGRIND = build_valgrind
 # every time, so only depend on the directories when they don't exist.
 #
 BUILD_DEP_DIR = $(filter-out $(wildcard $(BUILD_DIR)), $(BUILD_DIR))
-BUILD_APP_DEP_DIR = $(filter-out $(wildcard $(BUILD_APP_DIR)), $(BUILD_APP_DIR))
 BUILD_LIB_DEP_DIR = $(filter-out $(wildcard $(BUILD_LIB_DIR)), $(BUILD_LIB_DIR))
 BUILD_SRC_DEP_DIR = $(filter-out $(wildcard $(BUILD_SRC_DIR)), $(BUILD_SRC_DIR))
 BUILD_TEST_APP_DEP_DIR = $(filter-out $(wildcard $(BUILD_TEST_APP_DIR)), $(BUILD_TEST_APP_DIR))
@@ -180,7 +164,7 @@ LDFLAGS_TEST ?= \
 # .deb configuration
 #
 
-DPKG_BUILDPACKAGE_ARGS = \
+DEBUILD_ARGS = \
 	-uc \
 	-us \
 	-tc \
@@ -191,7 +175,7 @@ DPKG_BUILDPACKAGE_ARGS = \
 #
 # Coverage Configuration
 #
-GCOVR = ./tools/gcovr
+GCOVR = ./$(EXT)/gcovr
 
 GCOVR_ARGS = \
 	-p
@@ -226,7 +210,7 @@ GCOVR_JENKINS_APP_ARGS = \
 # -------------------------------------------------------------------------
 #
 
-.PHONY: app debug docs test
+.PHONY: debug docs test
 
 all: debug
 
@@ -237,12 +221,8 @@ clean:
 	rm -f *.xml
 	$(MAKE) -C docs clean
 
-clean-all: clean
-	$(MAKE) -C client/c clean
-	$(MAKE) -C tools clean
-
 deb:
-	debuild $(DPKG_BUILDPACKAGE_ARGS)
+	debuild $(DEBUILD_ARGS)
 
 deps:
 	@echo '-------- Checking compile requirements --------'
@@ -267,9 +247,8 @@ profile: deps _build
 
 release: export BUILD_DIR = $(BUILD_DIR_RELEASE)
 release: export CFLAGS += -O2
-release: deps app _build
-	# strip -s $(BUILD_DIR)/$(BINARY)
-	find -name '*.so' -exec strip -s {} \;
+release: deps _build _qio_testapps
+	find $(BUILD_DIR) -type f -executable -exec strip -s {} \;
 
 run: debug
 	$(BUILD_DIR_DEBUG)/$(BINARY)
@@ -279,12 +258,6 @@ test: test-build
 	@G_SLICE=debug-blocks $(BUILD_DIR)/quickio
 	@$(GCOVR) $(GCOVR_SRC_ARGS)
 	@$(GCOVR) $(GCOVR_APP_ARGS)
-
-test-apps: export BUILD_DIR = $(BUILD_DIR_DEBUG)
-test-apps: export LIBS += $(TEST_LIBS)
-test-apps: export LIBS_REQUIREMENTS += $(TEST_LIBS_REQUIREMENTS)
-test-apps:
-	$(MAKE) _test-apps
 
 test-build: export CFLAGS += $(CFLAGS_TEST)
 test-build: export LDFLAGS += $(LDFLAGS_TEST)
@@ -301,7 +274,6 @@ test-jenkins: clean test-build
 	@G_SLICE=debug-blocks $(BUILD_DIR)/quickio
 	@$(GCOVR) $(GCOVR_JENKINS_SRC_ARGS)
 	@$(GCOVR) $(GCOVR_JENKINS_APP_ARGS)
-	$(MAKE) test-apps
 
 test-valgrind: export BUILD_DIR = $(BUILD_DIR_VALGRIND)
 test-valgrind: export TEST_OBJECTS = $(TEST_UTILS_OBJECTS) $(BUILD_TEST_DIR)/valgrind.o
@@ -317,8 +289,9 @@ test-valgrind: test-build
 _build:
 	$(MAKE) $(TARGET)
 
-_test-apps: debug $(APP_TESTS) $(RUNAPPTESTS)
-	$(RUNAPPTESTS) $(BUILD_DIR)/quickio $(APP_TESTS)
+_qio_testapps: export LIBS = $(BASE_LIBS)
+_qio_testapps:
+	@$(MAKE) $(QIO_TESTAPPS)
 
 #
 # Compilation rules
@@ -349,7 +322,7 @@ $(BUILD_TEST_DIR)/valgrind.o: $(TEST)/valgrind.c $(BUILD_TEST_DEP_DIR)
 	@echo '-------- Compiling $< --------'
 	@$(CC) $(CFLAGS) $(CFLAGS_OBJ) $< -o $@
 
-$(RUNAPPTESTS): $(TOOLS)/runapptests.c
+$(QIO_TESTAPPS): $(APP)/quickio-testapps.c
 	@echo '-------- Compiling $< --------'
 	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
@@ -358,16 +331,3 @@ $(BUILD_DIRS):
 
 $(BUILD_QIOINI): $(QIOINI) $(BUILD_DEP_DIR)
 	@cp $< $@
-
-#
-# App-specific compilation rules
-# -------------------------------------------------------------------------
-#
-
-$(BUILD_APP_DIR)/cluster.so: $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
-	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_APP) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
-
-$(BUILD_APP_DIR)/test_cluster.so: $(APP)/test_cluster.c $(APP)/cluster.c $(BUILD_APP_DEP_DIR)
-	@echo '-------- Compiling $< --------'
-	@$(CC) $(CFLAGS) $(CFLAGS_APP_TEST) -Iclient/c/ $< client/c/quickio.c -o $@ $(LDFLAGS) $(shell pkg-config --libs libevent_pthreads) -lm
