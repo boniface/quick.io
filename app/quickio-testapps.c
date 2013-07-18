@@ -130,7 +130,8 @@ int main(int argc, char **argv)
 		}
 
 		if (exit_status != 0) {
-			fprintf(stderr, "\nError: tests failed on \"%s\". Exiting.\n", app);
+			fprintf(stderr, "\nError: tests failed on \"%s\" (exit status %d). Exiting.\n",
+							app, exit_status);
 			return 4;
 		}
 	}
