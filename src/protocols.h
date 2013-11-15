@@ -60,10 +60,12 @@ struct protocol {
 	/**
 	 * Function that determines if the protocol can handle the client
 	 *
-	 * @param client The client that we're checking
-	 * @param data If this protocol can handle the client, this data
-	 * will only be passed back into handshake immediately after this call;
-	 * all future calls to handshake will receive NULL.
+	 * @param client
+	 *     The client that we're checking
+	 * @param data
+	 *     If this protocol can handle the client, this data
+	 *     will only be passed back into handshake immediately after this call;
+	 *     all future calls to handshake will receive NULL.
 	 */
 	enum protocol_handles (*handles)(struct client *client, void **data);
 
@@ -72,10 +74,12 @@ struct protocol {
 	 * a client, this function will be called instead of route until
 	 * PROT_OK is returned or the client is killed.
 	 *
-	 * @param client The client to handshake with
-	 * @param data Whatever data came from the previous handles() call; this
-	 * will _only_ be set on the first call to handshake() after handles(),
-	 * not on any subsequent calls.
+	 * @param client
+	 *     The client to handshake with
+	 * @param data
+	 *     Whatever data came from the previous handles() call; this
+	 *     will _only_ be set on the first call to handshake() after handles(),
+	 *     not on any subsequent calls.
 	 */
 	enum protocol_status (*handshake)(struct client *client, void *data);
 
@@ -98,15 +102,18 @@ struct protocol {
 /**
  * Route a message from a client to the correct protocol handler
  *
- * @param client The client ready for routing
+ * @param client
+ *     The client ready for routing
  */
 void protocols_route(struct client *client);
 
 /**
  * Notification that a client was closed.
  *
- * @param client The client that closed
- * @param reason What happened to the client
+ * @param client
+ *     The client that closed
+ * @param reason
+ *     What happened to the client
  */
 void protocols_closed(struct client *client, guint reason);
 

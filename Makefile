@@ -16,6 +16,7 @@ BINARY = quickio
 OBJECTS = \
 	$(LIB_DIR)/http-parser/http_parser.o \
 	$(SRC_DIR)/config.o \
+	$(SRC_DIR)/events.o \
 	$(SRC_DIR)/protocols.o \
 	$(SRC_DIR)/protocols/flash.o \
 	$(SRC_DIR)/protocols/rfc6455.o \

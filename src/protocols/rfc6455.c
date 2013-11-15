@@ -52,9 +52,13 @@
 #define PAYLOAD_SHORT 125
 #define PAYLOAD_MEDIUM 126
 #define PAYLOAD_LONG 127
-#define MASK_FIN 0b10000000
-#define MASK_OPCODE 0b00001111
-#define MASK_LEN 0b01111111
+#define MASK_FIN 0x80
+#define MASK_OPCODE 0x0f
+#define MASKED_BIT 0x80
+#define MASK_LEN 0x7f
+
+#define OPCODE_TEXT 0x01
+#define OPCODE_CLOSE 0x08
 
 /**
  * Indicates that a client was speaking HTTP but was not intended for us or had
@@ -183,7 +187,7 @@ static GHashTable* _parse_headers(GString *rbuff, gchar **path)
 }
 
 static enum protocol_status _decode(
-	GString *rbuff,
+	struct client *client,
 	guint64 *len_,
 	guint64 *frame_len)
 {
@@ -192,6 +196,7 @@ static enum protocol_status _decode(
 	 * going on here
 	 */
 
+	GString *rbuff = client->qev_client.rbuff;
 	gchar *str = rbuff->str;
 	gchar *msg = rbuff->str;
 	guint16 header_len = 0;
@@ -203,10 +208,22 @@ static enum protocol_status _decode(
 		return PROT_AGAIN;
 	}
 
-	// @todo verify masked
-	// @todo verify opcode
+	if (str[0] & OPCODE_CLOSE) {
+		qev_close(client, QEV_CLOSE_HUP);
+		return PROT_FATAL;
+	}
 
-	len = *(str + 1) & MASK_LEN;
+	if (!(str[0] & OPCODE_TEXT)) {
+		qev_close(client, RFC6455_UNSUPPORTED_OPCODE);
+		return PROT_FATAL;
+	}
+
+	if (!(str[1] & MASKED_BIT)) {
+		qev_close(client, RFC6455_NO_MASK);
+		return PROT_FATAL;
+	}
+
+	len = str[1] & MASK_LEN;
 
 	if (len <= PAYLOAD_SHORT) {
 		header_len = 6;
@@ -238,12 +255,16 @@ static enum protocol_status _decode(
 	str += header_len;
 
 	for (i = 0; i < len; i++) {
-		msg[i] = (gchar)(*(str + i) ^ mask[i & 3]);
+		// @todo __builtin_prefetch, will that help at all?
+		msg[i] = (gchar)(str[i] ^ mask[i & 3]);
 	}
 
 	*(msg + len) = '\0';
 
-	// @todo verify UTF8
+	if (!g_utf8_validate(msg, len, NULL)) {
+		qev_close(client, RFC6455_NOT_UTF8);
+		return PROT_FATAL;
+	}
 
 	return PROT_OK;
 }
@@ -297,7 +318,7 @@ static enum protocol_status _handshake_qio(struct client *client)
 	guint64 len;
 	guint64 frame_len;
 
-	status = _decode(rbuff, &len, &frame_len);
+	status = _decode(client, &len, &frame_len);
 	if (status != PROT_OK) {
 		return status;
 	}
@@ -313,6 +334,43 @@ static enum protocol_status _handshake_qio(struct client *client)
 	g_string_truncate(rbuff, 0);
 
 	return status;
+}
+
+static enum protocol_status _handle_event(
+	struct client *client,
+	const guint64 len)
+{
+	gchar *event_path;
+	guint64 client_callback;
+	gchar *json;
+	gchar *curr;
+	gchar *end;
+	GString *rbuff = client->qev_client.rbuff;
+	gchar *str = rbuff->str;
+
+	curr = g_strstr_len(str, len, ":");
+	if (curr == NULL) {
+		goto error;
+	}
+
+	event_path = str;
+	*curr = '\0';
+	curr++;
+
+	client_callback = g_ascii_strtoull(curr, &end, 10);
+	if (*end != '=' || curr == end) {
+		goto error;
+	}
+
+	json = end + 1;
+
+	events_route(client, event_path, client_callback, json);
+
+	return PROT_OK;
+
+error:
+	qev_close(client, RFC6455_INVALID_EVENT_FORMAT);
+	return PROT_FATAL;
 }
 
 enum protocol_handles protocol_rfc6455_handles(
@@ -384,26 +442,58 @@ enum protocol_status protocol_rfc6455_handshake(
 
 enum protocol_status protocol_rfc6455_route(struct client *client)
 {
-	return PROT_FATAL;
+	guint64 len;
+	guint64 frame_len;
+	enum protocol_status status = _decode(client, &len, &frame_len);
+
+	if (status == PROT_OK) {
+		status = _handle_event(client, len);
+
+		if (status == PROT_OK) {
+			g_string_erase(client->qev_client.rbuff, 0, frame_len);
+		}
+	}
+
+	return status;
 }
 
 void protocol_rfc6455_close(struct client *client, guint reason)
 {
 	if (client->protocol_flags & HTTP_HANDSHAKED) {
 		switch (reason) {
-			case QEV_CLOSE_READ_HIGH:
-				// error code: 1009
-				qev_write(client, "\x88\x02\x03\xf1", 4);
-				break;
-
 			case QIO_CLOSE_INVALID_HANDSHAKE:
 				// error code: 1002
 				qev_write(client, "\x88\x13\x03\xea""invalid handshake", 21);
 				break;
 
+			case RFC6455_NO_MASK:
+				// error code: 1002
+				qev_write(client, "\x88\x17\x03\xea""client must mask data", 25);
+				break;
+
+			case RFC6455_INVALID_EVENT_FORMAT:
+				// error code: 1002
+				qev_write(client, "\x88\x16\x03\xea""invalid event format", 24);
+				break;
+
+			case RFC6455_UNSUPPORTED_OPCODE:
+				// error code: 1003
+				qev_write(client, "\x88\x02\x03\xeb", 4);
+				break;
+
+			case RFC6455_NOT_UTF8:
+				// error code: 1007
+				qev_write(client, "\x88\x02\x03\xef", 4);
+				break;
+
 			case QEV_CLOSE_TIMEOUT:
 				// error code: 1008
 				qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
+				break;
+
+			case QEV_CLOSE_READ_HIGH:
+				// error code: 1009
+				qev_write(client, "\x88\x02\x03\xf1", 4);
 				break;
 
 			default:

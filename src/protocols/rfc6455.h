@@ -1,5 +1,5 @@
 /**
- * The official QuickIO protocol over websockets (rfc6455).
+ * The QuickIO protocol over websockets (rfc6455).
  * @file rfc6455.h
  *
  * @author Andrew Stone <andrew@clovar.com>
@@ -11,6 +11,31 @@
 
 #ifndef QUICKIO_PROTOCOL_RFC6455_H
 #define QUICKIO_PROTOCOL_RFC6455_H
+
+/**
+ * Extends the reasons for closing a client
+ */
+enum rfc6455_close_reasons {
+	/**
+	 * Client didn't mask his message
+	 */
+	RFC6455_NO_MASK = 100,
+
+	/**
+	 * Client sent an unsupported opcode
+	 */
+	RFC6455_UNSUPPORTED_OPCODE,
+
+	/**
+	 * Client sent data that was not UTF8
+	 */
+	RFC6455_NOT_UTF8,
+
+	/**
+	 * The event was improperly formatted
+	 */
+	RFC6455_INVALID_EVENT_FORMAT,
+};
 
 /**
  * If rfc6455 can handle this client

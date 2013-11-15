@@ -44,7 +44,9 @@ enum protocol_handles protocol_flash_handles(
 	return PROT_NO;
 }
 
-enum protocol_status protocol_flash_handshake(struct client *client, void *data)
+enum protocol_status protocol_flash_handshake(
+	struct client *client,
+	void *data G_GNUC_UNUSED)
 {
 	qev_write(client, FLASH_POLICY_RESPONSE, sizeof(FLASH_POLICY_RESPONSE) - 1);
 	qev_close(client, QIO_CLOSE_OK);

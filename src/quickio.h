@@ -25,6 +25,7 @@ struct client;
 #include "../lib/quick-event/src/qev.h"
 #include "../lib/http-parser/http_parser.h"
 #include "config.h"
+#include "events.h"
 #include "protocols.h"
 #include "protocols/flash.h"
 #include "protocols/rfc6455.h"

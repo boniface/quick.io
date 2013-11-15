@@ -11,6 +11,7 @@
 int main(int argc, char **argv)
 {
 	config_init();
+	events_init();
 	protocols_init();
 	ASSERT(qev_init(argv, argc), "Could not init quick-event");
 
