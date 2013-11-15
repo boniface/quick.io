@@ -1,0 +1,62 @@
+Next Version (refactor + performance):
+	* /qio/ohai on open, otherwise kill
+	* stomp + radioDNS
+	* host verification: not just *
+	* QEV: read + write buffers per socket. Steal evbuffer?
+	* evs_client_send() can fail if OS buffer full
+	* SSL - optimize? drop slog algos? ecdh key size?
+		- Disable ephemeral ciphers
+	* bpool - string buffer pool (possibly thread-local?) (in QEV?) - benchmark async queue for this
+	* eliminate mallocs
+	* lock-free lists everywhere (integrate into QEV)
+	* clean up the app interface (X-macros!)
+	* clean up tests
+	* clean up main: make inits FATAL out
+	* consider dropping plain data type? join go 100% json?
+	* use for tests: https://developer.gnome.org/glib/2.37/glib-File-Utilities.html#g-file-set-contents
+	* c ternary: return f() ? : -1; // Returns the result of f unless it is 0
+
+Clients:
+	* implement SSL for all of them
+
+client-c:
+	* implement long messages: https://github.com/iheartradio/quick.io-client-c/blob/master/quickio.c#L562
+	* can never happen? https://github.com/iheartradio/quick.io-client-c/blob/master/quickio.c#L494
+
+Documentation:
+	* What quickio-testapp is
+	* Where to include #include <qio_app_test.h> for app testing (#define APP_TESTING for config, so before #include <qio_app.h>)
+
+Style Cleanup:
+	c89 style -> all the variables decls to start of fn
+
+	Struct init:
+		static struct ctl_table net_core_table[] = {
+		#ifdef CONFIG_NET
+			{
+				.procname	= "wmem_max",
+				.data		= &sysctl_wmem_max,
+				.maxlen		= sizeof(int),
+				.mode		= 0644,
+				.proc_handler	= proc_dointvec_minmax,
+				.extra1		= &one,
+			},
+
+	fn() {
+		...
+	out_unlock:
+		shm_unlock(shp);
+	out:
+		return err;
+	}
+
+	fn () {
+		...
+	out_unlock0:
+		ipc_unlock_object(&shp->shm_perm);
+	out_unlock1:
+		rcu_read_unlock();
+	out_up:
+		up_write(&shm_ids(ns).rw_mutex);
+		return err;
+	}

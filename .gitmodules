@@ -1,0 +1,6 @@
+[submodule "lib/http-parser"]
+	path = lib/http-parser
+	url = git@github.com:joyent/http-parser.git
+[submodule "lib/quick-event"]
+	path = lib/quick-event
+	url = git@github.ihrint.com:quickio/quick-event.git

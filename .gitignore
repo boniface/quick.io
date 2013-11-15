@@ -8,7 +8,7 @@
 *.so
 *.pyc
 gmon.out
-/build*/
 test*.xml
 
 /*.sublime*
+quickio

@@ -1,5 +1,9 @@
 /**
  * Includes a bunch of shortcuts for test cases.
+ *
+ * @attention This header MUST come before quickio_app.h in testing for the tests
+ * to function correctly.
+ *
  * @file qio_app_test.h
  */
 
