@@ -117,7 +117,9 @@ static void _cleanup()
 {
 	guint i;
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
-		_protocols[i].exit();
+		if (_protocols[i].exit != NULL) {
+			_protocols[i].exit();
+		}
 	}
 }
 

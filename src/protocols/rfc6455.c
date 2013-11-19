@@ -341,7 +341,7 @@ static enum protocol_status _handle_event(
 	const guint64 len)
 {
 	gchar *event_path;
-	guint64 client_callback;
+	evs_cb_t client_cb;
 	gchar *json;
 	gchar *curr;
 	gchar *end;
@@ -357,14 +357,14 @@ static enum protocol_status _handle_event(
 	*curr = '\0';
 	curr++;
 
-	client_callback = g_ascii_strtoull(curr, &end, 10);
+	client_cb = g_ascii_strtoull(curr, &end, 10);
 	if (*end != '=' || curr == end) {
 		goto error;
 	}
 
 	json = end + 1;
 
-	events_route(client, event_path, client_callback, json);
+	evs_route(client, event_path, client_cb, json);
 
 	return PROT_OK;
 
@@ -402,6 +402,7 @@ enum protocol_handles protocol_rfc6455_handles(
 
 	if (headers == NULL ||
 		path == NULL ||
+		#warning remove this, the QIO handshake replaces this
 		!g_str_has_suffix(path, "/qio") ||
 		!g_hash_table_contains(headers, CHALLENGE_KEY) ||
 		g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
@@ -434,7 +435,8 @@ enum protocol_status protocol_rfc6455_handshake(
 
 		client->protocol_flags |= HTTP_HANDSHAKED;
 
-		return PROT_AGAIN;
+		// @todo this MUST BE PROT_AGAIN to ensure QIO handshake
+		return PROT_OK;
 	} else {
 		return _handshake_qio(client);
 	}

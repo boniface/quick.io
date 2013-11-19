@@ -8,10 +8,13 @@
 
 #include "quickio.h"
 
+#ifndef QIO_TESTING
 int main(int argc, char **argv)
+#else
+int qio_main(int argc, char **argv)
+#endif
 {
 	config_init();
-	events_init();
 	protocols_init();
 	ASSERT(qev_init(argv, argc), "Could not init quick-event");
 
@@ -31,7 +34,12 @@ int main(int argc, char **argv)
 
 	ASSERT(qev_run(), "Could not run quick-event");
 
+	// @todo init this before running
+	evs_init();
+
+#ifndef QIO_TESTING
 	qev_wait_for_exit();
+#endif
 
 	return 0;
 }

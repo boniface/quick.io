@@ -19,9 +19,7 @@
 
 #include <glib.h>
 
-/** Simple forward declaration */
-struct client;
-
+#include "../include/quickio_app.h"
 #include "../lib/quick-event/src/qev.h"
 #include "../lib/http-parser/http_parser.h"
 #include "config.h"
@@ -87,5 +85,14 @@ enum quickio_close_reasons {
 	 */
 	QIO_CLOSE_OK,
 };
+
+
+#ifdef QIO_TESTING
+	/**
+	 * During testing, the server needs to be able to be started from
+	 * anywhere.
+	 */
+	int qio_main(int argc, char **argv);
+#endif
 
 #endif
