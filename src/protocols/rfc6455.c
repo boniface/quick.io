@@ -314,6 +314,7 @@ static void _handshake_http(
 static enum protocol_status _handshake_qio(struct client *client)
 {
 	enum protocol_status status;
+	gboolean good;
 	GString *rbuff = client->qev_client.rbuff;
 	guint64 len;
 	guint64 frame_len;
@@ -323,7 +324,8 @@ static enum protocol_status _handshake_qio(struct client *client)
 		return status;
 	}
 
-	if (g_strcmp0(rbuff->str, "/qio/ohai") == 0) {
+	good = protocol_raw_check_handshake(client);
+	if (good) {
 		qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
 		status = PROT_OK;
 	} else {
@@ -331,46 +333,7 @@ static enum protocol_status _handshake_qio(struct client *client)
 		status = PROT_FATAL;
 	}
 
-	g_string_truncate(rbuff, 0);
-
 	return status;
-}
-
-static enum protocol_status _handle_event(
-	struct client *client,
-	const guint64 len)
-{
-	gchar *event_path;
-	evs_cb_t client_cb;
-	gchar *json;
-	gchar *curr;
-	gchar *end;
-	GString *rbuff = client->qev_client.rbuff;
-	gchar *str = rbuff->str;
-
-	curr = g_strstr_len(str, len, ":");
-	if (curr == NULL) {
-		goto error;
-	}
-
-	event_path = str;
-	*curr = '\0';
-	curr++;
-
-	client_cb = g_ascii_strtoull(curr, &end, 10);
-	if (*end != '=' || curr == end) {
-		goto error;
-	}
-
-	json = end + 1;
-
-	evs_route(client, event_path, client_cb, json);
-
-	return PROT_OK;
-
-error:
-	qev_close(client, RFC6455_INVALID_EVENT_FORMAT);
-	return PROT_FATAL;
 }
 
 enum protocol_handles protocol_rfc6455_handles(
@@ -402,7 +365,6 @@ enum protocol_handles protocol_rfc6455_handles(
 
 	if (headers == NULL ||
 		path == NULL ||
-		#warning remove this, the QIO handshake replaces this
 		!g_str_has_suffix(path, "/qio") ||
 		!g_hash_table_contains(headers, CHALLENGE_KEY) ||
 		g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
@@ -435,8 +397,7 @@ enum protocol_status protocol_rfc6455_handshake(
 
 		client->protocol_flags |= HTTP_HANDSHAKED;
 
-		// @todo this MUST BE PROT_AGAIN to ensure QIO handshake
-		return PROT_OK;
+		return PROT_AGAIN;
 	} else {
 		return _handshake_qio(client);
 	}
@@ -449,11 +410,7 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	enum protocol_status status = _decode(client, &len, &frame_len);
 
 	if (status == PROT_OK) {
-		status = _handle_event(client, len);
-
-		if (status == PROT_OK) {
-			g_string_erase(client->qev_client.rbuff, 0, frame_len);
-		}
+		status = protocol_raw_handle(client, len, frame_len);
 	}
 
 	return status;
@@ -468,14 +425,14 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 				qev_write(client, "\x88\x13\x03\xea""invalid handshake", 21);
 				break;
 
+			case RAW_INVALID_EVENT_FORMAT:
+				// error code: 1002
+				qev_write(client, "\x88\x16\x03\xea""invalid event format", 24);
+				break;
+
 			case RFC6455_NO_MASK:
 				// error code: 1002
 				qev_write(client, "\x88\x17\x03\xea""client must mask data", 25);
-				break;
-
-			case RFC6455_INVALID_EVENT_FORMAT:
-				// error code: 1002
-				qev_write(client, "\x88\x16\x03\xea""invalid event format", 24);
 				break;
 
 			case RFC6455_UNSUPPORTED_OPCODE:

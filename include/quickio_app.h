@@ -9,9 +9,6 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-/** Simple forward declaration */
-struct client;
-
 /**
  * Clients are to be treated as a blob that cannot be modified. All the server
  * functions know what to do with them.
@@ -63,18 +60,24 @@ enum evs_status {
  * @param client
  *     The client that triggered the event.
  */
-typedef enum evs_status (*evs_handler)(
+typedef enum evs_status (*evs_handler_fn)(
 	client_t *client,
-	const gchar *extra);
+	const gchar *ev_extra,
+	const evs_cb_t client_cb,
+	gchar *json);
 
 /**
  * The handler for when a client subscribes.
  *
+ * @todo Indicate if there are already clients subscribed to the event
+ *
  * @param client
  *     The client that subscribed.
  */
-typedef enum evs_status (*evs_subscribe)(
-	client_t *client);
+typedef enum evs_status (*evs_subscribe_fn)(
+	client_t *client,
+	const gchar *ev_extra,
+	const evs_cb_t client_cb);
 
 /**
  * The handler for when a client unsubscribes.
@@ -82,10 +85,10 @@ typedef enum evs_status (*evs_subscribe)(
  * @param client
  *     The client that unsubscribed.
  */
-typedef void (*evs_unsubscribe)(
+typedef void (*evs_unsubscribe_fn)(
 	client_t *client);
 
 /**
  * Function called when the client sends a callback to the server
  */
-typedef void (*evs_cb)();
+typedef void (*evs_cb_fn)();

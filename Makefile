@@ -3,7 +3,7 @@
 #
 # Hide annoying messages
 #
-MAKEFLAGS += -rR --no-print-directory
+MAKEFLAGS += --no-print-directory
 
 CC = clang
 
@@ -13,13 +13,20 @@ SRC_DIR = src
 
 BINARY = quickio
 
+HEADERS = \
+	$(shell find $(SRC_DIR) -name '*.h') \
+	include/quickio_app.h
+
 OBJECTS = \
 	$(LIB_DIR)/http-parser/http_parser.o \
 	$(SRC_DIR)/config.o \
-	$(SRC_DIR)/events.o \
+	$(SRC_DIR)/evs.o \
+	$(SRC_DIR)/evs_qio.o \
+	$(SRC_DIR)/evs_query.o \
 	$(SRC_DIR)/protocols.o \
 	$(SRC_DIR)/protocols/flash.o \
 	$(SRC_DIR)/protocols/rfc6455.o \
+	$(SRC_DIR)/protocols/raw.o \
 	$(SRC_DIR)/protocols/stomp.o \
 	$(SRC_DIR)/quickio.o \
 	$(SRC_DIR)/qev.o
@@ -28,10 +35,14 @@ OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
 
 TESTS = \
-	test_events
+	test_evs
+
+BENCHMARKS = \
+	bench_evs_query
 
 LIBS = glib-2.0 openssl
 LIBS_TEST = check
+LIBQEV = lib/quick-event/libqev.a
 
 CFLAGS = \
 	-g \
@@ -53,7 +64,12 @@ CFLAGS = \
 CFLAGS_TEST = \
 	-I../$(SRC_DIR) \
 	-DQIO_TESTING \
-	$(shell pkg-config --cflags $(LIBS_TEST)) \
+	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
+	$(shell pkg-config --cflags $(LIBS_TEST))
+
+CFLAGS_BENCH = \
+	-O3 \
+	$(CFLAGS_TEST)
 
 LDFLAGS = \
 	-g \
@@ -64,7 +80,8 @@ LDFLAGS = \
 	$(shell pkg-config --libs $(LIBS))
 
 LDFLAGS_TEST = \
-	$(shell pkg-config --libs $(LIBS_TEST))
+	$(shell pkg-config --libs $(LIBS_TEST)) \
+	$(CURDIR)/$(LIBQEV)
 
 all:
 	@echo "Choose one of the following:"
@@ -79,19 +96,31 @@ test: $(TESTS)
 clean:
 	find -name '*.gcno' -exec rm {} \;
 	find -name '*.gcda' -exec rm {} \;
-	find $(TEST_DIR) -name '*.xml' -exec rm {} \;
+	find -name '*.xml' -exec rm {} \;
+	find test -name 'test_*.ini' -exec rm {} \;
 	rm -f $(OBJECTS)
-	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
+	$(MAKE) -C lib/quick-event/ clean
+	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f $(BINARY)
 
-$(BINARY): $(OBJECTS)
+$(BINARY): $(OBJECTS) $(LIBQEV) $(SRC_DIR)/main.o
 	@echo '-------- Compiling quickio --------'
-	@$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+	@$(CC) $^ -o $@ $(LDFLAGS)
 
-$(TESTS):
-test_%: CFLAGS += $(CFLAGS_TEST)
-test_%: LDFLAGS += $(LDFLAGS_TEST)
-test_%: $(TEST_DIR)/test_%.c $(TEST_DIR)/test.c $(OBJECTS)
-	@echo '-------- Compiling $@ --------'
-	cd $(TEST_DIR) && $(CC) $(CFLAGS) $@.c test.c $(OBJECTS_TEST) -o $@ $(LDFLAGS)
+$(TESTS) $(BENCHMARKS):
+	@$(MAKE) $(TEST_DIR)/$@
 	@cd $(TEST_DIR) && ./$@
+
+%.o: %.c $(HEADERS)
+	@echo '-------- Compiling $@ --------'
+	@$(CC) -c $(CFLAGS) $< -o $@
+
+$(LIBQEV):
+	cd lib/quick-event && $(MAKE)
+
+$(TEST_DIR)/test_%: CFLAGS += $(CFLAGS_TEST)
+$(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_BENCH)
+$(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
+$(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV)
+	@echo '-------- Compiling $@ --------'
+	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)

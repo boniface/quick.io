@@ -13,6 +13,11 @@
 #include "quickio.h"
 
 /**
+ * For communicating with QIO, this is a crazy simple little client
+ */
+typedef struct test_client test_client_t;
+
+/**
  * Create a new test suite, ready for running.
  *
  * @param suite_name
@@ -60,3 +65,29 @@ void test_teardown();
  * @return The test case, for adding some special-case tests.
  */
 TCase* test_add(Suite *s, const gchar *name, ...) G_GNUC_NULL_TERMINATED;
+
+/**
+ * Get a client connected to QIO.
+ */
+test_client_t* test_client(const gboolean ssl);
+
+/**
+ * Send a message from the client to the server
+ */
+void test_send(
+	test_client_t *tclient,
+	const gchar *data,
+	const guint64 len);
+
+/**
+ * Receive a message from the server to the client
+ */
+guint64 test_recv(
+	test_client_t *tclient,
+	gchar *data,
+	const guint64 len);
+
+/**
+ * Close and free up any resources the client was using.
+ */
+void test_close(test_client_t *tclient);

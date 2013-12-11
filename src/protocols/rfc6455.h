@@ -9,8 +9,8 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-#ifndef QUICKIO_PROTOCOL_RFC6455_H
-#define QUICKIO_PROTOCOL_RFC6455_H
+#pragma once
+#include "quickio.h"
 
 /**
  * Extends the reasons for closing a client
@@ -19,7 +19,7 @@ enum rfc6455_close_reasons {
 	/**
 	 * Client didn't mask his message
 	 */
-	RFC6455_NO_MASK = 100,
+	RFC6455_NO_MASK = 2000,
 
 	/**
 	 * Client sent an unsupported opcode
@@ -30,11 +30,6 @@ enum rfc6455_close_reasons {
 	 * Client sent data that was not UTF8
 	 */
 	RFC6455_NOT_UTF8,
-
-	/**
-	 * The event was improperly formatted
-	 */
-	RFC6455_INVALID_EVENT_FORMAT,
 };
 
 /**
@@ -60,5 +55,3 @@ enum protocol_status protocol_rfc6455_route(struct client *client);
  * Terminates all communications with the client
  */
 void protocol_rfc6455_close(struct client *client, guint reason);
-
-#endif

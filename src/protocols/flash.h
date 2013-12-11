@@ -10,8 +10,8 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-#ifndef QUICKIO_PROTOCOL_FLASH_H
-#define QUICKIO_PROTOCOL_FLASH_H
+#pragma once
+#include "quickio.h"
 
 /**
  * If flash can handle this client
@@ -27,5 +27,3 @@ enum protocol_status protocol_flash_handshake(struct client *client, void *data)
  * Routes the data received from a client
  */
 enum protocol_status protocol_flash_route(struct client *client);
-
-#endif

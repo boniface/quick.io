@@ -9,23 +9,22 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-#ifndef QUICKIO_H
-#define QUICKIO_H
+#pragma once
 
 #define G_LOG_DOMAIN "quickio"
-
-#define QEV_CLIENT_T struct client
-#define QEV_CLIENT_SLOT qev_client
+#define QEV_CLIENT client
 
 #include <glib.h>
-
 #include "../include/quickio_app.h"
 #include "../lib/quick-event/src/qev.h"
 #include "../lib/http-parser/http_parser.h"
 #include "config.h"
-#include "events.h"
+#include "evs.h"
+#include "evs_qio.h"
+#include "evs_query.h"
 #include "protocols.h"
 #include "protocols/flash.h"
+#include "protocols/raw.h"
 #include "protocols/rfc6455.h"
 #include "protocols/stomp.h"
 
@@ -86,13 +85,7 @@ enum quickio_close_reasons {
 	QIO_CLOSE_OK,
 };
 
-
-#ifdef QIO_TESTING
-	/**
-	 * During testing, the server needs to be able to be started from
-	 * anywhere.
-	 */
-	int qio_main(int argc, char **argv);
-#endif
-
-#endif
+/**
+ * Run the server from anywhere.
+ */
+void qio_main(int argc, char **argv);

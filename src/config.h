@@ -9,8 +9,8 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-#ifndef QUICKIO_CONFIG_H
-#define QUICKIO_CONFIG_H
+#pragma once
+#include "quickio.h"
 
 /**
  * The maximum number of subscriptions a single client may have.
@@ -65,5 +65,3 @@ gchar *cfg_ssl_key_path_1;
  * Registers all configuration options with QEV.
  */
 void config_init();
-
-#endif

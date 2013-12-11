@@ -6,10 +6,12 @@
 *.gcno
 *.o
 *.so
-*.pyc
 gmon.out
 test_*
+bench_*
 !test_*.c
+!bench_*.c
 quickio
+test/test_*.ini
 
 /*.sublime*

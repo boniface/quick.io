@@ -37,6 +37,12 @@ static struct protocol _protocols[] ={
 		.close = NULL,
 		.exit = NULL,
 	},
+	{	.handles = protocol_raw_handles,
+		.handshake = protocol_raw_handshake,
+		.route = protocol_raw_route,
+		.close = NULL,
+		.exit = NULL,
+	},
 };
 
 static gboolean _find_handler(struct client *client, void **data)

@@ -9,8 +9,8 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-#ifndef QUICKIO_PROTOCOLS_H
-#define QUICKIO_PROTOCOLS_H
+#pragma once
+#include "quickio.h"
 
 /**
  * If a protocol can handle a client
@@ -121,5 +121,3 @@ void protocols_closed(struct client *client, guint reason);
  * Setup all protocols and get ready to run.
  */
 void protocols_init();
-
-#endif

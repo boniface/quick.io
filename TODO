@@ -15,6 +15,7 @@ Next Version (refactor + performance):
 	* consider dropping plain data type? join go 100% json?
 	* use for tests: https://developer.gnome.org/glib/2.37/glib-File-Utilities.html#g-file-set-contents
 	* c ternary: return f() ? : -1; // Returns the result of f unless it is 0
+	* TODO: bench_events_query -> optimize that ptrie?
 
 Clients:
 	* implement SSL for all of them

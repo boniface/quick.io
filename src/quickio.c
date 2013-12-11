@@ -8,11 +8,7 @@
 
 #include "quickio.h"
 
-#ifndef QIO_TESTING
-int main(int argc, char **argv)
-#else
-int qio_main(int argc, char **argv)
-#endif
+void qio_main(int argc, char **argv)
 {
 	config_init();
 	protocols_init();
@@ -36,10 +32,4 @@ int qio_main(int argc, char **argv)
 
 	// @todo init this before running
 	evs_init();
-
-#ifndef QIO_TESTING
-	qev_wait_for_exit();
-#endif
-
-	return 0;
 }
