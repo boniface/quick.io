@@ -44,17 +44,6 @@ enum protocol_status protocol_raw_handshake(
 	return status;
 }
 
-gboolean protocol_raw_check_handshake(struct client *client)
-{
-	gboolean good;
-	GString *rbuff = client->qev_client.rbuff;
-
-	good = g_strcmp0(rbuff->str, HANDSHAKE) == 0;
-	g_string_truncate(rbuff, 0);
-
-	return good;
-}
-
 enum protocol_status protocol_raw_route(struct client *client)
 {
 	guint64 len;
@@ -72,6 +61,30 @@ enum protocol_status protocol_raw_route(struct client *client)
 	g_string_erase(rbuff, 0, sizeof(guint64));
 
 	return protocol_raw_handle(client, len, len);
+}
+
+GString* protocol_raw_frame(const gchar *data, const guint64 len)
+{
+	gchar size[sizeof(guint64)];
+	GString *buff = qev_buffer_get();
+
+	*((guint64*)size) = GUINT64_TO_BE(len);
+
+	g_string_append_len(buff, size, sizeof(size));
+	g_string_append_len(buff, data, len);
+
+	return buff;
+}
+
+gboolean protocol_raw_check_handshake(struct client *client)
+{
+	gboolean good;
+	GString *rbuff = client->qev_client.rbuff;
+
+	good = g_strcmp0(rbuff->str, HANDSHAKE) == 0;
+	g_string_truncate(rbuff, 0);
+
+	return good;
 }
 
 enum protocol_status protocol_raw_handle(
@@ -105,10 +118,10 @@ enum protocol_status protocol_raw_handle(
 
 	json = end + 1;
 
-
 	evs_route(client, event_path, client_cb, json);
 
 	g_string_erase(client->qev_client.rbuff, 0, frame_len);
+
 	return PROT_OK;
 
 error:

@@ -16,35 +16,57 @@ static enum evs_status _sub(
 {
 	gchar *ev_path;
 	gchar *ev_extra;
-	enum qev_json_status jstatus;
-	enum evs_status status = EVS_ERROR;
 	struct event *ev;
+	enum qev_json_status jstatus;
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
 	if (jstatus != qev_json_ok) {
+		evs_send_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		goto out;
 	}
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
+		evs_send_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
 		goto out;
 	}
 
-	if (ev->subscribe_fn == NULL) {
-		status = EVS_OK;
-	} else {
-		status = ev->subscribe_fn(client, ev_extra, client_cb);
-	}
-
-	if (status == EVS_OK) {
-		evs_subscribe(client, ev, ev_extra, 0);
-	}
+	evs_subscribe(client, ev, ev_extra, client_cb);
 
 out:
-	return status;
+	return EVS_STATUS_HANDLED;
+}
+
+static enum evs_status _unsub(
+	struct client *client,
+	const gchar *_ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb,
+	gchar *json)
+{
+	gchar *ev_path;
+	gchar *ev_extra;
+	struct event *ev;
+	enum qev_json_status jstatus;
+
+	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
+	if (jstatus != qev_json_ok) {
+		evs_send_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+		return EVS_STATUS_HANDLED;
+	}
+
+	ev = evs_query(ev_path, &ev_extra);
+	if (ev == NULL) {
+		evs_send_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
+		return EVS_STATUS_HANDLED;
+	}
+
+	evs_unsubscribe(client, ev, ev_extra);
+
+	return EVS_STATUS_OK;
 }
 
 void evs_qio_init()
 {
-	evs_on(NULL, "/qio/sub", _sub, NULL, NULL, TRUE);
+	evs_add_handler("/qio/on", _sub, NULL, NULL, TRUE);
+	evs_add_handler("/qio/off", _unsub, NULL, NULL, TRUE);
 }

@@ -26,3 +26,11 @@ enum protocol_status protocol_stomp_handshake(struct client *client, void *data)
  * Routes the data received from a client
  */
 enum protocol_status protocol_stomp_route(struct client *client);
+
+/**
+ * Frames data to send out to a client.
+ *
+ * @return
+ *     A buffer containg the frame. @args{transfer-full}
+ */
+GString* protocol_stomp_frame(const gchar *data, const guint64 len);

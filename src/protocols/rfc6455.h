@@ -52,6 +52,14 @@ enum protocol_status protocol_rfc6455_handshake(
 enum protocol_status protocol_rfc6455_route(struct client *client);
 
 /**
+ * Frames data to send out to a client.
+ *
+ * @return
+ *     A buffer containg the frame. @args{transfer-full}
+ */
+GString* protocol_rfc6455_frame(const gchar *data, const guint64 len);
+
+/**
  * Terminates all communications with the client
  */
 void protocol_rfc6455_close(struct client *client, guint reason);

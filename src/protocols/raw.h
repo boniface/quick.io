@@ -39,6 +39,14 @@ enum protocol_status protocol_raw_handshake(struct client *client, void *data);
 enum protocol_status protocol_raw_route(struct client *client);
 
 /**
+ * Frames data to send out to a client.
+ *
+ * @return
+ *     A buffer containg the frame. @args{transfer-full}
+ */
+GString* protocol_raw_frame(const gchar *data, const guint64 len);
+
+/**
  * Checks that the data received is indeed a valid QIO handshake
  */
 gboolean protocol_raw_check_handshake(struct client *client);

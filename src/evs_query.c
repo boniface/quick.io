@@ -13,7 +13,7 @@
  */
 struct _ptrie {
 	/**
-	 * These fields are publicly accessible
+	 * The actual event that lives at this node.
 	 */
 	struct event ev;
 
@@ -26,11 +26,6 @@ struct _ptrie {
 	 * If this event wants to handle all children paths
 	 */
 	gboolean handle_children;
-
-	/**
-	 * All subscriptions to this event, referenced by extra path segments
-	 */
-	GHashTable *subscriptions;
 
 	/**
 	 * Any array of possible children.
@@ -54,10 +49,10 @@ static void _ptrie_free(void *ptrie_)
 		_ptrie_free(ptrie->childs[i]);
 	}
 
-	g_free(ptrie->ev.ev_path);
-	if (ptrie->subscriptions) {
-		g_hash_table_unref(ptrie->subscriptions);
+	if (ptrie->ev.ev_path != NULL) {
+		event_clear(&ptrie->ev);
 	}
+
 	g_slice_free1(sizeof(*ptrie), ptrie);
 }
 
@@ -101,13 +96,9 @@ gboolean evs_query_insert(
 		return FALSE;
 	}
 
-	parent->ev.ev_path = g_strdup(ev_path);
-	parent->ev.handler_fn = handler_fn;
-	parent->ev.subscribe_fn = subscribe_fn;
-	parent->ev.unsubscribe_fn = unsubscribe_fn;
 	parent->handle_children = handle_children;
-	parent->subscriptions = g_hash_table_new_full(g_str_hash,
-										g_str_equal, NULL, NULL);
+	event_init(&parent->ev, ev_path, handler_fn,
+				subscribe_fn, unsubscribe_fn);
 
 	return TRUE;
 }

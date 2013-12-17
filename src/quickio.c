@@ -10,9 +10,12 @@
 
 void qio_main(int argc, char **argv)
 {
+	ASSERT(qev_init(argv, argc), "Could not init quick-event");
+
+	evs_init(); // Initialize internal events so that external can't override.
 	config_init();
 	protocols_init();
-	ASSERT(qev_init(argv, argc), "Could not init quick-event");
+	apps_init();
 
 	if (cfg_bind_address != NULL) {
 		guint16 port = cfg_bind_port;
@@ -28,8 +31,7 @@ void qio_main(int argc, char **argv)
 			"Could not listen on %s:%u", cfg_bind_address_ssl, port);
 	}
 
-	ASSERT(qev_run(), "Could not run quick-event");
+	// @todo stomp address + port?
 
-	// @todo init this before running
-	evs_init();
+	ASSERT(qev_run(), "Could not run quick-event");
 }

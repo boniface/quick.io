@@ -11,13 +11,17 @@
 
 #pragma once
 
+#define QUICKIO_SERVER
 #define G_LOG_DOMAIN "quickio"
 #define QEV_CLIENT client
 
-#include <glib.h>
+#include "apps_export.h"
 #include "../include/quickio_app.h"
+#include <gmodule.h>
 #include "../lib/quick-event/src/qev.h"
 #include "../lib/http-parser/http_parser.h"
+#include "apps.h"
+#include "client.h"
 #include "config.h"
 #include "evs.h"
 #include "evs_qio.h"
@@ -27,36 +31,6 @@
 #include "protocols/raw.h"
 #include "protocols/rfc6455.h"
 #include "protocols/stomp.h"
-
-struct client {
-	/**
-	 * All for quick-event
-	 */
-	struct qev_client qev_client;
-
-	/**
-	 * The state of the client at the protocol level. Protocols may only
-	 * touch this once they have signaled that they handle the client.
-	 *
-	 * @note Protocols may only use bits 0-14, bit 15 (identified by 0x8000) is
-	 * reserved for the protocol router.
-	 */
-	guint16 protocol_flags;
-
-	/**
-	 * Once a protocol has accepted the client, this will point to that
-	 * protocol's routing function.
-	 */
-	struct protocol *protocol;
-
-	/**
-	 * The only timeout that will be set on a client from QIO.
-	 *
-	 * @attention This MAY ONLY ever be set on connect and in the protocols.
-	 * It may never be altered anywhere else.
-	 */
-	qev_timeout_t *timeout;
-};
 
 /**
  * Extends the reasons for closing a client

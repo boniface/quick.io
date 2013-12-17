@@ -89,6 +89,12 @@ struct protocol {
 	enum protocol_status (*route)(struct client *client);
 
 	/**
+	 * Frames the data in whatever the protocol dictates such that it
+	 * can be directly written via qev_write().
+	 */
+	GString* (*frame)(const gchar *data, const guint64 len);
+
+	/**
 	 * Sends a final farewell message to clients before they close.
 	 */
 	void (*close)(struct client *client, guint reason);
@@ -106,6 +112,19 @@ struct protocol {
  *     The client ready for routing
  */
 void protocols_route(struct client *client);
+
+/**
+ * Write data out to a client, properly framing it as the protocol
+ * requires.
+ *
+ * @param client
+ *     The client to write to
+ * @param data
+ *     The data to send out the protocol
+ * @param len
+ *     The length of the data.
+ */
+void protocols_write(struct client *client, const gchar *data, const guint len);
 
 /**
  * Notification that a client was closed.

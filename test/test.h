@@ -69,10 +69,22 @@ TCase* test_add(Suite *s, const gchar *name, ...) G_GNUC_NULL_TERMINATED;
 /**
  * Get a client connected to QIO.
  */
-test_client_t* test_client(const gboolean ssl);
+test_client_t* test_client();
 
 /**
- * Send a message from the client to the server
+ * Get a client connected to QIO with SSL.
+ */
+test_client_t* test_client_ssl();
+
+/**
+ * Send a message from the client to the server.
+ *
+ * @param tclient
+ *     The test client to write to
+ * @param data
+ *     The data to frame and send
+ * @param len
+ *     The length of the data. 0 to strlen() it data to find out.
  */
 void test_send(
 	test_client_t *tclient,
@@ -80,7 +92,17 @@ void test_send(
 	const guint64 len);
 
 /**
- * Receive a message from the server to the client
+ * Receive a message from the server to the client.
+ *
+ * @param tclient
+ *     The client to read from.
+ * @param data
+ *     Where the data should be put.
+ * @param len
+ *     The length of the data buffer.
+ *
+ * @return
+ *     The number of bytes read.
  */
 guint64 test_recv(
 	test_client_t *tclient,

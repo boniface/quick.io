@@ -315,7 +315,6 @@ static enum protocol_status _handshake_qio(struct client *client)
 {
 	enum protocol_status status;
 	gboolean good;
-	GString *rbuff = client->qev_client.rbuff;
 	guint64 len;
 	guint64 frame_len;
 
@@ -414,6 +413,11 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	}
 
 	return status;
+}
+
+GString* protocol_rfc6455_frame(const gchar *data G_GNUC_UNUSED, const guint64 len G_GNUC_UNUSED)
+{
+	return NULL;
 }
 
 void protocol_rfc6455_close(struct client *client, guint reason)

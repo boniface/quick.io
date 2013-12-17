@@ -31,7 +31,9 @@
  	"ssl-key-path-0 = ../lib/quick-event/certs/rsa/test.key\n" \
  	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
  	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
- 	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n"
+ 	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
+ 	"[quick.io-apps]\n" \
+ 	"./apps/test_app_sane=\n"
 
 struct test_client {
 	gboolean is_ssl;
@@ -118,6 +120,8 @@ void test_setup()
 {
 	gchar *args[] = {"test", "--config-file=" CONFIG_FILE};
 	qio_main(2, args);
+
+	evs_add_handler("/test/good", NULL, NULL, NULL, FALSE);
 }
 
 void test_teardown()
@@ -151,19 +155,15 @@ TCase* test_add(Suite *s, const gchar *name, ...)
 	return tc;
 }
 
-struct test_client* test_client(const gboolean ssl)
+struct test_client* test_client()
 {
 	gchar buff[12];
 	struct test_client *tclient = g_slice_alloc0(sizeof(*tclient));
-	tclient->is_ssl = ssl;
+	tclient->is_ssl = FALSE;
 
-	if (ssl) {
-		// @todo
-	} else {
-		tclient->conn.fd = _create_socket(PORT);
-		ck_assert(send(tclient->conn.fd, "/qio/ohai", 9, MSG_NOSIGNAL) == 9);
-		ck_assert(recv(tclient->conn.fd, buff, sizeof(buff), 0) == 9);
-	}
+	tclient->conn.fd = _create_socket(PORT);
+	ck_assert(send(tclient->conn.fd, "/qio/ohai", 9, MSG_NOSIGNAL) == 9);
+	ck_assert(recv(tclient->conn.fd, buff, sizeof(buff), 0) == 9);
 
 	buff[9] = '\0';
 	ck_assert(g_strcmp0(buff, "/qio/ohai") == 0);
@@ -203,16 +203,33 @@ guint64 test_recv(
 	const guint64 len)
 {
 	guint64 err;
+	guint64 r = 0;
+	guint64 rlen = 0;
+	gchar size[sizeof(guint64)];
 
 	if (tclient->is_ssl) {
 		err = -1;
 	} else {
-		err = recv(tclient->conn.fd, data, len, 0);
+		err = recv(tclient->conn.fd, size, sizeof(size), 0);
 	}
 
-	ck_assert(err > 0);
+	ck_assert(err == sizeof(size));
+	rlen = GUINT64_FROM_BE(*((guint64*)size));
 
-	return (guint)err;
+	ck_assert_msg(rlen <= len, "Buffer not large enough to read response");
+
+	while (r < rlen) {
+		if (tclient->is_ssl) {
+			err = -1;
+		} else {
+			err = recv(tclient->conn.fd, data + r, len - r, 0);
+		}
+
+		ck_assert(err > 0);
+		r += err;
+	}
+
+	return rlen;
 }
 
 void test_close(struct test_client *tclient)

@@ -22,24 +22,28 @@ static struct protocol _protocols[] ={
 	{	.handles = protocol_rfc6455_handles,
 		.handshake = protocol_rfc6455_handshake,
 		.route = protocol_rfc6455_route,
+		.frame = protocol_rfc6455_frame,
 		.close = protocol_rfc6455_close,
 		.exit = NULL,
 	},
 	{	.handles = protocol_stomp_handles,
 		.handshake = protocol_stomp_handshake,
 		.route = protocol_stomp_route,
+		.frame = protocol_stomp_frame,
 		.close = NULL,
 		.exit = NULL,
 	},
 	{	.handles = protocol_flash_handles,
 		.handshake = protocol_flash_handshake,
 		.route = protocol_flash_route,
+		.frame = NULL,
 		.close = NULL,
 		.exit = NULL,
 	},
 	{	.handles = protocol_raw_handles,
 		.handshake = protocol_raw_handshake,
 		.route = protocol_raw_route,
+		.frame = protocol_raw_frame,
 		.close = NULL,
 		.exit = NULL,
 	},
@@ -81,7 +85,7 @@ static void _handshake(struct client *client, void *data)
 	switch (status) {
 		case PROT_OK:
 			client->protocol_flags |= HANDSHAKED;
-			qev_timeout_clear(client, &client->timeout);
+			qev_timeout_clear(&client->timeout);
 			break;
 
 		case PROT_AGAIN:
@@ -105,7 +109,7 @@ static void _route(struct client *client)
 			 * this little check will save some.
 			 */
 			if (client->timeout != NULL) {
-				qev_timeout_clear(client, &client->timeout);
+				qev_timeout_clear(&client->timeout);
 			}
 			break;
 
@@ -143,6 +147,13 @@ void protocols_route(struct client *client)
 	}
 
 	_route(client);
+}
+
+void protocols_write(struct client *client, const gchar *data, const guint len)
+{
+	GString *frame = client->protocol->frame(data, len);
+	qev_write(client, frame->str, frame->len);
+	qev_buffer_put(frame);
 }
 
 void protocols_closed(struct client *client, guint reason)

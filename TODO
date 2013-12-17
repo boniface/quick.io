@@ -1,21 +1,13 @@
 Next Version (refactor + performance):
 	* /qio/ohai on open, otherwise kill
 	* stomp + radioDNS
-	* host verification: not just *
-	* QEV: read + write buffers per socket. Steal evbuffer?
 	* evs_client_send() can fail if OS buffer full
-	* SSL - optimize? drop slog algos? ecdh key size?
-		- Disable ephemeral ciphers
-	* bpool - string buffer pool (possibly thread-local?) (in QEV?) - benchmark async queue for this
-	* eliminate mallocs
-	* lock-free lists everywhere (integrate into QEV)
 	* clean up the app interface (X-macros!)
 	* clean up tests
-	* clean up main: make inits FATAL out
-	* consider dropping plain data type? join go 100% json?
-	* use for tests: https://developer.gnome.org/glib/2.37/glib-File-Utilities.html#g-file-set-contents
-	* c ternary: return f() ? : -1; // Returns the result of f unless it is 0
 	* TODO: bench_events_query -> optimize that ptrie?
+	* memory usage for subscriptions
+		- resizable lists
+		- heuristic to determine if allowed to subscribe
 
 Clients:
 	* implement SSL for all of them

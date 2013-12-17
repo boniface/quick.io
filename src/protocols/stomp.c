@@ -8,19 +8,24 @@
 
 #include "quickio.h"
 
-enum protocol_handles protocol_stomp_handles(struct client *client, void **data)
+enum protocol_handles protocol_stomp_handles(struct client *client G_GNUC_UNUSED, void **data G_GNUC_UNUSED)
 {
 	return PROT_NO;
 }
 
 enum protocol_status protocol_stomp_handshake(
-	struct client *client,
-	void *data)
+	struct client *client G_GNUC_UNUSED,
+	void *data G_GNUC_UNUSED)
 {
 	return PROT_OK;
 }
 
-enum protocol_status protocol_stomp_route(struct client *client)
+enum protocol_status protocol_stomp_route(struct client *client G_GNUC_UNUSED)
 {
 	return PROT_OK;
+}
+
+GString* protocol_stomp_frame(const gchar *data G_GNUC_UNUSED, const guint64 len G_GNUC_UNUSED)
+{
+	return NULL;
 }

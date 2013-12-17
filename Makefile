@@ -7,9 +7,10 @@ MAKEFLAGS += --no-print-directory
 
 CC = clang
 
-TEST_DIR = test
 LIB_DIR = lib
 SRC_DIR = src
+TEST_DIR = test
+TEST_APPS_DIR = $(TEST_DIR)/apps
 
 BINARY = quickio
 
@@ -19,6 +20,9 @@ HEADERS = \
 
 OBJECTS = \
 	$(LIB_DIR)/http-parser/http_parser.o \
+	$(SRC_DIR)/apps.o \
+	$(SRC_DIR)/apps_export.o \
+	$(SRC_DIR)/client.o \
 	$(SRC_DIR)/config.o \
 	$(SRC_DIR)/evs.o \
 	$(SRC_DIR)/evs_qio.o \
@@ -31,22 +35,28 @@ OBJECTS = \
 	$(SRC_DIR)/quickio.o \
 	$(SRC_DIR)/qev.o
 
+BIN_OBJECTS = \
+	$(OBJECTS) \
+	$(SRC_DIR)/main.o
+
 OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
 
 TESTS = \
+	test_apps \
 	test_evs
+
+TEST_APPS = \
+	$(TEST_APPS_DIR)/test_app_sane.so
 
 BENCHMARKS = \
 	bench_evs_query
 
-LIBS = glib-2.0 openssl
+LIBS = glib-2.0 gmodule-2.0 openssl
 LIBS_TEST = check
 LIBQEV = lib/quick-event/libqev.a
 
 CFLAGS = \
-	-g \
-	--coverage \
 	-Wall \
 	-Wextra \
 	-Wsign-compare \
@@ -57,37 +67,53 @@ CFLAGS = \
 	-D_FORTIFY_SOURCE=2 \
 	-std=gnu99 \
 	-I$(SRC_DIR) \
-	$(shell pkg-config --cflags $(LIBS)) \
-	-fno-inline \
-	-DQEV_LOG_DEBUG
+	$(shell pkg-config --cflags $(LIBS))
+
+CFLAGS_OBJ = \
+	$(CFLAGS) \
+	-c \
+	-fvisibility=hidden
 
 CFLAGS_TEST = \
+	-g \
+	--coverage \
+	-fno-inline \
 	-I../$(SRC_DIR) \
-	-DQIO_TESTING \
 	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
 	$(shell pkg-config --cflags $(LIBS_TEST))
 
+CFLAGS_DEBUG = \
+	-g \
+	-fno-inline \
+	-DQEV_LOG_DEBUG
+
 CFLAGS_BENCH = \
-	-O3 \
-	$(CFLAGS_TEST)
+	-O3
 
 LDFLAGS = \
-	-g \
-	-rdynamic \
-	-fno-default-inline \
-	--coverage \
+	$(CURDIR)/$(LIBQEV) \
 	-lm \
 	$(shell pkg-config --libs $(LIBS))
 
+LDFLAGS_DEBUG = \
+	-g \
+	-rdynamic \
+	-fno-default-inline
+
 LDFLAGS_TEST = \
-	$(shell pkg-config --libs $(LIBS_TEST)) \
-	$(CURDIR)/$(LIBQEV)
+	-g \
+	-rdynamic \
+	--coverage \
+	-fno-default-inline \
+	$(shell pkg-config --libs $(LIBS_TEST))
 
 all:
 	@echo "Choose one of the following:"
 	@echo "    make run - run quickio in debug mode"
 	@echo "    make clean - clean up everything"
 
+run: CFLAGS += $(CFLAGS_DEBUG)
+run: LDFLAGS += $(LDFLAGS_DEBUG)
 run: $(BINARY)
 	./$(BINARY)
 
@@ -98,25 +124,27 @@ clean:
 	find -name '*.gcda' -exec rm {} \;
 	find -name '*.xml' -exec rm {} \;
 	find test -name 'test_*.ini' -exec rm {} \;
-	rm -f $(OBJECTS)
+	rm -f $(BIN_OBJECTS)
+	rm -f $(TEST_APPS)
 	$(MAKE) -C lib/quick-event/ clean
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f $(BINARY)
 
-$(BINARY): $(OBJECTS) $(LIBQEV) $(SRC_DIR)/main.o
+$(BINARY): $(BIN_OBJECTS) $(LIBQEV)
 	@echo '-------- Compiling quickio --------'
 	@$(CC) $^ -o $@ $(LDFLAGS)
 
-$(TESTS) $(BENCHMARKS):
+$(TESTS) $(BENCHMARKS): $(TEST_APPS)
 	@$(MAKE) $(TEST_DIR)/$@
 	@cd $(TEST_DIR) && ./$@
 
 %.o: %.c $(HEADERS)
 	@echo '-------- Compiling $@ --------'
-	@$(CC) -c $(CFLAGS) $< -o $@
+	@$(CC) $(CFLAGS_OBJ) $< -o $@
 
-$(LIBQEV):
-	cd lib/quick-event && $(MAKE)
+$(TEST_APPS_DIR)/%.so: $(TEST_APPS_DIR)/%.c $(HEADERS)
+	@echo '-------- Compiling app $@ --------'
+	@cd $(TEST_APPS_DIR) && $(CC) -shared -fPIC $(CFLAGS) $*.c -o $*.so
 
 $(TEST_DIR)/test_%: CFLAGS += $(CFLAGS_TEST)
 $(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_BENCH)
@@ -124,3 +152,6 @@ $(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
+
+$(LIBQEV):
+	cd lib/quick-event && $(MAKE)

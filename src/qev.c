@@ -15,8 +15,9 @@ void qev_on_open(struct client *client, const gchar *ip G_GNUC_UNUSED)
 
 void qev_on_close(struct client *client, guint reason)
 {
-	qev_timeout_clear(client, &client->timeout);
+	qev_timeout_clear(&client->timeout);
 	protocols_closed(client, reason);
+	evs_client_close(client);
 }
 
 void qev_on_read(struct client *client)
@@ -32,15 +33,25 @@ void qev_on_udp(
 	// UDP is unused
 }
 
+void qev_on_tick()
+{
+	evs_broadcast_tick();
+}
+
 void qev_on_exit()
 {
 
 }
 
 struct client* qev_client_new() {
-	return g_slice_alloc0(sizeof(struct client));
+	struct client *client = g_slice_alloc0(sizeof(struct client));
+
+	client->subs = g_hash_table_new(NULL, NULL);
+
+	return client;
 }
 
 void qev_client_free(struct client *client) {
+	g_hash_table_unref(client->subs);
 	g_slice_free1(sizeof(*client), client);
 }
