@@ -91,7 +91,7 @@ static struct qev_cfg _cfg[] = {
 		.read_only = TRUE,
 	},
 	{	.name = "ssl-cert-path-1",
-		.description = "The first certificate to use for the SSL connection. "
+		.description = "The second certificate to use for the SSL connection. "
 						"This MUST be a full certificate chain in PEM format, "
 						"starting from _your_ certificate on top, all "
 						"intermediaries, then the root CA. Typically, this is "

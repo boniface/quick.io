@@ -9,10 +9,19 @@
 #include "../../include/quickio_app.h"
 #include <stdio.h>
 
+static enum evs_status _test_handler(
+	client_t *client,
+	const gchar *ev_extra,
+	const evs_cb_t client_cb,
+	gchar *json)
+{
+	qio_send_cb(client, client_cb, CODE_OK, NULL, "\"test\"");
+	return EVS_STATUS_HANDLED;
+}
+
 static gboolean _app_init()
 {
-	qio_add_handler("/test", NULL, NULL, NULL, TRUE);
-	printf("app init!\n");
+	qio_add_handler("/good", _test_handler, NULL, NULL, TRUE);
 	return TRUE;
 }
 

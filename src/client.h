@@ -44,7 +44,32 @@ struct client {
 	/**
 	 * Used as a set.
 	 *
-	 * Points to: struct subscription
+	 * Maps: struct subscription -> gint32 (qev_list index)
 	 */
 	GHashTable *subs;
 };
+
+/**
+ * Get an index pointer to use for the qev_list that manages the subscriptions.
+ *
+ * This function uses a very simple heuristic to determine if a client should
+ * be allowed to subscribe: it's based on the number of active clients vs
+ * the number of active subscriptions.
+ *
+ * @param client
+ *     The client attempting to subscribe
+ *
+ * @return
+ *     The pointer to use; NULL if memory pressure is stopping the subscription.
+ */
+gint32* client_sub_get(struct client *client);
+
+/**
+ * Removes a single subscription from a client.
+ *
+ * @param client
+ *     The client that is releasing the subscription
+ * @param idx
+ *     The value returned from client_sub_get()
+ */
+void client_sub_put(struct client *client, gint32 *idx);

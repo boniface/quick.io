@@ -49,12 +49,12 @@ enum protocol_status protocol_flash_handshake(
 	void *data G_GNUC_UNUSED)
 {
 	qev_write(client, FLASH_POLICY_RESPONSE, sizeof(FLASH_POLICY_RESPONSE) - 1);
-	qev_close(client, QIO_CLOSE_OK);
+	qev_close(client, QIO_CLOSE_DONE);
 	return PROT_FATAL;
 }
 
 enum protocol_status protocol_flash_route(struct client *client)
 {
-	qev_close(client, QIO_CLOSE_OK);
+	qev_close(client, QIO_CLOSE_DONE);
 	return PROT_FATAL;
 }

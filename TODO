@@ -1,4 +1,10 @@
 Next Version (refactor + performance):
+	* memory consistency: http://developer.android.com/training/articles/smp.html#c_dont
+	* Rfc6455 -> qio.close() in client, does QEV let the close frame through?
+	* evs_on - > evs_add_handler, then standardize around evs_on
+	* http://manpages.ubuntu.com/manpages/lucid/man1/perf-stat.1.html
+	* http://www.reddit.com/tb/1rvuh0
+	* balance-tlb or balance-alb for network: http://en.wikipedia.org/wiki/Link_aggregation#Driver_modes
 	* /qio/ohai on open, otherwise kill
 	* stomp + radioDNS
 	* evs_client_send() can fail if OS buffer full
@@ -8,6 +14,7 @@ Next Version (refactor + performance):
 	* memory usage for subscriptions
 		- resizable lists
 		- heuristic to determine if allowed to subscribe
+	* http://engineering.linkedin.com/performance/optimizing-linux-memory-management-low-latency-high-throughput-databases
 
 Clients:
 	* implement SSL for all of them

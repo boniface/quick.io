@@ -22,6 +22,11 @@ typedef gboolean (*qio_app_cb)();
  */
 struct app {
 	/**
+	 * The name of the app. If starts with /, it's the same as the prefix
+	 */
+	gchar *name;
+
+	/**
 	 * A prefix that should be forced on everything the app does
 	 */
 	gchar *prefix;
@@ -30,6 +35,11 @@ struct app {
 	 * The actual module. Closed when QIO is shutting down.
 	 */
 	GModule *mod;
+
+	/**
+	 * The thread the app is running in
+	 */
+	GThread *th;
 
 	/**
 	 * Default setup function

@@ -8,6 +8,19 @@
 
 #include "quickio.h"
 
+gboolean qev_on_before_run()
+{
+	evs_init();
+	protocols_init();
+
+	/*
+	 * Initialize last: don't let apps take over internal events.
+	 */
+	apps_init();
+
+	return TRUE;
+}
+
 void qev_on_open(struct client *client, const gchar *ip G_GNUC_UNUSED)
 {
 	qev_timeout(client, &client->timeout);

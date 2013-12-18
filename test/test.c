@@ -33,7 +33,7 @@
  	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
  	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
  	"[quick.io-apps]\n" \
- 	"./apps/test_app_sane=\n"
+ 	"/test = ./apps/test_app_sane\n"
 
 struct test_client {
 	gboolean is_ssl;
@@ -120,8 +120,6 @@ void test_setup()
 {
 	gchar *args[] = {"test", "--config-file=" CONFIG_FILE};
 	qio_main(2, args);
-
-	evs_add_handler("/test/good", NULL, NULL, NULL, FALSE);
 }
 
 void test_teardown()
@@ -133,10 +131,10 @@ TCase* test_add(Suite *s, const gchar *name, ...)
 {
 	va_list args;
 	TFun tfun;
-	TCase *tc = tcase_create(name);
+	TCase *tcase = tcase_create(name);
 
-	tcase_add_checked_fixture(tc, test_setup, test_teardown);
-	suite_add_tcase(s, tc);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	suite_add_tcase(s, tcase);
 
 	va_start(args, name);
 
@@ -147,12 +145,12 @@ TCase* test_add(Suite *s, const gchar *name, ...)
 			break;
 		}
 
-		tcase_add_test(tc, tfun);
+		tcase_add_test(tcase, tfun);
 	}
 
 	va_end(args);
 
-	return tc;
+	return tcase;
 }
 
 struct test_client* test_client()
@@ -172,6 +170,13 @@ struct test_client* test_client()
 }
 
 void test_send(
+	test_client_t *tclient,
+	const gchar *data)
+{
+	test_send_len(tclient, data, strlen(data));
+}
+
+void test_send_len(
 	test_client_t *tclient,
 	const gchar *data,
 	const guint64 len)
@@ -206,17 +211,18 @@ guint64 test_recv(
 	guint64 r = 0;
 	guint64 rlen = 0;
 	gchar size[sizeof(guint64)];
+	data[0] = '\0';
 
 	if (tclient->is_ssl) {
 		err = -1;
 	} else {
-		err = recv(tclient->conn.fd, size, sizeof(size), 0);
+		err = recv(tclient->conn.fd, size, sizeof(size), MSG_WAITALL);
 	}
 
 	ck_assert(err == sizeof(size));
 	rlen = GUINT64_FROM_BE(*((guint64*)size));
 
-	ck_assert_msg(rlen <= len, "Buffer not large enough to read response");
+	ck_assert_msg(rlen < len, "Buffer not large enough to read response");
 
 	while (r < rlen) {
 		if (tclient->is_ssl) {
@@ -228,6 +234,8 @@ guint64 test_recv(
 		ck_assert(err > 0);
 		r += err;
 	}
+
+	data[rlen] = '\0';
 
 	return rlen;
 }

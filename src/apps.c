@@ -17,11 +17,22 @@
 	X(exit) \
 	X(test)
 
+/**
+ * No need for a lock on this: all qev_cfg callbacks are joined on a single
+ * lock, so only 1 callback can fire at any give time.
+ */
 static GPtrArray *_apps = NULL;
 
+static void* _app_run_th(void *app_)
+{
+	struct app *app = app_;
+	ASSERT(app->run(), "App failed to run: %s", app->prefix);
+	return NULL;
+}
+
 static void _add_app(
-	const gchar *path,
-	const gchar *prefix)
+	const gchar *name,
+	const gchar *path)
 {
 	qio_app_cb cb;
 	gchar *full_path;
@@ -29,8 +40,6 @@ static void _add_app(
 	struct app *papp = NULL;
 	guint *magic_num = NULL;
 	gboolean good = FALSE;
-
-	CRITICAL("path=%s, prefix=%s", path, prefix);
 
 	if (strspn(path, PATH_STARTERS) == 0) {
 		full_path = g_strdup_printf("%s/%s", PATH_LIB_DIR, path);
@@ -40,14 +49,14 @@ static void _add_app(
 
 	app.mod = g_module_open(full_path, G_MODULE_BIND_LOCAL);
 	if (app.mod == NULL) {
-		CRITICAL("Could not open app (%s): %s", path, g_module_error());
+		CRITICAL("Could not open app %s (%s): %s", name, path, g_module_error());
 		goto out;
 	}
 
 	good = g_module_symbol(app.mod, "__qio_is_app", (void*)&magic_num) &&
 			*magic_num == QIO_MAGIC_NUM;
 	if (!good) {
-		CRITICAL("Loaded module is not a QuickIO app: %s", full_path);
+		CRITICAL("Loaded module is not a QuickIO app: %s (%s)", name, full_path);
 		goto out;
 	}
 
@@ -59,7 +68,8 @@ static void _add_app(
 		CALLBACKS
 	#undef X
 
-	app.prefix = g_strdup(prefix);
+	app.name = g_strdup(name);
+	app.prefix = g_strdup(name[0] == '/' ? name : "");
 	papp = g_slice_copy(sizeof(app), &app);
 
 	if (!app.init(papp)) {
@@ -67,7 +77,9 @@ static void _add_app(
 		goto out;
 	}
 
-	// @todo start app here
+	if (papp->run != NULL) {
+		papp->th = g_thread_new(papp->name, _app_run_th, papp);
+	}
 
 	g_ptr_array_add(_apps, papp);
 	good = TRUE;
@@ -76,6 +88,7 @@ out:
 	g_free(full_path);
 
 	if (!good) {
+		g_free(app.name);
 		g_free(app.prefix);
 
 		if (papp != NULL) {
@@ -95,15 +108,18 @@ static void _cleanup()
 	for (i = 0; i < _apps->len; i++) {
 		struct app *app = g_ptr_array_index(_apps, i);
 		if (!app->exit()) {
-			FATAL("App failed to exit: %s", app->prefix);
+			FATAL("App failed to exit: %s", app->name);
 		}
 
+		g_free(app->name);
 		g_free(app->prefix);
+		g_thread_join(app->th);
 		g_module_close(app->mod);
 		g_slice_free1(sizeof(*app), app);
 	}
 
 	g_ptr_array_free(_apps, TRUE);
+	_apps = NULL;
 }
 
 void apps_init()

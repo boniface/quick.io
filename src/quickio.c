@@ -12,10 +12,7 @@ void qio_main(int argc, char **argv)
 {
 	ASSERT(qev_init(argv, argc), "Could not init quick-event");
 
-	evs_init(); // Initialize internal events so that external can't override.
 	config_init();
-	protocols_init();
-	apps_init();
 
 	if (cfg_bind_address != NULL) {
 		guint16 port = cfg_bind_port;

@@ -44,10 +44,10 @@ int main()
 {
 	SRunner *sr;
 	Suite *s;
-	TCase *tc;
+	TCase *tcase;
 	test_new("evs", &sr, &s);
 
-	tc = test_add(s, "Sanity",
+	tcase = test_add(s, "Sanity",
 		test_subscribe_valid,
 		test_subscribe_invalid,
 		NULL);

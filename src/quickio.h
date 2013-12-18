@@ -56,7 +56,7 @@ enum quickio_close_reasons {
 	 * Our interactions with this client are complete. Nothing
 	 * remains to be said
 	 */
-	QIO_CLOSE_OK,
+	QIO_CLOSE_DONE,
 };
 
 /**

@@ -126,8 +126,11 @@ void evs_route(
  *     Any extra path segments
  * @param client_cb
  *     The id of the callback to send to the client
+ *
+ * @return
+ *     If the subscription succeeded.
  */
-enum evs_code evs_subscribe(
+gboolean evs_subscribe(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra,
@@ -180,7 +183,7 @@ void evs_send_cb(
  * Sends a callback to a client, with all possible data.
  *
  * @attention
- *     It is understood that, if a non STATUS_OK callback is sent, the server
+ *     It is understood that, if a non CODE_OK callback is sent, the server
  *     MAY NOT expect a callback from the client.
  *
  * @param client

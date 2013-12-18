@@ -43,7 +43,7 @@ struct subscription {
 	/**
 	 * All of the clients currently listening for this event
 	 */
-	GHashTable *subscribers;
+	qev_list_t *subscribers;
 
 	/**
 	 * Reference count to allow unlocked operations when dealing with
@@ -141,7 +141,7 @@ static struct subscription* _sub_get(
 			sub = g_slice_alloc0(sizeof(*sub));
 			sub->ev = ev;
 			sub->ev_extra = g_strdup(ev_extra);
-			sub->subscribers = g_hash_table_new(NULL, NULL);
+			sub->subscribers = qev_list_new(qev_cfg_get_max_clients(), NULL);
 			sub->refs = 1;
 
 			/*
@@ -171,7 +171,7 @@ static void _sub_unref(struct subscription *sub)
 	g_rw_lock_writer_lock(&ev->subs_lock);
 
 	/*
-	 * If a new subscription has replaced that one we're removing here,
+	 * If a new subscription has replaced that one being removed here,
 	 * play nice and let it live
 	 */
 	if (g_hash_table_lookup(ev->subs, sub->ev_extra) == sub) {
@@ -181,7 +181,7 @@ static void _sub_unref(struct subscription *sub)
 	g_rw_lock_writer_unlock(&ev->subs_lock);
 
 	g_free(sub->ev_extra);
-	g_hash_table_unref(sub->subscribers);
+	qev_list_free(sub->subscribers);
 	g_slice_free1(sizeof(*sub), sub);
 }
 
@@ -221,6 +221,8 @@ void evs_add_handler(
 {
 	gboolean created;
 	gchar *ep = g_strdup(ev_path);
+
+	_clean_ev_path(ep);
 
 	created = evs_query_insert(ep, handler_fn, subscribe_fn,
 								unsubscribe_fn, handle_children);
@@ -272,13 +274,12 @@ out:
 	}
 }
 
-enum evs_code evs_subscribe(
+gboolean evs_subscribe(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra,
 	const evs_cb_t client_cb)
 {
-	qev_list_t *list;
 	struct subscription *sub;
 	enum evs_status status = EVS_STATUS_OK;
 	enum evs_code code = CODE_OK;
@@ -298,16 +299,22 @@ enum evs_code evs_subscribe(
 		status = ev->subscribe_fn(client, ev_extra, client_cb);
 	}
 
+	if (status == EVS_STATUS_OK) {
+		gint32 *idx = client_sub_get(client);
+
+		if (idx == NULL) {
+			code = CODE_ENHANCE_CALM;
+			_sub_unref(sub);
+		} else {
+			qev_list_add(sub->subscribers, client, idx);
+			g_hash_table_insert(client->subs, sub, idx);
+		}
+	}
+
 	switch (status) {
 		case EVS_STATUS_OK:
-			// @todo with expandable qev_lists + memory heuristic
-			g_hash_table_add(client->subs, sub);
-			g_hash_table_add(sub->subscribers, client);
-			evs_send_cb(client, client_cb, CODE_OK, NULL, NULL);
-			break;
-
 		case EVS_STATUS_ERROR:
-			evs_send_cb(client, client_cb, CODE_UNAUTH, NULL, NULL);
+			evs_send_cb(client, client_cb, code, NULL, NULL);
 			break;
 
 		case EVS_STATUS_HANDLED:
@@ -317,7 +324,7 @@ enum evs_code evs_subscribe(
 out:
 	qev_unlock(client);
 
-	return code;
+	return code == CODE_OK;
 }
 
 void evs_unsubscribe(
@@ -325,13 +332,17 @@ void evs_unsubscribe(
 	struct event *ev,
 	const gchar *ev_extra)
 {
+	gint32 *idx;
 	struct subscription *sub = _sub_get(ev, ev_extra);
 
 	qev_lock(client);
 
-	if (g_hash_table_contains(client->subs, sub)) {
+	idx = g_hash_table_lookup(client->subs, sub);
+
+	if (idx != NULL) {
 		g_hash_table_remove(client->subs, sub);
-		g_hash_table_remove(sub->subscribers, client);
+		qev_list_remove(sub->subscribers, idx);
+		client_sub_put(client, idx);
 		_sub_unref(sub);
 	}
 
@@ -342,9 +353,19 @@ void evs_unsubscribe(
 
 void evs_client_close(struct client *client)
 {
-	qev_lock(client);
+	GHashTableIter iter;
+	struct subscription *sub;
+	gint32 *idx;
 
-	FATAL("CLEANUP SUBS");
+	qev_lock(client);
+	g_hash_table_iter_init(&iter, client->subs);
+
+	while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&idx)) {
+		g_hash_table_iter_remove(&iter);
+		qev_list_remove(sub->subscribers, idx);
+		client_sub_put(client, idx);
+		_sub_unref(sub);
+	}
 
 	qev_unlock(client);
 }

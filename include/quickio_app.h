@@ -116,6 +116,12 @@ enum evs_code {
 	CODE_NOT_FOUND = 404,
 
 	/**
+	 * The server understood the request but needs to client to calm down.
+	 * Aka. you've been rate-limited.
+	 */
+	CODE_ENHANCE_CALM = 420,
+
+	/**
 	 * An unknown error occurred
 	 */
 	CODE_UNKNOWN = 500,
@@ -184,3 +190,30 @@ QIO_EXPORT void qio_export_add_handler(
 	const gboolean handle_children);
 
 #define qio_add_handler(...) qio_export_add_handler(__qio_app, ##__VA_ARGS__)
+
+/**
+ * Send a callback to a client.
+ */
+QIO_EXPORT void qio_export_send_cb(
+	struct client *client,
+	const evs_cb_t client_cb,
+	const enum evs_code code,
+	const gchar *err_msg,
+	const gchar *json);
+
+#define qio_send_cb(...) qio_export_send_cb(__VA_ARGS__)
+
+/**
+ * Send a callback to a client while requesting a callback in return.
+ */
+QIO_EXPORT void qio_export_send_cb_full(
+	struct client *client,
+	const evs_cb_t client_cb,
+	const enum evs_code code,
+	const gchar *err_msg,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
+
+#define qio_send_cb_full(...) qio_export_send_cb_full(__VA_ARGS__)
