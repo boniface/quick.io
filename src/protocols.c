@@ -18,29 +18,33 @@
  * All of the known protocols, in order of their preference (index 0 being
  * most preferred, N being least).
  */
-static struct protocol _protocols[] ={
-	{	.handles = protocol_rfc6455_handles,
+static struct protocol _protocols[] = {
+	{	.id = 0,
+		.handles = protocol_rfc6455_handles,
 		.handshake = protocol_rfc6455_handshake,
 		.route = protocol_rfc6455_route,
 		.frame = protocol_rfc6455_frame,
 		.close = protocol_rfc6455_close,
 		.exit = NULL,
 	},
-	{	.handles = protocol_stomp_handles,
+	{	.id = 1,
+		.handles = protocol_stomp_handles,
 		.handshake = protocol_stomp_handshake,
 		.route = protocol_stomp_route,
 		.frame = protocol_stomp_frame,
 		.close = NULL,
 		.exit = NULL,
 	},
-	{	.handles = protocol_flash_handles,
+	{	.id = 2,
+		.handles = protocol_flash_handles,
 		.handshake = protocol_flash_handshake,
 		.route = protocol_flash_route,
 		.frame = NULL,
 		.close = NULL,
 		.exit = NULL,
 	},
-	{	.handles = protocol_raw_handles,
+	{	.id = 3,
+		.handles = protocol_raw_handles,
 		.handshake = protocol_raw_handshake,
 		.route = protocol_raw_route,
 		.frame = protocol_raw_frame,
@@ -161,6 +165,42 @@ void protocols_closed(struct client *client, guint reason)
 	if (client->protocol != NULL && client->protocol->close != NULL) {
 		client->protocol->close(client, reason);
 	}
+}
+
+GString** protocols_bcast(const gchar *e, const guint len)
+{
+	guint i;
+	GString **frames = g_slice_alloc0(sizeof(*frames) * G_N_ELEMENTS(_protocols));
+
+	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
+		struct protocol *p = _protocols + i;
+		if (p->frame != NULL) {
+			*(frames + i) = p->frame(e, len);
+		}
+	}
+
+	return frames;
+}
+
+void protocols_bcast_write(struct client *client, GString **frames)
+{
+	GString *frame = *(frames + client->protocol->id);
+	if (frame != NULL) {
+		qev_write(client, frame->str, frame->len);
+	}
+}
+
+void protocols_bcast_free(GString **frames)
+{
+	guint i;
+	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
+		GString *f = *(frames + i);
+		if (f != NULL) {
+			qev_buffer_put(f);
+		}
+	}
+
+	g_slice_free1(sizeof(*frames) * G_N_ELEMENTS(_protocols), frames);
 }
 
 void protocols_init()

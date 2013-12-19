@@ -14,10 +14,6 @@
 
 /**
  * Events are stored in a prefix tree for fast, nice lookups.
- *
- * @attention
- *     The memory of all these fields is managed by evs_query. It handles
- *     creating at insertion and cleaning up and remove.
  */
 struct event {
 	/**
@@ -220,10 +216,29 @@ void evs_send_cb_full(
 
 /**
  * Broadcast a message to all clients listening on the event
+ *
+ * @param ev
+ *     The event to broadcast to
+ * @param ev_extra
+ *     Any extra path segments
+ * @param json
+ *     The json to send to everyone
  */
 void evs_broadcast(
 	struct event *ev,
 	const gchar *ev_extra,
+	const gchar *json);
+
+/**
+ * Broadcast a message to all clients listening on the event
+ *
+ * @param ev_path
+ *     The path to broadcast to
+ * @param json
+ *     The json to send to everyone
+ */
+void evs_broadcast_path(
+	const gchar *ev_path,
 	const gchar *json);
 
 /**

@@ -50,3 +50,33 @@ void qio_export_send_cb_full(
 	evs_send_cb_full(client, client_cb, code, err_msg, json,
 					cb_fn, cb_data, free_fn);
 }
+
+gboolean qio_export_json_unpack(
+	gchar *json,
+	const gchar *spec,
+	...)
+{
+	va_list args;
+	enum qev_json_status status;
+
+	va_start(args, spec);
+	status = qev_json_vunpack(json, NULL, spec, args);
+	va_end(args);
+
+	return status == qev_json_ok;
+}
+
+gboolean qio_export_json_pack(
+	GString *buff,
+	const gchar *spec,
+	...)
+{
+	va_list args;
+	enum qev_json_status status;
+
+	va_start(args, spec);
+	status = qev_json_vpack(buff, spec, args);
+	va_end(args);
+
+	return status == qev_json_ok;
+}

@@ -217,3 +217,23 @@ QIO_EXPORT void qio_export_send_cb_full(
 	const GDestroyNotify free_fn);
 
 #define qio_send_cb_full(...) qio_export_send_cb_full(__VA_ARGS__)
+
+/**
+ * Unpack a string into some JSON
+ */
+QIO_EXPORT gboolean qio_export_json_unpack(
+	gchar *json,
+	const gchar *spec,
+	...);
+
+#define qio_json_unpack(...) qio_export_json_unpack(__VA_ARGS__)
+
+/**
+ * Pack some values into a JSON string.
+ */
+QIO_EXPORT gboolean qio_export_json_pack(
+	GString *buff,
+	const gchar *spec,
+	...);
+
+#define qio_json_pack(...) qio_export_json_pack(__VA_ARGS__)

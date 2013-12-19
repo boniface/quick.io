@@ -38,6 +38,12 @@ gchar *cfg_bind_address_ssl;
 guint64 cfg_bind_port_ssl;
 
 /**
+ * Number of threads used to pump out each broadcasted message. These threads
+ * come from the qev_pool of threads.
+ */
+guint64 cfg_broadcast_threads;
+
+/**
  * The first certificate to use for the SSL connection. This MUST be a full
  * certificate chain in PEM format, starting from _your_ certificate on top,
  * all intermediaries, then the root CA.

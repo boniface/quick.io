@@ -11,17 +11,27 @@
 
 static enum evs_status _test_handler(
 	client_t *client,
-	const gchar *ev_extra,
+	const gchar *ev_extra G_GNUC_UNUSED,
 	const evs_cb_t client_cb,
 	gchar *json)
 {
-	qio_send_cb(client, client_cb, CODE_OK, NULL, "\"test\"");
+	gchar *val;
+	gboolean good;
+
+	good = qio_json_unpack(json, "{%s}", "key", &val);
+	if (good && g_strcmp0(val, "value") == 0) {
+		qio_send_cb(client, client_cb, CODE_OK, NULL, "\"test\"");
+	} else {
+		qio_send_cb(client, client_cb, CODE_BAD, "Error with \"key\" in json.", NULL);
+	}
+
 	return EVS_STATUS_HANDLED;
 }
 
 static gboolean _app_init()
 {
 	qio_add_handler("/good", _test_handler, NULL, NULL, TRUE);
+	qio_add_handler("/good2", _test_handler, NULL, NULL, TRUE);
 	return TRUE;
 }
 

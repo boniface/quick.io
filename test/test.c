@@ -228,7 +228,7 @@ guint64 test_recv(
 		if (tclient->is_ssl) {
 			err = -1;
 		} else {
-			err = recv(tclient->conn.fd, data + r, len - r, 0);
+			err = recv(tclient->conn.fd, data + r, rlen - r, 0);
 		}
 
 		ck_assert(err > 0);

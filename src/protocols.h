@@ -58,6 +58,11 @@ enum protocol_status {
  */
 struct protocol {
 	/**
+	 * Useful for broadcasts
+	 */
+	guint id;
+
+	/**
 	 * Function that determines if the protocol can handle the client
 	 *
 	 * @param client
@@ -135,6 +140,30 @@ void protocols_write(struct client *client, const gchar *data, const guint len);
  *     What happened to the client
  */
 void protocols_closed(struct client *client, guint reason);
+
+/**
+ * Get an array of framed events, one for each protocol.
+ *
+ * @param e
+ *     The event to frame
+ * @param len
+ *     The length of the event
+ *
+ * @return
+ *     The frames that can be passed to protocols_bcast_write() to send
+ *     to a client. Must be freed with protocols_bcast_free() when done.
+ */
+GString** protocols_bcast(const gchar *e, const guint len);
+
+/**
+ * Writes the broadcast to the given client
+ */
+void protocols_bcast_write(struct client *client, GString **frames);
+
+/**
+ * Frees up the frames allocated by protocols_bcast().
+ */
+void protocols_bcast_free(GString **frames);
 
 /**
  * Setup all protocols and get ready to run.

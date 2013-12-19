@@ -9,6 +9,11 @@
 #include "quickio.h"
 
 /**
+ * A generic event with a path and some data
+ */
+#define EV_FORMAT "%s%s:%" G_GUINT64_FORMAT "=%s"
+
+/**
  * For STATUS_OK callbacks
  */
 #define CB_FORMAT \
@@ -23,6 +28,7 @@
 	"/qio/callback/%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT "=" \
 	"{\"code\":%d,\"data\":%s,\"err_msg\":"
 
+#define NO_CALLBACK (0l)
 
 /**
  * Events are what are located at the paths, whereas subscriptions are what
@@ -128,6 +134,10 @@ static struct subscription* _sub_get(
 {
 	struct subscription *sub;
 
+	if (ev_extra == NULL) {
+		ev_extra = "";
+	}
+
 	g_rw_lock_reader_lock(&ev->subs_lock);
 
 	_sub_get_if_exists(ev, ev_extra, &sub);
@@ -183,6 +193,21 @@ static void _sub_unref(struct subscription *sub)
 	g_free(sub->ev_extra);
 	qev_list_free(sub->subscribers);
 	g_slice_free1(sizeof(*sub), sub);
+}
+
+static void _broadcast(struct client *client, void *frames_)
+{
+	GString **frames = frames_;
+	protocols_bcast_write(client, frames);
+}
+
+static void _broadcast_free(void *bc_)
+{
+	struct broadcast *bc = bc_;
+
+	g_free(bc->json);
+	_sub_unref(bc->sub);
+	g_slice_free1(sizeof(*bc), bc);
 }
 
 void event_init(
@@ -408,7 +433,7 @@ void evs_send_cb_full(
 	if (code == CODE_OK) {
 		g_string_printf(buff, CB_FORMAT, client_cb, server_cb, code, json);
 	} else {
-		g_string_printf(buff, CB_ERR_FORMAT, client_cb, 0l, code, json);
+		g_string_printf(buff, CB_ERR_FORMAT, client_cb, NO_CALLBACK, code, json);
 		qev_json_pack(buff, "%s", err_msg);
 		g_string_append_c(buff, '}');
 	}
@@ -431,14 +456,42 @@ void evs_broadcast(
 	g_async_queue_push(_broadcasts, g_slice_copy(sizeof(bc), &bc));
 }
 
+void evs_broadcast_path(const gchar *ev_path, const gchar *json)
+{
+	gchar *ev_extra;
+	struct event *ev = evs_query(ev_path, &ev_extra);
+
+	if (ev != NULL) {
+		evs_broadcast(ev, ev_extra, json);
+	}
+}
+
 void evs_broadcast_tick()
 {
+	GString **frames;
+	struct broadcast *bc;
+	GString *e = qev_buffer_get();
 
+	while ((bc = g_async_queue_try_pop(_broadcasts)) != NULL) {
+		g_string_printf(e, EV_FORMAT, bc->sub->ev->ev_path,
+						bc->sub->ev_extra, NO_CALLBACK, bc->json);
+		frames = protocols_bcast(e->str, e->len);
+
+		qev_list_foreach(bc->sub->subscribers, _broadcast,
+						cfg_broadcast_threads, TRUE, frames);
+
+		protocols_bcast_free(frames);
+		_broadcast_free(bc);
+	}
+
+	qev_buffer_put(e);
 }
 
 void evs_init()
 {
-	_broadcasts = g_async_queue_new();
+	_broadcasts = g_async_queue_new_full(_broadcast_free);
+	qev_cleanup_and_null((void**)&_broadcasts,
+						(qev_free_fn)g_async_queue_unref);
 
 	evs_query_init();
 	evs_qio_init();
