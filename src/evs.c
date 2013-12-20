@@ -214,13 +214,13 @@ void event_init(
 	struct event *ev,
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn)
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn)
 {
 	ev->ev_path = g_strdup(ev_path);
 	ev->handler_fn = handler_fn;
-	ev->subscribe_fn = subscribe_fn;
-	ev->unsubscribe_fn = unsubscribe_fn;
+	ev->on_fn = on_fn;
+	ev->off_fn = off_fn;
 	ev->subs = g_hash_table_new_full(g_str_hash, g_str_equal,
 										NULL, (qev_free_fn)_sub_unref);
 	g_rw_lock_init(&ev->subs_lock);
@@ -237,25 +237,26 @@ void event_clear(struct event *ev)
 	g_rw_lock_clear(&ev->subs_lock);
 }
 
-void evs_add_handler(
+struct event* evs_add_handler(
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn,
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn,
 	const gboolean handle_children)
 {
-	gboolean created;
+	struct event *ev;
 	gchar *ep = g_strdup(ev_path);
 
 	_clean_ev_path(ep);
 
-	created = evs_query_insert(ep, handler_fn, subscribe_fn,
-								unsubscribe_fn, handle_children);
-	if (!created) {
+	ev = evs_query_insert(ep, handler_fn, on_fn, off_fn, handle_children);
+	if (ev == NULL) {
 		WARN("Failed to create event %s: event already exists.", ep);
 	}
 
 	g_free(ep);
+
+	return ev;
 }
 
 void evs_route(
@@ -287,11 +288,11 @@ out:
 
 	switch (status) {
 		case EVS_STATUS_OK:
-			evs_send_cb(client, client_cb, CODE_OK, NULL, NULL);
+			qio_evs_cb(client, client_cb, NULL);
 			break;
 
 		case EVS_STATUS_ERROR:
-			evs_send_cb(client, client_cb, CODE_UNKNOWN, NULL, NULL);
+			qio_evs_err_cb(client, client_cb, CODE_UNKNOWN, NULL, NULL);
 			break;
 
 		case EVS_STATUS_HANDLED:
@@ -299,7 +300,7 @@ out:
 	}
 }
 
-gboolean evs_subscribe(
+void evs_on(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra,
@@ -307,7 +308,6 @@ gboolean evs_subscribe(
 {
 	struct subscription *sub;
 	enum evs_status status = EVS_STATUS_OK;
-	enum evs_code code = CODE_OK;
 
 	DEBUG("Subscribing to: ev_path=%s, ev_extra=%s", ev->ev_path, ev_extra);
 
@@ -316,43 +316,64 @@ gboolean evs_subscribe(
 	qev_lock(client);
 
 	if (g_hash_table_contains(client->subs, sub)) {
+		qio_evs_cb(client, client_cb, NULL);
 		_sub_unref(sub);
 		goto out;
 	}
 
-	if (ev->subscribe_fn != NULL) {
-		status = ev->subscribe_fn(client, ev_extra, client_cb);
+	if (ev->on_fn != NULL) {
+		status = ev->on_fn(client, sub, ev_extra, client_cb);
 	}
 
-	if (status == EVS_STATUS_OK) {
-		gint32 *idx = client_sub_get(client);
-
-		if (idx == NULL) {
-			code = CODE_ENHANCE_CALM;
-			_sub_unref(sub);
-		} else {
-			qev_list_add(sub->subscribers, client, idx);
-			g_hash_table_insert(client->subs, sub, idx);
-		}
-	}
-
-	switch (status) {
-		case EVS_STATUS_OK:
-		case EVS_STATUS_ERROR:
-			evs_send_cb(client, client_cb, code, NULL, NULL);
-			break;
-
-		case EVS_STATUS_HANDLED:
-			break;
+	if (status != EVS_STATUS_HANDLED) {
+		qio_evs_on_cb(status == EVS_STATUS_OK, client, sub, client_cb);
 	}
 
 out:
 	qev_unlock(client);
-
-	return code == CODE_OK;
 }
 
-void evs_unsubscribe(
+void qio_evs_on_cb(
+	const gboolean success,
+	struct client *client,
+	struct subscription *sub,
+	const evs_cb_t client_cb)
+{
+	gint32 *idx;
+	enum evs_code code = CODE_OK;
+
+	qev_lock(client);
+
+	if (!success) {
+		code = CODE_UNAUTH;
+		goto error;
+	}
+
+	if (g_hash_table_contains(client->subs, sub)) {
+		goto error;
+	}
+
+	idx = client_sub_get(client);
+	if (idx == NULL) {
+		code = CODE_ENHANCE_CALM;
+		goto error;
+	}
+
+	qev_list_add(sub->subscribers, client, idx);
+	g_hash_table_insert(client->subs, sub, idx);
+
+out:
+	qev_unlock(client);
+
+	qio_evs_err_cb(client, client_cb, code, NULL, NULL);
+	return;
+
+error:
+	_sub_unref(sub);
+	goto out;
+}
+
+void evs_off(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra)
@@ -368,6 +389,11 @@ void evs_unsubscribe(
 		g_hash_table_remove(client->subs, sub);
 		qev_list_remove(sub->subscribers, idx);
 		client_sub_put(client, idx);
+
+		if (sub->ev->off_fn != NULL) {
+			sub->ev->off_fn(client, ev_extra);
+		}
+
 		_sub_unref(sub);
 	}
 
@@ -395,18 +421,27 @@ void evs_client_close(struct client *client)
 	qev_unlock(client);
 }
 
-void evs_send_cb(
+void qio_evs_cb(
+	struct client *client,
+	const evs_cb_t client_cb,
+	const gchar *json)
+{
+	qio_evs_cb_full(client, client_cb, CODE_OK, NULL, json,
+					NULL, NULL, NULL);
+}
+
+void qio_evs_err_cb(
 	struct client *client,
 	const evs_cb_t client_cb,
 	const enum evs_code code,
 	const gchar *err_msg,
 	const gchar *json)
 {
-	evs_send_cb_full(client, client_cb, code, err_msg, json,
+	qio_evs_cb_full(client, client_cb, code, err_msg, json,
 					NULL, NULL, NULL);
 }
 
-void evs_send_cb_full(
+void qio_evs_cb_full(
 	struct client *client,
 	const evs_cb_t client_cb,
 	const enum evs_code code,
@@ -443,7 +478,7 @@ void evs_send_cb_full(
 	qev_buffer_put(buff);
 }
 
-void evs_broadcast(
+void qio_evs_broadcast(
 	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json)
@@ -462,7 +497,7 @@ void evs_broadcast_path(const gchar *ev_path, const gchar *json)
 	struct event *ev = evs_query(ev_path, &ev_extra);
 
 	if (ev != NULL) {
-		evs_broadcast(ev, ev_extra, json);
+		qio_evs_broadcast(ev, ev_extra, json);
 	}
 }
 
@@ -473,8 +508,8 @@ void evs_broadcast_tick()
 	GString *e = qev_buffer_get();
 
 	while ((bc = g_async_queue_try_pop(_broadcasts)) != NULL) {
-		g_string_printf(e, EV_FORMAT, bc->sub->ev->ev_path,
-						bc->sub->ev_extra, NO_CALLBACK, bc->json);
+		g_string_printf(e, EV_FORMAT, bc->sub->ev->ev_path, bc->sub->ev_extra,
+						NO_CALLBACK, bc->json);
 		frames = protocols_bcast(e->str, e->len);
 
 		qev_list_foreach(bc->sub->subscribers, _broadcast,

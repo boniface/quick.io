@@ -124,6 +124,16 @@ guint64 test_recv(
 	const guint64 len);
 
 /**
+ * Tests that the received message is what is given.
+ */
+void test_msg(test_client_t *tclient, const gchar *data);
+
+/**
+ * Tests that the given callback is recieved in response to the message
+ */
+void test_cb(test_client_t *tclient, const gchar *msg, const gchar *data);
+
+/**
  * Close and free up any resources the client was using.
  */
 void test_close(test_client_t *tclient);

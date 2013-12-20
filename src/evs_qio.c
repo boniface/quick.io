@@ -8,7 +8,7 @@
 
 #include "quickio.h"
 
-static enum evs_status _sub(
+static enum evs_status _on(
 	struct client *client,
 	const gchar *_ev_extra G_GNUC_UNUSED,
 	const evs_cb_t client_cb,
@@ -21,23 +21,23 @@ static enum evs_status _sub(
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
 	if (jstatus != qev_json_ok) {
-		evs_send_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+		qio_evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		goto out;
 	}
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
-		evs_send_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
+		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
 		goto out;
 	}
 
-	evs_subscribe(client, ev, ev_extra, client_cb);
+	evs_on(client, ev, ev_extra, client_cb);
 
 out:
 	return EVS_STATUS_HANDLED;
 }
 
-static enum evs_status _unsub(
+static enum evs_status _off(
 	struct client *client,
 	const gchar *_ev_extra G_GNUC_UNUSED,
 	const evs_cb_t client_cb,
@@ -50,23 +50,24 @@ static enum evs_status _unsub(
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
 	if (jstatus != qev_json_ok) {
-		evs_send_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+		qio_evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		return EVS_STATUS_HANDLED;
 	}
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
-		evs_send_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
+		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
 		return EVS_STATUS_HANDLED;
 	}
 
-	evs_unsubscribe(client, ev, ev_extra);
+	evs_off(client, ev, ev_extra);
 
 	return EVS_STATUS_OK;
 }
 
 void evs_qio_init()
 {
-	evs_add_handler("/qio/on", _sub, NULL, NULL, TRUE);
-	evs_add_handler("/qio/off", _unsub, NULL, NULL, TRUE);
+	// @todo make sure that no one can subscribe to these
+	evs_add_handler("/qio/on", _on, NULL, NULL, TRUE);
+	evs_add_handler("/qio/off", _off, NULL, NULL, TRUE);
 }

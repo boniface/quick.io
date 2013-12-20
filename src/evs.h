@@ -29,12 +29,12 @@ struct event {
 	/**
 	 * Called when client attempts to subscribe to event
 	 */
-	evs_subscribe_fn subscribe_fn;
+	evs_on_fn on_fn;
 
 	/**
 	 * Called when client unsubscribes from event
 	 */
-	evs_unsubscribe_fn unsubscribe_fn;
+	evs_off_fn off_fn;
 
 	/**
 	 * All of the children subscriptions to this event, referenced by
@@ -60,8 +60,8 @@ void event_init(
 	struct event *ev,
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn);
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn);
 
 /**
  * Clean up all memory inside a `struct event`
@@ -75,21 +75,21 @@ void event_clear(struct event *ev);
  *     A prefix to add to the event path
  * @param ev_path
  *     The path for the event
- * @param handler
+ * @param handler_fn
  *     The function that handles the event
- * @param subscribe
+ * @param on_fn
  *     Before a subscription is created, this will
  *     be called to check if the subscription should be allowed.
- * @param unsubscribe
+ * @param off_fn
  *     Called when a client unsubscribes
  * @param handle_children
  *     If this event handler also handles sub-events. For example, if
  */
-void evs_add_handler(
+struct event* evs_add_handler(
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn,
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn,
 	const gboolean handle_children);
 
 /**
@@ -112,7 +112,8 @@ void evs_route(
 	gchar *json);
 
 /**
- * Subscribes the client to the event.
+ * Subscribes the client to the event, checking with the event's subscriber
+ * callback that such things are allowed.
  *
  * @param client
  *     The client to subscribe to the event
@@ -122,11 +123,8 @@ void evs_route(
  *     Any extra path segments
  * @param client_cb
  *     The id of the callback to send to the client
- *
- * @return
- *     If the subscription succeeded.
  */
-gboolean evs_subscribe(
+void evs_on(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra,
@@ -142,7 +140,7 @@ gboolean evs_subscribe(
  * @param ev_extra
  *     Any extra path segments
  */
-void evs_unsubscribe(
+void evs_off(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra);
@@ -151,83 +149,6 @@ void evs_unsubscribe(
  * Cleans up after the client when it closes
  */
 void evs_client_close(struct client *client);
-
-/**
- * Sends a callback to a client
- *
- * @param client
- *     The client to send the callback to
- * @param client_cb
- *     The ID of the callback to send
- * @param code
- *     Any response code you want to send. There are the standard ones,
- *     but you're free to use whatever you want. Keep in mind that `err_msg`
- *     is _only_ sent with the callback when code != 200.
- * @param err_msg
- *     An error message to send with the callback if code != 200.
- * @param json
- *     Any data to include with the callback
- */
-void evs_send_cb(
-	struct client *client,
-	const evs_cb_t client_cb,
-	const enum evs_code code,
-	const gchar *err_msg,
-	const gchar *json);
-
-/**
- * Sends a callback to a client, with all possible data.
- *
- * @attention
- *     It is understood that, if a non CODE_OK callback is sent, the server
- *     MAY NOT expect a callback from the client.
- *
- * @param client
- *     The client to send the callback to
- * @param client_cb
- *     The ID of the callback to send
- * @param code
- *     Any response code you want to send. There are the standard ones,
- *     but you're free to use whatever you want (including negative ones).
- *     Keep in mind that `err_msg` is _only_ sent with the callback when
- *     code != 200.
- * @param err_msg
- *     An error message to send with the callback if code != 200.
- * @param json
- *     Any data to include with the callback
- * @param cb
- *     The function to be called when the client responds to the server
- *     callback.
- * @param cb_data
- *     Data to be given back to the callback when the client responds
- *     @args{transfer-full}
- * @param free_fn
- *     Function that frees cb_data
- */
-void evs_send_cb_full(
-	struct client *client,
-	const evs_cb_t client_cb,
-	const enum evs_code code,
-	const gchar *err_msg,
-	const gchar *json,
-	const evs_cb_fn cb_fn,
-	void *cb_data,
-	const qev_free_fn free_fn);
-
-/**
- * Broadcast a message to all clients listening on the event
- *
- * @param ev
- *     The event to broadcast to
- * @param ev_extra
- *     Any extra path segments
- * @param json
- *     The json to send to everyone
- */
-void evs_broadcast(
-	struct event *ev,
-	const gchar *ev_extra,
-	const gchar *json);
 
 /**
  * Broadcast a message to all clients listening on the event

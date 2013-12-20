@@ -8,47 +8,23 @@
 
 #include "quickio.h"
 
-void qio_export_add_handler(
+struct event* qio_export_add_handler(
 	void *app_,
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn,
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn,
 	const gboolean handle_children)
 {
+	struct event *ev;
 	struct app *app = app_;
 	GString *ep = qev_buffer_get();
 
 	g_string_append_printf(ep, "%s/%s", app->prefix, ev_path);
-
-	evs_add_handler(ep->str, handler_fn, subscribe_fn,
-					unsubscribe_fn, handle_children);
-
+	ev = evs_add_handler(ep->str, handler_fn, on_fn, off_fn, handle_children);
 	qev_buffer_put(ep);
-}
 
-void qio_export_send_cb(
-	struct client *client,
-	const evs_cb_t client_cb,
-	const enum evs_code code,
-	const gchar *err_msg,
-	const gchar *json)
-{
-	evs_send_cb(client, client_cb, code, err_msg, json);
-}
-
-void qio_export_send_cb_full(
-	struct client *client,
-	const evs_cb_t client_cb,
-	const enum evs_code code,
-	const gchar *err_msg,
-	const gchar *json,
-	const evs_cb_fn cb_fn,
-	void *cb_data,
-	const qev_free_fn free_fn)
-{
-	evs_send_cb_full(client, client_cb, code, err_msg, json,
-					cb_fn, cb_data, free_fn);
+	return ev;
 }
 
 gboolean qio_export_json_unpack(
@@ -79,4 +55,14 @@ gboolean qio_export_json_pack(
 	va_end(args);
 
 	return status == qev_json_ok;
+}
+
+GString* qio_export_buffer_get()
+{
+	return qev_buffer_get();
+}
+
+void qio_export_buffer_put(GString *buff)
+{
+	qev_buffer_put(buff);
 }

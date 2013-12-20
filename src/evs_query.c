@@ -56,14 +56,13 @@ static void _ptrie_free(void *ptrie_)
 	g_slice_free1(sizeof(*ptrie), ptrie);
 }
 
-gboolean evs_query_insert(
+struct event* evs_query_insert(
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn,
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn,
 	const gboolean handle_children)
 {
-	gboolean inserted;
 	const gchar *curr = ev_path;
 	struct _ptrie *parent = &_events;
 
@@ -84,7 +83,6 @@ gboolean evs_query_insert(
 										NULL, child)) {
 				g_slice_free1(sizeof(*child), child);
 				child = parent->childs[ch];
-				inserted = FALSE;
 			}
 		}
 
@@ -92,15 +90,14 @@ gboolean evs_query_insert(
 		curr++;
 	}
 
-	if (!inserted) {
-		return FALSE;
+	if (parent->ev.ev_path != NULL) {
+		return NULL;
 	}
 
 	parent->handle_children = handle_children;
-	event_init(&parent->ev, ev_path, handler_fn,
-				subscribe_fn, unsubscribe_fn);
+	event_init(&parent->ev, ev_path, handler_fn, on_fn, off_fn);
 
-	return TRUE;
+	return &parent->ev;
 }
 
 struct event* evs_query(

@@ -59,9 +59,6 @@ LIBQEV = lib/quick-event/libqev.a
 CFLAGS = \
 	-Wall \
 	-Wextra \
-	-Wsign-compare \
-	-Wtype-limits \
-	-Wuninitialized \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-D_FORTIFY_SOURCE=2 \

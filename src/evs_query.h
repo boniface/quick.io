@@ -17,11 +17,11 @@
  *
  * @param ev_path
  *     The event path
- * @param handler
+ * @param handler_fn
  *     The function to be called when an event of this type comes in
- * @param subscribe
+ * @param on_fn
  *     Called when a client attempts to subscribe to the event
- * @param unsubscribe
+ * @param off_fn
  *     Called when a client unsubscribes from the event
  * @param handle_children
  *     If the event would like to handle all unhandled children events
@@ -29,11 +29,11 @@
  * @return
  *     If the event was inserted. FALSE indicates that the event already exists.
  */
-gboolean evs_query_insert(
+struct event* evs_query_insert(
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
-	const evs_subscribe_fn subscribe_fn,
-	const evs_unsubscribe_fn unsubscribe_fn,
+	const evs_on_fn on_fn,
+	const evs_off_fn off_fn,
 	const gboolean handle_children);
 
 /**

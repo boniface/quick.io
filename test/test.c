@@ -239,6 +239,19 @@ guint64 test_recv(
 
 	return rlen;
 }
+void test_msg(test_client_t *tclient, const gchar *data)
+{
+	gchar buff[strlen(data) * 2];
+
+	test_recv(tclient, buff, sizeof(buff));
+	ck_assert_str_eq(buff, data);
+}
+
+void test_cb(test_client_t *tclient, const gchar *msg, const gchar *data)
+{
+	test_send(tclient, msg);
+	test_msg(tclient, data);
+}
 
 void test_close(struct test_client *tclient)
 {
