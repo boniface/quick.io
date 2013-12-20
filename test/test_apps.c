@@ -24,7 +24,7 @@ START_TEST(test_sane)
 }
 END_TEST
 
-START_TEST(test_subscribe)
+START_TEST(test_on)
 {
 	guint i;
 	gchar buff[128];
@@ -71,13 +71,37 @@ START_TEST(test_subscribe)
 }
 END_TEST
 
-START_TEST(test_delayed_subscribe)
+START_TEST(test_on_delayed)
 {
 	test_client_t *tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:2=\"/test/delayed\"",
 		"/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	test_close(tc);
+}
+END_TEST
+
+START_TEST(test_on_reject)
+{
+	test_client_t *tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/reject\"",
+		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
+
+	test_close(tc);
+}
+END_TEST
+
+START_TEST(test_on_delayed_reject)
+{
+	test_client_t *tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/delayed-reject\"",
+		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
 
 	test_close(tc);
 }
@@ -92,8 +116,10 @@ int main()
 
 	tcase = test_add(s, "Sanity",
 		test_sane,
-		test_subscribe,
-		test_delayed_subscribe,
+		test_on,
+		test_on_delayed,
+		test_on_reject,
+		test_on_delayed_reject,
 		NULL);
 
 	return test_do(sr);

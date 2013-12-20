@@ -67,7 +67,6 @@ static enum evs_status _off(
 
 void evs_qio_init()
 {
-	// @todo make sure that no one can subscribe to these
-	evs_add_handler("/qio/on", _on, NULL, NULL, TRUE);
-	evs_add_handler("/qio/off", _off, NULL, NULL, TRUE);
+	evs_add_handler("/qio/on", _on, qio_evs_no_on, NULL, TRUE);
+	evs_add_handler("/qio/off", _off, qio_evs_no_on, NULL, TRUE);
 }

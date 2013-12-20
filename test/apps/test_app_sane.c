@@ -64,7 +64,7 @@ static void _good_off(
 	g_atomic_int_inc(&_offs);
 }
 
-static enum evs_status _delayed_subscribe(
+static enum evs_status _delayed_on(
 	client_t *client,
 	subscription_t *sub,
 	const gchar *ev_extra G_GNUC_UNUSED,
@@ -74,12 +74,33 @@ static enum evs_status _delayed_subscribe(
 	return EVS_STATUS_HANDLED;
 }
 
+static enum evs_status _reject_on(
+	client_t *client,
+	subscription_t *sub G_GNUC_UNUSED,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb)
+{
+	return EVS_STATUS_ERR;
+}
+
+static enum evs_status _delayed_reject_on(
+	client_t *client,
+	subscription_t *sub,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb)
+{
+	qio_evs_on_cb(FALSE, client, sub, client_cb);
+	return EVS_STATUS_HANDLED;
+}
+
 static gboolean _app_init()
 {
 	qio_evs_add_handler("/stats", _stats_handler, NULL, NULL, TRUE);
 	qio_evs_add_handler("/good", _good_handler, _good_on, _good_off, TRUE);
 	qio_evs_add_handler("/good2", _good_handler, _good_on, _good_off, TRUE);
-	qio_evs_add_handler("/delayed", NULL, _delayed_subscribe, NULL, TRUE);
+	qio_evs_add_handler("/delayed", NULL, _delayed_on, NULL, TRUE);
+	qio_evs_add_handler("/reject", NULL, qio_evs_no_on, NULL, TRUE);
+	qio_evs_add_handler("/delayed-reject", NULL, _delayed_reject_on, NULL, TRUE);
 	return TRUE;
 }
 

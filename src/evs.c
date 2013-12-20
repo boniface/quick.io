@@ -259,6 +259,15 @@ struct event* evs_add_handler(
 	return ev;
 }
 
+enum evs_status qio_evs_no_on(
+	client_t *client,
+	subscription_t *sub,
+	const gchar *ev_extra,
+	const evs_cb_t client_cb)
+{
+	return EVS_STATUS_ERR;
+}
+
 void evs_route(
 	struct client *client,
 	gchar *ev_path,
@@ -267,7 +276,7 @@ void evs_route(
 {
 	struct event *ev;
 	gchar *ev_extra = NULL;
-	enum evs_status status = EVS_STATUS_ERROR;
+	enum evs_status status = EVS_STATUS_ERR;
 
 	_clean_ev_path(ev_path);
 
@@ -291,7 +300,7 @@ out:
 			qio_evs_cb(client, client_cb, NULL);
 			break;
 
-		case EVS_STATUS_ERROR:
+		case EVS_STATUS_ERR:
 			qio_evs_err_cb(client, client_cb, CODE_UNKNOWN, NULL, NULL);
 			break;
 

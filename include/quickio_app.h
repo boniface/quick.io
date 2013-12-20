@@ -87,7 +87,7 @@ enum evs_status {
 	 * For subscriptions, this indicates that a subscription is invalid
 	 * and should be rejected.
 	 */
-	EVS_STATUS_ERROR,
+	EVS_STATUS_ERR,
 
 	/**
 	 * The event was handled and any necessary callbacks (including error
@@ -221,6 +221,15 @@ QIO_EXPORT event_t* qio_export_add_handler(
 	const gboolean handle_children);
 
 #define qio_evs_add_handler(...) qio_export_add_handler(__qio_app, ##__VA_ARGS__)
+
+/**
+ * Doesnt allow anyone to subscribe to the event.
+ */
+QIO_EXPORT enum evs_status qio_evs_no_on(
+	client_t *client,
+	subscription_t *sub,
+	const gchar *ev_extra,
+	const evs_cb_t client_cb);
 
 /**
  * Subscribes a client to an event without any callback checks. This should
