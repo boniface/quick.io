@@ -43,7 +43,55 @@
 	{ \
 		return test(); }
 
-#warning need app logging shortcuts APP_DEBUG, APP_INFO, etc
+#ifdef APP_ENABLE_DEBUG
+	/**
+	 * Disable when building for prod
+	 */
+	#define APP_DEBUG(format, ...) \
+				g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, \
+					"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+	/**
+	 * Output debug info to the console, only when not built for prod.
+	 */
+	#define APP_DEBUG(format, ...)
+#endif
+
+/**
+ * General useful information
+ */
+#define APP_INFO(format, ...) \
+			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, \
+				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+
+/**
+ * Output warning
+ */
+#define APP_WARN(format, ...) \
+			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, \
+				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+
+/**
+ * Like perror()
+ */
+#define APP_PERROR(format, ...) \
+			g_log(QEV_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, \
+				"%s:%d : " format ": %s", __FILE__, __LINE__, ##__VA_ARGS__, \
+				strerror(errno))
+
+/**
+ * Output critical, non-fatal error
+ */
+#define APP_CRITICAL(format, ...) \
+			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, \
+				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+
+/**
+ * A fatal error, after which nothing can continue.
+ */
+#define APP_FATAL(format, ...) \
+			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, \
+				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * Clients are to be treated as a blob that cannot be modified. All the server
@@ -230,6 +278,51 @@ QIO_EXPORT enum evs_status qio_evs_no_on(
 	subscription_t *sub,
 	const gchar *ev_extra,
 	const evs_cb_t client_cb);
+
+/**
+ * Sends an event to a specific client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param ev
+ *     The event to send
+ * @param ev_extra
+ *     Any extra path segments for the event
+ * @param json
+ *     Any data to include with the event
+ */
+QIO_EXPORT void qio_evs_send(
+	client_t *client,
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json);
+
+/**
+ * Sends an event to a specific client, requesting a callback from the client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param ev
+ *     The event to send
+ * @param ev_extra
+ *     Any extra path segments for the event
+ * @param json
+ *     Any data to include with the event
+ * @param cb_fn
+ *     The function to execute on callback
+ * @param cb_data
+ *     Data to pass into the function
+ * @param free_fn
+ *     Frees the cb_data
+ */
+QIO_EXPORT void qio_evs_send_full(
+	client_t *client,
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
 
 /**
  * Subscribes a client to an event without any callback checks. This should

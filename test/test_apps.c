@@ -107,6 +107,20 @@ START_TEST(test_on_delayed_reject)
 }
 END_TEST
 
+START_TEST(test_on_with_evs_send)
+{
+	test_client_t *tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/with-send\"",
+		"/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	test_msg(tc, "/test/with-send:0=\"with-send!\"");
+
+	test_close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -114,13 +128,16 @@ int main()
 	TCase *tcase;
 	test_new("apps", &sr, &s);
 
-	tcase = test_add(s, "Sanity",
-		test_sane,
-		test_on,
-		test_on_delayed,
-		test_on_reject,
-		test_on_delayed_reject,
-		NULL);
+	tcase = tcase_create("Sanity");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_sane);
+	tcase_add_test(tcase, test_on);
+	tcase_add_test(tcase, test_on_delayed);
+	tcase_add_test(tcase, test_on_reject);
+	tcase_add_test(tcase, test_on_delayed_reject);
+	tcase_add_test(tcase, test_on_with_evs_send);
+
 
 	return test_do(sr);
 }

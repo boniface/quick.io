@@ -30,37 +30,6 @@
 
 #define NO_CALLBACK (0l)
 
-/**
- * Events are what are located at the paths, whereas subscriptions are what
- * are located at ev_path + ev_extra (ev_extra may == ""), and these are
- * what you can actually broadcast to.
- */
-struct subscription {
-	/**
-	 * The event that this sub belongs to
-	 */
-	struct event *ev;
-
-	/**
-	 * To allow a way to remove sub from ev->subs
-	 */
-	gchar *ev_extra;
-
-	/**
-	 * All of the clients currently listening for this event
-	 */
-	qev_list_t *subscribers;
-
-	/**
-	 * Reference count to allow unlocked operations when dealing with
-	 * subscriptions. This number technically represents the total number
-	 * of clients subscribed and the number of outstanding references
-	 * to the subscription. This allows a quick way to determine simultaneously
-	 * if the list is empty and no one has a reference anymore.
-	 */
-	guint refs;
-};
-
 struct broadcast {
 	struct subscription *sub;
 	gchar *json;
@@ -111,90 +80,6 @@ static void _clean_ev_path(gchar *path)
 	*writing = '\0';
 }
 
-static gboolean _sub_get_if_exists(
-	struct event *ev,
-	const gchar *ev_extra,
-	struct subscription **sub_)
-{
-	struct subscription *sub;
-
-	sub = g_hash_table_lookup(ev->subs, ev_extra);
-	if (sub != NULL && __sync_add_and_fetch(&sub->refs, 1) <= 1) {
-		sub = NULL;
-	}
-
-	*sub_ = sub;
-
-	return sub != NULL;
-}
-
-static struct subscription* _sub_get(
-	struct event *ev,
-	const gchar *ev_extra)
-{
-	struct subscription *sub;
-
-	if (ev_extra == NULL) {
-		ev_extra = "";
-	}
-
-	g_rw_lock_reader_lock(&ev->subs_lock);
-
-	_sub_get_if_exists(ev, ev_extra, &sub);
-
-	g_rw_lock_reader_unlock(&ev->subs_lock);
-
-	if (sub == NULL) {
-		g_rw_lock_writer_lock(&ev->subs_lock);
-
-		if (!_sub_get_if_exists(ev, ev_extra, &sub)) {
-			sub = g_slice_alloc0(sizeof(*sub));
-			sub->ev = ev;
-			sub->ev_extra = g_strdup(ev_extra);
-			sub->subscribers = qev_list_new(qev_cfg_get_max_clients(), NULL);
-			sub->refs = 1;
-
-			/*
-			 * Make sure that the free function isn't called: if the
-			 * previous sub is still in the table, then there is a thread
-			 * attempting to free it, but it's blocked on the write lock,
-			 * so it cannot safely be touched.
-			 */
-			g_hash_table_steal(ev->subs, sub->ev_extra);
-			g_hash_table_insert(ev->subs, sub->ev_extra, sub);
-		}
-
-		g_rw_lock_writer_unlock(&ev->subs_lock);
-	}
-
-	return sub;
-}
-
-static void _sub_unref(struct subscription *sub)
-{
-	struct event *ev = sub->ev;
-
-	if (!g_atomic_int_dec_and_test(&sub->refs)) {
-		return;
-	}
-
-	g_rw_lock_writer_lock(&ev->subs_lock);
-
-	/*
-	 * If a new subscription has replaced that one being removed here,
-	 * play nice and let it live
-	 */
-	if (g_hash_table_lookup(ev->subs, sub->ev_extra) == sub) {
-		g_hash_table_steal(ev->subs, sub->ev_extra);
-	}
-
-	g_rw_lock_writer_unlock(&ev->subs_lock);
-
-	g_free(sub->ev_extra);
-	qev_list_free(sub->subscribers);
-	g_slice_free1(sizeof(*sub), sub);
-}
-
 static void _broadcast(struct client *client, void *frames_)
 {
 	GString **frames = frames_;
@@ -206,7 +91,7 @@ static void _broadcast_free(void *bc_)
 	struct broadcast *bc = bc_;
 
 	g_free(bc->json);
-	_sub_unref(bc->sub);
+	sub_unref(bc->sub);
 	g_slice_free1(sizeof(*bc), bc);
 }
 
@@ -215,14 +100,16 @@ void event_init(
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
 	const evs_on_fn on_fn,
-	const evs_off_fn off_fn)
+	const evs_off_fn off_fn,
+	const gboolean handle_children)
 {
 	ev->ev_path = g_strdup(ev_path);
 	ev->handler_fn = handler_fn;
 	ev->on_fn = on_fn;
 	ev->off_fn = off_fn;
+	ev->handle_children = handle_children;
 	ev->subs = g_hash_table_new_full(g_str_hash, g_str_equal,
-										NULL, (qev_free_fn)_sub_unref);
+										NULL, (qev_free_fn)sub_unref);
 	g_rw_lock_init(&ev->subs_lock);
 }
 
@@ -260,10 +147,10 @@ struct event* evs_add_handler(
 }
 
 enum evs_status qio_evs_no_on(
-	client_t *client,
-	subscription_t *sub,
-	const gchar *ev_extra,
-	const evs_cb_t client_cb)
+	client_t *client G_GNUC_UNUSED,
+	subscription_t *sub G_GNUC_UNUSED,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb G_GNUC_UNUSED)
 {
 	return EVS_STATUS_ERR;
 }
@@ -294,7 +181,6 @@ void evs_route(
 	}
 
 out:
-
 	switch (status) {
 		case EVS_STATUS_OK:
 			qio_evs_cb(client, client_cb, NULL);
@@ -320,13 +206,13 @@ void evs_on(
 
 	DEBUG("Subscribing to: ev_path=%s, ev_extra=%s", ev->ev_path, ev_extra);
 
-	sub = _sub_get(ev, ev_extra);
+	sub = sub_get(ev, ev_extra);
 
 	qev_lock(client);
 
-	if (g_hash_table_contains(client->subs, sub)) {
+	if (client_sub_has(client, sub)) {
 		qio_evs_cb(client, client_cb, NULL);
-		_sub_unref(sub);
+		sub_unref(sub);
 		goto out;
 	}
 
@@ -342,43 +228,78 @@ out:
 	qev_unlock(client);
 }
 
+void qio_evs_send(
+	client_t *client,
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json)
+{
+	qio_evs_send_full(client, ev, ev_extra, json, NULL, NULL, NULL);
+}
+
+void qio_evs_send_full(
+	client_t *client,
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn)
+{
+	evs_cb_t server_cb = 0;
+	struct subscription *sub = sub_get(ev, ev_extra);
+	GString *buff = qev_buffer_get();
+	json = json ? : "null";
+
+	if (!ev->handle_children && (ev_extra != NULL || *ev_extra != '\0')) {
+		WARN("Sending event %s%s to client, but %s doesn't handle_children, "
+				"so no subscription was possible.",
+				ev->ev_path, sub->ev_extra, ev->ev_path);
+	}
+
+	qev_lock(client);
+
+	if (!g_hash_table_contains(client->subs, sub)) {
+		CRITICAL("Client is not subscribed to %s%s. Sending it an event "
+				"is wrong.", ev->ev_path, sub->ev_extra);
+	}
+
+	g_string_printf(buff, EV_FORMAT, ev->ev_path, sub->ev_extra,
+									server_cb, json);
+
+	protocols_write(client, buff->str, buff->len);
+
+	qev_unlock(client);
+
+	qev_buffer_put(buff);
+}
+
 void qio_evs_on_cb(
 	const gboolean success,
 	struct client *client,
 	struct subscription *sub,
 	const evs_cb_t client_cb)
 {
-	gint32 *idx;
+	gboolean good;
 	enum evs_code code = CODE_OK;
-
-	qev_lock(client);
 
 	if (!success) {
 		code = CODE_UNAUTH;
 		goto error;
 	}
 
-	if (g_hash_table_contains(client->subs, sub)) {
-		goto error;
-	}
-
-	idx = client_sub_get(client);
-	if (idx == NULL) {
+	good = client_sub_add(client, sub);
+	if (!good) {
 		code = CODE_ENHANCE_CALM;
 		goto error;
 	}
 
-	qev_list_add(sub->subscribers, client, idx);
-	g_hash_table_insert(client->subs, sub, idx);
-
 out:
-	qev_unlock(client);
-
 	qio_evs_err_cb(client, client_cb, code, NULL, NULL);
 	return;
 
 error:
-	_sub_unref(sub);
+	sub_unref(sub);
 	goto out;
 }
 
@@ -387,47 +308,19 @@ void evs_off(
 	struct event *ev,
 	const gchar *ev_extra)
 {
-	gint32 *idx;
-	struct subscription *sub = _sub_get(ev, ev_extra);
+	struct subscription *sub = sub_get(ev, ev_extra);
+	gboolean removed = client_sub_remove(client, sub);
 
-	qev_lock(client);
-
-	idx = g_hash_table_lookup(client->subs, sub);
-
-	if (idx != NULL) {
-		g_hash_table_remove(client->subs, sub);
-		qev_list_remove(sub->subscribers, idx);
-		client_sub_put(client, idx);
-
-		if (sub->ev->off_fn != NULL) {
-			sub->ev->off_fn(client, ev_extra);
-		}
-
-		_sub_unref(sub);
+	if (removed && sub->ev->off_fn != NULL) {
+		sub->ev->off_fn(client, ev_extra);
 	}
 
-	qev_unlock(client);
-
-	_sub_unref(sub);
+	sub_unref(sub);
 }
 
 void evs_client_close(struct client *client)
 {
-	GHashTableIter iter;
-	struct subscription *sub;
-	gint32 *idx;
-
-	qev_lock(client);
-	g_hash_table_iter_init(&iter, client->subs);
-
-	while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&idx)) {
-		g_hash_table_iter_remove(&iter);
-		qev_list_remove(sub->subscribers, idx);
-		client_sub_put(client, idx);
-		_sub_unref(sub);
-	}
-
-	qev_unlock(client);
+	client_sub_remove_all(client);
 }
 
 void qio_evs_cb(
@@ -461,7 +354,7 @@ void qio_evs_cb_full(
 	const qev_free_fn free_fn)
 {
 	GString *buff;
-	guint64 server_cb = 0;
+	evs_cb_t server_cb = 0;
 
 	if (client_cb == 0) {
 		// Glad we could have this chat, guys
@@ -493,7 +386,7 @@ void qio_evs_broadcast(
 	const gchar *json)
 {
 	struct broadcast bc = {
-		.sub = _sub_get(ev, ev_extra),
+		.sub = sub_get(ev, ev_extra),
 		.json = g_strdup(json),
 	};
 

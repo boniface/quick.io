@@ -50,26 +50,49 @@ struct client {
 };
 
 /**
- * Get an index pointer to use for the qev_list that manages the subscriptions.
- *
- * This function uses a very simple heuristic to determine if a client should
- * be allowed to subscribe: it's based on the number of active clients vs
- * the number of active subscriptions.
+ * Checks if a client is subscribed to the given susbcription
  *
  * @param client
- *     The client attempting to subscribe
+ *     The client in question
+ * @param sub
+ *     The subscription in question
  *
  * @return
- *     The pointer to use; NULL if memory pressure is stopping the subscription.
+ *     If the client has the subscription
  */
-gint32* client_sub_get(struct client *client);
+gboolean client_sub_has(struct client *client, struct subscription *sub);
 
 /**
- * Removes a single subscription from a client.
+ * Adds the subscription to the client.
  *
  * @param client
- *     The client that is releasing the subscription
- * @param idx
- *     The value returned from client_sub_get()
+ *     The client in question
+ * @param sub
+ *     The subscription in question
+ *
+ * @return
+ *     If the subscription was successful. When TRUE, sub now belongs to
+ *     client. When FALSE, sub does not transfer ownership.
  */
-void client_sub_put(struct client *client, gint32 *idx);
+gboolean client_sub_add(struct client *client, struct subscription *sub);
+
+/**
+ * Removes the subscription from the client.
+ *
+ * @param client
+ *     The client in question
+ * @param sub
+ *     The subscription in question
+ *
+ * @return
+ *     If the subscription was removed.
+ */
+gboolean client_sub_remove(struct client *client, struct subscription *sub);
+
+/**
+ * Removes all subscriptions from the client.
+ *
+ * @param client
+ *     The client in question
+ */
+void client_sub_remove_all(struct client *client);

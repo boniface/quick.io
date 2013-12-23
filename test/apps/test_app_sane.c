@@ -6,8 +6,13 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
+// #define APP_ENABLE_DEBUG
+#define G_LOG_DOMAIN "test_app_sane"
+
 #include "../../include/quickio_app.h"
 #include <stdio.h>
+
+static event_t *_ev_with_send = NULL;
 
 static gint _ons = 0;
 static gint _offs = 0;
@@ -74,15 +79,6 @@ static enum evs_status _delayed_on(
 	return EVS_STATUS_HANDLED;
 }
 
-static enum evs_status _reject_on(
-	client_t *client,
-	subscription_t *sub G_GNUC_UNUSED,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb)
-{
-	return EVS_STATUS_ERR;
-}
-
 static enum evs_status _delayed_reject_on(
 	client_t *client,
 	subscription_t *sub,
@@ -90,6 +86,17 @@ static enum evs_status _delayed_reject_on(
 	const evs_cb_t client_cb)
 {
 	qio_evs_on_cb(FALSE, client, sub, client_cb);
+	return EVS_STATUS_HANDLED;
+}
+
+static enum evs_status _with_send_on(
+	client_t *client,
+	subscription_t *sub,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb)
+{
+	qio_evs_on_cb(TRUE, client, sub, client_cb);
+	qio_evs_send(client, _ev_with_send, NULL, "\"with-send!\"");
 	return EVS_STATUS_HANDLED;
 }
 
@@ -101,6 +108,7 @@ static gboolean _app_init()
 	qio_evs_add_handler("/delayed", NULL, _delayed_on, NULL, TRUE);
 	qio_evs_add_handler("/reject", NULL, qio_evs_no_on, NULL, TRUE);
 	qio_evs_add_handler("/delayed-reject", NULL, _delayed_reject_on, NULL, TRUE);
+	_ev_with_send = qio_evs_add_handler("/with-send", NULL, _with_send_on, NULL, TRUE);
 	return TRUE;
 }
 

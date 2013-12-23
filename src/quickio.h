@@ -26,6 +26,7 @@
 #include "evs.h"
 #include "evs_qio.h"
 #include "evs_query.h"
+#include "sub.h"
 #include "protocols.h"
 #include "protocols/flash.h"
 #include "protocols/raw.h"

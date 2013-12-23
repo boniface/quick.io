@@ -127,32 +127,6 @@ void test_teardown()
 	qev_exit();
 }
 
-TCase* test_add(Suite *s, const gchar *name, ...)
-{
-	va_list args;
-	TFun tfun;
-	TCase *tcase = tcase_create(name);
-
-	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	suite_add_tcase(s, tcase);
-
-	va_start(args, name);
-
-	while (TRUE) {
-		tfun = va_arg(args, TFun);
-
-		if (tfun == NULL) {
-			break;
-		}
-
-		tcase_add_test(tcase, tfun);
-	}
-
-	va_end(args);
-
-	return tcase;
-}
-
 struct test_client* test_client()
 {
 	gchar buff[12];

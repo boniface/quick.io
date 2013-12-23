@@ -29,11 +29,12 @@ OBJECTS = \
 	$(SRC_DIR)/evs_query.o \
 	$(SRC_DIR)/protocols.o \
 	$(SRC_DIR)/protocols/flash.o \
-	$(SRC_DIR)/protocols/rfc6455.o \
 	$(SRC_DIR)/protocols/raw.o \
+	$(SRC_DIR)/protocols/rfc6455.o \
 	$(SRC_DIR)/protocols/stomp.o \
+	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
-	$(SRC_DIR)/qev.o
+	$(SRC_DIR)/sub.o
 
 BIN_OBJECTS = \
 	$(OBJECTS) \

@@ -52,21 +52,6 @@ void test_setup();
 void test_teardown();
 
 /**
- * Adds all of the test cases to the test suite. By default, qio
- * will be initialized and running before the test cases begins.
- *
- * @param suite
- *     The suite to add the tests to
- * @param name
- *     The name of the test cases
- * @param ...
- *     The test functions to add
- *
- * @return The test case, for adding some special-case tests.
- */
-TCase* test_add(Suite *s, const gchar *name, ...) G_GNUC_NULL_TERMINATED;
-
-/**
  * Get a client connected to QIO.
  */
 test_client_t* test_client();

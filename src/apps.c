@@ -77,9 +77,7 @@ static void _add_app(
 		goto out;
 	}
 
-	if (papp->run != NULL) {
-		papp->th = g_thread_new(papp->name, _app_run_th, papp);
-	}
+	papp->th = g_thread_new(papp->name, _app_run_th, papp);
 
 	g_ptr_array_add(_apps, papp);
 	good = TRUE;

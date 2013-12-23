@@ -23,11 +23,6 @@ struct _ptrie {
 	gchar ch;
 
 	/**
-	 * If this event wants to handle all children paths
-	 */
-	gboolean handle_children;
-
-	/**
 	 * Any array of possible children.
 	 * index 0 = '-'
 	 */
@@ -94,8 +89,7 @@ struct event* evs_query_insert(
 		return NULL;
 	}
 
-	parent->handle_children = handle_children;
-	event_init(&parent->ev, ev_path, handler_fn, on_fn, off_fn);
+	event_init(&parent->ev, ev_path, handler_fn, on_fn, off_fn, handle_children);
 
 	return &parent->ev;
 }
@@ -116,7 +110,7 @@ struct event* evs_query(
 		struct _ptrie *child = parent->childs[ch];
 
 		if (child == NULL) {
-			if (parent->handle_children) {
+			if (parent->ev.handle_children) {
 				goto out;
 			}
 

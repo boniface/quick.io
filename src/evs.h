@@ -37,6 +37,11 @@ struct event {
 	evs_off_fn off_fn;
 
 	/**
+	 * If this event wants to handle all children paths
+	 */
+	gboolean handle_children;
+
+	/**
 	 * All of the children subscriptions to this event, referenced by
 	 * extra path segments.
 	 *
@@ -61,7 +66,8 @@ void event_init(
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
 	const evs_on_fn on_fn,
-	const evs_off_fn off_fn);
+	const evs_off_fn off_fn,
+	const gboolean handle_children);
 
 /**
  * Clean up all memory inside a `struct event`
