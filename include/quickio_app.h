@@ -227,7 +227,10 @@ typedef void (*evs_off_fn)(
 /**
  * Function called when the client sends a callback to the server
  */
-typedef void (*evs_cb_fn)();
+typedef enum evs_status (*evs_cb_fn)(
+	client_t *client,
+	const evs_cb_t client_cb,
+	gchar *json);
 
 /**
  * The app's reference to what QIO knows about the app. The app must never
@@ -360,6 +363,33 @@ QIO_EXPORT void qio_evs_cb(
 	const gchar *json);
 
 /**
+ * Sends a CODE_OK callback to a client while requesting a callback from the
+ * client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param client_cb
+ *     The ID of the callback to send
+ * @param json
+ *     Any data to include with the callback
+ * @param cb_fn
+ *     The function to be called when the client responds to the server
+ *     callback.
+ * @param cb_data
+ *     Data to be given back to the callback when the client responds
+ *     @args{transfer-full}
+ * @param free_fn
+ *     Function that frees cb_data
+ */
+QIO_EXPORT void qio_evs_cb_with_cb(
+	struct client *client,
+	const evs_cb_t client_cb,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
+
+/**
  * Sends a callback to a client with an error code and message.
  *
  * @param client
@@ -402,7 +432,7 @@ QIO_EXPORT void qio_evs_err_cb(
  *     An error message to send with the callback if code != 200.
  * @param json
  *     Any data to include with the callback
- * @param cb
+ * @param cb_fn
  *     The function to be called when the client responds to the server
  *     callback.
  * @param cb_data

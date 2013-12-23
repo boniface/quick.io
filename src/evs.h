@@ -13,6 +13,11 @@
 #include "quickio.h"
 
 /**
+ * The value that indicates there is no callback
+ */
+#define EVS_NO_CALLBACK (0l)
+
+/**
  * Events are stored in a prefix tree for fast, nice lookups.
  */
 struct event {

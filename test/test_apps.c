@@ -138,6 +138,5 @@ int main()
 	tcase_add_test(tcase, test_on_delayed_reject);
 	tcase_add_test(tcase, test_on_with_evs_send);
 
-
 	return test_do(sr);
 }

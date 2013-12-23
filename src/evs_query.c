@@ -48,7 +48,11 @@ static void _ptrie_free(void *ptrie_)
 		event_clear(&ptrie->ev);
 	}
 
-	g_slice_free1(sizeof(*ptrie), ptrie);
+	memset(ptrie, 0, sizeof(*ptrie));
+
+	if (ptrie != &_events) {
+		g_slice_free1(sizeof(*ptrie), ptrie);
+	}
 }
 
 struct event* evs_query_insert(

@@ -20,6 +20,108 @@ static void _sub_put(struct client *client G_GNUC_UNUSED, gint32 *idx)
 	g_slice_free1(sizeof(*idx), idx);
 }
 
+static void _cb_data_free(void *cb_data, const qev_free_fn free_fn)
+{
+	if (cb_data != NULL && free_fn != NULL) {
+		free_fn(cb_data);
+	}
+}
+
+static void _cb_remove(struct client *client, const guint i)
+{
+	g_slice_free1(sizeof(**client->cbs), client->cbs[i]);
+	client->cbs[i] = NULL;
+}
+
+static void _cb_free(struct client *client, const guint i)
+{
+	_cb_data_free(client->cbs[i]->cb_data, client->cbs[i]->free_fn);
+	_cb_remove(client, i);
+}
+
+static void _cb_remove_all(struct client *client)
+{
+	guint i;
+	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
+		if (client->cbs[i] != NULL) {
+			_cb_free(client, i);
+		}
+	}
+}
+
+evs_cb_t client_cb_new(
+	struct client *client,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn)
+{
+	guint i;
+	struct client_cb cb;
+
+	if (cb_fn == NULL) {
+		_cb_data_free(cb_data, free_fn);
+		return EVS_NO_CALLBACK;
+	}
+
+	qev_lock(client);
+
+	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
+		if (client->cbs[i] == NULL) {
+			break;
+		}
+	}
+
+	if (i == G_N_ELEMENTS(client->cbs)) {
+		i = (guint)g_random_int_range(0, G_N_ELEMENTS(client->cbs));
+		_cb_free(client, i);
+	}
+
+	cb = (struct client_cb){
+		.id = ++client->cbs_id,
+		.cb_fn = cb_fn,
+		.cb_data = cb_data,
+		.free_fn = free_fn,
+	};
+
+	client->cbs[i] = g_slice_copy(sizeof(cb), &cb);
+
+	qev_unlock(client);
+
+	return (i << sizeof(guint32)) | cb.id;
+}
+
+enum evs_status client_cb_fire(
+	struct client *client,
+	const evs_cb_t server_cb,
+	const evs_cb_t client_cb,
+	gchar *json)
+{
+	struct client_cb cb;
+	enum evs_status status;
+	guint slot = server_cb >> sizeof(guint32);
+	guint id = server_cb & 0xffffffff;
+
+	qev_lock(client);
+
+	if (client->cbs[slot]->id == id) {
+		cb = *client->cbs[slot];
+		_cb_remove(client, slot);
+	}
+
+	qev_unlock(client);
+
+	if (cb.id != id) {
+		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND,
+							"callback doesn't exist", NULL);
+		return EVS_STATUS_HANDLED;
+	}
+
+	status = cb.cb_fn(client, client_cb, json);
+	_cb_data_free(cb.cb_data, cb.free_fn);
+
+	return status;
+}
+
 gboolean client_sub_has(struct client *client, struct subscription *sub)
 {
 	gboolean has = FALSE;
@@ -122,4 +224,10 @@ void client_sub_remove_all(struct client *client)
 	}
 
 	qev_unlock(client);
+}
+
+void client_close(struct client *client)
+{
+	_cb_remove_all(client);
+	client_sub_remove_all(client);
 }

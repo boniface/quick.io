@@ -12,6 +12,34 @@
 #pragma once
 #include "quickio.h"
 
+/**
+ * Information necessary to fire a callback
+ */
+struct client_cb {
+	/**
+	 * To make sure that callbacks don't overlap.
+	 */
+	guint16 id;
+
+	/**
+	 * The function to be called
+	 */
+	evs_cb_fn cb_fn;
+
+	/**
+	 * Data to pass to the function
+	 */
+	void *cb_data;
+
+	/**
+	 * Function used to free the cb_data
+	 */
+	qev_free_fn free_fn;
+};
+
+/**
+ * Everything that a client needs to function
+ */
 struct client {
 	/**
 	 * All for quick-event
@@ -47,7 +75,59 @@ struct client {
 	 * Maps: struct subscription -> gint32 (qev_list index)
 	 */
 	GHashTable *subs;
+
+	/**
+	 * The callbacks for the client.
+	 */
+	struct client_cb *cbs[8];
+
+	/**
+	 * The ID of the most recent callback
+	 */
+	guint32 cbs_id;
 };
+
+/**
+ * Creates a callback for the client.
+ * If cb_fn is NULL and cb_data is not, it is cleaned up with free_fn, and
+ * EVS_NO_CALLBACK is returned.
+ *
+ * @param client
+ *     The client to create a callback for
+ * @param cb_fn
+ *     The function to call when the client triggers the callback. @args{not-null}
+ * @param cb_data
+ *     Data to come with the callback @args{transfer-full}
+ * @param free_fn
+ *     Frees cb_data
+ *
+ * @return
+ *     The callback ID to give to the client. EVS_NO_CALLBACK if there's an
+ *     error.
+ */
+evs_cb_t client_cb_new(
+	struct client *client,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn);
+
+/**
+ * Fires a callback and frees up everything associated with it.
+ *
+ * @param client
+ *     The client to create a callback for
+ * @param server_cb
+ *     The callback ID the client sent back for the server.
+ * @param client_cb
+ *     The id of the callback to send to the client
+ * @param json
+ *     Data sent with the callback
+ */
+enum evs_status client_cb_fire(
+	struct client *client,
+	const evs_cb_t server_cb,
+	const evs_cb_t client_cb,
+	gchar *json);
 
 /**
  * Checks if a client is subscribed to the given susbcription
@@ -96,3 +176,8 @@ gboolean client_sub_remove(struct client *client, struct subscription *sub);
  *     The client in question
  */
 void client_sub_remove_all(struct client *client);
+
+/**
+ * A client has closed and should be completely cleaned up
+ */
+void client_close(struct client *client);

@@ -28,8 +28,6 @@
 	"/qio/callback/%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT "=" \
 	"{\"code\":%d,\"data\":%s,\"err_msg\":"
 
-#define NO_CALLBACK (0l)
-
 struct broadcast {
 	struct subscription *sub;
 	gchar *json;
@@ -244,9 +242,9 @@ void qio_evs_send_full(
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
-	const GDestroyNotify free_fn)
+	const qev_free_fn free_fn)
 {
-	evs_cb_t server_cb = 0;
+	evs_cb_t server_cb;
 	struct subscription *sub = sub_get(ev, ev_extra);
 	GString *buff = qev_buffer_get();
 	json = json ? : "null";
@@ -259,19 +257,23 @@ void qio_evs_send_full(
 
 	qev_lock(client);
 
-	if (!g_hash_table_contains(client->subs, sub)) {
-		CRITICAL("Client is not subscribed to %s%s. Sending it an event "
+	if (!client_sub_has(client, sub)) {
+		CRITICAL("Client is not subscribed to %s%s. Sending it an event there "
 				"is wrong.", ev->ev_path, sub->ev_extra);
 	}
 
-	g_string_printf(buff, EV_FORMAT, ev->ev_path, sub->ev_extra,
-									server_cb, json);
-
-	protocols_write(client, buff->str, buff->len);
+	server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
 
 	qev_unlock(client);
 
+	g_string_printf(buff, EV_FORMAT, ev->ev_path, sub->ev_extra,
+									server_cb, json);
+	protocols_write(client, buff->str, buff->len);
+
 	qev_buffer_put(buff);
+
+	#warning memory leak below?
+	// sub_unref(sub);
 }
 
 void qio_evs_on_cb(
@@ -318,11 +320,6 @@ void evs_off(
 	sub_unref(sub);
 }
 
-void evs_client_close(struct client *client)
-{
-	client_sub_remove_all(client);
-}
-
 void qio_evs_cb(
 	struct client *client,
 	const evs_cb_t client_cb,
@@ -330,6 +327,18 @@ void qio_evs_cb(
 {
 	qio_evs_cb_full(client, client_cb, CODE_OK, NULL, json,
 					NULL, NULL, NULL);
+}
+
+void qio_evs_cb_with_cb(
+	struct client *client,
+	const evs_cb_t client_cb,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn)
+{
+	qio_evs_cb_full(client, client_cb, CODE_OK, NULL, json,
+					cb_fn, cb_data, free_fn);
 }
 
 void qio_evs_err_cb(
@@ -354,15 +363,18 @@ void qio_evs_cb_full(
 	const qev_free_fn free_fn)
 {
 	GString *buff;
-	evs_cb_t server_cb = 0;
+	evs_cb_t server_cb;
 
 	if (client_cb == 0) {
-		// Glad we could have this chat, guys
-		// @todo free cb data and move on
+		client_cb_new(NULL, NULL, cb_data, free_fn);
 		return;
 	}
 
-	// @todo check if code != CODE_OK && server_cb != 0 -> that's an error
+	if (code == CODE_OK) {
+		server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
+	} else {
+		client_cb_new(NULL, NULL, cb_data, free_fn);
+	}
 
 	json = json ? : "null";
 	buff = qev_buffer_get();
@@ -370,7 +382,7 @@ void qio_evs_cb_full(
 	if (code == CODE_OK) {
 		g_string_printf(buff, CB_FORMAT, client_cb, server_cb, code, json);
 	} else {
-		g_string_printf(buff, CB_ERR_FORMAT, client_cb, NO_CALLBACK, code, json);
+		g_string_printf(buff, CB_ERR_FORMAT, client_cb, EVS_NO_CALLBACK, code, json);
 		qev_json_pack(buff, "%s", err_msg);
 		g_string_append_c(buff, '}');
 	}
@@ -411,7 +423,7 @@ void evs_broadcast_tick()
 
 	while ((bc = g_async_queue_try_pop(_broadcasts)) != NULL) {
 		g_string_printf(e, EV_FORMAT, bc->sub->ev->ev_path, bc->sub->ev_extra,
-						NO_CALLBACK, bc->json);
+						EVS_NO_CALLBACK, bc->json);
 		frames = protocols_bcast(e->str, e->len);
 
 		qev_list_foreach(bc->sub->subscribers, _broadcast,

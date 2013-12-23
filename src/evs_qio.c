@@ -65,8 +65,30 @@ static enum evs_status _off(
 	return EVS_STATUS_OK;
 }
 
+static enum evs_status _callback(
+	struct client *client,
+	const gchar *ev_extra,
+	const evs_cb_t client_cb,
+	gchar *json)
+{
+	evs_cb_t server_cb = 0;
+
+	if (*ev_extra == '/') {
+		server_cb = g_ascii_strtoull(ev_extra + 1, NULL, 10);
+	}
+
+	if (server_cb == EVS_NO_CALLBACK) {
+		qio_evs_err_cb(client, client_cb, CODE_BAD,
+						"invalid server callback id", NULL);
+		return EVS_STATUS_HANDLED;
+	}
+
+	return client_cb_fire(client, server_cb, client_cb, json);
+}
+
 void evs_qio_init()
 {
-	evs_add_handler("/qio/on", _on, qio_evs_no_on, NULL, TRUE);
-	evs_add_handler("/qio/off", _off, qio_evs_no_on, NULL, TRUE);
+	evs_add_handler("/qio/on", _on, qio_evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio/off", _off, qio_evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio/callback", _callback, qio_evs_no_on, NULL, TRUE);
 }

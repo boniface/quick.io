@@ -5,6 +5,11 @@
 #
 MAKEFLAGS += --no-print-directory
 
+#
+# If the test cases should be run in valgrind. Comment this out to disable
+#
+# USE_VALGRIND = 1
+
 CC = clang
 
 LIB_DIR = lib
@@ -13,6 +18,22 @@ TEST_DIR = test
 TEST_APPS_DIR = $(TEST_DIR)/apps
 
 BINARY = quickio
+
+ifdef USE_VALGRIND
+	MEMTEST = \
+		G_SLICE=always-malloc \
+		G_DEBUG=gc-friendly \
+		valgrind \
+			--quiet \
+			--suppressions=../lib/quick-event/test/valgrind.supp \
+			--tool=memcheck \
+			--leak-check=full \
+			--leak-resolution=high \
+			--num-callers=20 \
+			--track-origins=yes
+else
+	MEMTEST =
+endif
 
 HEADERS = \
 	$(shell find $(SRC_DIR) -name '*.h') \
@@ -45,6 +66,7 @@ OBJECTS_TEST = \
 
 TESTS = \
 	test_apps \
+	test_client \
 	test_evs
 
 TEST_APPS = \
@@ -82,6 +104,7 @@ CFLAGS_TEST = \
 
 CFLAGS_DEBUG = \
 	-g \
+	-rdynamic \
 	-fno-inline \
 	-DQEV_LOG_DEBUG
 
@@ -113,7 +136,7 @@ all:
 run: CFLAGS += $(CFLAGS_DEBUG)
 run: LDFLAGS += $(LDFLAGS_DEBUG)
 run: $(BINARY)
-	./$(BINARY)
+	$(MEMTEST) ./$(BINARY)
 
 test: $(TESTS)
 
@@ -134,7 +157,7 @@ $(BINARY): $(BIN_OBJECTS) $(LIBQEV)
 
 $(TESTS) $(BENCHMARKS): $(TEST_APPS)
 	@$(MAKE) $(TEST_DIR)/$@
-	@cd $(TEST_DIR) && ./$@
+	@cd $(TEST_DIR) && $(MEMTEST) ./$@
 
 %.o: %.c $(HEADERS)
 	@echo '-------- Compiling $@ --------'

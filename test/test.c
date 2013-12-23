@@ -215,8 +215,7 @@ guint64 test_recv(
 }
 void test_msg(test_client_t *tclient, const gchar *data)
 {
-	gchar buff[strlen(data) * 2];
-
+	gchar buff[32768];
 	test_recv(tclient, buff, sizeof(buff));
 	ck_assert_str_eq(buff, data);
 }

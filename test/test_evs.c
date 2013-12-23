@@ -47,10 +47,11 @@ int main()
 	TCase *tcase;
 	test_new("evs", &sr, &s);
 
-	tcase = test_add(s, "Sanity",
-		test_subscribe_valid,
-		test_subscribe_invalid,
-		NULL);
+	tcase = tcase_create("Sanity");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_subscribe_valid);
+	tcase_add_test(tcase, test_subscribe_invalid);
 
 	return test_do(sr);
 }

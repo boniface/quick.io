@@ -30,7 +30,8 @@ void qev_on_close(struct client *client, guint reason)
 {
 	qev_timeout_clear(&client->timeout);
 	protocols_closed(client, reason);
-	evs_client_close(client);
+
+	client_close(client);
 }
 
 void qev_on_read(struct client *client)
