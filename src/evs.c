@@ -22,13 +22,13 @@
 
 /**
  * For !STATUS_OK callbacks. Notice the missing %s}: qev_json_pack is used
- * to pack the JSON string, so the trailing } must be appended.
+ * to pack the err_msg, so the trailing } must be appended.
  */
 #define CB_ERR_FORMAT \
 	"/qio/callback/%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT "=" \
 	"{\"code\":%d,\"data\":%s,\"err_msg\":"
 
-struct broadcast {
+struct _broadcast {
 	struct subscription *sub;
 	gchar *json;
 };
@@ -86,7 +86,7 @@ static void _broadcast(struct client *client, void *frames_)
 
 static void _broadcast_free(void *bc_)
 {
-	struct broadcast *bc = bc_;
+	struct _broadcast *bc = bc_;
 
 	g_free(bc->json);
 	sub_unref(bc->sub);
@@ -106,18 +106,17 @@ void event_init(
 	ev->on_fn = on_fn;
 	ev->off_fn = off_fn;
 	ev->handle_children = handle_children;
-	ev->subs = g_hash_table_new_full(g_str_hash, g_str_equal,
-										NULL, (qev_free_fn)sub_unref);
+	ev->subs = g_hash_table_new(g_str_hash, g_str_equal);
 	g_rw_lock_init(&ev->subs_lock);
 }
 
 void event_clear(struct event *ev)
 {
-	g_free(ev->ev_path);
-	ev->ev_path = NULL;
-
 	g_hash_table_unref(ev->subs);
 	ev->subs = NULL;
+
+	g_free(ev->ev_path);
+	ev->ev_path = NULL;
 
 	g_rw_lock_clear(&ev->subs_lock);
 }
@@ -272,8 +271,7 @@ void qio_evs_send_full(
 
 	qev_buffer_put(buff);
 
-	#warning memory leak below?
-	// sub_unref(sub);
+	sub_unref(sub);
 }
 
 void qio_evs_on_cb(
@@ -397,7 +395,7 @@ void qio_evs_broadcast(
 	const gchar *ev_extra,
 	const gchar *json)
 {
-	struct broadcast bc = {
+	struct _broadcast bc = {
 		.sub = sub_get(ev, ev_extra),
 		.json = g_strdup(json),
 	};
@@ -418,7 +416,7 @@ void evs_broadcast_path(const gchar *ev_path, const gchar *json)
 void evs_broadcast_tick()
 {
 	GString **frames;
-	struct broadcast *bc;
+	struct _broadcast *bc;
 	GString *e = qev_buffer_get();
 
 	while ((bc = g_async_queue_try_pop(_broadcasts)) != NULL) {

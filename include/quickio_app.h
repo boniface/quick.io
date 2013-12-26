@@ -247,7 +247,7 @@ static G_GNUC_UNUSED gboolean qio_app_noop() { return TRUE; }
 /**
  * Creates a handler for an event
  *
- * @param
+ * @param app
  *     Your __qio_app
  * @param prefix
  *     A prefix to add to the event path

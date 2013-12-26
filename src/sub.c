@@ -50,13 +50,6 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 			sub->subscribers = qev_list_new(qev_cfg_get_max_clients(), NULL);
 			sub->refs = 1;
 
-			/*
-			 * Make sure that the free function isn't called: if the
-			 * previous sub is still in the table, then there is a thread
-			 * attempting to free it, but it's blocked on the write lock,
-			 * so it cannot safely be touched.
-			 */
-			g_hash_table_steal(ev->subs, sub->ev_extra);
 			g_hash_table_insert(ev->subs, sub->ev_extra, sub);
 		}
 
@@ -81,7 +74,7 @@ void sub_unref(struct subscription *sub)
 	 * play nice and let it live
 	 */
 	if (g_hash_table_lookup(ev->subs, sub->ev_extra) == sub) {
-		g_hash_table_steal(ev->subs, sub->ev_extra);
+		g_hash_table_remove(ev->subs, sub->ev_extra);
 	}
 
 	g_rw_lock_writer_unlock(&ev->subs_lock);
