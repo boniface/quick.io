@@ -104,7 +104,6 @@ CFLAGS_TEST = \
 
 CFLAGS_DEBUG = \
 	-g \
-	-rdynamic \
 	-fno-inline \
 	-DQEV_LOG_DEBUG
 

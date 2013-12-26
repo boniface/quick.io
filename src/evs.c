@@ -144,7 +144,7 @@ struct event* evs_add_handler(
 }
 
 enum evs_status qio_evs_no_on(
-	client_t *client G_GNUC_UNUSED,
+	struct client *client G_GNUC_UNUSED,
 	subscription_t *sub G_GNUC_UNUSED,
 	const gchar *ev_extra G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED)
@@ -226,7 +226,7 @@ out:
 }
 
 void qio_evs_send(
-	client_t *client,
+	struct client *client,
 	event_t *ev,
 	const gchar *ev_extra,
 	const gchar *json)
@@ -235,7 +235,7 @@ void qio_evs_send(
 }
 
 void qio_evs_send_full(
-	client_t *client,
+	struct client *client,
 	event_t *ev,
 	const gchar *ev_extra,
 	const gchar *json,
@@ -272,6 +272,30 @@ void qio_evs_send_full(
 	qev_buffer_put(buff);
 
 	sub_unref(sub);
+}
+
+void evs_send_bruteforce(
+	struct client *client,
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn)
+{
+	GString *path = qev_buffer_get();
+	GString *buff = qev_buffer_get();
+	evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
+	json = json ? : "null";
+
+	g_string_printf(path, "%s/%s", ev_path, ev_extra ? : "");
+	_clean_ev_path(path->str);
+
+	g_string_printf(buff, EV_FORMAT, path->str, "", server_cb, json);
+	protocols_write(client, buff->str, buff->len);
+
+	qev_buffer_put(path);
+	qev_buffer_put(buff);
 }
 
 void qio_evs_on_cb(

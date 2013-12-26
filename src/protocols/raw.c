@@ -10,6 +10,16 @@
 
 #define HANDSHAKE "/qio/ohai"
 
+#define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x11""/qio/heartbeat:0="
+
+static enum evs_status _heartbeat_cb(
+	client_t *client G_GNUC_UNUSED,
+	const evs_cb_t client_cb G_GNUC_UNUSED,
+	gchar *json G_GNUC_UNUSED)
+{
+	return EVS_STATUS_OK;
+}
+
 enum protocol_handles protocol_raw_handles(
 	struct client *client,
 	void **data G_GNUC_UNUSED)
@@ -63,6 +73,11 @@ enum protocol_status protocol_raw_route(struct client *client)
 	return protocol_raw_handle(client, len, len);
 }
 
+void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb)
+{
+	protocol_raw_do_heartbeat(client, hb, HEARTBEAT, sizeof(HEARTBEAT) - 1);
+}
+
 GString* protocol_raw_frame(const gchar *data, const guint64 len)
 {
 	gchar size[sizeof(guint64)];
@@ -85,6 +100,25 @@ gboolean protocol_raw_check_handshake(struct client *client)
 	g_string_truncate(rbuff, 0);
 
 	return good;
+}
+
+void protocol_raw_do_heartbeat(
+	struct client *client,
+	struct heartbeat *hb,
+	const gchar *heartbeat,
+	const guint heartbeat_len)
+{
+	if (client->last_recv < hb->dead) {
+		qev_close(client, RAW_HEARTATTACK);
+		return;
+	} else if (client->last_recv < hb->challenge) {
+		evs_send_bruteforce(client, "/qio/heartbeat", NULL, NULL,
+						_heartbeat_cb, NULL, NULL);
+	} else if (client->last_send < hb->heartbeat) {
+		qev_write(client, heartbeat, heartbeat_len);
+	}
+
+	client->last_send = qev_monotonic;
 }
 
 enum protocol_status protocol_raw_handle(

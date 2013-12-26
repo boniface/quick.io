@@ -52,6 +52,11 @@ enum protocol_status protocol_rfc6455_handshake(
 enum protocol_status protocol_rfc6455_route(struct client *client);
 
 /**
+ * Sends a heartbeat to a client
+ */
+void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb);
+
+/**
  * Frames data to send out to a client.
  *
  * @return

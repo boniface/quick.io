@@ -87,7 +87,8 @@ evs_cb_t client_cb_new(
 
 	qev_unlock(client);
 
-	return (i << sizeof(guint32)) | cb.id;
+	// @todo test limits of callbacks
+	return (i << 16) | cb.id;
 }
 
 enum evs_status client_cb_fire(
@@ -96,10 +97,10 @@ enum evs_status client_cb_fire(
 	const evs_cb_t client_cb,
 	gchar *json)
 {
-	struct client_cb cb;
+	struct client_cb cb = { .cb_fn = NULL };
 	enum evs_status status;
-	guint slot = server_cb >> sizeof(guint32);
-	guint id = server_cb & 0xffffffff;
+	guint16 slot = server_cb >> 16;
+	guint16 id = server_cb & 0xffff;
 
 	qev_lock(client);
 
@@ -110,7 +111,7 @@ enum evs_status client_cb_fire(
 
 	qev_unlock(client);
 
-	if (cb.id != id) {
+	if (cb.cb_fn == NULL) {
 		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND,
 							"callback doesn't exist", NULL);
 		return EVS_STATUS_HANDLED;

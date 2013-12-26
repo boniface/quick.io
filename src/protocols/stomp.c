@@ -25,6 +25,11 @@ enum protocol_status protocol_stomp_route(struct client *client G_GNUC_UNUSED)
 	return PROT_OK;
 }
 
+void protocol_stomp_heartbeat(struct client *client G_GNUC_UNUSED, struct heartbeat *hb G_GNUC_UNUSED)
+{
+
+}
+
 GString* protocol_stomp_frame(const gchar *data G_GNUC_UNUSED, const guint64 len G_GNUC_UNUSED)
 {
 	return NULL;

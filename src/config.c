@@ -15,8 +15,20 @@ static void _validate_port(
 {
 	if (val.ui64 == 0 || val.ui64 > G_MAXUINT16) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Invalid port number: %"G_GUINT64_FORMAT" is too large, must "
+					"Invalid port number: %" G_GUINT64_FORMAT " is too large, must "
 					"be between 1 and %d.", val.ui64, G_MAXUINT16);
+	}
+}
+
+static void _validate_heartbeat_inteval(
+	enum qev_cfg_type type G_GNUC_UNUSED,
+	union qev_cfg_val val,
+	GError **error)
+{
+	if (val.ui64 < 5 || val.ui64 > 60) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Invalid heartbeat time: must be between 5 and 60. "
+					"%" G_GUINT64_FORMAT " is too large.", val.ui64);
 	}
 }
 
@@ -67,6 +79,25 @@ static struct qev_cfg _cfg[] = {
 		.validate = NULL,
 		.cb = NULL,
 		.read_only = FALSE,
+	},
+	{	.name = "heartbeat-threads",
+		.description = "Number of threads used to pump out heartbeats.",
+		.type = qev_cfg_uint64,
+		.val.ui64 = &cfg_heartbeat_threads,
+		.defval.ui64 = 8,
+		.validate = NULL,
+		.cb = NULL,
+		.read_only = FALSE,
+	},
+	{	.name = "heartbeat-interval",
+		.description = "How often the clients should be polled to see if "
+						"they need heartbeats.",
+		.type = qev_cfg_uint64,
+		.val.ui64 = &cfg_heartbeat_interval,
+		.defval.ui64 = 10,
+		.validate = _validate_heartbeat_inteval,
+		.cb = NULL,
+		.read_only = TRUE,
 	},
 	{	.name = "max-subscriptions",
 		.description = "Maximum number of subscriptions a client may have.",

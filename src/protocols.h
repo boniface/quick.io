@@ -54,6 +54,26 @@ enum protocol_status {
 };
 
 /**
+ * Useful information about heartbeat timings.
+ */
+struct heartbeat {
+	/**
+	 * If client->last_send is less than this, needs a simple heartbeat sent.
+	 */
+	gint64 heartbeat;
+
+	/**
+	 * If client->last_recv is less than this, needs a hearbeat challenge.
+	 */
+	gint64 challenge;
+
+	/**
+	 * If client->last_recv is less than this, the client is just dead.
+	 */
+	gint64 dead;
+};
+
+/**
  * What a protocol needs to route messages around
  */
 struct protocol {
@@ -92,6 +112,11 @@ struct protocol {
 	 * Reads and routes data available on the client
 	 */
 	enum protocol_status (*route)(struct client *client);
+
+	/**
+	 * Send a heartbeat to a client, if necessary
+	 */
+	void (*heartbeat)(struct client *client, struct heartbeat *hb);
 
 	/**
 	 * Frames the data in whatever the protocol dictates such that it
@@ -164,6 +189,11 @@ void protocols_bcast_write(struct client *client, GString **frames);
  * Frees up the frames allocated by protocols_bcast().
  */
 void protocols_bcast_free(GString **frames);
+
+/**
+ * Sends out heartbeats to everyone who needs them right now.
+ */
+void protocols_heartbeat();
 
 /**
  * Setup all protocols and get ready to run.

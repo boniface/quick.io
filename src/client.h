@@ -62,6 +62,16 @@ struct client {
 	struct protocol *protocol;
 
 	/**
+	 * When anything was last sent to the client
+	 */
+	gint64 last_send;
+
+	/**
+	 * When anything was last received from the client.
+	 */
+	gint64 last_recv;
+
+	/**
 	 * The only timeout that will be set on a client from QIO.
 	 *
 	 * @attention This MAY ONLY ever be set on connect and in the protocols.
@@ -84,7 +94,7 @@ struct client {
 	/**
 	 * The ID of the most recent callback
 	 */
-	guint32 cbs_id;
+	guint16 cbs_id;
 };
 
 /**

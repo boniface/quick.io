@@ -60,6 +60,8 @@
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
+#define HEARTBEAT "\x81""\x11""/qio/heartbeat:0="
+
 /**
  * Indicates that a client was speaking HTTP but was not intended for us or had
  * some other error (eg. missing headers) and should be terminated.
@@ -413,6 +415,12 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	}
 
 	return status;
+}
+
+void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb)
+{
+	protocol_raw_do_heartbeat(client, hb,
+							HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
 GString* protocol_rfc6455_frame(const gchar *data G_GNUC_UNUSED, const guint64 len G_GNUC_UNUSED)

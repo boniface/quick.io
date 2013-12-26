@@ -31,7 +31,7 @@ static enum evs_status _handler(
 	client_t *client,
 	const gchar *ev_extra G_GNUC_UNUSED,
 	const evs_cb_t client_cb,
-	gchar *json)
+	gchar *json G_GNUC_UNUSED)
 {
 	guint *num = g_malloc0(sizeof(*num));
 	qio_evs_cb_with_cb(client, client_cb, "0", _cb0, num, g_free);
@@ -60,6 +60,17 @@ START_TEST(test_callbacks)
 }
 END_TEST
 
+START_TEST(test_heartbeat)
+{
+	test_client_t *tc = test_client();
+
+	protocols_heartbeat();
+	test_msg(tc, "/qio/heartbeat:0=");
+
+	test_close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -71,6 +82,7 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, _setup, test_teardown);
 	tcase_add_test(tcase, test_callbacks);
+	tcase_add_test(tcase, test_heartbeat);
 
 	return test_do(sr);
 }

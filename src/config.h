@@ -44,6 +44,18 @@ guint64 cfg_bind_port_ssl;
 guint64 cfg_broadcast_threads;
 
 /**
+ * Number of threads to use to pump out heartbeats
+ */
+guint64 cfg_heartbeat_threads;
+
+/**
+ * How often the heartbeat sender should run. This should be set low (~10
+ * seconds) to spread out the network traffic and system interrupts over
+ * 1 minute, the time each client expects to see a heartbeat.
+ */
+guint64 cfg_heartbeat_interval;
+
+/**
  * The first certificate to use for the SSL connection. This MUST be a full
  * certificate chain in PEM format, starting from _your_ certificate on top,
  * all intermediaries, then the root CA.

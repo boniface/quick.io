@@ -28,6 +28,11 @@ enum protocol_status protocol_stomp_handshake(struct client *client, void *data)
 enum protocol_status protocol_stomp_route(struct client *client);
 
 /**
+ * Sends a heartbeat to a client
+ */
+void protocol_stomp_heartbeat(struct client *client, struct heartbeat *hb);
+
+/**
  * Frames data to send out to a client.
  *
  * @return

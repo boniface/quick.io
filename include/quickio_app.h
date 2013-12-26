@@ -314,7 +314,7 @@ QIO_EXPORT void qio_evs_send(
  * @param cb_fn
  *     The function to execute on callback
  * @param cb_data
- *     Data to pass into the function
+ *     Data to pass into the function @args{transfer-full}
  * @param free_fn
  *     Frees the cb_data
  */

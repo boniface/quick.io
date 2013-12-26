@@ -14,6 +14,21 @@
  */
 #define HANDSHAKED 0x8000
 
+/**
+ * Standard heartbeat interval for QIO
+ */
+#define HEARTBEAT_INTERVAL QEV_SEC_TO_USEC(60)
+
+/**
+ * How often to send a challenge heartbeat
+ */
+#define HEARTBEAT_CHALLENGE_INTERVAL QEV_SEC_TO_USEC(60 * 15)
+
+/**
+ * How much time must elapse before the client is considered dead.
+ */
+#define HEARTBEAT_DEAD (HEARTBEAT_CHALLENGE_INTERVAL + QEV_SEC_TO_USEC(60))
+
 /*
  * All of the known protocols, in order of their preference (index 0 being
  * most preferred, N being least).
@@ -23,6 +38,7 @@ static struct protocol _protocols[] = {
 		.handles = protocol_rfc6455_handles,
 		.handshake = protocol_rfc6455_handshake,
 		.route = protocol_rfc6455_route,
+		.heartbeat = protocol_rfc6455_heartbeat,
 		.frame = protocol_rfc6455_frame,
 		.close = protocol_rfc6455_close,
 		.exit = NULL,
@@ -31,6 +47,7 @@ static struct protocol _protocols[] = {
 		.handles = protocol_stomp_handles,
 		.handshake = protocol_stomp_handshake,
 		.route = protocol_stomp_route,
+		.heartbeat = protocol_stomp_heartbeat,
 		.frame = protocol_stomp_frame,
 		.close = NULL,
 		.exit = NULL,
@@ -39,6 +56,7 @@ static struct protocol _protocols[] = {
 		.handles = protocol_flash_handles,
 		.handshake = protocol_flash_handshake,
 		.route = protocol_flash_route,
+		.heartbeat = NULL,
 		.frame = NULL,
 		.close = NULL,
 		.exit = NULL,
@@ -47,6 +65,7 @@ static struct protocol _protocols[] = {
 		.handles = protocol_raw_handles,
 		.handshake = protocol_raw_handshake,
 		.route = protocol_raw_route,
+		.heartbeat = protocol_raw_heartbeat,
 		.frame = protocol_raw_frame,
 		.close = NULL,
 		.exit = NULL,
@@ -127,6 +146,15 @@ static void _route(struct client *client)
 	}
 }
 
+static void _heartbeat_cb(struct client *client, void *hb_)
+{
+	struct heartbeat *hb = hb_;
+
+	if (client->protocol != NULL && client->protocol->heartbeat != NULL) {
+		client->protocol->heartbeat(client, hb);
+	}
+}
+
 static void _cleanup()
 {
 	guint i;
@@ -140,6 +168,8 @@ static void _cleanup()
 void protocols_route(struct client *client)
 {
 	void *data = NULL;
+
+	client->last_recv = qev_monotonic;
 
 	if (client->protocol == NULL && !_find_handler(client, &data)) {
 		return;
@@ -155,9 +185,13 @@ void protocols_route(struct client *client)
 
 void protocols_write(struct client *client, const gchar *data, const guint len)
 {
-	GString *frame = client->protocol->frame(data, len);
-	qev_write(client, frame->str, frame->len);
-	qev_buffer_put(frame);
+	if (client->protocol_flags & HANDSHAKED) {
+		client->last_send = qev_monotonic;
+
+		GString *frame = client->protocol->frame(data, len);
+		qev_write(client, frame->str, frame->len);
+		qev_buffer_put(frame);
+	}
 }
 
 void protocols_closed(struct client *client, guint reason)
@@ -185,7 +219,8 @@ GString** protocols_bcast(const gchar *e, const guint len)
 void protocols_bcast_write(struct client *client, GString **frames)
 {
 	GString *frame = *(frames + client->protocol->id);
-	if (frame != NULL) {
+	if (frame != NULL && (client->protocol_flags & HANDSHAKED)) {
+		client->last_send = qev_monotonic;
 		qev_write(client, frame->str, frame->len);
 	}
 }
@@ -203,7 +238,23 @@ void protocols_bcast_free(GString **frames)
 	g_slice_free1(sizeof(*frames) * G_N_ELEMENTS(_protocols), frames);
 }
 
+void protocols_heartbeat()
+{
+	gint64 now = qev_monotonic;
+
+	struct heartbeat hb = {
+		.heartbeat = now - HEARTBEAT_INTERVAL +
+						QEV_SEC_TO_USEC(cfg_heartbeat_interval),
+		.challenge = now - HEARTBEAT_CHALLENGE_INTERVAL,
+		.dead = now - HEARTBEAT_DEAD,
+	};
+
+	qev_foreach(_heartbeat_cb, cfg_heartbeat_threads, &hb);
+}
+
 void protocols_init()
 {
+	ASSERT(qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0),
+			"Could not setup timer for heartbeats");
 	qev_cleanup_fn(_cleanup);
 }

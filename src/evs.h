@@ -142,6 +142,38 @@ void evs_on(
 	const evs_cb_t client_cb);
 
 /**
+ * Send an event to a client, damn the consequences.
+ *
+ * @note
+ *     This is a brute-force function that's really only useful when
+ *     sending internal QIO events that don't go by the general rules
+ *     of other events.
+ *
+ * @param client
+ *     The client to send the event to
+ * @param ev_path
+ *     The event path to brute force
+ * @param ev_extra
+ *     Any extra segments
+ * @param json
+ *     Data to include
+ * @param cb_fn
+ *     Function to execute on callback
+ * @param cb_data
+ *     Data to pass into the function @args{transfer-full}
+ * @param free_fn
+ *     Frees the cb_data
+ */
+void evs_send_bruteforce(
+	struct client *client,
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn);
+
+/**
  * Remove a client from an event
  *
  * @param client
