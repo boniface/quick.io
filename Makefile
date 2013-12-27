@@ -67,7 +67,8 @@ OBJECTS_TEST = \
 TESTS = \
 	test_apps \
 	test_client \
-	test_evs
+	test_evs \
+	test_protocol_raw
 
 TEST_APPS = \
 	$(TEST_APPS_DIR)/test_app_sane.so
@@ -138,6 +139,11 @@ run: $(BINARY)
 	$(MEMTEST) ./$(BINARY)
 
 test: $(TESTS)
+	./lib/quick-event/ext/gcovr \
+		--root=. \
+		--exclude=test \
+		--exclude=lib \
+		--exclude='.*\.h'
 
 clean:
 	find -name '*.gcno' -exec rm {} \;

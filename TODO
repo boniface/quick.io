@@ -1,14 +1,11 @@
 Next Version (refactor + performance):
+	* close_reason -> string mapping; allow apps to register their own close reasons + verify them.
 	* memory consistency: http://developer.android.com/training/articles/smp.html#c_dont
 	* Rfc6455 -> qio.close() in client, does QEV let the close frame through?
-	* evs_on - > evs_add_handler, then standardize around evs_on
 	* http://manpages.ubuntu.com/manpages/lucid/man1/perf-stat.1.html
 	* http://www.reddit.com/tb/1rvuh0
 	* balance-tlb or balance-alb for network: http://en.wikipedia.org/wiki/Link_aggregation#Driver_modes
-	* /qio/ohai on open, otherwise kill
 	* stomp + radioDNS
-	* evs_client_send() can fail if OS buffer full
-	* clean up the app interface (X-macros!)
 	* clean up tests
 	* TODO: bench_events_query -> optimize that ptrie?
 	* memory usage for subscriptions
@@ -18,7 +15,9 @@ Next Version (refactor + performance):
 
 Clients:
 	* implement SSL for all of them
-
+	* allow registering apps with clients such that there's a ihr-listening app on client and server side that talk back and forth and provide a nice interface to programs
+		- So the ihr-nowplaying app would have: ihr-nowplaying/{server,c,js,java}
+		- And it would be inited like: qio = new QuickIo([servers]); qio.addApp(IhrNowPlaying); IhrNowPlaying.metadata(1477, function() {})
 client-c:
 	* implement long messages: https://github.com/iheartradio/quick.io-client-c/blob/master/quickio.c#L562
 	* can never happen? https://github.com/iheartradio/quick.io-client-c/blob/master/quickio.c#L494
@@ -26,37 +25,3 @@ client-c:
 Documentation:
 	* What quickio-testapp is
 	* Where to include #include <qio_app_test.h> for app testing (#define APP_TESTING for config, so before #include <qio_app.h>)
-
-Style Cleanup:
-	c89 style -> all the variables decls to start of fn
-
-	Struct init:
-		static struct ctl_table net_core_table[] = {
-		#ifdef CONFIG_NET
-			{
-				.procname	= "wmem_max",
-				.data		= &sysctl_wmem_max,
-				.maxlen		= sizeof(int),
-				.mode		= 0644,
-				.proc_handler	= proc_dointvec_minmax,
-				.extra1		= &one,
-			},
-
-	fn() {
-		...
-	out_unlock:
-		shm_unlock(shp);
-	out:
-		return err;
-	}
-
-	fn () {
-		...
-	out_unlock0:
-		ipc_unlock_object(&shp->shm_perm);
-	out_unlock1:
-		rcu_read_unlock();
-	out_up:
-		up_write(&shm_ids(ns).rw_mutex);
-		return err;
-	}

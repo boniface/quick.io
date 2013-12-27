@@ -60,17 +60,6 @@ START_TEST(test_callbacks)
 }
 END_TEST
 
-START_TEST(test_heartbeat)
-{
-	test_client_t *tc = test_client();
-
-	protocols_heartbeat();
-	test_msg(tc, "/qio/heartbeat:0=");
-
-	test_close(tc);
-}
-END_TEST
-
 int main()
 {
 	SRunner *sr;
@@ -82,7 +71,6 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, _setup, test_teardown);
 	tcase_add_test(tcase, test_callbacks);
-	tcase_add_test(tcase, test_heartbeat);
 
 	return test_do(sr);
 }

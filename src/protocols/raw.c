@@ -10,7 +10,7 @@
 
 #define HANDSHAKE "/qio/ohai"
 
-#define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x11""/qio/heartbeat:0="
+#define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x15""/qio/heartbeat:0=null"
 
 static enum evs_status _heartbeat_cb(
 	client_t *client G_GNUC_UNUSED,

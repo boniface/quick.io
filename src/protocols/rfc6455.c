@@ -60,7 +60,7 @@
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
-#define HEARTBEAT "\x81""\x11""/qio/heartbeat:0="
+#define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
 
 /**
  * Indicates that a client was speaking HTTP but was not intended for us or had
@@ -156,7 +156,7 @@ static GHashTable* _parse_headers(GString *rbuff, gchar **path)
 
 	if (G_UNLIKELY(headers == NULL)) {
 		headers = g_hash_table_new(g_str_hash, g_str_equal);
-		qev_cleanup((void*)headers, (GDestroyNotify)g_hash_table_unref);
+		qev_cleanup_and_null((void**)&headers, (qev_free_fn)g_hash_table_unref);
 	}
 
 	g_hash_table_remove_all(headers);

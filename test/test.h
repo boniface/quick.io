@@ -119,6 +119,11 @@ void test_msg(test_client_t *tclient, const gchar *data);
 void test_cb(test_client_t *tclient, const gchar *msg, const gchar *data);
 
 /**
+ * Tests that the client was closed by the server.
+ */
+void test_client_dead(test_client_t *tclient);
+
+/**
  * Close and free up any resources the client was using.
  */
 void test_close(test_client_t *tclient);

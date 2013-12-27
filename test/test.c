@@ -144,14 +144,14 @@ struct test_client* test_client()
 }
 
 void test_send(
-	test_client_t *tclient,
+	struct test_client *tclient,
 	const gchar *data)
 {
 	test_send_len(tclient, data, strlen(data));
 }
 
 void test_send_len(
-	test_client_t *tclient,
+	struct test_client *tclient,
 	const gchar *data,
 	const guint64 len)
 {
@@ -177,7 +177,7 @@ void test_send_len(
 }
 
 guint64 test_recv(
-	test_client_t *tclient,
+	struct test_client *tclient,
 	gchar *data,
 	const guint64 len)
 {
@@ -213,17 +213,36 @@ guint64 test_recv(
 
 	return rlen;
 }
-void test_msg(test_client_t *tclient, const gchar *data)
+void test_msg(struct test_client *tclient, const gchar *data)
 {
 	gchar buff[32768];
 	test_recv(tclient, buff, sizeof(buff));
 	ck_assert_str_eq(buff, data);
 }
 
-void test_cb(test_client_t *tclient, const gchar *msg, const gchar *data)
+void test_cb(struct test_client *tclient, const gchar *msg, const gchar *data)
 {
 	test_send(tclient, msg);
 	test_msg(tclient, data);
+}
+
+void test_client_dead(struct test_client *tclient)
+{
+	guint i;
+	gint err;
+	gchar buff[128];
+
+	for (i = 0; i < 4096; i++) {
+		err = recv(tclient->conn.fd, buff, sizeof(buff), MSG_DONTWAIT);
+
+		if (err == 0) {
+			return;
+		}
+
+		g_usleep(1);
+	}
+
+	ck_abort_msg("Client was not killed by server.");
 }
 
 void test_close(struct test_client *tclient)

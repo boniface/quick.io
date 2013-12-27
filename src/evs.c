@@ -28,6 +28,10 @@
 	"/qio/callback/%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT "=" \
 	"{\"code\":%d,\"data\":%s,\"err_msg\":"
 
+#define JSON_OR_NULL(json) \
+	json = (json == NULL ? "null" : \
+				(*json == '\0' ? "null" : json))
+
 struct _broadcast {
 	struct subscription *sub;
 	gchar *json;
@@ -246,7 +250,7 @@ void qio_evs_send_full(
 	evs_cb_t server_cb;
 	struct subscription *sub = sub_get(ev, ev_extra);
 	GString *buff = qev_buffer_get();
-	json = json ? : "null";
+	JSON_OR_NULL(json);
 
 	if (!ev->handle_children && (ev_extra != NULL || *ev_extra != '\0')) {
 		WARN("Sending event %s%s to client, but %s doesn't handle_children, "
@@ -271,6 +275,7 @@ void qio_evs_send_full(
 
 	qev_buffer_put(buff);
 
+	// @todo from that former memory leak: test multiple clients hitting things at random and really hard
 	sub_unref(sub);
 }
 
@@ -286,7 +291,7 @@ void evs_send_bruteforce(
 	GString *path = qev_buffer_get();
 	GString *buff = qev_buffer_get();
 	evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
-	json = json ? : "null";
+	JSON_OR_NULL(json);
 
 	g_string_printf(path, "%s/%s", ev_path, ev_extra ? : "");
 	_clean_ev_path(path->str);
@@ -398,7 +403,7 @@ void qio_evs_cb_full(
 		client_cb_new(NULL, NULL, cb_data, free_fn);
 	}
 
-	json = json ? : "null";
+	JSON_OR_NULL(json);
 	buff = qev_buffer_get();
 
 	if (code == CODE_OK) {
