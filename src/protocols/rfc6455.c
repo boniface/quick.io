@@ -156,7 +156,7 @@ static GHashTable* _parse_headers(GString *rbuff, gchar **path)
 
 	if (G_UNLIKELY(headers == NULL)) {
 		headers = g_hash_table_new(g_str_hash, g_str_equal);
-		qev_cleanup_and_null((void**)&headers, (qev_free_fn)g_hash_table_unref);
+		qev_cleanup_thlocal(headers, (qev_free_fn)g_hash_table_unref);
 	}
 
 	g_hash_table_remove_all(headers);
@@ -206,13 +206,14 @@ static enum protocol_status _decode(
 	guint64 len;
 	gchar mask[4];
 
-	if (rbuff->len < 6) {
-		return PROT_AGAIN;
-	}
 
 	if (str[0] & OPCODE_CLOSE) {
 		qev_close(client, QEV_CLOSE_HUP);
 		return PROT_FATAL;
+	}
+
+	if (rbuff->len < 6) {
+		return PROT_AGAIN;
 	}
 
 	if (!(str[0] & OPCODE_TEXT)) {
@@ -425,9 +426,27 @@ void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb)
 							HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
-GString* protocol_rfc6455_frame(const gchar *data G_GNUC_UNUSED, const guint64 len G_GNUC_UNUSED)
+GString* protocol_rfc6455_frame(const gchar *data, const guint64 len)
 {
-	return NULL;
+	GString *f = qev_buffer_get();
+
+	g_string_append_c(f, '\x81');
+
+	if (len <= PAYLOAD_SHORT) {
+		g_string_append_c(f, (guint8)len);
+	} else if (len <= PAYLOAD_MEDIUM) {
+		guint16 belen = GUINT16_TO_BE(len);
+		g_string_append_c(f, (gchar)126);
+		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
+	} else {
+		guint64 belen = GUINT64_TO_BE(len);
+		g_string_append_c(f, (gchar)127);
+		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
+	}
+
+	g_string_append_len(f, data, len);
+
+	return f;
 }
 
 void protocol_rfc6455_close(struct client *client, guint reason)

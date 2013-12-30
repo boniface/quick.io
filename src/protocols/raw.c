@@ -66,6 +66,8 @@ enum protocol_status protocol_raw_route(struct client *client)
 			return PROT_AGAIN;
 		}
 
+		memmove(rbuff->str, rbuff->str + sizeof(guint64), len);
+
 		status = protocol_raw_handle(client, len, len + sizeof(guint64));
 		if (status != PROT_OK) {
 			return status;
@@ -132,7 +134,7 @@ enum protocol_status protocol_raw_handle(
 	gchar *curr;
 	gchar *end;
 	GString *rbuff = client->qev_client.rbuff;
-	gchar *str = rbuff->str + (frame_len - len);
+	gchar *str = rbuff->str;
 
 	*(str + len) = '\0';
 

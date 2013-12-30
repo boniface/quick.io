@@ -82,9 +82,17 @@ void protocol_raw_do_heartbeat(
 	const guint heartbeat_len);
 
 /**
- * Handles a raw frame from a client. Assumes that client->qev_client.rbuff
- * contains data of length `len` that is an actual message. Once the message
- * has been processed, `frame_len` will be removed from rbuff.
+ * Handles a raw frame from a client.
+ *
+ * Assumes that:
+ *   1) client->qev_client.rbuff contains data of length `len` that is an
+ *      actual message.
+ *   2) The message starts at offset 0 in rbuff
+ *   3) There is at least 1 byte after the message to put a terminating NULL-
+ *      byte at rbuff[len] such that no other messages in the buffer will
+ *      be affected.
+ *
+ * Once the message has been processed, `frame_len` will be erased from rbuff.
  */
 enum protocol_status protocol_raw_handle(
 	struct client *client,
