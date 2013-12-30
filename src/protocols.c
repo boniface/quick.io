@@ -55,7 +55,7 @@ static struct protocol _protocols[] = {
 	{	.id = 2,
 		.handles = protocol_flash_handles,
 		.handshake = protocol_flash_handshake,
-		.route = protocol_flash_route,
+		.route = NULL,
 		.heartbeat = NULL,
 		.frame = NULL,
 		.close = NULL,
@@ -122,7 +122,11 @@ static void _handshake(struct client *client, void *data)
 
 static void _route(struct client *client)
 {
-	enum protocol_status status = client->protocol->route(client);
+	enum protocol_status status = PROT_FATAL;
+
+	if (client->protocol->route != NULL) {
+		status = client->protocol->route(client);
+	}
 
 	switch (status) {
 		case PROT_OK:

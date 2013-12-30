@@ -10,25 +10,25 @@
 
 START_TEST(test_subscribe_valid)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:1=\"/test/good\"",
 		"/qio/callback/1:0={\"code\":200,\"data\":null}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
 START_TEST(test_subscribe_invalid)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:1=\"/test/nonexistent\"",
 		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 

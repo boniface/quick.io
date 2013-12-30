@@ -1,4 +1,4 @@
-.PHONY: test
+.PHONY: clean test
 
 #
 # Hide annoying messages
@@ -10,7 +10,7 @@ MAKEFLAGS += --no-print-directory
 #
 # USE_VALGRIND = 1
 
-CC = clang
+CC = gcc
 
 LIB_DIR = lib
 SRC_DIR = src
@@ -68,6 +68,7 @@ TESTS = \
 	test_apps \
 	test_client \
 	test_evs \
+	test_protocol_flash \
 	test_protocol_raw
 
 TEST_APPS = \
@@ -160,9 +161,13 @@ $(BINARY): $(BIN_OBJECTS) $(LIBQEV)
 	@echo '-------- Compiling quickio --------'
 	@$(CC) $^ -o $@ $(LDFLAGS)
 
-$(TESTS) $(BENCHMARKS): $(TEST_APPS)
-	@$(MAKE) $(TEST_DIR)/$@
+.PHONY: $(TESTS)
+$(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && $(MEMTEST) ./$@
+
+.PHONY: $(BENCHMARKS)
+$(BENCHMARKS): % : $(TEST_APPS) $(TEST_DIR)/%
+	@cd $(TEST_DIR) && ./$@
 
 %.o: %.c $(HEADERS)
 	@echo '-------- Compiling $@ --------'

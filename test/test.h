@@ -13,11 +13,6 @@
 #include "quickio.h"
 
 /**
- * For communicating with QIO, this is a crazy simple little client
- */
-typedef struct test_client test_client_t;
-
-/**
  * Create a new test suite, ready for running.
  *
  * @param suite_name
@@ -52,14 +47,14 @@ void test_setup();
 void test_teardown();
 
 /**
- * Get a client connected to QIO.
+ * Get a new socket connected to localhost on the test's port
  */
-test_client_t* test_client();
+qev_fd_t test_socket();
 
 /**
- * Get a client connected to QIO with SSL.
+ * Get a client connected to QIO.
  */
-test_client_t* test_client_ssl();
+qev_fd_t test_client();
 
 /**
  * Send a message from the client to the server.
@@ -72,7 +67,7 @@ test_client_t* test_client_ssl();
  *     The length of the data. 0 to strlen() it data to find out.
  */
 void test_send(
-	test_client_t *tclient,
+	qev_fd_t tc,
 	const gchar *data);
 
 /**
@@ -86,7 +81,7 @@ void test_send(
  *     The length of the data. 0 to strlen() it data to find out.
  */
 void test_send_len(
-	test_client_t *tclient,
+	qev_fd_t tc,
 	const gchar *data,
 	const guint64 len);
 
@@ -104,26 +99,40 @@ void test_send_len(
  *     The number of bytes read.
  */
 guint64 test_recv(
-	test_client_t *tclient,
+	qev_fd_t tc,
 	gchar *data,
 	const guint64 len);
 
 /**
  * Tests that the received message is what is given.
  */
-void test_msg(test_client_t *tclient, const gchar *data);
+void test_msg(qev_fd_t tc, const gchar *data);
 
 /**
  * Tests that the given callback is recieved in response to the message
  */
-void test_cb(test_client_t *tclient, const gchar *msg, const gchar *data);
+void test_cb(qev_fd_t tc, const gchar *msg, const gchar *data);
+
+/**
+ * Tests that the client is alive by pinging the server
+ */
+void test_ping(qev_fd_t tc);
+
+/**
+ * Waits for all of the connected clients to have userspace buffers.
+ * Typically, this is only useful when testing 1 connected client.
+ *
+ * @param len
+ *     The MINIMUM length that the buffer must be before returning.
+ */
+void test_wait_for_buff(const guint len);
 
 /**
  * Tests that the client was closed by the server.
  */
-void test_client_dead(test_client_t *tclient);
+void test_client_dead(qev_fd_t tc);
 
 /**
  * Close and free up any resources the client was using.
  */
-void test_close(test_client_t *tclient);
+void test_close(qev_fd_t tc);

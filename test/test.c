@@ -23,6 +23,8 @@
  */
 #define CONFIG \
  	"[quick-event]\n" \
+ 	"poll-wait = 1\n" \
+ 	"tcp-nodelay = true\n" \
  	"[quickio]\n" \
  	"bind-address = localhost\n" \
  	"bind-port = %d\n" \
@@ -35,13 +37,9 @@
  	"[quick.io-apps]\n" \
  	"/test = ./apps/test_app_sane\n"
 
-struct test_client {
-	gboolean is_ssl;
-
-	union {
-		SSL *ssl;
-		qev_fd_t fd;
-	} conn;
+struct _wait_for_buff {
+	gboolean good;
+	guint len;
 };
 
 /**
@@ -49,34 +47,15 @@ struct test_client {
  */
 static gchar *_xml_file = NULL;
 
-static qev_fd_t _create_socket(const guint port_)
+static void _wait_for_buff_cb(struct client *client, void *wfb_)
 {
-	gint err;
-	qev_fd_t sock;
-	gchar port[6];
-	struct addrinfo hints;
-	struct addrinfo *res = NULL;
+	struct _wait_for_buff *wfb = wfb_;
 
-	snprintf(port, sizeof(port), "%u", port_);
+	QEV_WAIT_FOR(client->qev_client.rbuff != NULL);
+	QEV_WAIT_FOR(client->qev_client.rbuff->len >= wfb->len);
+	QEV_WAIT_FOR(client->qev_client._read_operations == 0);
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-
-	ck_assert(getaddrinfo("localhost", port, &hints, &res) == 0);
-
-	sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-	ck_assert(sock != -1);
-
-	err = connect(sock, res->ai_addr, res->ai_addrlen);
-	if (err != 0) {
-		PERROR("_create_socket()");
-		ck_abort();
-	}
-
-	freeaddrinfo(res);
-
-	return sock;
+	wfb->good = TRUE;
 }
 
 void test_new(
@@ -93,10 +72,11 @@ void test_new(
 
 gboolean test_do(SRunner *sr)
 {
+	GString *c;
 	gint failures;
 	gboolean configed;
 
-	GString *c = g_string_sized_new(sizeof(CONFIG));
+	c = g_string_sized_new(sizeof(CONFIG));
 	g_string_printf(c, CONFIG, PORT, SSL_PORT);
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	g_string_free(c, TRUE);
@@ -127,31 +107,64 @@ void test_teardown()
 	qev_exit();
 }
 
-struct test_client* test_client()
+qev_fd_t test_socket()
+{
+	gint err;
+	qev_fd_t sock;
+	gchar port[6];
+	gint on = 1;
+	struct addrinfo hints;
+	struct addrinfo *res = NULL;
+
+	snprintf(port, sizeof(port), "%u", PORT);
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	ck_assert(getaddrinfo("localhost", port, &hints, &res) == 0);
+
+	sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	ck_assert(sock != -1);
+
+	err = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void*)&on, sizeof(on));
+	ck_assert(err == 0);
+
+	err = connect(sock, res->ai_addr, res->ai_addrlen);
+	if (err != 0) {
+		PERROR("_create_socket()");
+		ck_abort();
+	}
+
+	freeaddrinfo(res);
+
+	return sock;
+}
+
+qev_fd_t test_client()
 {
 	gchar buff[12];
-	struct test_client *tclient = g_slice_alloc0(sizeof(*tclient));
-	tclient->is_ssl = FALSE;
+	qev_fd_t tc;
 
-	tclient->conn.fd = _create_socket(PORT);
-	ck_assert(send(tclient->conn.fd, "/qio/ohai", 9, MSG_NOSIGNAL) == 9);
-	ck_assert(recv(tclient->conn.fd, buff, sizeof(buff), 0) == 9);
+	tc = test_socket();
+	ck_assert(send(tc, "/qio/ohai", 9, MSG_NOSIGNAL) == 9);
+	ck_assert(recv(tc, buff, sizeof(buff), 0) == 9);
 
 	buff[9] = '\0';
 	ck_assert(g_strcmp0(buff, "/qio/ohai") == 0);
 
-	return tclient;
+	return tc;
 }
 
 void test_send(
-	struct test_client *tclient,
+	qev_fd_t tc,
 	const gchar *data)
 {
-	test_send_len(tclient, data, strlen(data));
+	test_send_len(tc, data, strlen(data));
 }
 
 void test_send_len(
-	struct test_client *tclient,
+	qev_fd_t tc,
 	const gchar *data,
 	const guint64 len)
 {
@@ -165,19 +178,14 @@ void test_send_len(
 
 	*((guint64*)size) = GUINT64_TO_BE(wlen);
 
-	if (tclient->is_ssl) {
-		err = -1;
-	} else {
-		err = send(tclient->conn.fd, size, sizeof(size), MSG_NOSIGNAL);
-		ck_assert(err == sizeof(size));
-		err = send(tclient->conn.fd, data, wlen, MSG_NOSIGNAL);
-	}
-
+	err = send(tc, size, sizeof(size), MSG_NOSIGNAL);
+	ck_assert(err == sizeof(size));
+	err = send(tc, data, wlen, MSG_NOSIGNAL);
 	ck_assert(err == (gint64)wlen);
 }
 
 guint64 test_recv(
-	struct test_client *tclient,
+	qev_fd_t tc,
 	gchar *data,
 	const guint64 len)
 {
@@ -187,11 +195,7 @@ guint64 test_recv(
 	gchar size[sizeof(guint64)];
 	data[0] = '\0';
 
-	if (tclient->is_ssl) {
-		err = -1;
-	} else {
-		err = recv(tclient->conn.fd, size, sizeof(size), MSG_WAITALL);
-	}
+	err = recv(tc, size, sizeof(size), MSG_WAITALL);
 
 	ck_assert(err == sizeof(size));
 	rlen = GUINT64_FROM_BE(*((guint64*)size));
@@ -199,12 +203,7 @@ guint64 test_recv(
 	ck_assert_msg(rlen < len, "Buffer not large enough to read response");
 
 	while (r < rlen) {
-		if (tclient->is_ssl) {
-			err = -1;
-		} else {
-			err = recv(tclient->conn.fd, data + r, rlen - r, 0);
-		}
-
+		err = recv(tc, data + r, rlen - r, 0);
 		ck_assert(err > 0);
 		r += err;
 	}
@@ -213,27 +212,46 @@ guint64 test_recv(
 
 	return rlen;
 }
-void test_msg(struct test_client *tclient, const gchar *data)
+void test_msg(qev_fd_t tc, const gchar *data)
 {
 	gchar buff[32768];
-	test_recv(tclient, buff, sizeof(buff));
+	test_recv(tc, buff, sizeof(buff));
 	ck_assert_str_eq(buff, data);
 }
 
-void test_cb(struct test_client *tclient, const gchar *msg, const gchar *data)
+void test_cb(qev_fd_t tc, const gchar *msg, const gchar *data)
 {
-	test_send(tclient, msg);
-	test_msg(tclient, data);
+	test_send(tc, msg);
+	test_msg(tc, data);
 }
 
-void test_client_dead(struct test_client *tclient)
+void test_ping(qev_fd_t tc)
+{
+	test_cb(tc,
+		"/qio/ping:1=null",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+}
+
+void test_wait_for_buff(const guint len)
+{
+	struct _wait_for_buff wfb = {
+		.good = FALSE,
+		.len = len,
+	};
+
+	while (!wfb.good) {
+		qev_foreach(_wait_for_buff_cb, 1, &wfb);
+	}
+}
+
+void test_client_dead(qev_fd_t tc)
 {
 	guint i;
 	gint err;
 	gchar buff[128];
 
 	for (i = 0; i < 4096; i++) {
-		err = recv(tclient->conn.fd, buff, sizeof(buff), MSG_DONTWAIT);
+		err = recv(tc, buff, sizeof(buff), MSG_DONTWAIT);
 
 		if (err == 0) {
 			return;
@@ -243,15 +261,4 @@ void test_client_dead(struct test_client *tclient)
 	}
 
 	ck_abort_msg("Client was not killed by server.");
-}
-
-void test_close(struct test_client *tclient)
-{
-	if (tclient->is_ssl) {
-		// @todo
-	} else {
-		close(tclient->conn.fd);
-	}
-
-	g_slice_free1(sizeof(*tclient), tclient);
 }

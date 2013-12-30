@@ -46,7 +46,7 @@ static void _setup()
 
 START_TEST(test_callbacks)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/test/client/cb:1=",
@@ -56,7 +56,47 @@ START_TEST(test_callbacks)
 		"/qio/callback/1:2=",
 		"/qio/callback/2:2={\"code\":200,\"data\":1}");
 
-	test_close(tc);
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_callbacks_limits)
+{
+	guint i;
+	guint64 cb;
+	gboolean saw_evicted_error = FALSE;
+	guint64 cb_ids[G_N_ELEMENTS(((struct client*)NULL)->cbs) + 1];
+	GString *buff = qev_buffer_get();
+	qev_fd_t tc = test_client();
+
+	g_string_set_size(buff, 127);
+
+	for (i = 0; i < G_N_ELEMENTS(cb_ids); i++) {
+		test_send(tc, "/test/client/cb:1=");
+		test_recv(tc, buff->str, buff->allocated_len);
+
+		cb = g_ascii_strtoull(buff->str + sizeof("/qio/callback/1:") - 1, NULL, 10);
+		ck_assert_uint_gt(cb, 0);
+		cb_ids[i] = cb;
+	}
+
+
+	for (i = 0; i < G_N_ELEMENTS(cb_ids); i++) {
+		cb = cb_ids[i];
+		g_string_printf(buff, "/qio/callback/%" G_GUINT64_FORMAT":1=null", cb);
+		test_send(tc, buff->str);
+		test_recv(tc, buff->str, buff->allocated_len);
+		saw_evicted_error |= g_strstr_len(buff->str, -1, "404") != NULL;
+	}
+
+	ck_assert(saw_evicted_error);
+
+	test_cb(tc,
+		"/qio/ping:1=",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+	qev_buffer_put(buff);
 }
 END_TEST
 
@@ -71,6 +111,7 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, _setup, test_teardown);
 	tcase_add_test(tcase, test_callbacks);
+	tcase_add_test(tcase, test_callbacks_limits);
 
 	return test_do(sr);
 }

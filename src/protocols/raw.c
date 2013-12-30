@@ -41,36 +41,36 @@ enum protocol_status protocol_raw_handshake(
 	struct client *client,
 	void *data G_GNUC_UNUSED)
 {
-	gboolean good = protocol_raw_check_handshake(client);
-	enum protocol_status status;
-
-	if (good) {
-		qev_write(client, HANDSHAKE, sizeof(HANDSHAKE) -1);
-		status = PROT_OK;
-	} else {
-		status = PROT_FATAL;
-	}
-
-	return status;
+	qev_write(client, HANDSHAKE, sizeof(HANDSHAKE) -1);
+	g_string_truncate(client->qev_client.rbuff, 0);
+	return PROT_OK;
 }
 
 enum protocol_status protocol_raw_route(struct client *client)
 {
 	guint64 len;
+	enum protocol_status status;
 	GString *rbuff = client->qev_client.rbuff;
 
-	if (rbuff->len < sizeof(guint64)) {
-		return PROT_AGAIN;
+	while (TRUE) {
+		if (rbuff->len == 0) {
+			return PROT_OK;
+		}
+
+		if (rbuff->len < sizeof(guint64)) {
+			return PROT_AGAIN;
+		}
+
+		len = GUINT64_FROM_BE(*((guint64*)rbuff->str));
+		if (rbuff->len < (len + sizeof(guint64))) {
+			return PROT_AGAIN;
+		}
+
+		status = protocol_raw_handle(client, len, len + sizeof(guint64));
+		if (status != PROT_OK) {
+			return status;
+		}
 	}
-
-	len = GUINT64_FROM_BE(*((guint64*)rbuff->str));
-	if (rbuff->len < len) {
-		return PROT_AGAIN;
-	}
-
-	g_string_erase(rbuff, 0, sizeof(guint64));
-
-	return protocol_raw_handle(client, len, len);
 }
 
 void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb)
@@ -132,7 +132,7 @@ enum protocol_status protocol_raw_handle(
 	gchar *curr;
 	gchar *end;
 	GString *rbuff = client->qev_client.rbuff;
-	gchar *str = rbuff->str;
+	gchar *str = rbuff->str + (frame_len - len);
 
 	*(str + len) = '\0';
 
@@ -154,7 +154,7 @@ enum protocol_status protocol_raw_handle(
 
 	evs_route(client, event_path, client_cb, json);
 
-	g_string_erase(client->qev_client.rbuff, 0, frame_len);
+	g_string_erase(rbuff, 0, frame_len);
 
 	return PROT_OK;
 

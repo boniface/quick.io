@@ -410,6 +410,8 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	guint64 frame_len;
 	enum protocol_status status = _decode(client, &len, &frame_len);
 
+	// @todo while loop here to drain the buffer
+
 	if (status == PROT_OK) {
 		status = protocol_raw_handle(client, len, frame_len);
 	}

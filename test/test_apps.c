@@ -10,7 +10,7 @@
 
 START_TEST(test_sane)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/test/good:1={\"key\": \"value\"}",
@@ -20,7 +20,7 @@ START_TEST(test_sane)
 		"/test/good:2=",
 		"/qio/callback/2:0={\"code\":400,\"data\":null,\"err_msg\":\"Error with \\\"key\\\" in json.\"}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
@@ -28,7 +28,7 @@ START_TEST(test_on)
 {
 	guint i;
 	gchar buff[128];
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:1=\"/test/good\"",
@@ -40,6 +40,7 @@ START_TEST(test_on)
 
 	evs_broadcast_path("/test/good", "\"json!\"");
 	evs_broadcast_path("/test/good2", "\"json!\"");
+	evs_broadcast_tick();
 
 	for (i = 0; i < 2; i++) {
 		/*
@@ -59,6 +60,8 @@ START_TEST(test_on)
 		evs_broadcast_path("/test/good2", "\"json!\"");
 	}
 
+	evs_broadcast_tick();
+
 	for (i = 0; i < 2; i++) {
 		test_msg(tc, "/test/good:0=\"json!\"");
 	}
@@ -67,57 +70,55 @@ START_TEST(test_on)
 		"/test/stats:100=",
 		"/qio/callback/100:0={\"code\":200,\"data\":[2,1]}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
 START_TEST(test_on_delayed)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:2=\"/test/delayed\"",
 		"/qio/callback/2:0={\"code\":200,\"data\":null}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
 START_TEST(test_on_reject)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:2=\"/test/reject\"",
 		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
 START_TEST(test_on_delayed_reject)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:2=\"/test/delayed-reject\"",
 		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
 
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
 START_TEST(test_on_with_evs_send)
 {
-	test_client_t *tc = test_client();
+	qev_fd_t tc = test_client();
 
 	test_cb(tc,
 		"/qio/on:2=\"/test/with-send\"",
 		"/qio/callback/2:0={\"code\":200,\"data\":null}");
 
-	test_msg(tc, "/test/with-send:0=\"with-send!\"");
-
-	test_close(tc);
+	close(tc);
 }
 END_TEST
 
