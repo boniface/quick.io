@@ -204,6 +204,60 @@ START_TEST(test_decode_unmasked)
 }
 END_TEST
 
+START_TEST(test_decode_medium)
+{
+	const gchar *ping = "\x81\xfe\x01""\xae""abcd""N""\x13""\n""\x0b""N"
+						"\x12""\n""\n""\x06""X""R""Y";
+	const guint ping_len = strlen(ping);
+
+	gint err;
+	gchar buff[ping_len + 0x1ae - 12];
+	qev_fd_t tc = _client();
+
+	memset(buff, 't' ^ 'a', sizeof(buff));
+	memcpy(buff, ping, ping_len);
+
+	ck_assert_int_eq(send(tc, buff, 6, 0), 6);
+	test_wait_for_buff(6);
+	ck_assert_int_eq(send(tc, buff + 6, sizeof(buff) - 6, 0), sizeof(buff) - 6);
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert_int_eq(err, strlen(_ping_response));
+
+	buff[err] = '\0';
+	ck_assert_str_eq(_ping_response, buff);
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_decode_long)
+{
+	const gchar *ping = "\x81\xff\x00\x00\x00\x00\x00\x01\x12\x34""abcd"
+						"N""\x13""\n""\x0b""N""\x12""\n""\n""\x06""X""R""Y";
+	const guint ping_len = 26;
+
+	gint err;
+	gchar buff[ping_len + 0x11234 - 12];
+	qev_fd_t tc = _client();
+
+	memset(buff, 't' ^ 'a', sizeof(buff));
+	memcpy(buff, ping, ping_len);
+
+	ck_assert_int_eq(send(tc, buff, 6, 0), 6);
+	test_wait_for_buff(6);
+	ck_assert_int_eq(send(tc, buff + 6, sizeof(buff) - 6, 0), sizeof(buff) - 6);
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert_int_eq(err, strlen(_ping_response));
+
+	buff[err] = '\0';
+	ck_assert_str_eq(_ping_response, buff);
+
+	close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -226,6 +280,8 @@ int main()
 	tcase_add_test(tcase, test_decode_close);
 	tcase_add_test(tcase, test_decode_continuation_frame);
 	tcase_add_test(tcase, test_decode_unmasked);
+	tcase_add_test(tcase, test_decode_medium);
+	tcase_add_test(tcase, test_decode_long);
 
 	return test_do(sr);
 }

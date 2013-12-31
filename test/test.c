@@ -24,6 +24,7 @@
 #define CONFIG \
  	"[quick-event]\n" \
  	"poll-wait = 1\n" \
+ 	"read-high = 131072\n" \
  	"tcp-nodelay = true\n" \
  	"[quickio]\n" \
  	"bind-address = localhost\n" \

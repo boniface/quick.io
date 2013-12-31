@@ -206,7 +206,6 @@ static enum protocol_status _decode(
 	guint64 len;
 	gchar mask[4];
 
-
 	if (str[0] & OPCODE_CLOSE) {
 		qev_close(client, QEV_CLOSE_HUP);
 		return PROT_FATAL;
