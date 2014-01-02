@@ -192,7 +192,7 @@ START_TEST(test_heartbeats)
 	buff[err] = '\0';
 	ck_assert_str_eq(buff, "\x81\x15""/qio/heartbeat:0=null");
 
-	client->last_send = qev_monotonic = QEV_SEC_TO_USEC(51);
+	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51);
 	test_heartbeat();
 	err = recv(tc, buff, sizeof(buff), 0);
 	buff[err] = '\0';
@@ -393,6 +393,7 @@ START_TEST(test_encode_medium)
 	g_string_prepend(json, "/test/2:0=");
 	ck_assert_str_eq(buff + 4, json->str);
 
+	qev_buffer_put(json);
 	close(tc);
 }
 END_TEST
@@ -417,6 +418,7 @@ START_TEST(test_encode_long)
 	g_string_prepend(json, "/test/2:0=");
 	ck_assert(g_strcmp0(buff + 10, json->str) == 0);
 
+	qev_buffer_put(json);
 	close(tc);
 }
 END_TEST
@@ -482,6 +484,22 @@ START_TEST(test_close_read_high)
 }
 END_TEST
 
+START_TEST(test_close_qev_exit)
+{
+	gint err;
+	gchar buff[8];
+	qev_fd_t tc = _client();
+
+	qev_exit();
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\x02\x03\xe9", err) == 0);
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -522,8 +540,9 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_close_invalid_event_format);
-	tcase_add_test(tcase, test_close_read_high);
 	tcase_add_test(tcase, test_close_timeout);
+	tcase_add_test(tcase, test_close_read_high);
+	tcase_add_test(tcase, test_close_qev_exit);
 
 	return test_do(sr);
 }

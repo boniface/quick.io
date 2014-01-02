@@ -209,6 +209,11 @@ void protocols_bcast_free(GString **frames);
 void protocols_heartbeat();
 
 /**
+ * Determine if a client has completely finished his handshake.
+ */
+gboolean protocols_client_handshaked(struct client *client);
+
+/**
  * Setup all protocols and get ready to run.
  */
 void protocols_init();

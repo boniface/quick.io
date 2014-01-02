@@ -179,7 +179,7 @@ void protocols_route(struct client *client)
 		return;
 	}
 
-	if (!(client->protocol_flags & HANDSHAKED)) {
+	if (!protocols_client_handshaked(client)) {
 		_handshake(client, data);
 		return;
 	}
@@ -194,11 +194,12 @@ void protocols_send(
 	const evs_cb_t server_cb,
 	const gchar *json)
 {
-	if (client->protocol_flags & HANDSHAKED) {
+	if (protocols_client_handshaked(client)) {
 		client->last_send = qev_monotonic;
 
 		ev_extra = ev_extra ? : "";
-		GString *frame = client->protocol->frame(ev_path, ev_extra, server_cb, json);
+		GString *frame = client->protocol->frame(ev_path, ev_extra,
+												server_cb, json);
 		qev_write(client, frame->str, frame->len);
 		qev_buffer_put(frame);
 	}
@@ -229,7 +230,7 @@ GString** protocols_bcast(const gchar *ev_path, const gchar *json)
 void protocols_bcast_write(struct client *client, GString **frames)
 {
 	GString *frame = *(frames + client->protocol->id);
-	if (frame != NULL && (client->protocol_flags & HANDSHAKED)) {
+	if (frame != NULL && protocols_client_handshaked(client)) {
 		client->last_send = qev_monotonic;
 		qev_write(client, frame->str, frame->len);
 	}
@@ -260,6 +261,11 @@ void protocols_heartbeat()
 	};
 
 	qev_foreach(_heartbeat_cb, cfg_heartbeat_threads, &hb);
+}
+
+gboolean protocols_client_handshaked(struct client *client)
+{
+	return client->protocol_flags & HANDSHAKED;
 }
 
 void protocols_init()

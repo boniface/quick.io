@@ -19,22 +19,6 @@ TEST_APPS_DIR = $(TEST_DIR)/apps
 
 BINARY = quickio
 
-ifdef USE_VALGRIND
-	MEMTEST = \
-		G_SLICE=always-malloc \
-		G_DEBUG=gc-friendly \
-		valgrind \
-			--quiet \
-			--suppressions=../lib/quick-event/test/valgrind.supp \
-			--tool=memcheck \
-			--leak-check=full \
-			--leak-resolution=high \
-			--num-callers=20 \
-			--track-origins=yes
-else
-	MEMTEST =
-endif
-
 HEADERS = \
 	$(shell find $(SRC_DIR) -name '*.h') \
 	include/quickio_app.h
@@ -73,6 +57,9 @@ TESTS = \
 	test_protocol_rfc6455
 
 TEST_APPS = \
+	$(TEST_APPS_DIR)/test_app_fatal_init.so \
+	$(TEST_APPS_DIR)/test_app_fatal_exit.so \
+	$(TEST_APPS_DIR)/test_app_invalid.so \
 	$(TEST_APPS_DIR)/test_app_sane.so
 
 BENCHMARKS = \
@@ -129,6 +116,24 @@ LDFLAGS_TEST = \
 	--coverage \
 	-fno-default-inline \
 	$(shell pkg-config --libs $(LIBS_TEST))
+
+ifdef USE_VALGRIND
+	CFLAGS += -DFATAL_SIGNAL=9
+	MEMTEST = \
+		G_SLICE=always-malloc \
+		G_DEBUG=gc-friendly \
+		valgrind \
+			--quiet \
+			--suppressions=../lib/quick-event/test/valgrind.supp \
+			--tool=memcheck \
+			--leak-check=full \
+			--leak-resolution=high \
+			--num-callers=20 \
+			--track-origins=yes
+else
+	CFLAGS += -DFATAL_SIGNAL=5
+	MEMTEST =
+endif
 
 all:
 	@echo "Choose one of the following:"

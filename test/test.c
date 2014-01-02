@@ -21,7 +21,7 @@
  	"poll-wait = 1\n" \
  	"read-high = 131072\n" \
  	"tcp-nodelay = true\n" \
- 	"timeout = 1\n" \
+ 	"timeout = 500\n" \
  	"[quickio]\n" \
  	"bind-address = localhost\n" \
  	"bind-port = %d\n" \
@@ -264,6 +264,7 @@ struct client* test_get_client()
 	struct client *client = NULL;
 
 	qev_foreach(_get_client_cb, 1, &client);
+	QEV_WAIT_FOR(protocols_client_handshaked(client));
 
 	return client;
 }

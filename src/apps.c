@@ -34,29 +34,33 @@ static void _add_app(
 	const gchar *name,
 	const gchar *path)
 {
+	gboolean ok;
 	qio_app_cb cb;
-	gchar *full_path;
 	struct app app;
+	GString *full_path = qev_buffer_get();
 	struct app *papp = NULL;
 	guint *magic_num = NULL;
 	gboolean good = FALSE;
 
+	memset(&app, 0, sizeof(app));
+
 	if (strspn(path, PATH_STARTERS) == 0) {
-		full_path = g_strdup_printf("%s/%s", PATH_LIB_DIR, path);
+		g_string_printf(full_path, "%s/%s", PATH_LIB_DIR, path);
 	} else {
-		full_path = g_strdup(path);
+		g_string_assign(full_path, path);
 	}
 
-	app.mod = g_module_open(full_path, G_MODULE_BIND_LOCAL);
+	app.mod = g_module_open(full_path->str, G_MODULE_BIND_LOCAL);
 	if (app.mod == NULL) {
 		CRITICAL("Could not open app %s (%s): %s", name, path, g_module_error());
 		goto out;
 	}
 
-	good = g_module_symbol(app.mod, "__qio_is_app", (void*)&magic_num) &&
+	ok = g_module_symbol(app.mod, "__qio_is_app", (void*)&magic_num) &&
 			*magic_num == QIO_MAGIC_NUM;
-	if (!good) {
-		CRITICAL("Loaded module is not a QuickIO app: %s (%s)", name, full_path);
+	if (!ok) {
+		CRITICAL("Loaded module is not a QuickIO app: %s (%s)",
+					name, full_path->str);
 		goto out;
 	}
 
@@ -73,7 +77,7 @@ static void _add_app(
 	papp = g_slice_copy(sizeof(app), &app);
 
 	if (!app.init(papp)) {
-		CRITICAL("Could not initialize app: %s", full_path);
+		CRITICAL("Could not initialize app (%s): init() failed", full_path->str);
 		goto out;
 	}
 
@@ -83,7 +87,7 @@ static void _add_app(
 	good = TRUE;
 
 out:
-	g_free(full_path);
+	qev_buffer_put(full_path);
 
 	if (!good) {
 		g_free(app.name);
@@ -105,9 +109,7 @@ static void _cleanup()
 
 	for (i = 0; i < _apps->len; i++) {
 		struct app *app = g_ptr_array_index(_apps, i);
-		if (!app->exit()) {
-			FATAL("App failed to exit: %s", app->name);
-		}
+		ASSERT(app->exit(), "App failed to exit: %s", app->name);
 
 		g_free(app->name);
 		g_free(app->prefix);

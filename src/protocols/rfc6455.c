@@ -460,6 +460,11 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 {
 	if (client->protocol_flags & HTTP_HANDSHAKED) {
 		switch (reason) {
+			case QEV_CLOSE_EXITING:
+				// error code: 1001
+				qev_write(client, "\x88\x02\x03\xe9", 4);
+				break;
+
 			case QIO_CLOSE_INVALID_HANDSHAKE:
 				// error code: 1002
 				qev_write(client, "\x88\x13\x03\xea""invalid handshake", 21);

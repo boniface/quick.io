@@ -8,6 +8,35 @@
 
 #include "test.h"
 
+static void _set(const gchar *vars)
+{
+	gboolean die = FALSE;
+	GString *buff = qev_buffer_get();
+	g_string_printf(buff, "[quick.io-apps]\n%s\n", vars);
+
+	if (!g_file_set_contents("test_apps_errors.ini", buff->str, buff->len, NULL)) {
+		goto abort;
+	}
+
+	if (!qev_cfg_parse("test_apps_errors.ini")) {
+		goto abort;
+	}
+
+out:
+	unlink("test_apps_errors.ini");
+	qev_buffer_put(buff);
+
+	if (die) {
+		ck_abort();
+	}
+
+	return;
+
+abort:
+	die = TRUE;
+	goto out;
+}
+
 START_TEST(test_sane)
 {
 	qev_fd_t tc = test_client();
@@ -122,6 +151,56 @@ START_TEST(test_on_with_evs_send)
 }
 END_TEST
 
+START_TEST(test_error_path)
+{
+	GString *buff = qev_buffer_get();
+	g_string_printf(buff, "/app = %s", "test/apps/test_app_sane");
+
+	_set(buff->str);
+
+	qev_buffer_put(buff);
+}
+END_TEST
+
+START_TEST(test_error_invalid_app)
+{
+	GString *buff = qev_buffer_get();
+	gchar *cwd = g_get_current_dir();
+	g_string_printf(buff, "/app = %s/%s", cwd, "apps/test_app_invalid");
+
+	_set(buff->str);
+
+	g_free(cwd);
+	qev_buffer_put(buff);
+}
+END_TEST
+
+START_TEST(test_error_init)
+{
+	GString *buff = qev_buffer_get();
+	gchar *cwd = g_get_current_dir();
+	g_string_printf(buff, "/app = %s/%s", cwd, "apps/test_app_fatal_init");
+
+	_set(buff->str);
+
+	g_free(cwd);
+	qev_buffer_put(buff);
+}
+END_TEST
+
+START_TEST(test_error_exit)
+{
+	GString *buff = qev_buffer_get();
+	gchar *cwd = g_get_current_dir();
+	g_string_printf(buff, "/app = %s/%s", cwd, "apps/test_app_fatal_exit");
+
+	_set(buff->str);
+
+	g_free(cwd);
+	qev_buffer_put(buff);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -138,6 +217,14 @@ int main()
 	tcase_add_test(tcase, test_on_reject);
 	tcase_add_test(tcase, test_on_delayed_reject);
 	tcase_add_test(tcase, test_on_with_evs_send);
+
+	tcase = tcase_create("Errors");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_error_path);
+	tcase_add_test(tcase, test_error_invalid_app);
+	tcase_add_test(tcase, test_error_init);
+	tcase_add_test_raise_signal(tcase, test_error_exit, FATAL_SIGNAL);
 
 	return test_do(sr);
 }
