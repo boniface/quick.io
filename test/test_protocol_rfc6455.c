@@ -117,6 +117,41 @@ START_TEST(test_handshake_no_upgrade_header)
 }
 END_TEST
 
+START_TEST(test_handshake_no_ohai)
+{
+	const gchar *inval = "\x81\x82""abcd""tu";
+
+	gint err;
+	gchar buff[256];
+	qev_fd_t ts = test_socket();
+
+	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
+					sizeof(HEADERS) - 1);
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(err > 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(HEADERS_RESPONSE, buff);
+
+	ck_assert_int_eq(send(ts, inval, strlen(inval), 0), strlen(inval));
+
+	test_client_dead(ts);
+	close(ts);
+}
+END_TEST
+
+START_TEST(test_handshake_invalid_prefix)
+{
+	const gchar *headers = "POST ws://localhost/qio HTTP/1.1\r\n\r\n";
+
+	qev_fd_t ts = test_socket();
+
+	ck_assert_int_eq(send(ts, headers, strlen(headers), 0), strlen(headers));
+
+	test_client_dead(ts);
+	close(ts);
+}
+END_TEST
+
 START_TEST(test_decode)
 {
 	gint err;
@@ -258,6 +293,41 @@ START_TEST(test_decode_long)
 }
 END_TEST
 
+START_TEST(test_decode_invalid_utf8)
+{
+	const gchar *inval = "\x81\x82""abcd""\xe1""\xe2";
+
+	qev_fd_t tc = _client();
+
+	ck_assert_int_eq(send(tc, inval, strlen(inval), 0), strlen(inval));
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_decode_invalid_qio_handshake)
+{
+	const gchar *inval = "\x81\x82""abcd""\xe1""\xe2";
+
+	gint err;
+	gchar buff[256];
+	qev_fd_t ts = test_socket();
+
+	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
+					sizeof(HEADERS) - 1);
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(err > 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(HEADERS_RESPONSE, buff);
+
+	ck_assert_int_eq(send(ts, inval, strlen(inval), 0), strlen(inval));
+
+	test_client_dead(ts);
+	close(ts);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -272,6 +342,8 @@ int main()
 	tcase_add_test(tcase, test_handshake_slow);
 	tcase_add_test(tcase, test_handshake_invalid_http_headers);
 	tcase_add_test(tcase, test_handshake_no_upgrade_header);
+	tcase_add_test(tcase, test_handshake_no_ohai);
+	tcase_add_test(tcase, test_handshake_invalid_prefix);
 
 	tcase = tcase_create("Decode");
 	suite_add_tcase(s, tcase);
@@ -282,6 +354,8 @@ int main()
 	tcase_add_test(tcase, test_decode_unmasked);
 	tcase_add_test(tcase, test_decode_medium);
 	tcase_add_test(tcase, test_decode_long);
+	tcase_add_test(tcase, test_decode_invalid_utf8);
+	tcase_add_test(tcase, test_decode_invalid_qio_handshake);
 
 	return test_do(sr);
 }
