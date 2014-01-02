@@ -8,40 +8,6 @@
 
 #include "test.h"
 
-static gboolean _do_heartbeat = FALSE;
-
-static void _get_client_cb(struct client *client, void *ptr_)
-{
-	struct client **ptr = ptr_;
-	if (*ptr == NULL) {
-		*ptr = client;
-	}
-}
-
-static void _get_client(struct client **client)
-{
-	qev_foreach(_get_client_cb, 1, client);
-}
-
-/**
- * Heartbeats need to run from the QEV event loop: qev_foreach() only runs
- * unlocked from QEV threads, and since we need to test removal of clients from
- * heartbeats, we have to run there.
- */
-static void _heartbeat_timer()
-{
-	if (_do_heartbeat) {
-		protocols_heartbeat();
-		_do_heartbeat = FALSE;
-	}
-}
-
-static void _heartbeat()
-{
-	_do_heartbeat = TRUE;
-	QEV_WAIT_FOR(_do_heartbeat == FALSE);
-}
-
 START_TEST(test_handshake_slow)
 {
 	gchar buff[10];
@@ -100,33 +66,30 @@ START_TEST(test_route_invalid)
 }
 END_TEST
 
-START_TEST(test_heartbeat)
+START_TEST(test_heartbeats)
 {
-	struct client *client = NULL;
 	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
 
-	qev_timer(_heartbeat_timer, 0, 1);
-	_get_client(&client);
-
-	_heartbeat();
+	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:0=null");
 
-	_heartbeat();
+	test_heartbeat();
 	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51);
 
-	_heartbeat();
+	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:0=null");
 
 	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(70);
-	_heartbeat();
+	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:0=null");
 
 	client->last_recv = qev_monotonic - (QEV_SEC_TO_USEC(60 * 15) + 1);
-	_heartbeat();
+	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:1=null");
 
 	client->last_recv = qev_monotonic - QEV_SEC_TO_USEC(60 * 17);
-	_heartbeat();
+	test_heartbeat();
 
 	test_client_dead(tc);
 	close(tc);
@@ -135,14 +98,11 @@ END_TEST
 
 START_TEST(test_heartbeat_challenge)
 {
-	struct client *client = NULL;
 	qev_fd_t tc = test_client();
-
-	qev_timer(_heartbeat_timer, 0, 1);
-	_get_client(&client);
+	struct client *client = test_get_client();
 
 	client->last_recv = qev_monotonic - (QEV_SEC_TO_USEC(60 * 15) + 1);
-	_heartbeat();
+	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:1=null");
 	test_send(tc, "/qio/callback/1:0=null");
 	test_ping(tc);
@@ -164,7 +124,7 @@ int main()
 	tcase_add_test(tcase, test_handshake_slow);
 	tcase_add_test(tcase, test_route_slow);
 	tcase_add_test(tcase, test_route_invalid);
-	tcase_add_test(tcase, test_heartbeat);
+	tcase_add_test(tcase, test_heartbeats);
 	tcase_add_test(tcase, test_heartbeat_challenge);
 
 	return test_do(sr);

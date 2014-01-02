@@ -21,6 +21,7 @@
  	"poll-wait = 1\n" \
  	"read-high = 131072\n" \
  	"tcp-nodelay = true\n" \
+ 	"timeout = 1\n" \
  	"[quickio]\n" \
  	"bind-address = localhost\n" \
  	"bind-port = %d\n" \
@@ -37,6 +38,8 @@ struct _wait_for_buff {
  */
 static gchar *_xml_file = NULL;
 
+static gboolean _do_heartbeat = FALSE;
+
 static void _wait_for_buff_cb(struct client *client, void *wfb_)
 {
 	struct _wait_for_buff *wfb = wfb_;
@@ -46,6 +49,27 @@ static void _wait_for_buff_cb(struct client *client, void *wfb_)
 	QEV_WAIT_FOR(client->qev_client._read_operations == 0);
 
 	wfb->good = TRUE;
+}
+
+static void _get_client_cb(struct client *client, void *ptr_)
+{
+	struct client **ptr = ptr_;
+	if (*ptr == NULL) {
+		*ptr = client;
+	}
+}
+
+/**
+ * Heartbeats need to run from the QEV event loop: qev_foreach() only runs
+ * unlocked from QEV threads, and since we need to test removal of clients from
+ * heartbeats, we have to run there.
+ */
+static void _heartbeat_timer()
+{
+	if (_do_heartbeat) {
+		protocols_heartbeat();
+		_do_heartbeat = FALSE;
+	}
 }
 
 void test_new(
@@ -90,6 +114,7 @@ void test_setup()
 {
 	gchar *args[] = {"test", "--config-file=" CONFIG_FILE};
 	qio_main(2, args);
+	qev_timer(_heartbeat_timer, 0, 1);
 }
 
 void test_teardown()
@@ -232,6 +257,21 @@ void test_wait_for_buff(const guint len)
 	while (!wfb.good) {
 		qev_foreach(_wait_for_buff_cb, 1, &wfb);
 	}
+}
+
+struct client* test_get_client()
+{
+	struct client *client = NULL;
+
+	qev_foreach(_get_client_cb, 1, &client);
+
+	return client;
+}
+
+void test_heartbeat()
+{
+	_do_heartbeat = TRUE;
+	QEV_WAIT_FOR(_do_heartbeat == FALSE);
 }
 
 void test_client_dead(qev_fd_t tc)

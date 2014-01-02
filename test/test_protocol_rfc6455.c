@@ -93,9 +93,22 @@ START_TEST(test_handshake_invalid_http_headers)
 	const gchar *headers =
 		"GET ws://localhost/qio HTTP/1.1\r\n"
 		"herp derp\r\n\r\n";
+
+	gint err;
+	gchar buff[1024];
 	qev_fd_t ts = test_socket();
 
 	ck_assert_int_eq(send(ts, headers, strlen(headers), 0), strlen(headers));
+
+	err = recv(ts, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+
+	ck_assert_str_eq(buff,
+		"HTTP/1.1 400 Bad Request\r\n"
+		"Connection: close\r\n"
+		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
+		"Pragma: no-cache\r\n"
+		"Expires: 0\r\n\r\n");
 
 	test_client_dead(ts);
 	close(ts);
@@ -108,9 +121,22 @@ START_TEST(test_handshake_no_upgrade_header)
 		"GET ws://localhost/qio HTTP/1.1\r\n"
 		"Sec-WebSocket-Key: JF+JVs2N4NAX39FAAkkdIA==\r\n"
 		"Sec-WebSocket-Version: 13\r\n\r\n";
+
+	gint err;
+	gchar buff[1024];
 	qev_fd_t ts = test_socket();
 
 	ck_assert_int_eq(send(ts, headers, strlen(headers), 0), strlen(headers));
+
+	err = recv(ts, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+
+	ck_assert_str_eq(buff,
+		"HTTP/1.1 400 Bad Request\r\n"
+		"Connection: close\r\n"
+		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
+		"Pragma: no-cache\r\n"
+		"Expires: 0\r\n\r\n");
 
 	test_client_dead(ts);
 	close(ts);
@@ -134,6 +160,9 @@ START_TEST(test_handshake_no_ohai)
 
 	ck_assert_int_eq(send(ts, inval, strlen(inval), 0), strlen(inval));
 
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\x13\x03\xea""invalid handshake", err) == 0);
+
 	test_client_dead(ts);
 	close(ts);
 }
@@ -142,13 +171,47 @@ END_TEST
 START_TEST(test_handshake_invalid_prefix)
 {
 	const gchar *headers = "POST ws://localhost/qio HTTP/1.1\r\n\r\n";
-
 	qev_fd_t ts = test_socket();
 
 	ck_assert_int_eq(send(ts, headers, strlen(headers), 0), strlen(headers));
 
 	test_client_dead(ts);
 	close(ts);
+}
+END_TEST
+
+START_TEST(test_heartbeats)
+{
+	gint err;
+	gchar buff[128];
+	qev_fd_t tc = _client();
+	struct client *client = test_get_client();
+
+	test_heartbeat();
+	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(buff, "\x81\x15""/qio/heartbeat:0=null");
+
+	client->last_send = qev_monotonic = QEV_SEC_TO_USEC(51);
+	test_heartbeat();
+	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(buff, "\x81\x15""/qio/heartbeat:0=null");
+
+	client->last_recv = qev_monotonic - (QEV_SEC_TO_USEC(60 * 15) + 1);
+	test_heartbeat();
+	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(buff, "\x81\x15""/qio/heartbeat:1=null");
+
+	client->last_recv = qev_monotonic - QEV_SEC_TO_USEC(60 * 17);
+	test_heartbeat();
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\00", err) == 0);
+
+	test_client_dead(tc);
+	close(tc);
 }
 END_TEST
 
@@ -182,11 +245,9 @@ START_TEST(test_decode_close)
 	ck_assert(send(tc, "\x88\x80", 2, 0) == 2);
 
 	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, 2);
+	ck_assert(memcmp(buff, "\x88\x00", err) == 0);
 
-	ck_assert((buff[0] & 0xff) == 0x88);
-	ck_assert((buff[1] & 0xff) == 0x00);
-
+	test_client_dead(tc);
 	close(tc);
 }
 END_TEST
@@ -194,22 +255,15 @@ END_TEST
 START_TEST(test_decode_continuation_frame)
 {
 	gint err;
-	guint16 ecode;
 	gchar buff[8];
 	qev_fd_t tc = _client();
 
 	ck_assert(send(tc, "\x80\x8a""abcd", 6, 0) == 6);
 
 	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, 4);
+	ck_assert(memcmp(buff, "\x88\x02\x03\xeb", err) == 0);
 
-	ck_assert((buff[0] & 0xff) == 0x88);
-	ck_assert((buff[1] & 0xff) == 0x02);
-
-	ecode = GUINT16_FROM_BE(*((guint16*)(buff + 2)));
-
-	ck_assert_uint_eq(ecode, 1003);
-
+	test_client_dead(tc);
 	close(tc);
 }
 END_TEST
@@ -217,24 +271,15 @@ END_TEST
 START_TEST(test_decode_unmasked)
 {
 	gint err;
-	guint16 ecode;
 	gchar buff[32];
 	qev_fd_t tc = _client();
 
 	ck_assert(send(tc, "\x81\x04""abcd", 6, 0) == 6);
 
 	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, 25);
-	buff[err] = '\0';
+	ck_assert(memcmp(buff, "\x88\x17\x03\xea""client must mask data", err) == 0);
 
-	ck_assert((buff[0] & 0xff) == 0x88);
-	ck_assert((buff[1] & 0xff) == 0x17);
-
-	ecode = GUINT16_FROM_BE(*((guint16*)(buff + 2)));
-	ck_assert_str_eq(buff + 4, "client must mask data");
-
-	ck_assert_uint_eq(ecode, 1002);
-
+	test_client_dead(tc);
 	close(tc);
 }
 END_TEST
@@ -328,6 +373,115 @@ START_TEST(test_decode_invalid_qio_handshake)
 }
 END_TEST
 
+START_TEST(test_encode_medium)
+{
+	gint err;
+	gchar buff[512];
+	qev_fd_t tc = _client();
+	struct client *client = test_get_client();
+	GString *json = qev_buffer_get();
+
+	g_string_set_size(json, 256);
+	memset(json->str, 'a', json->len);
+	evs_send_bruteforce(client, "/test", "/2", json->str, NULL, NULL, NULL);
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+
+	ck_assert(memcmp(buff, "\x81\x7e\x01\x0a", 4) == 0);
+
+	g_string_prepend(json, "/test/2:0=");
+	ck_assert_str_eq(buff + 4, json->str);
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_encode_long)
+{
+	gint err;
+	gchar buff[0x10020];
+	qev_fd_t tc = _client();
+	struct client *client = test_get_client();
+	GString *json = qev_buffer_get();
+
+	g_string_set_size(json, 0xffff + 1);
+	memset(json->str, 'a', json->len);
+	evs_send_bruteforce(client, "/test", "/2", json->str, NULL, NULL, NULL);
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+
+	ck_assert(memcmp(buff, "\x81\x7f\x00\x00\x00\x00\x00\x01\x00\x0a", 10) == 0);
+
+	g_string_prepend(json, "/test/2:0=");
+	ck_assert(g_strcmp0(buff + 10, json->str) == 0);
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_close_invalid_event_format)
+{
+	// /test=123
+	const gchar *inval = "\x81\x89""abcd""N""\x16""\x06""\x17""\x15""_""R""V""R";
+
+	gint err;
+	gchar buff[256];
+	qev_fd_t tc = _client();
+
+	ck_assert_int_eq(send(tc, inval, strlen(inval), 0), strlen(inval));
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\x16\x03\xea""invalid event format", err) == 0);
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_close_timeout)
+{
+	const gchar *incomplete = "\x81\x8f""abcd";
+
+	gint err;
+	gchar buff[256];
+	qev_fd_t tc = _client();
+
+	ck_assert_int_eq(send(tc, incomplete, strlen(incomplete), 0), strlen(incomplete));
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\x10\x03\xf0""client timeout", err) == 0);
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_close_read_high)
+{
+	const gchar *msg = "\x81\xa2""abcd""N""\x16""\x06""\x17""\x15""X""S""Y"
+						"\x00""\x00""\x00""\x00""\x04""\x04""\x04""\x0c""\x08"
+						"\x08""\x08""\x08""\x0c""\x0c""\x0c""\x14""\x10""\x10"
+						"\x10""\x10""\x14""\x14""\x14""\x1c""\x18""\x18";
+
+	gint err;
+	gchar buff[8];
+	qev_fd_t tc = _client();
+
+	union qev_cfg_val val = { .ui64 = 10 };
+	qev_cfg_set("quick-event", "read-high", val, NULL);
+
+	ck_assert_int_eq(send(tc, msg, strlen(msg), 0), strlen(msg));
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\x02\x03\xf1", err) == 0);
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -344,6 +498,7 @@ int main()
 	tcase_add_test(tcase, test_handshake_no_upgrade_header);
 	tcase_add_test(tcase, test_handshake_no_ohai);
 	tcase_add_test(tcase, test_handshake_invalid_prefix);
+	tcase_add_test(tcase, test_heartbeats);
 
 	tcase = tcase_create("Decode");
 	suite_add_tcase(s, tcase);
@@ -356,6 +511,19 @@ int main()
 	tcase_add_test(tcase, test_decode_long);
 	tcase_add_test(tcase, test_decode_invalid_utf8);
 	tcase_add_test(tcase, test_decode_invalid_qio_handshake);
+
+	tcase = tcase_create("Encode");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_encode_medium);
+	tcase_add_test(tcase, test_encode_long);
+
+	tcase = tcase_create("Close Reasons");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_close_invalid_event_format);
+	tcase_add_test(tcase, test_close_read_high);
+	tcase_add_test(tcase, test_close_timeout);
 
 	return test_do(sr);
 }

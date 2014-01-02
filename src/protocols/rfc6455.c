@@ -439,13 +439,13 @@ GString* protocol_rfc6455_frame(
 
 	if (len <= PAYLOAD_SHORT) {
 		g_string_append_c(f, (guint8)len);
-	} else if (len <= PAYLOAD_MEDIUM) {
+	} else if (len <= 0xffff) {
 		guint16 belen = GUINT16_TO_BE(len);
-		g_string_append_c(f, (gchar)126);
+		g_string_append_c(f, (gchar)PAYLOAD_MEDIUM);
 		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
 	} else {
 		guint64 belen = GUINT64_TO_BE(len);
-		g_string_append_c(f, (gchar)127);
+		g_string_append_c(f, (gchar)PAYLOAD_LONG);
 		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
 	}
 

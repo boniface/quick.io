@@ -128,6 +128,16 @@ void test_ping(qev_fd_t tc);
 void test_wait_for_buff(const guint len);
 
 /**
+ * Get the last client in the clients list
+ */
+struct client* test_get_client();
+
+/**
+ * Force send out heartbeats
+ */
+void test_heartbeat();
+
+/**
  * Tests that the client was closed by the server.
  */
 void test_client_dead(qev_fd_t tc);
