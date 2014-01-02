@@ -277,8 +277,8 @@ static void _handshake_http(
 {
 	gsize size;
 	gsize b64len;
-	gint state;
-	gint save;
+	gint state = 0;
+	gint save = 0;
 	GChecksum *sha1 = g_checksum_new(G_CHECKSUM_SHA1);
 	GString *sha = qev_buffer_get();
 	GString *b64 = qev_buffer_get();
@@ -425,9 +425,15 @@ void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb)
 							HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
-GString* protocol_rfc6455_frame(const gchar *data, const guint64 len)
+GString* protocol_rfc6455_frame(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json)
 {
 	GString *f = qev_buffer_get();
+	GString *e = protocol_raw_format(ev_path, ev_extra, server_cb, json);
+	const guint len = e->len;
 
 	g_string_append_c(f, '\x81');
 
@@ -443,7 +449,9 @@ GString* protocol_rfc6455_frame(const gchar *data, const guint64 len)
 		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
 	}
 
-	g_string_append_len(f, data, len);
+	g_string_append_len(f, e->str, e->len);
+
+	qev_buffer_put(e);
 
 	return f;
 }

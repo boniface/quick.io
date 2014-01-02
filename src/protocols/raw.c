@@ -8,6 +8,8 @@
 
 #include "quickio.h"
 
+#define EV_FORMAT "%s%s:%" G_GUINT64_FORMAT "=%s"
+
 #define HANDSHAKE "/qio/ohai"
 
 #define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x15""/qio/heartbeat:0=null"
@@ -80,16 +82,34 @@ void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb)
 	protocol_raw_do_heartbeat(client, hb, HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
-GString* protocol_raw_frame(const gchar *data, const guint64 len)
+GString* protocol_raw_frame(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json)
 {
 	gchar size[sizeof(guint64)];
 	GString *buff = qev_buffer_get();
+	GString *e = protocol_raw_format(ev_path, ev_extra, server_cb, json);
 
-	*((guint64*)size) = GUINT64_TO_BE(len);
+	*((guint64*)size) = GUINT64_TO_BE(e->len);
 
 	g_string_append_len(buff, size, sizeof(size));
-	g_string_append_len(buff, data, len);
+	g_string_append_len(buff, e->str, e->len);
 
+	qev_buffer_put(e);
+
+	return buff;
+}
+
+GString* protocol_raw_format(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json)
+{
+	GString *buff = qev_buffer_get();
+	g_string_printf(buff, EV_FORMAT, ev_path, ev_extra, server_cb, json);
 	return buff;
 }
 

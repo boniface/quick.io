@@ -14,11 +14,6 @@
 #define CONFIG_FILE "test_" G_STRINGIFY(PORT) ".ini"
 
 /**
- * The port that SSL is listening on
- */
-#define SSL_PORT (PORT + 1)
-
-/**
  * Default configuration for tests
  */
 #define CONFIG \
@@ -29,12 +24,6 @@
  	"[quickio]\n" \
  	"bind-address = localhost\n" \
  	"bind-port = %d\n" \
- 	"bind-address-ssl = localhost\n" \
- 	"bind-port-ssl = %d\n" \
- 	"ssl-key-path-0 = ../lib/quick-event/certs/rsa/test.key\n" \
- 	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
- 	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
- 	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
  	"[quick.io-apps]\n" \
  	"/test = ./apps/test_app_sane\n"
 
@@ -78,7 +67,7 @@ gboolean test_do(SRunner *sr)
 	gboolean configed;
 
 	c = g_string_sized_new(sizeof(CONFIG));
-	g_string_printf(c, CONFIG, PORT, SSL_PORT);
+	g_string_printf(c, CONFIG, PORT);
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	g_string_free(c, TRUE);
 

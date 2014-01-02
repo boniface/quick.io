@@ -63,9 +63,34 @@ void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb);
  * Frames data to send out to a client.
  *
  * @return
- *     A buffer containg the frame. @args{transfer-full}
+ *     A buffer containing the frame. @args{transfer-full}
  */
-GString* protocol_raw_frame(const gchar *data, const guint64 len);
+GString* protocol_raw_frame(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json);
+
+/**
+ * Formats an event into the QIO protocol
+ *
+ * @param ev_path
+ *     Obviously the path
+ * @param ev_extra
+ *     Extra path segments
+ * @param server_cb
+ *     The callback the server expects
+ * @param json
+ *     Data to send
+ *
+ * @return
+ *     A buffer containing the formatted event. @args{transfer-full}
+ */
+GString* protocol_raw_format(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json);
 
 /**
  * Checks that the data received is indeed a valid QIO handshake

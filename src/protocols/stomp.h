@@ -38,4 +38,8 @@ void protocol_stomp_heartbeat(struct client *client, struct heartbeat *hb);
  * @return
  *     A buffer containg the frame. @args{transfer-full}
  */
-GString* protocol_stomp_frame(const gchar *data, const guint64 len);
+GString* protocol_stomp_frame(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json);

@@ -30,7 +30,11 @@ void protocol_stomp_heartbeat(struct client *client G_GNUC_UNUSED, struct heartb
 
 }
 
-GString* protocol_stomp_frame(const gchar *data G_GNUC_UNUSED, const guint64 len G_GNUC_UNUSED)
+GString* protocol_stomp_frame(
+	const gchar *ev_path G_GNUC_UNUSED,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t server_cb G_GNUC_UNUSED,
+	const gchar *json G_GNUC_UNUSED)
 {
 	return NULL;
 }

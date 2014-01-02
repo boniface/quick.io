@@ -122,7 +122,11 @@ struct protocol {
 	 * Frames the data in whatever the protocol dictates such that it
 	 * can be directly written via qev_write().
 	 */
-	GString* (*frame)(const gchar *data, const guint64 len);
+	GString* (*frame)(
+		const gchar *ev_path,
+		const gchar *ev_extra,
+		const evs_cb_t server_cb,
+		const gchar *json);
 
 	/**
 	 * Sends a final farewell message to clients before they close.
@@ -149,12 +153,21 @@ void protocols_route(struct client *client);
  *
  * @param client
  *     The client to write to
- * @param data
- *     The data to send out the protocol
- * @param len
- *     The length of the data.
+ * @param ev_path
+ *     The path of the event
+ * @param ev_extra
+ *     Any extra path segments
+ * @param server_cb
+ *     The callback expected on the server
+ * @param json
+ *     Data to send with the event
  */
-void protocols_write(struct client *client, const gchar *data, const guint len);
+void protocols_send(
+	struct client *client,
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json);
 
 /**
  * Notification that a client was closed.
@@ -169,16 +182,16 @@ void protocols_closed(struct client *client, guint reason);
 /**
  * Get an array of framed events, one for each protocol.
  *
- * @param e
- *     The event to frame
- * @param len
- *     The length of the event
+ * @param ev_path
+ *     The path of the event
+ * @param json
+ *     Data to send
  *
  * @return
  *     The frames that can be passed to protocols_bcast_write() to send
  *     to a client. Must be freed with protocols_bcast_free() when done.
  */
-GString** protocols_bcast(const gchar *e, const guint len);
+GString** protocols_bcast(const gchar *ev_path, const gchar *json);
 
 /**
  * Writes the broadcast to the given client

@@ -9,24 +9,21 @@
 #include "quickio.h"
 
 /**
- * A generic event with a path and some data
+ * Path used for all callbacks
  */
-#define EV_FORMAT "%s%s:%" G_GUINT64_FORMAT "=%s"
+#define CB_PATH_FORMAT "/qio/callback/%" G_GUINT64_FORMAT
+
 
 /**
- * For STATUS_OK callbacks
+ * For STATUS_OK callbacks, this is the JSON data to send
  */
-#define CB_FORMAT \
-	"/qio/callback/%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT "=" \
-	"{\"code\":%d,\"data\":%s}"
+#define CB_OK_JSON_FORMAT "{\"code\":%d,\"data\":%s}"
 
 /**
  * For !STATUS_OK callbacks. Notice the missing %s}: qev_json_pack is used
  * to pack the err_msg, so the trailing } must be appended.
  */
-#define CB_ERR_FORMAT \
-	"/qio/callback/%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT "=" \
-	"{\"code\":%d,\"data\":%s,\"err_msg\":"
+#define CB_ERR_JSON_FORMAT "{\"code\":%d,\"data\":%s,\"err_msg\":"
 
 #define JSON_OR_NULL(json) \
 	json = (json == NULL ? "null" : \
@@ -249,7 +246,6 @@ void qio_evs_send_full(
 {
 	evs_cb_t server_cb;
 	struct subscription *sub = sub_get(ev, ev_extra);
-	GString *buff = qev_buffer_get();
 	JSON_OR_NULL(json);
 
 	if (!ev->handle_children && (ev_extra != NULL || *ev_extra != '\0')) {
@@ -269,11 +265,7 @@ void qio_evs_send_full(
 
 	qev_unlock(client);
 
-	g_string_printf(buff, EV_FORMAT, ev->ev_path, sub->ev_extra,
-									server_cb, json);
-	protocols_write(client, buff->str, buff->len);
-
-	qev_buffer_put(buff);
+	protocols_send(client, ev->ev_path, sub->ev_extra, server_cb, json);
 
 	// @todo from that former memory leak: test multiple clients hitting things at random and really hard
 	sub_unref(sub);
@@ -289,18 +281,15 @@ void evs_send_bruteforce(
 	const qev_free_fn free_fn)
 {
 	GString *path = qev_buffer_get();
-	GString *buff = qev_buffer_get();
 	evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
 	JSON_OR_NULL(json);
 
 	g_string_printf(path, "%s/%s", ev_path, ev_extra ? : "");
 	_clean_ev_path(path->str);
 
-	g_string_printf(buff, EV_FORMAT, path->str, "", server_cb, json);
-	protocols_write(client, buff->str, buff->len);
+	protocols_send(client, path->str, "", server_cb, json);
 
 	qev_buffer_put(path);
-	qev_buffer_put(buff);
 }
 
 void qio_evs_on_cb(
@@ -389,8 +378,9 @@ void qio_evs_cb_full(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	GString *buff;
-	evs_cb_t server_cb;
+	GString *path;
+	GString *jbuff;
+	evs_cb_t server_cb = EVS_NO_CALLBACK;
 
 	if (client_cb == 0) {
 		client_cb_new(NULL, NULL, cb_data, free_fn);
@@ -404,19 +394,23 @@ void qio_evs_cb_full(
 	}
 
 	JSON_OR_NULL(json);
-	buff = qev_buffer_get();
+	path = qev_buffer_get();
+	jbuff = qev_buffer_get();
+
+	g_string_printf(path, CB_PATH_FORMAT, client_cb);
 
 	if (code == CODE_OK) {
-		g_string_printf(buff, CB_FORMAT, client_cb, server_cb, code, json);
+		g_string_printf(jbuff, CB_OK_JSON_FORMAT, code, json);
 	} else {
-		g_string_printf(buff, CB_ERR_FORMAT, client_cb, EVS_NO_CALLBACK, code, json);
-		qev_json_pack(buff, "%s", err_msg);
-		g_string_append_c(buff, '}');
+		g_string_printf(jbuff, CB_ERR_JSON_FORMAT, code, json);
+		qev_json_pack(jbuff, "%s", err_msg);
+		g_string_append_c(jbuff, '}');
 	}
 
-	protocols_write(client, buff->str, buff->len);
+	protocols_send(client, path->str, "", server_cb, jbuff->str);
 
-	qev_buffer_put(buff);
+	qev_buffer_put(path);
+	qev_buffer_put(jbuff);
 }
 
 void qio_evs_broadcast(
@@ -446,12 +440,11 @@ void evs_broadcast_tick()
 {
 	GString **frames;
 	struct _broadcast *bc;
-	GString *e = qev_buffer_get();
+	GString *path = qev_buffer_get();
 
 	while ((bc = g_async_queue_try_pop(_broadcasts)) != NULL) {
-		g_string_printf(e, EV_FORMAT, bc->sub->ev->ev_path, bc->sub->ev_extra,
-						EVS_NO_CALLBACK, bc->json);
-		frames = protocols_bcast(e->str, e->len);
+		g_string_printf(path, "%s%s", bc->sub->ev->ev_path, bc->sub->ev_extra);
+		frames = protocols_bcast(path->str, bc->json);
 
 		qev_list_foreach(bc->sub->subscribers, _broadcast,
 						cfg_broadcast_threads, TRUE, frames);
@@ -460,7 +453,7 @@ void evs_broadcast_tick()
 		_broadcast_free(bc);
 	}
 
-	qev_buffer_put(e);
+	qev_buffer_put(path);
 }
 
 void evs_init()

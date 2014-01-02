@@ -62,7 +62,11 @@ void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb);
  * @return
  *     A buffer containg the frame. @args{transfer-full}
  */
-GString* protocol_rfc6455_frame(const gchar *data, const guint64 len);
+GString* protocol_rfc6455_frame(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json);
 
 /**
  * Terminates all communications with the client

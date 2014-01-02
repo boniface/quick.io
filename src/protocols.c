@@ -187,12 +187,18 @@ void protocols_route(struct client *client)
 	_route(client);
 }
 
-void protocols_write(struct client *client, const gchar *data, const guint len)
+void protocols_send(
+	struct client *client,
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json)
 {
 	if (client->protocol_flags & HANDSHAKED) {
 		client->last_send = qev_monotonic;
 
-		GString *frame = client->protocol->frame(data, len);
+		ev_extra = ev_extra ? : "";
+		GString *frame = client->protocol->frame(ev_path, ev_extra, server_cb, json);
 		qev_write(client, frame->str, frame->len);
 		qev_buffer_put(frame);
 	}
@@ -205,7 +211,7 @@ void protocols_closed(struct client *client, guint reason)
 	}
 }
 
-GString** protocols_bcast(const gchar *e, const guint len)
+GString** protocols_bcast(const gchar *ev_path, const gchar *json)
 {
 	guint i;
 	GString **frames = g_slice_alloc0(sizeof(*frames) * G_N_ELEMENTS(_protocols));
@@ -213,7 +219,7 @@ GString** protocols_bcast(const gchar *e, const guint len)
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
 		struct protocol *p = _protocols + i;
 		if (p->frame != NULL) {
-			*(frames + i) = p->frame(e, len);
+			*(frames + i) = p->frame(ev_path, "", EVS_NO_CALLBACK, json);
 		}
 	}
 

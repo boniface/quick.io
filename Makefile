@@ -8,7 +8,7 @@ MAKEFLAGS += --no-print-directory
 #
 # If the test cases should be run in valgrind. Comment this out to disable
 #
-# USE_VALGRIND = 1
+USE_VALGRIND = 1
 
 CC = gcc
 
