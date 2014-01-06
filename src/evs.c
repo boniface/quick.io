@@ -158,12 +158,14 @@ void evs_route(
 	struct event *ev;
 	gchar *ev_extra = NULL;
 	enum evs_status status = EVS_STATUS_ERR;
+	enum evs_code code = CODE_UNKNOWN;
 
 	_clean_ev_path(ev_path);
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
 		DEBUG("Could not find handler for event: %s", ev_path);
+		code = CODE_NOT_FOUND;
 		goto out;
 	}
 
@@ -181,7 +183,7 @@ out:
 			break;
 
 		case EVS_STATUS_ERR:
-			evs_err_cb(client, client_cb, CODE_UNKNOWN, NULL, NULL);
+			evs_err_cb(client, client_cb, code, NULL, NULL);
 			break;
 
 		case EVS_STATUS_HANDLED:
@@ -232,7 +234,7 @@ out:
 
 void evs_send(
 	struct client *client,
-	event_t *ev,
+	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json)
 {
@@ -241,7 +243,7 @@ void evs_send(
 
 void evs_send_full(
 	struct client *client,
-	event_t *ev,
+	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json,
 	const evs_cb_fn cb_fn,
@@ -252,7 +254,7 @@ void evs_send_full(
 	struct subscription *sub = sub_get(ev, ev_extra);
 	JSON_OR_NULL(json);
 
-	if (!ev->handle_children && (ev_extra != NULL || *ev_extra != '\0')) {
+	if (!ev->handle_children && ev_extra != NULL && *ev_extra != '\0') {
 		WARN("Sending event %s%s to client, but %s doesn't handle_children, "
 				"so no subscription was possible.",
 				ev->ev_path, sub->ev_extra, ev->ev_path);

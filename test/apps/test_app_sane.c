@@ -72,7 +72,13 @@ static void _good_off(
 static gboolean _delayed_on_cb(void *info_)
 {
 	struct evs_on_info *info = info_;
-	qio.evs_on_cb(TRUE, info);
+
+	if (info->ev_extra == NULL) {
+		qio.evs_on_cb(TRUE, info);
+	} else {
+		qio.evs_on_cb(g_strcmp0(info->ev_extra, "/child") == 0, info);
+	}
+
 	qio.evs_on_info_free(info);
 	return G_SOURCE_REMOVE;
 }
@@ -83,6 +89,17 @@ static enum evs_status _delayed_on(const struct evs_on_info *info)
 	g_source_attach(src, _ctx);
 	g_source_set_callback(src, _delayed_on_cb,
 						qio.evs_on_info_copy(info, FALSE), NULL);
+	g_source_unref(src);
+
+	return EVS_STATUS_HANDLED;
+}
+
+static enum evs_status _delayed_childs_on(const struct evs_on_info *info)
+{
+	GSource *src = g_timeout_source_new(1);
+	g_source_attach(src, _ctx);
+	g_source_set_callback(src, _delayed_on_cb,
+						qio.evs_on_info_copy(info, TRUE), NULL);
 	g_source_unref(src);
 
 	return EVS_STATUS_HANDLED;
@@ -129,19 +146,21 @@ static enum evs_status _with_send_on(const struct evs_on_info *info)
 static gboolean _app_init()
 {
 	qio.evs_add_handler(__qio_app, "/stats",
-						_stats_handler, NULL, NULL, TRUE);
+						_stats_handler, NULL, NULL, FALSE);
 	qio.evs_add_handler(__qio_app, "/good",
-						_good_handler, _good_on, _good_off, TRUE);
+						_good_handler, _good_on, _good_off, FALSE);
 	qio.evs_add_handler(__qio_app, "/good2",
-						_good_handler, _good_on, _good_off, TRUE);
+						_good_handler, _good_on, _good_off, FALSE);
 	qio.evs_add_handler(__qio_app, "/delayed",
-						NULL, _delayed_on, NULL, TRUE);
+						NULL, _delayed_on, NULL, FALSE);
+	qio.evs_add_handler(__qio_app, "/delayed-childs",
+						NULL, _delayed_childs_on, NULL, TRUE);
 	qio.evs_add_handler(__qio_app, "/reject",
-						NULL, qio.evs_no_on, NULL, TRUE);
+						NULL, qio.evs_no_on, NULL, FALSE);
 	qio.evs_add_handler(__qio_app, "/delayed-reject",
-						NULL, _delayed_reject_on, NULL, TRUE);
+						NULL, _delayed_reject_on, NULL, FALSE);
 	_ev_with_send = qio.evs_add_handler(__qio_app, "/with-send",
-						NULL, _with_send_on, NULL, TRUE);
+						NULL, _with_send_on, NULL, FALSE);
 	return TRUE;
 }
 
