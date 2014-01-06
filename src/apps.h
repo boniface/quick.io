@@ -44,7 +44,7 @@ struct app {
 	/**
 	 * Default setup function
 	 */
-	gboolean (*init)(void *app);
+	gboolean (*init)(void *app, struct qio_exports exports);
 
 	/**
 	 * The app's thread fn

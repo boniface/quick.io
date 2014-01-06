@@ -1,6 +1,6 @@
 /**
- * There are no functions here. All functions are defined in quickio_app.h
- * since they need to be visible to the app.
+ * There are only wrapper funtions here. All functions are defined elsewhere and
+ * found in struct qio_export to be exported.
  * @file apps_export.h
  *
  * @author Andrew Stone <andrew@clovar.com>
@@ -12,9 +12,7 @@
 
 #pragma once
 
-#undef QIO_EXPORT
-
 /**
- * Makes functions visible to apps
+ * Gets all of the functions exported from QIO for apps
  */
-#define QIO_EXPORT __attribute__((__visibility__("default")))
+struct qio_exports apps_export_get_fns();

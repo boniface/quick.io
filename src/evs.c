@@ -144,11 +144,7 @@ struct event* evs_add_handler(
 	return ev;
 }
 
-enum evs_status qio_evs_no_on(
-	struct client *client G_GNUC_UNUSED,
-	subscription_t *sub G_GNUC_UNUSED,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb G_GNUC_UNUSED)
+enum evs_status evs_no_on(const struct evs_on_info *info G_GNUC_UNUSED)
 {
 	return EVS_STATUS_ERR;
 }
@@ -181,11 +177,11 @@ void evs_route(
 out:
 	switch (status) {
 		case EVS_STATUS_OK:
-			qio_evs_cb(client, client_cb, NULL);
+			evs_cb(client, client_cb, NULL);
 			break;
 
 		case EVS_STATUS_ERR:
-			qio_evs_err_cb(client, client_cb, CODE_UNKNOWN, NULL, NULL);
+			evs_err_cb(client, client_cb, CODE_UNKNOWN, NULL, NULL);
 			break;
 
 		case EVS_STATUS_HANDLED:
@@ -196,9 +192,10 @@ out:
 void evs_on(
 	struct client *client,
 	struct event *ev,
-	const gchar *ev_extra,
+	gchar *ev_extra,
 	const evs_cb_t client_cb)
 {
+	struct evs_on_info info;
 	struct subscription *sub;
 	enum evs_status status = EVS_STATUS_OK;
 
@@ -206,36 +203,43 @@ void evs_on(
 
 	sub = sub_get(ev, ev_extra);
 
+	info = (struct evs_on_info){
+		.ev_extra = ev_extra,
+		.sub = sub,
+		.client = client,
+		.client_cb = client_cb,
+	};
+
 	qev_lock(client);
 
 	if (client_sub_has(client, sub)) {
-		qio_evs_cb(client, client_cb, NULL);
+		evs_cb(client, client_cb, NULL);
 		sub_unref(sub);
 		goto out;
 	}
 
 	if (ev->on_fn != NULL) {
-		status = ev->on_fn(client, sub, ev_extra, client_cb);
+		status = ev->on_fn(&info);
 	}
 
 	if (status != EVS_STATUS_HANDLED) {
-		qio_evs_on_cb(status == EVS_STATUS_OK, client, sub, client_cb);
+		evs_on_cb(status == EVS_STATUS_OK, &info);
 	}
 
 out:
 	qev_unlock(client);
 }
 
-void qio_evs_send(
+void evs_send(
 	struct client *client,
 	event_t *ev,
 	const gchar *ev_extra,
 	const gchar *json)
 {
-	qio_evs_send_full(client, ev, ev_extra, json, NULL, NULL, NULL);
+	evs_send_full(client, ev, ev_extra, json, NULL, NULL, NULL);
 }
 
-void qio_evs_send_full(
+void evs_send_full(
 	struct client *client,
 	event_t *ev,
 	const gchar *ev_extra,
@@ -292,33 +296,55 @@ void evs_send_bruteforce(
 	qev_buffer_put(path);
 }
 
-void qio_evs_on_cb(
+void evs_on_cb(
 	const gboolean success,
-	struct client *client,
-	struct subscription *sub,
-	const evs_cb_t client_cb)
+	const struct evs_on_info *info)
 {
 	gboolean good;
 	enum evs_code code = CODE_OK;
 
 	if (!success) {
 		code = CODE_UNAUTH;
-		goto error;
+		sub_unref(info->sub);
+		goto out;
 	}
 
-	good = client_sub_add(client, sub);
+	good = client_sub_add(info->client, info->sub);
 	if (!good) {
 		code = CODE_ENHANCE_CALM;
-		goto error;
 	}
 
 out:
-	qio_evs_err_cb(client, client_cb, code, NULL, NULL);
+	evs_err_cb(info->client, info->client_cb, code, NULL, NULL);
 	return;
+}
 
-error:
-	sub_unref(sub);
-	goto out;
+struct evs_on_info* evs_on_info_copy(
+	const struct evs_on_info *info,
+	const gboolean with_ev_extra)
+{
+	struct evs_on_info *ret = g_slice_copy(sizeof(*info), info);
+
+	qev_ref(info->client);
+
+	if (with_ev_extra) {
+		ret->ev_extra = g_strdup(info->ev_extra);
+	} else {
+		ret->ev_extra = NULL;
+	}
+
+	return ret;
+}
+
+void evs_on_info_free(struct evs_on_info *info)
+{
+	qev_unref(info->client);
+
+	if (info->ev_extra) {
+		g_free(info->ev_extra);
+	}
+
+	g_slice_free1(sizeof(*info), info);
 }
 
 void evs_off(
@@ -336,16 +362,16 @@ void evs_off(
 	sub_unref(sub);
 }
 
-void qio_evs_cb(
+void evs_cb(
 	struct client *client,
 	const evs_cb_t client_cb,
 	const gchar *json)
 {
-	qio_evs_cb_full(client, client_cb, CODE_OK, NULL, json,
+	evs_cb_full(client, client_cb, CODE_OK, NULL, json,
 					NULL, NULL, NULL);
 }
 
-void qio_evs_cb_with_cb(
+void evs_cb_with_cb(
 	struct client *client,
 	const evs_cb_t client_cb,
 	const gchar *json,
@@ -353,22 +379,22 @@ void qio_evs_cb_with_cb(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	qio_evs_cb_full(client, client_cb, CODE_OK, NULL, json,
+	evs_cb_full(client, client_cb, CODE_OK, NULL, json,
 					cb_fn, cb_data, free_fn);
 }
 
-void qio_evs_err_cb(
+void evs_err_cb(
 	struct client *client,
 	const evs_cb_t client_cb,
 	const enum evs_code code,
 	const gchar *err_msg,
 	const gchar *json)
 {
-	qio_evs_cb_full(client, client_cb, code, err_msg, json,
+	evs_cb_full(client, client_cb, code, err_msg, json,
 					NULL, NULL, NULL);
 }
 
-void qio_evs_cb_full(
+void evs_cb_full(
 	struct client *client,
 	const evs_cb_t client_cb,
 	const enum evs_code code,
@@ -413,7 +439,7 @@ void qio_evs_cb_full(
 	qev_buffer_put(jbuff);
 }
 
-void qio_evs_broadcast(
+void evs_broadcast(
 	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json)
@@ -432,7 +458,7 @@ void evs_broadcast_path(const gchar *ev_path, const gchar *json)
 	struct event *ev = evs_query(ev_path, &ev_extra);
 
 	if (ev != NULL) {
-		qio_evs_broadcast(ev, ev_extra, json);
+		evs_broadcast(ev, ev_extra, json);
 	}
 }
 

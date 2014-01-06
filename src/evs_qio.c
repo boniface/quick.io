@@ -8,8 +8,6 @@
 
 #include "quickio.h"
 
-
-
 static enum evs_status _callback(
 	struct client *client,
 	const gchar *ev_extra,
@@ -23,7 +21,7 @@ static enum evs_status _callback(
 	}
 
 	if (server_cb == EVS_NO_CALLBACK) {
-		qio_evs_err_cb(client, client_cb, CODE_BAD,
+		evs_err_cb(client, client_cb, CODE_BAD,
 						"invalid server callback id", NULL);
 		return EVS_STATUS_HANDLED;
 	}
@@ -44,13 +42,13 @@ static enum evs_status _off(
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
 	if (jstatus != qev_json_ok) {
-		qio_evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		return EVS_STATUS_HANDLED;
 	}
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
-		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
+		evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
 		return EVS_STATUS_HANDLED;
 	}
 
@@ -72,13 +70,13 @@ static enum evs_status _on(
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
 	if (jstatus != qev_json_ok) {
-		qio_evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		goto out;
 	}
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
-		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
+		evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
 		goto out;
 	}
 
@@ -99,8 +97,8 @@ static enum evs_status _ping(
 
 void evs_qio_init()
 {
-	evs_add_handler("/qio/callback", _callback, qio_evs_no_on, NULL, TRUE);
-	evs_add_handler("/qio/off", _off, qio_evs_no_on, NULL, FALSE);
-	evs_add_handler("/qio/on", _on, qio_evs_no_on, NULL, FALSE);
-	evs_add_handler("/qio/ping", _ping, qio_evs_no_on, NULL, TRUE);
+	evs_add_handler("/qio/callback", _callback, evs_no_on, NULL, TRUE);
+	evs_add_handler("/qio/off", _off, evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio/on", _on, evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio/ping", _ping, evs_no_on, NULL, TRUE);
 }

@@ -145,7 +145,7 @@ enum evs_status client_cb_fire(
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question
+ *     The subscription in question @args{transfer-none}
  *
  * @return
  *     If the client has the subscription
@@ -158,11 +158,10 @@ gboolean client_sub_has(struct client *client, struct subscription *sub);
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question
+ *     The subscription in question @args{transfer-full}
  *
  * @return
- *     If the subscription was successful. When TRUE, sub now belongs to
- *     client. When FALSE, sub does not transfer ownership.
+ *     If the subscription was successful.
  */
 gboolean client_sub_add(struct client *client, struct subscription *sub);
 
@@ -172,7 +171,7 @@ gboolean client_sub_add(struct client *client, struct subscription *sub);
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question
+ *     The subscription in question @args{transfer-none}
  *
  * @return
  *     If the subscription was removed.

@@ -107,14 +107,12 @@ LDFLAGS = \
 
 LDFLAGS_DEBUG = \
 	-g \
-	-rdynamic \
-	-fno-default-inline
+	-rdynamic
 
 LDFLAGS_TEST = \
 	-g \
 	-rdynamic \
 	--coverage \
-	-fno-default-inline \
 	$(shell pkg-config --libs $(LIBS_TEST))
 
 ifdef USE_VALGRIND

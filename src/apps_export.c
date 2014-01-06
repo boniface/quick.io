@@ -8,7 +8,7 @@
 
 #include "quickio.h"
 
-struct event* qio_export_add_handler(
+static struct event* _add_handler(
 	void *app_,
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
@@ -27,7 +27,7 @@ struct event* qio_export_add_handler(
 	return ev;
 }
 
-gboolean qio_export_json_unpack(
+static gboolean _json_unpack(
 	gchar *json,
 	const gchar *spec,
 	...)
@@ -42,7 +42,7 @@ gboolean qio_export_json_unpack(
 	return status == qev_json_ok;
 }
 
-gboolean qio_export_json_pack(
+static gboolean _json_pack(
 	GString *buff,
 	const gchar *spec,
 	...)
@@ -57,12 +57,29 @@ gboolean qio_export_json_pack(
 	return status == qev_json_ok;
 }
 
-GString* qio_export_buffer_get()
-{
-	return qev_buffer_get();
-}
+static struct qio_exports _exports = {
+	.evs_add_handler = _add_handler,
+	.evs_no_on = evs_no_on,
+	.evs_send = evs_send,
+	.evs_send_full = evs_send_full,
+	.evs_on_cb = evs_on_cb,
+	.evs_on_info_copy = evs_on_info_copy,
+	.evs_on_info_free = evs_on_info_free,
+	.evs_cb = evs_cb,
+	.evs_cb_with_cb = evs_cb_with_cb,
+	.evs_err_cb = evs_err_cb,
+	.evs_cb_full = evs_cb_full,
+	.evs_broadcast = evs_broadcast,
+	.json_unpack = _json_unpack,
+	.json_pack = _json_pack,
+	.buffer_get = qev_buffer_get,
+	.buffer_put = qev_buffer_put,
+	.close = qev_close,
+	.ref = qev_ref,
+	.unref = qev_unref,
+};
 
-void qio_export_buffer_put(GString *buff)
+struct qio_exports apps_export_get_fns()
 {
-	qev_buffer_put(buff);
+	return _exports;
 }

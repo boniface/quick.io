@@ -12,6 +12,9 @@
 #include "../../include/quickio_app.h"
 #include <stdio.h>
 
+static GMainContext *_ctx = NULL;
+static GMainLoop *_loop = NULL;
+
 static event_t *_ev_with_send = NULL;
 
 static gint _ons = 0;
@@ -23,12 +26,12 @@ static enum evs_status _stats_handler(
 	const evs_cb_t client_cb,
 	gchar *json G_GNUC_UNUSED)
 {
-	GString *buff = qio_buffer_get();
+	GString *buff = qio.buffer_get();
 
-	qio_json_pack(buff, "[%d,%d]", _ons, _offs);
-	qio_evs_cb(client, client_cb, buff->str);
+	qio.json_pack(buff, "[%d,%d]", _ons, _offs);
+	qio.evs_cb(client, client_cb, buff->str);
 
-	qio_buffer_put(buff);
+	qio.buffer_put(buff);
 
 	return EVS_STATUS_HANDLED;
 }
@@ -42,21 +45,17 @@ static enum evs_status _good_handler(
 	gchar *val;
 	gboolean good;
 
-	good = qio_json_unpack(json, "{%s}", "key", &val);
+	good = qio.json_unpack(json, "{%s}", "key", &val);
 	if (good && g_strcmp0(val, "value") == 0) {
-		qio_evs_cb(client, client_cb, "\"test\"");
+		qio.evs_cb(client, client_cb, "\"test\"");
 	} else {
-		qio_evs_err_cb(client, client_cb, CODE_BAD, "Error with \"key\" in json.", NULL);
+		qio.evs_err_cb(client, client_cb, CODE_BAD, "Error with \"key\" in json.", NULL);
 	}
 
 	return EVS_STATUS_HANDLED;
 }
 
-static enum evs_status _good_on(
-	client_t *client G_GNUC_UNUSED,
-	subscription_t *sub G_GNUC_UNUSED,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb G_GNUC_UNUSED)
+static enum evs_status _good_on(const struct evs_on_info *info G_GNUC_UNUSED)
 {
 	g_atomic_int_inc(&_ons);
 	return EVS_STATUS_OK;
@@ -69,46 +68,99 @@ static void _good_off(
 	g_atomic_int_inc(&_offs);
 }
 
-static enum evs_status _delayed_on(
-	client_t *client,
-	subscription_t *sub,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb)
+static gboolean _delayed_on_cb(void *info_)
 {
-	qio_evs_on_cb(TRUE, client, sub, client_cb);
+	struct evs_on_info *info = info_;
+	qio.evs_on_cb(TRUE, info);
+	qio.evs_on_info_free(info);
+	return G_SOURCE_REMOVE;
+}
+
+static enum evs_status _delayed_on(const struct evs_on_info *info)
+{
+	GSource *src = g_timeout_source_new(1);
+	g_source_attach(src, _ctx);
+	g_source_set_callback(src, _delayed_on_cb,
+						qio.evs_on_info_copy(info, FALSE), NULL);
+	g_source_unref(src);
+
 	return EVS_STATUS_HANDLED;
 }
 
-static enum evs_status _delayed_reject_on(
-	client_t *client,
-	subscription_t *sub,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb)
+static gboolean _delayed_reject_on_cb(void *info_)
 {
-	qio_evs_on_cb(FALSE, client, sub, client_cb);
+	struct evs_on_info *info = info_;
+	qio.evs_on_cb(FALSE, info);
+	qio.evs_on_info_free(info);
+	return G_SOURCE_REMOVE;
+}
+
+static enum evs_status _delayed_reject_on(const struct evs_on_info *info)
+{
+	GSource *src = g_timeout_source_new(1);
+	g_source_attach(src, _ctx);
+	g_source_set_callback(src, _delayed_reject_on_cb,
+						qio.evs_on_info_copy(info, FALSE), NULL);
+	g_source_unref(src);
+
 	return EVS_STATUS_HANDLED;
 }
 
-static enum evs_status _with_send_on(
-	client_t *client,
-	subscription_t *sub,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb)
+static gboolean _with_send_on_cb(void *info_)
 {
-	qio_evs_on_cb(TRUE, client, sub, client_cb);
-	qio_evs_send(client, _ev_with_send, NULL, "\"with-send!\"");
+	struct evs_on_info *info = info_;
+	qio.evs_on_cb(TRUE, info);
+	qio.evs_send(info->client, _ev_with_send, NULL, "\"with-send!\"");
+	qio.evs_on_info_free(info);
+	return G_SOURCE_REMOVE;
+}
+
+static enum evs_status _with_send_on(const struct evs_on_info *info)
+{
+	GSource *src = g_timeout_source_new(1);
+	g_source_attach(src, _ctx);
+	g_source_set_callback(src, _with_send_on_cb,
+						qio.evs_on_info_copy(info, FALSE), NULL);
+	g_source_unref(src);
 	return EVS_STATUS_HANDLED;
 }
 
 static gboolean _app_init()
 {
-	qio_evs_add_handler("/stats", _stats_handler, NULL, NULL, TRUE);
-	qio_evs_add_handler("/good", _good_handler, _good_on, _good_off, TRUE);
-	qio_evs_add_handler("/good2", _good_handler, _good_on, _good_off, TRUE);
-	qio_evs_add_handler("/delayed", NULL, _delayed_on, NULL, TRUE);
-	qio_evs_add_handler("/reject", NULL, qio_evs_no_on, NULL, TRUE);
-	qio_evs_add_handler("/delayed-reject", NULL, _delayed_reject_on, NULL, TRUE);
-	_ev_with_send = qio_evs_add_handler("/with-send", NULL, _with_send_on, NULL, TRUE);
+	qio.evs_add_handler(__qio_app, "/stats",
+						_stats_handler, NULL, NULL, TRUE);
+	qio.evs_add_handler(__qio_app, "/good",
+						_good_handler, _good_on, _good_off, TRUE);
+	qio.evs_add_handler(__qio_app, "/good2",
+						_good_handler, _good_on, _good_off, TRUE);
+	qio.evs_add_handler(__qio_app, "/delayed",
+						NULL, _delayed_on, NULL, TRUE);
+	qio.evs_add_handler(__qio_app, "/reject",
+						NULL, qio.evs_no_on, NULL, TRUE);
+	qio.evs_add_handler(__qio_app, "/delayed-reject",
+						NULL, _delayed_reject_on, NULL, TRUE);
+	_ev_with_send = qio.evs_add_handler(__qio_app, "/with-send",
+						NULL, _with_send_on, NULL, TRUE);
+	return TRUE;
+}
+
+static gboolean _app_run()
+{
+	_ctx = g_main_context_new();
+	_loop = g_main_loop_new(_ctx, TRUE);
+
+	g_main_loop_run(_loop);
+
+	g_main_context_unref(_ctx);
+	g_main_loop_unref(_loop);
+	_loop = NULL;
+
+	return TRUE;
+}
+
+static gboolean _app_exit()
+{
+	g_main_loop_quit(_loop);
 	return TRUE;
 }
 
@@ -120,6 +172,6 @@ static gboolean _app_test()
 
 QUICKIO_APP(
 	_app_init,
-	qio_app_noop,
-	qio_app_noop,
+	_app_run,
+	_app_exit,
 	_app_test);

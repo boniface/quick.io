@@ -112,7 +112,7 @@ enum evs_status client_cb_fire(
 	qev_unlock(client);
 
 	if (cb.cb_fn == NULL) {
-		qio_evs_err_cb(client, client_cb, CODE_NOT_FOUND,
+		evs_err_cb(client, client_cb, CODE_NOT_FOUND,
 							"callback doesn't exist", NULL);
 		return EVS_STATUS_HANDLED;
 	}
@@ -150,13 +150,13 @@ gboolean client_sub_add(
 	qev_lock(client);
 
 	if (client_sub_has(client, sub)) {
-		goto out;
+		goto cleanup;
 	}
 
 	idx = _sub_get(client);
 	if (idx == NULL) {
 		good = FALSE;
-		goto out;
+		goto cleanup;
 	}
 
 	if (client->subs == NULL) {
@@ -169,6 +169,10 @@ gboolean client_sub_add(
 out:
 	qev_unlock(client);
 	return good;
+
+cleanup:
+	sub_unref(sub);
+	goto out;
 }
 
 gboolean client_sub_remove(struct client *client, struct subscription *sub)

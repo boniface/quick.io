@@ -95,6 +95,8 @@ void event_clear(struct event *ev);
  *     Called when a client unsubscribes
  * @param handle_children
  *     If this event handler also handles sub-events. For example, if
+ *     your event is /test/event, then it would receive events of
+ *     /test/event/path, /test/event/other, /test/event/more.
  */
 struct event* evs_add_handler(
 	const gchar *ev_path,
@@ -102,6 +104,13 @@ struct event* evs_add_handler(
 	const evs_on_fn on_fn,
 	const evs_off_fn off_fn,
 	const gboolean handle_children);
+
+/**
+ * Doesn't allow anyone to subscribe to the event.
+ * Use this for qio.add_handler for the on_fn to disable subscriptions
+ * to the event.
+ */
+enum evs_status evs_no_on(const struct evs_on_info *info);
 
 /**
  * Routes an event from a client.
@@ -138,8 +147,53 @@ void evs_route(
 void evs_on(
 	struct client *client,
 	struct event *ev,
-	const gchar *ev_extra,
+	gchar *ev_extra,
 	const evs_cb_t client_cb);
+
+/**
+ * Sends an event to a specific client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param ev
+ *     The event to send
+ * @param ev_extra
+ *     Any extra path segments for the event
+ * @param json
+ *     Any data to include with the event
+ */
+void evs_send(
+	client_t *client,
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json);
+
+/**
+ * Sends an event to a specific client, requesting a callback from the client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param ev
+ *     The event to send
+ * @param ev_extra
+ *     Any extra path segments for the event
+ * @param json
+ *     Any data to include with the event
+ * @param cb_fn
+ *     The function to execute on callback
+ * @param cb_data
+ *     Data to pass into the function @args{transfer-full}
+ * @param free_fn
+ *     Frees the cb_data
+ */
+void evs_send_full(
+	client_t *client,
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
 
 /**
  * Send an event to a client, damn the consequences.
@@ -174,6 +228,48 @@ void evs_send_bruteforce(
 	const qev_free_fn free_fn);
 
 /**
+ * Subscribes a client to an event without any callback checks. This should
+ * only be used in the callback case.
+ *
+ * @param success
+ *     If the checks were successful and the client should be added to the
+ *     subscription. An error callback is sent if false.
+ * @param client
+ *     The client to subscribe
+ * @param sub
+ *     The subscription to put the client in
+ * @param client_cb
+ *     The callback to send to the client
+ */
+void evs_on_cb(
+	const gboolean success,
+	const struct evs_on_info *info);
+
+/**
+ * Make a copy of the evs_on_info(), returning a reference that is safe
+ * to use from another thread.
+ *
+ * @param info
+ *     The object to make a copy of. Also ensures that all references necessary
+ *     are made before returning.
+ * @param with_ev_extra
+ *     If you want ev_extra in the copy. By default, info->ev_extra is left
+ *     NULL;
+ */
+struct evs_on_info* evs_on_info_copy(
+	const struct evs_on_info *info,
+	const gboolean with_ev_extra);
+
+/**
+ * Clean up the copy of struct evs_on_info, releasing any references made.
+ *
+ * @param info
+ *     The data to free up. Makes sure that all things inside are unreferenced
+ *     properly.
+ */
+void evs_on_info_free(struct evs_on_info *info);
+
+/**
  * Remove a client from an event
  *
  * @param client
@@ -187,6 +283,125 @@ void evs_off(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra);
+
+/**
+ * Sends a CODE_OK callback to a client
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param client_cb
+ *     The ID of the callback to send
+ * @param json
+ *     Any data to include with the callback
+ */
+void evs_cb(
+	client_t *client,
+	const evs_cb_t client_cb,
+	const gchar *json);
+
+/**
+ * Sends a CODE_OK callback to a client while requesting a callback from the
+ * client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param client_cb
+ *     The ID of the callback to send
+ * @param json
+ *     Any data to include with the callback
+ * @param cb_fn
+ *     The function to be called when the client responds to the server
+ *     callback. @args{allow-null}
+ * @param cb_data
+ *     Data to be given back to the callback when the client responds
+ *     @args{transfer-full}
+ * @param free_fn
+ *     Function that frees cb_data @args{allow-null}
+ */
+void evs_cb_with_cb(
+	struct client *client,
+	const evs_cb_t client_cb,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
+
+/**
+ * Sends a callback to a client with an error code and message.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param client_cb
+ *     The ID of the callback to send
+ * @param code
+ *     Any response code you want to send. There are the standard ones,
+ *     but you're free to use whatever you want. Keep in mind that `err_msg`
+ *     is _only_ sent with the callback when code != 200.
+ * @param err_msg
+ *     An error message to send with the callback if code != 200.
+ * @param json
+ *     Any data to include with the callback
+ */
+void evs_err_cb(
+	client_t *client,
+	const evs_cb_t client_cb,
+	const enum evs_code code,
+	const gchar *err_msg,
+	const gchar *json);
+
+/**
+ * Sends a callback to a client, with all possible data.
+ *
+ * @attention
+ *     It is understood that, if a non CODE_OK callback is sent, the server
+ *     MAY NOT expect a callback from the client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param client_cb
+ *     The ID of the callback to send
+ * @param code
+ *     Any response code you want to send. There are the standard ones,
+ *     but you're free to use whatever you want (including negative ones).
+ *     Keep in mind that `err_msg` is _only_ sent with the callback when
+ *     code != 200.
+ * @param err_msg
+ *     An error message to send with the callback if code != 200.
+ * @param json
+ *     Any data to include with the callback
+ * @param cb_fn
+ *     The function to be called when the client responds to the server
+ *     callback.
+ * @param cb_data
+ *     Data to be given back to the callback when the client responds
+ *     @args{transfer-full}
+ * @param free_fn
+ *     Function that frees cb_data
+ */
+void evs_cb_full(
+	client_t *client,
+	const evs_cb_t client_cb,
+	const enum evs_code code,
+	const gchar *err_msg,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
+
+/**
+ * Broadcast a message to all clients listening on the event
+ *
+ * @param ev
+ *     The event to broadcast to
+ * @param ev_extra
+ *     Any extra path segments
+ * @param json
+ *     The json to send to everyone
+ */
+void evs_broadcast(
+	event_t *ev,
+	const gchar *ev_extra,
+	const gchar *json);
 
 /**
  * Cleans up after the client when it closes

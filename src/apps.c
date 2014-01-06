@@ -76,7 +76,7 @@ static void _add_app(
 	app.prefix = g_strdup(name[0] == '/' ? name : "");
 	papp = g_slice_copy(sizeof(app), &app);
 
-	if (!app.init(papp)) {
+	if (!app.init(papp, apps_export_get_fns())) {
 		CRITICAL("Could not initialize app (%s): init() failed", full_path->str);
 		goto out;
 	}

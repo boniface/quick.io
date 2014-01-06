@@ -23,7 +23,7 @@ static enum evs_status _cb0(
 {
 	guint *num = g_malloc(sizeof(*num));
 	*num = 1;
-	qio_evs_cb_with_cb(client, client_cb, "1", _cb1, num, g_free);
+	evs_cb_with_cb(client, client_cb, "1", _cb1, num, g_free);
 	return EVS_STATUS_HANDLED;
 }
 
@@ -34,7 +34,7 @@ static enum evs_status _handler(
 	gchar *json G_GNUC_UNUSED)
 {
 	guint *num = g_malloc0(sizeof(*num));
-	qio_evs_cb_with_cb(client, client_cb, "0", _cb0, num, g_free);
+	evs_cb_with_cb(client, client_cb, "0", _cb0, num, g_free);
 	return EVS_STATUS_HANDLED;
 }
 
@@ -79,7 +79,6 @@ START_TEST(test_callbacks_limits)
 		ck_assert_uint_gt(cb, 0);
 		cb_ids[i] = cb;
 	}
-
 
 	for (i = 0; i < G_N_ELEMENTS(cb_ids); i++) {
 		cb = cb_ids[i];
