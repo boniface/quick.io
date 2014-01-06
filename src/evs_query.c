@@ -71,6 +71,10 @@ struct event* evs_query_insert(
 		curr++;
 	}
 
+	if (*curr == '\0') {
+		return NULL;
+	}
+
 	g_mutex_lock(&_lock);
 
 	while (*curr != '\0') {
@@ -123,6 +127,10 @@ struct event* evs_query(
 
 		parent = child;
 		curr++;
+	}
+
+	if (parent->ev.ev_path == NULL) {
+		return NULL;
 	}
 
 out:

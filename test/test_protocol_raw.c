@@ -66,6 +66,26 @@ START_TEST(test_route_invalid)
 }
 END_TEST
 
+START_TEST(test_minimal_event)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/t:1=",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+
+	test_cb(tc,
+		"/test:1=",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+
+	test_cb(tc,
+		":1=",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_heartbeats)
 {
 	qev_fd_t tc = test_client();
@@ -124,6 +144,7 @@ int main()
 	tcase_add_test(tcase, test_handshake_slow);
 	tcase_add_test(tcase, test_route_slow);
 	tcase_add_test(tcase, test_route_invalid);
+	tcase_add_test(tcase, test_minimal_event);
 	tcase_add_test(tcase, test_heartbeats);
 	tcase_add_test(tcase, test_heartbeat_challenge);
 

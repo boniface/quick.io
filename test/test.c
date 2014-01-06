@@ -17,16 +17,22 @@
  * Default configuration for tests
  */
 #define CONFIG \
- 	"[quick-event]\n" \
- 	"poll-wait = 1\n" \
- 	"read-high = 131072\n" \
- 	"tcp-nodelay = true\n" \
- 	"timeout = 200\n" \
- 	"[quick.io]\n" \
- 	"bind-address = localhost\n" \
- 	"bind-port = %d\n" \
- 	"[quick.io-apps]\n" \
- 	"/test = ./apps/test_app_sane\n"
+	"[quick-event]\n" \
+	"poll-wait = 1\n" \
+	"read-high = 131072\n" \
+	"tcp-nodelay = true\n" \
+	"timeout = 200\n" \
+	"[quick.io]\n" \
+	"bind-address = localhost\n" \
+	"bind-port = %d\n" \
+	"bind-address-ssl = localhost\n" \
+	"bind-port-ssl = %d\n" \
+	"ssl-key-path-0 = ../lib/quick-event/certs/rsa/test.key\n" \
+	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
+	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
+	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
+	"[quick.io-apps]\n" \
+	"/test = ./apps/test_app_sane\n"
 
 struct _wait_for_buff {
 	gboolean good;
@@ -91,7 +97,7 @@ gboolean test_do(SRunner *sr)
 	gboolean configed;
 
 	c = g_string_sized_new(sizeof(CONFIG));
-	g_string_printf(c, CONFIG, PORT);
+	g_string_printf(c, CONFIG, PORT, PORT + 1);
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	g_string_free(c, TRUE);
 

@@ -132,11 +132,6 @@ struct protocol {
 	 * Sends a final farewell message to clients before they close.
 	 */
 	void (*close)(struct client *client, guint reason);
-
-	/**
-	 * Tears down the protocol and everything around it.
-	 */
-	void (*exit)();
 };
 
 /**

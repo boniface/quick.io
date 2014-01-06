@@ -20,6 +20,21 @@ START_TEST(test_multiple_add_handler)
 }
 END_TEST
 
+START_TEST(test_root_handler)
+{
+	struct event *ev;
+
+	ev = evs_add_handler("/", NULL, NULL, NULL, TRUE);
+	ck_assert(ev == NULL);
+
+	ev = evs_add_handler("", NULL, NULL, NULL, TRUE);
+	ck_assert(ev == NULL);
+
+	ev = evs_add_handler("/t", NULL, NULL, NULL, TRUE);
+	ck_assert(ev != NULL);
+}
+END_TEST
+
 START_TEST(test_404)
 {
 	qev_fd_t tc = test_client();
@@ -152,6 +167,73 @@ START_TEST(test_send_doesnt_handle_children)
 }
 END_TEST
 
+START_TEST(test_callback_invalid_id)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/callback/nope:1=null",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid server callback id\"}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_on_invalid_ev_path)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=null",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/on:1={\"test\":null}",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/on:1=12312",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/on:1=\"wat\\be/that\"",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_off_invalid_ev_path)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/off:1=null",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/off:1={\"test\":null}",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/off:1=12312",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/off:1=\"wat\\be/that\"",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+
+	close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -163,6 +245,7 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_multiple_add_handler);
+	tcase_add_test(tcase, test_root_handler);
 
 	tcase = tcase_create("Clients");
 	suite_add_tcase(s, tcase);
@@ -175,6 +258,13 @@ int main()
 	tcase_add_test(tcase, test_off_not_subscribed);
 	tcase_add_test(tcase, test_unsubscribed_send);
 	tcase_add_test(tcase, test_send_doesnt_handle_children);
+
+	tcase = tcase_create("QIO Builtins");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_callback_invalid_id);
+	tcase_add_test(tcase, test_on_invalid_ev_path);
+	tcase_add_test(tcase, test_off_invalid_ev_path);
 
 	return test_do(sr);
 }

@@ -8,7 +8,6 @@
 
 #include "quickio.h"
 
-
 static gboolean _get_if_exists(
 	struct event *ev,
 	const gchar *ev_extra,

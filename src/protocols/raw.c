@@ -148,7 +148,7 @@ enum protocol_status protocol_raw_handle(
 	const guint64 len,
 	const guint64 frame_len)
 {
-	gchar *event_path;
+	gchar *ev_path;
 	evs_cb_t client_cb;
 	gchar *json;
 	gchar *curr;
@@ -163,7 +163,7 @@ enum protocol_status protocol_raw_handle(
 		goto error;
 	}
 
-	event_path = str;
+	ev_path = str;
 	*curr = '\0';
 	curr++;
 
@@ -174,7 +174,7 @@ enum protocol_status protocol_raw_handle(
 
 	json = end + 1;
 
-	evs_route(client, event_path, client_cb, json);
+	evs_route(client, ev_path, client_cb, json);
 
 	g_string_erase(rbuff, 0, frame_len);
 

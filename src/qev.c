@@ -39,23 +39,17 @@ void qev_on_read(struct client *client)
 	protocols_route(client);
 }
 
-void qev_on_udp(
-	const gchar *msg G_GNUC_UNUSED,
-	const guint len G_GNUC_UNUSED,
-	const gchar *ip G_GNUC_UNUSED)
-{
-	// UDP is unused
-}
-
 void qev_on_tick()
 {
 	evs_broadcast_tick();
 }
 
-void qev_on_exit()
-{
+void qev_on_udp(
+	const gchar *msg G_GNUC_UNUSED,
+	const guint len G_GNUC_UNUSED,
+	const gchar *ip G_GNUC_UNUSED) {}
 
-}
+void qev_on_exit() {}
 
 struct client* qev_client_new() {
 	return g_slice_alloc0(sizeof(struct client));

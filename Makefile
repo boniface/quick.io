@@ -52,6 +52,7 @@ TESTS = \
 	test_apps \
 	test_client \
 	test_config \
+	test_coverage \
 	test_evs \
 	test_protocol_flash \
 	test_protocol_raw \

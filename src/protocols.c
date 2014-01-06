@@ -41,7 +41,6 @@ static struct protocol _protocols[] = {
 		.heartbeat = protocol_rfc6455_heartbeat,
 		.frame = protocol_rfc6455_frame,
 		.close = protocol_rfc6455_close,
-		.exit = NULL,
 	},
 	{	.id = 1,
 		.handles = protocol_stomp_handles,
@@ -50,7 +49,6 @@ static struct protocol _protocols[] = {
 		.heartbeat = protocol_stomp_heartbeat,
 		.frame = protocol_stomp_frame,
 		.close = NULL,
-		.exit = NULL,
 	},
 	{	.id = 2,
 		.handles = protocol_flash_handles,
@@ -59,7 +57,6 @@ static struct protocol _protocols[] = {
 		.heartbeat = NULL,
 		.frame = NULL,
 		.close = NULL,
-		.exit = NULL,
 	},
 	{	.id = 3,
 		.handles = protocol_raw_handles,
@@ -68,7 +65,6 @@ static struct protocol _protocols[] = {
 		.heartbeat = protocol_raw_heartbeat,
 		.frame = protocol_raw_frame,
 		.close = NULL,
-		.exit = NULL,
 	},
 };
 
@@ -156,16 +152,6 @@ static void _heartbeat_cb(struct client *client, void *hb_)
 
 	if (client->protocol != NULL && client->protocol->heartbeat != NULL) {
 		client->protocol->heartbeat(client, hb);
-	}
-}
-
-static void _cleanup()
-{
-	guint i;
-	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
-		if (_protocols[i].exit != NULL) {
-			_protocols[i].exit();
-		}
 	}
 }
 
@@ -272,5 +258,4 @@ void protocols_init()
 {
 	ASSERT(qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0),
 			"Could not setup timer for heartbeats");
-	qev_cleanup_fn(_cleanup);
 }
