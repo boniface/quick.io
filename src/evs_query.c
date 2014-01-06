@@ -62,12 +62,16 @@ struct event* evs_query_insert(
 	const evs_off_fn off_fn,
 	const gboolean handle_children)
 {
+	static GMutex _lock;
+
 	const gchar *curr = ev_path;
 	struct _ptrie *parent = &_events;
 
 	if (*curr == '/') {
 		curr++;
 	}
+
+	g_mutex_lock(&_lock);
 
 	while (*curr != '\0') {
 		guchar ch = *curr - '-';
@@ -76,18 +80,14 @@ struct event* evs_query_insert(
 		if (child == NULL) {
 			child = g_slice_alloc0(sizeof(*child));
 			child->ch = ch;
-
-			// And with this one line, we can avoid all future locks!
-			if (!__sync_bool_compare_and_swap(parent->childs + ch,
-										NULL, child)) {
-				g_slice_free1(sizeof(*child), child);
-				child = parent->childs[ch];
-			}
+			parent->childs[ch] = child;
 		}
 
 		parent = child;
 		curr++;
 	}
+
+	g_mutex_unlock(&_lock);
 
 	if (parent->ev.ev_path != NULL) {
 		return NULL;

@@ -21,8 +21,8 @@
  	"poll-wait = 1\n" \
  	"read-high = 131072\n" \
  	"tcp-nodelay = true\n" \
- 	"timeout = 500\n" \
- 	"[quickio]\n" \
+ 	"timeout = 200\n" \
+ 	"[quick.io]\n" \
  	"bind-address = localhost\n" \
  	"bind-port = %d\n" \
  	"[quick.io-apps]\n" \

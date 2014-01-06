@@ -23,13 +23,6 @@
  */
 static GPtrArray *_apps = NULL;
 
-static void* _app_run_th(void *app_)
-{
-	struct app *app = app_;
-	ASSERT(app->run(), "App failed to run: %s", app->prefix);
-	return NULL;
-}
-
 static void _add_app(
 	const gchar *name,
 	const gchar *path)
@@ -52,7 +45,8 @@ static void _add_app(
 
 	app.mod = g_module_open(full_path->str, G_MODULE_BIND_LOCAL);
 	if (app.mod == NULL) {
-		CRITICAL("Could not open app %s (%s): %s", name, path, g_module_error());
+		CRITICAL("Could not open app %s (%s): %s", name, full_path->str,
+					g_module_error());
 		goto out;
 	}
 
@@ -77,11 +71,11 @@ static void _add_app(
 	papp = g_slice_copy(sizeof(app), &app);
 
 	if (!app.init(papp, apps_export_get_fns())) {
-		CRITICAL("Could not initialize app (%s): init() failed", full_path->str);
+		CRITICAL("Could not initialize app (%s): init() failed", name);
 		goto out;
 	}
 
-	papp->th = g_thread_new(papp->name, _app_run_th, papp);
+	ASSERT(app.run(), "Could not run app: %s", name);
 
 	g_ptr_array_add(_apps, papp);
 	good = TRUE;
@@ -90,10 +84,9 @@ out:
 	qev_buffer_put(full_path);
 
 	if (!good) {
-		g_free(app.name);
-		g_free(app.prefix);
-
 		if (papp != NULL) {
+			g_free(papp->name);
+			g_free(papp->prefix);
 			g_slice_free1(sizeof(*papp), papp);
 		}
 
@@ -113,7 +106,6 @@ static void _cleanup()
 
 		g_free(app->name);
 		g_free(app->prefix);
-		g_thread_join(app->th);
 		g_module_close(app->mod);
 		g_slice_free1(sizeof(*app), app);
 	}

@@ -12,6 +12,7 @@
 #include "../../include/quickio_app.h"
 #include <stdio.h>
 
+static GThread *_th = NULL;
 static GMainContext *_ctx = NULL;
 static GMainLoop *_loop = NULL;
 
@@ -144,16 +145,25 @@ static gboolean _app_init()
 	return TRUE;
 }
 
+static void* _run(void *nothing G_GNUC_UNUSED)
+{
+	g_main_loop_run(_loop);
+
+	g_main_context_unref(_ctx);
+	g_main_loop_unref(_loop);
+
+	_ctx = NULL;
+	_loop = NULL;
+
+	return NULL;
+}
+
 static gboolean _app_run()
 {
 	_ctx = g_main_context_new();
 	_loop = g_main_loop_new(_ctx, TRUE);
 
-	g_main_loop_run(_loop);
-
-	g_main_context_unref(_ctx);
-	g_main_loop_unref(_loop);
-	_loop = NULL;
+	_th = g_thread_new("test_app_sane", _run, NULL);
 
 	return TRUE;
 }
@@ -161,6 +171,10 @@ static gboolean _app_run()
 static gboolean _app_exit()
 {
 	g_main_loop_quit(_loop);
+	g_thread_join(_th);
+
+	_th = NULL;
+
 	return TRUE;
 }
 

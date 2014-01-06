@@ -15,12 +15,12 @@ static void _validate_port(
 {
 	if (val.ui64 == 0 || val.ui64 > G_MAXUINT16) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Invalid port number: %" G_GUINT64_FORMAT " is too large, must "
+					"Invalid port number: %" G_GUINT64_FORMAT " doesn't work, must "
 					"be between 1 and %d.", val.ui64, G_MAXUINT16);
 	}
 }
 
-static void _validate_heartbeat_inteval(
+static void _validate_heartbeat_interval(
 	enum qev_cfg_type type G_GNUC_UNUSED,
 	union qev_cfg_val val,
 	GError **error)
@@ -28,7 +28,7 @@ static void _validate_heartbeat_inteval(
 	if (val.ui64 < 5 || val.ui64 > 60) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid heartbeat time: must be between 5 and 60. "
-					"%" G_GUINT64_FORMAT " is too large.", val.ui64);
+					"%" G_GUINT64_FORMAT " is invalid.", val.ui64);
 	}
 }
 
@@ -95,7 +95,7 @@ static struct qev_cfg _cfg[] = {
 		.type = qev_cfg_uint64,
 		.val.ui64 = &cfg_heartbeat_interval,
 		.defval.ui64 = 10,
-		.validate = _validate_heartbeat_inteval,
+		.validate = _validate_heartbeat_interval,
 		.cb = NULL,
 		.read_only = TRUE,
 	},
@@ -156,5 +156,5 @@ static struct qev_cfg _cfg[] = {
 
 void config_init()
 {
-	qev_cfg_add("quickio", _cfg, G_N_ELEMENTS(_cfg));
+	qev_cfg_add("quick.io", _cfg, G_N_ELEMENTS(_cfg));
 }
