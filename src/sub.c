@@ -17,6 +17,13 @@ static gboolean _get_if_exists(
 
 	sub = g_hash_table_lookup(ev->subs, ev_extra);
 	if (sub != NULL && __sync_add_and_fetch(&sub->refs, 1) <= 1) {
+		/*
+		 * This is safe to set without atomics: since a lock is held,
+		 * we can be sure that the memory isn't going to be freed, and since
+		 * the ref was 0, we don't need to be atomic when setting it back to
+		 * 0 since no one has a reference to it anymore.
+		 */
+		sub->refs = 0;
 		sub = NULL;
 	}
 
@@ -49,7 +56,7 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 			sub->subscribers = qev_list_new(qev_cfg_get_max_clients(), NULL);
 			sub->refs = 1;
 
-			g_hash_table_insert(ev->subs, sub->ev_extra, sub);
+			g_hash_table_replace(ev->subs, sub->ev_extra, sub);
 		}
 
 		g_rw_lock_writer_unlock(&ev->subs_lock);

@@ -53,7 +53,7 @@ abort:
 	goto out;
 }
 
-START_TEST(invalid_ports_0)
+START_TEST(test_config_invalid_ports_0)
 {
 	guint64 before = cfg_bind_port;
 
@@ -62,7 +62,7 @@ START_TEST(invalid_ports_0)
 }
 END_TEST
 
-START_TEST(invalid_ports_1)
+START_TEST(test_config_invalid_ports_1)
 {
 	guint64 before = cfg_bind_port;
 
@@ -71,7 +71,7 @@ START_TEST(invalid_ports_1)
 }
 END_TEST
 
-START_TEST(invalid_heartbeat_interval_0)
+START_TEST(test_config_invalid_heartbeat_interval_0)
 {
 	guint64 before = cfg_heartbeat_interval;
 
@@ -80,7 +80,7 @@ START_TEST(invalid_heartbeat_interval_0)
 }
 END_TEST
 
-START_TEST(invalid_heartbeat_interval_1)
+START_TEST(test_config_invalid_heartbeat_interval_1)
 {
 	guint64 before = cfg_heartbeat_interval;
 
@@ -99,10 +99,10 @@ int main()
 	tcase = tcase_create("Options");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, invalid_ports_0);
-	tcase_add_test(tcase, invalid_ports_1);
-	tcase_add_test(tcase, invalid_heartbeat_interval_0);
-	tcase_add_test(tcase, invalid_heartbeat_interval_1);
+	tcase_add_test(tcase, test_config_invalid_ports_0);
+	tcase_add_test(tcase, test_config_invalid_ports_1);
+	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_0);
+	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_1);
 
 	return test_do(sr);
 }

@@ -13,7 +13,6 @@
 
 #define CALLBACKS \
 	X(init) \
-	X(run) \
 	X(exit) \
 	X(test)
 
@@ -74,8 +73,6 @@ static void _add_app(
 		CRITICAL("Could not initialize app (%s): init() failed", name);
 		goto out;
 	}
-
-	ASSERT(app.run(), "Could not run app: %s", name);
 
 	g_ptr_array_add(_apps, papp);
 	good = TRUE;

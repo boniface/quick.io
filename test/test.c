@@ -50,9 +50,9 @@ static void _wait_for_buff_cb(struct client *client, void *wfb_)
 {
 	struct _wait_for_buff *wfb = wfb_;
 
+	QEV_WAIT_FOR(client->qev_client._read_operations == 0);
 	QEV_WAIT_FOR(client->qev_client.rbuff != NULL);
 	QEV_WAIT_FOR(client->qev_client.rbuff->len >= wfb->len);
-	QEV_WAIT_FOR(client->qev_client._read_operations == 0);
 
 	wfb->good = TRUE;
 }
@@ -164,12 +164,15 @@ qev_fd_t test_socket()
 
 qev_fd_t test_client()
 {
+	gint err;
 	gchar buff[12];
 	qev_fd_t tc;
 
 	tc = test_socket();
-	ck_assert(send(tc, "/qio/ohai", 9, MSG_NOSIGNAL) == 9);
-	ck_assert(recv(tc, buff, sizeof(buff), 0) == 9);
+	err = send(tc, "/qio/ohai", 9, MSG_NOSIGNAL);
+	ck_assert(err == 9);
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(err == 9);
 
 	buff[9] = '\0';
 	ck_assert(g_strcmp0(buff, "/qio/ohai") == 0);
@@ -237,7 +240,7 @@ void test_msg(qev_fd_t tc, const gchar *data)
 {
 	gchar buff[32768];
 	test_recv(tc, buff, sizeof(buff));
-	ck_assert_str_eq(buff, data);
+	ck_assert_str_eq(data, buff);
 }
 
 void test_cb(qev_fd_t tc, const gchar *msg, const gchar *data)

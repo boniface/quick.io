@@ -56,7 +56,8 @@ TESTS = \
 	test_evs \
 	test_protocol_flash \
 	test_protocol_raw \
-	test_protocol_rfc6455
+	test_protocol_rfc6455 \
+	test_sub
 
 TEST_APPS = \
 	$(TEST_APPS_DIR)/test_app_fatal_init.so \

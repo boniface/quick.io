@@ -8,7 +8,7 @@
 
 #include "test.h"
 
-START_TEST(test_multiple_add_handler)
+START_TEST(test_evs_multiple_add_handler)
 {
 	struct event *ev;
 
@@ -20,7 +20,7 @@ START_TEST(test_multiple_add_handler)
 }
 END_TEST
 
-START_TEST(test_root_handler)
+START_TEST(test_evs_root_handler)
 {
 	struct event *ev;
 
@@ -35,7 +35,7 @@ START_TEST(test_root_handler)
 }
 END_TEST
 
-START_TEST(test_404)
+START_TEST(test_evs_404)
 {
 	qev_fd_t tc = test_client();
 
@@ -47,7 +47,7 @@ START_TEST(test_404)
 }
 END_TEST
 
-START_TEST(test_on_off_valid)
+START_TEST(test_evs_on_off_valid)
 {
 	qev_fd_t tc = test_client();
 
@@ -63,7 +63,7 @@ START_TEST(test_on_off_valid)
 }
 END_TEST
 
-START_TEST(test_on_off_children)
+START_TEST(test_evs_on_off_children)
 {
 	qev_fd_t tc = test_client();
 
@@ -91,8 +91,9 @@ START_TEST(test_on_off_children)
 }
 END_TEST
 
-START_TEST(test_on_already_subscribed)
+START_TEST(test_evs_on_already_subscribed)
 {
+	gint err;
 	qev_fd_t tc = test_client();
 
 	test_send(tc, "/qio/on:1=\"/test/good\"");
@@ -101,8 +102,15 @@ START_TEST(test_on_already_subscribed)
 	test_msg(tc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
 	test_msg(tc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
 
-	test_send(tc, "/qio/on:3=\"/test/delayed\"");
-	test_send(tc, "/qio/on:4=\"/test/delayed\"");
+	/*
+	 * Race condition if not sent all together: possible for the second
+	 * subscribe to happen after the first is successful, and its callback
+	 * is sent before the first
+	 */
+	err = send(tc,
+		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:3=\"/test/delayed\""
+		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:4=\"/test/delayed\"", 66, MSG_NOSIGNAL);
+	ck_assert_int_eq(err, 66);
 
 	test_msg(tc, "/qio/callback/3:0={\"code\":200,\"data\":null}");
 	test_msg(tc, "/qio/callback/4:0={\"code\":200,\"data\":null}");
@@ -115,7 +123,7 @@ START_TEST(test_on_already_subscribed)
 }
 END_TEST
 
-START_TEST(test_on_invalid)
+START_TEST(test_evs_on_invalid)
 {
 	qev_fd_t tc = test_client();
 
@@ -127,7 +135,7 @@ START_TEST(test_on_invalid)
 }
 END_TEST
 
-START_TEST(test_off_not_subscribed)
+START_TEST(test_evs_off_not_subscribed)
 {
 	qev_fd_t tc = test_client();
 
@@ -139,7 +147,7 @@ START_TEST(test_off_not_subscribed)
 }
 END_TEST
 
-START_TEST(test_unsubscribed_send)
+START_TEST(test_evs_unsubscribed_send)
 {
 	gchar *extra = NULL;
 	qev_fd_t tc = test_client();
@@ -153,7 +161,7 @@ START_TEST(test_unsubscribed_send)
 }
 END_TEST
 
-START_TEST(test_send_doesnt_handle_children)
+START_TEST(test_evs_send_doesnt_handle_children)
 {
 	gchar *extra = NULL;
 	qev_fd_t tc = test_client();
@@ -167,7 +175,7 @@ START_TEST(test_send_doesnt_handle_children)
 }
 END_TEST
 
-START_TEST(test_callback_invalid_id)
+START_TEST(test_evs_callback_invalid_id)
 {
 	qev_fd_t tc = test_client();
 
@@ -180,7 +188,7 @@ START_TEST(test_callback_invalid_id)
 }
 END_TEST
 
-START_TEST(test_on_invalid_ev_path)
+START_TEST(test_evs_on_invalid_ev_path)
 {
 	qev_fd_t tc = test_client();
 
@@ -207,7 +215,7 @@ START_TEST(test_on_invalid_ev_path)
 }
 END_TEST
 
-START_TEST(test_off_invalid_ev_path)
+START_TEST(test_evs_off_invalid_ev_path)
 {
 	qev_fd_t tc = test_client();
 
@@ -244,27 +252,27 @@ int main()
 	tcase = tcase_create("Sanity");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_multiple_add_handler);
-	tcase_add_test(tcase, test_root_handler);
+	tcase_add_test(tcase, test_evs_multiple_add_handler);
+	tcase_add_test(tcase, test_evs_root_handler);
 
 	tcase = tcase_create("Clients");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_404);
-	tcase_add_test(tcase, test_on_off_valid);
-	tcase_add_test(tcase, test_on_off_children);
-	tcase_add_test(tcase, test_on_already_subscribed);
-	tcase_add_test(tcase, test_on_invalid);
-	tcase_add_test(tcase, test_off_not_subscribed);
-	tcase_add_test(tcase, test_unsubscribed_send);
-	tcase_add_test(tcase, test_send_doesnt_handle_children);
+	tcase_add_test(tcase, test_evs_404);
+	tcase_add_test(tcase, test_evs_on_off_valid);
+	tcase_add_test(tcase, test_evs_on_off_children);
+	tcase_add_test(tcase, test_evs_on_already_subscribed);
+	tcase_add_test(tcase, test_evs_on_invalid);
+	tcase_add_test(tcase, test_evs_off_not_subscribed);
+	tcase_add_test(tcase, test_evs_unsubscribed_send);
+	tcase_add_test(tcase, test_evs_send_doesnt_handle_children);
 
 	tcase = tcase_create("QIO Builtins");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_callback_invalid_id);
-	tcase_add_test(tcase, test_on_invalid_ev_path);
-	tcase_add_test(tcase, test_off_invalid_ev_path);
+	tcase_add_test(tcase, test_evs_callback_invalid_id);
+	tcase_add_test(tcase, test_evs_on_invalid_ev_path);
+	tcase_add_test(tcase, test_evs_off_invalid_ev_path);
 
 	return test_do(sr);
 }

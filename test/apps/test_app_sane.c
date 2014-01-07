@@ -13,13 +13,27 @@
 #include <stdio.h>
 
 static GThread *_th = NULL;
-static GMainContext *_ctx = NULL;
-static GMainLoop *_loop = NULL;
+static GAsyncQueue *_aq = NULL;
+static gboolean _is_running = TRUE;
 
 static event_t *_ev_with_send = NULL;
 
 static gint _ons = 0;
 static gint _offs = 0;
+
+struct _work {
+	GSourceFunc fn;
+	void *data;
+};
+
+static void _do_work(GSourceFunc fn, void *data)
+{
+	struct _work w = {
+		.fn = fn,
+		.data = data,
+	};
+	g_async_queue_push(_aq, g_slice_copy(sizeof(w), &w));
+}
 
 static enum evs_status _stats_handler(
 	client_t *client,
@@ -85,23 +99,13 @@ static gboolean _delayed_on_cb(void *info_)
 
 static enum evs_status _delayed_on(const struct evs_on_info *info)
 {
-	GSource *src = g_timeout_source_new(1);
-	g_source_attach(src, _ctx);
-	g_source_set_callback(src, _delayed_on_cb,
-						qio.evs_on_info_copy(info, FALSE), NULL);
-	g_source_unref(src);
-
+	_do_work(_delayed_on_cb, qio.evs_on_info_copy(info, FALSE));
 	return EVS_STATUS_HANDLED;
 }
 
 static enum evs_status _delayed_childs_on(const struct evs_on_info *info)
 {
-	GSource *src = g_timeout_source_new(1);
-	g_source_attach(src, _ctx);
-	g_source_set_callback(src, _delayed_on_cb,
-						qio.evs_on_info_copy(info, TRUE), NULL);
-	g_source_unref(src);
-
+	_do_work(_delayed_on_cb, qio.evs_on_info_copy(info, TRUE));
 	return EVS_STATUS_HANDLED;
 }
 
@@ -115,12 +119,7 @@ static gboolean _delayed_reject_on_cb(void *info_)
 
 static enum evs_status _delayed_reject_on(const struct evs_on_info *info)
 {
-	GSource *src = g_timeout_source_new(1);
-	g_source_attach(src, _ctx);
-	g_source_set_callback(src, _delayed_reject_on_cb,
-						qio.evs_on_info_copy(info, FALSE), NULL);
-	g_source_unref(src);
-
+	_do_work(_delayed_reject_on_cb, qio.evs_on_info_copy(info, TRUE));
 	return EVS_STATUS_HANDLED;
 }
 
@@ -135,16 +134,37 @@ static gboolean _with_send_on_cb(void *info_)
 
 static enum evs_status _with_send_on(const struct evs_on_info *info)
 {
-	GSource *src = g_timeout_source_new(1);
-	g_source_attach(src, _ctx);
-	g_source_set_callback(src, _with_send_on_cb,
-						qio.evs_on_info_copy(info, FALSE), NULL);
-	g_source_unref(src);
+	_do_work(_with_send_on_cb, qio.evs_on_info_copy(info, FALSE));
 	return EVS_STATUS_HANDLED;
+}
+
+static void* _run(void *nothing G_GNUC_UNUSED)
+{
+	while (_is_running) {
+		struct _work *w = g_async_queue_timeout_pop(_aq, 100);
+		if (w == NULL) {
+			continue;
+		}
+
+		/*
+		 * Make this sleep a while so that all work is truly _delayed_.
+		 */
+		g_usleep(500);
+		w->fn(w->data);
+		g_slice_free1(sizeof(*w), w);
+	}
+
+	g_async_queue_unref(_aq);
+	_aq = NULL;
+
+	return NULL;
 }
 
 static gboolean _app_init()
 {
+	_aq = g_async_queue_new();
+	_th = g_thread_new("test_app_sane", _run, NULL);
+
 	qio.evs_add_handler(__qio_app, "/stats",
 						_stats_handler, NULL, NULL, FALSE);
 	qio.evs_add_handler(__qio_app, "/good",
@@ -161,37 +181,15 @@ static gboolean _app_init()
 						NULL, _delayed_reject_on, NULL, FALSE);
 	_ev_with_send = qio.evs_add_handler(__qio_app, "/with-send",
 						NULL, _with_send_on, NULL, FALSE);
-	return TRUE;
-}
-
-static void* _run(void *nothing G_GNUC_UNUSED)
-{
-	g_main_loop_run(_loop);
-
-	g_main_context_unref(_ctx);
-	g_main_loop_unref(_loop);
-
-	_ctx = NULL;
-	_loop = NULL;
-
-	return NULL;
-}
-
-static gboolean _app_run()
-{
-	_ctx = g_main_context_new();
-	_loop = g_main_loop_new(_ctx, TRUE);
-
-	_th = g_thread_new("test_app_sane", _run, NULL);
 
 	return TRUE;
 }
 
 static gboolean _app_exit()
 {
-	g_main_loop_quit(_loop);
-	g_thread_join(_th);
+	_is_running = FALSE;
 
+	g_thread_join(_th);
 	_th = NULL;
 
 	return TRUE;

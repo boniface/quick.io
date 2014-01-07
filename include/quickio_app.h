@@ -34,9 +34,6 @@
 		qio = exports; \
 		__qio_app = app; \
 		return init(); } \
-	gboolean __qio_app_run() \
-	{ \
-		return run(); } \
 	gboolean __qio_app_exit() \
 	{ \
 		return exit(); } \

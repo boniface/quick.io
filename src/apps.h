@@ -37,14 +37,9 @@ struct app {
 	GModule *mod;
 
 	/**
-	 * Default setup function
+	 * Default setup and run function.
 	 */
 	gboolean (*init)(void *app, struct qio_exports exports);
-
-	/**
-	 * The app's thread fn
-	 */
-	qio_app_cb run;
 
 	/**
 	 * Makes the app exit

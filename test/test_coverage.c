@@ -8,7 +8,7 @@
 
 #include "test.h"
 
-START_TEST(test_udp)
+START_TEST(test_coverage_udp)
 {
 	qev_on_udp(NULL, 0, NULL);
 }
@@ -23,7 +23,7 @@ int main()
 
 	tcase = tcase_create("Coverage");
 	suite_add_tcase(s, tcase);
-	tcase_add_test(tcase, test_udp);
+	tcase_add_test(tcase, test_coverage_udp);
 
 	return test_do(sr);
 }

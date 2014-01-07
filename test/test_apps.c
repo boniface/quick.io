@@ -37,7 +37,7 @@ abort:
 	goto out;
 }
 
-START_TEST(test_sane)
+START_TEST(test_apps_sane)
 {
 	qev_fd_t tc = test_client();
 
@@ -53,7 +53,7 @@ START_TEST(test_sane)
 }
 END_TEST
 
-START_TEST(test_on)
+START_TEST(test_apps_on)
 {
 	guint i;
 	gchar buff[128];
@@ -103,7 +103,7 @@ START_TEST(test_on)
 }
 END_TEST
 
-START_TEST(test_on_delayed)
+START_TEST(test_apps_on_delayed)
 {
 	qev_fd_t tc = test_client();
 
@@ -115,7 +115,7 @@ START_TEST(test_on_delayed)
 }
 END_TEST
 
-START_TEST(test_on_reject)
+START_TEST(test_apps_on_reject)
 {
 	qev_fd_t tc = test_client();
 
@@ -127,7 +127,7 @@ START_TEST(test_on_reject)
 }
 END_TEST
 
-START_TEST(test_on_delayed_reject)
+START_TEST(test_apps_on_delayed_reject)
 {
 	qev_fd_t tc = test_client();
 
@@ -139,7 +139,7 @@ START_TEST(test_on_delayed_reject)
 }
 END_TEST
 
-START_TEST(test_on_with_evs_send)
+START_TEST(test_apps_on_with_evs_send)
 {
 	qev_fd_t tc = test_client();
 
@@ -151,7 +151,7 @@ START_TEST(test_on_with_evs_send)
 }
 END_TEST
 
-START_TEST(test_error_path)
+START_TEST(test_apps_error_path)
 {
 	GString *buff = qev_buffer_get();
 	g_string_printf(buff, "/app = %s", "test/apps/test_app_sane");
@@ -162,7 +162,7 @@ START_TEST(test_error_path)
 }
 END_TEST
 
-START_TEST(test_error_invalid_app)
+START_TEST(test_apps_error_invalid_app)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
@@ -175,7 +175,7 @@ START_TEST(test_error_invalid_app)
 }
 END_TEST
 
-START_TEST(test_error_init)
+START_TEST(test_apps_error_init)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
@@ -188,7 +188,7 @@ START_TEST(test_error_init)
 }
 END_TEST
 
-START_TEST(test_error_exit)
+START_TEST(test_apps_error_exit)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
@@ -211,20 +211,20 @@ int main()
 	tcase = tcase_create("Sanity");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_sane);
-	tcase_add_test(tcase, test_on);
-	tcase_add_test(tcase, test_on_delayed);
-	tcase_add_test(tcase, test_on_reject);
-	tcase_add_test(tcase, test_on_delayed_reject);
-	tcase_add_test(tcase, test_on_with_evs_send);
+	tcase_add_test(tcase, test_apps_sane);
+	tcase_add_test(tcase, test_apps_on);
+	tcase_add_test(tcase, test_apps_on_delayed);
+	tcase_add_test(tcase, test_apps_on_reject);
+	tcase_add_test(tcase, test_apps_on_delayed_reject);
+	tcase_add_test(tcase, test_apps_on_with_evs_send);
 
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_error_path);
-	tcase_add_test(tcase, test_error_invalid_app);
-	tcase_add_test(tcase, test_error_init);
-	tcase_add_test_raise_signal(tcase, test_error_exit, FATAL_SIGNAL);
+	tcase_add_test(tcase, test_apps_error_path);
+	tcase_add_test(tcase, test_apps_error_invalid_app);
+	tcase_add_test(tcase, test_apps_error_init);
+	// tcase_add_test_raise_signal(tcase, test_apps_error_exit, FATAL_SIGNAL);
 
 	return test_do(sr);
 }

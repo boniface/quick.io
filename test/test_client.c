@@ -44,7 +44,7 @@ static void _setup()
 	evs_add_handler("/test/client/cb", _handler, NULL, NULL, FALSE);
 }
 
-START_TEST(test_callbacks)
+START_TEST(test_client_callbacks)
 {
 	qev_fd_t tc = test_client();
 
@@ -60,7 +60,7 @@ START_TEST(test_callbacks)
 }
 END_TEST
 
-START_TEST(test_callbacks_limits)
+START_TEST(test_client_callbacks_limits)
 {
 	guint i;
 	guint64 cb;
@@ -109,8 +109,8 @@ int main()
 	tcase = tcase_create("Callbacks");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, _setup, test_teardown);
-	tcase_add_test(tcase, test_callbacks);
-	tcase_add_test(tcase, test_callbacks_limits);
+	tcase_add_test(tcase, test_client_callbacks);
+	tcase_add_test(tcase, test_client_callbacks_limits);
 
 	return test_do(sr);
 }

@@ -57,7 +57,7 @@ static qev_fd_t _client()
 	return ts;
 }
 
-START_TEST(test_sane)
+START_TEST(test_rfc6455_sane)
 {
 	gint err;
 	gchar buff[128];
@@ -74,7 +74,7 @@ START_TEST(test_sane)
 }
 END_TEST
 
-START_TEST(test_handshake_slow)
+START_TEST(test_rfc6455_handshake_slow)
 {
 	const gchar *headers = HEADERS;
 	qev_fd_t ts = test_socket();
@@ -88,7 +88,7 @@ START_TEST(test_handshake_slow)
 }
 END_TEST
 
-START_TEST(test_handshake_invalid_http_headers)
+START_TEST(test_rfc6455_handshake_invalid_http_headers)
 {
 	const gchar *headers =
 		"GET ws://localhost/qio HTTP/1.1\r\n"
@@ -115,7 +115,7 @@ START_TEST(test_handshake_invalid_http_headers)
 }
 END_TEST
 
-START_TEST(test_handshake_no_upgrade_header)
+START_TEST(test_rfc6455_handshake_no_upgrade_header)
 {
 	const gchar *headers =
 		"GET ws://localhost/qio HTTP/1.1\r\n"
@@ -143,7 +143,7 @@ START_TEST(test_handshake_no_upgrade_header)
 }
 END_TEST
 
-START_TEST(test_handshake_no_ohai)
+START_TEST(test_rfc6455_handshake_no_ohai)
 {
 	const gchar *inval = "\x81\x82""abcd""tu";
 
@@ -168,7 +168,7 @@ START_TEST(test_handshake_no_ohai)
 }
 END_TEST
 
-START_TEST(test_handshake_invalid_prefix)
+START_TEST(test_rfc6455_handshake_invalid_prefix)
 {
 	const gchar *headers = "POST ws://localhost/qio HTTP/1.1\r\n\r\n";
 	qev_fd_t ts = test_socket();
@@ -180,7 +180,7 @@ START_TEST(test_handshake_invalid_prefix)
 }
 END_TEST
 
-START_TEST(test_heartbeats)
+START_TEST(test_rfc6455_heartbeats)
 {
 	gint err;
 	gchar buff[128];
@@ -215,7 +215,7 @@ START_TEST(test_heartbeats)
 }
 END_TEST
 
-START_TEST(test_decode)
+START_TEST(test_rfc6455_decode)
 {
 	gint err;
 	gchar buff[128];
@@ -236,7 +236,7 @@ START_TEST(test_decode)
 }
 END_TEST
 
-START_TEST(test_decode_close)
+START_TEST(test_rfc6455_decode_close)
 {
 	gint err;
 	gchar buff[8];
@@ -252,7 +252,7 @@ START_TEST(test_decode_close)
 }
 END_TEST
 
-START_TEST(test_decode_continuation_frame)
+START_TEST(test_rfc6455_decode_continuation_frame)
 {
 	gint err;
 	gchar buff[8];
@@ -268,7 +268,7 @@ START_TEST(test_decode_continuation_frame)
 }
 END_TEST
 
-START_TEST(test_decode_unmasked)
+START_TEST(test_rfc6455_decode_unmasked)
 {
 	gint err;
 	gchar buff[32];
@@ -284,7 +284,7 @@ START_TEST(test_decode_unmasked)
 }
 END_TEST
 
-START_TEST(test_decode_medium)
+START_TEST(test_rfc6455_decode_medium)
 {
 	const gchar *ping = "\x81\xfe\x01""\xae""abcd""N""\x13""\n""\x0b""N"
 						"\x12""\n""\n""\x06""X""R""Y";
@@ -311,7 +311,7 @@ START_TEST(test_decode_medium)
 }
 END_TEST
 
-START_TEST(test_decode_long)
+START_TEST(test_rfc6455_decode_long)
 {
 	const gchar *ping = "\x81\xff\x00\x00\x00\x00\x00\x01\x12\x34""abcd"
 						"N""\x13""\n""\x0b""N""\x12""\n""\n""\x06""X""R""Y";
@@ -338,7 +338,7 @@ START_TEST(test_decode_long)
 }
 END_TEST
 
-START_TEST(test_decode_invalid_utf8)
+START_TEST(test_rfc6455_decode_invalid_utf8)
 {
 	const gchar *inval = "\x81\x82""abcd""\xe1""\xe2";
 
@@ -351,7 +351,7 @@ START_TEST(test_decode_invalid_utf8)
 }
 END_TEST
 
-START_TEST(test_decode_invalid_qio_handshake)
+START_TEST(test_rfc6455_decode_invalid_qio_handshake)
 {
 	const gchar *inval = "\x81\x82""abcd""\xe1""\xe2";
 
@@ -373,7 +373,7 @@ START_TEST(test_decode_invalid_qio_handshake)
 }
 END_TEST
 
-START_TEST(test_encode_medium)
+START_TEST(test_rfc6455_encode_medium)
 {
 	gint err;
 	gchar buff[512];
@@ -398,7 +398,7 @@ START_TEST(test_encode_medium)
 }
 END_TEST
 
-START_TEST(test_encode_long)
+START_TEST(test_rfc6455_encode_long)
 {
 	gint err;
 	gchar buff[0x10020];
@@ -423,7 +423,7 @@ START_TEST(test_encode_long)
 }
 END_TEST
 
-START_TEST(test_close_invalid_event_format)
+START_TEST(test_rfc6455_close_invalid_event_format)
 {
 	// /test=123
 	const gchar *inval = "\x81\x89""abcd""N""\x16""\x06""\x17""\x15""_""R""V""R";
@@ -442,7 +442,7 @@ START_TEST(test_close_invalid_event_format)
 }
 END_TEST
 
-START_TEST(test_close_timeout)
+START_TEST(test_rfc6455_close_timeout)
 {
 	const gchar *incomplete = "\x81\x8f""abcd";
 
@@ -460,7 +460,7 @@ START_TEST(test_close_timeout)
 }
 END_TEST
 
-START_TEST(test_close_read_high)
+START_TEST(test_rfc6455_close_read_high)
 {
 	const gchar *msg = "\x81\xa2""abcd""N""\x16""\x06""\x17""\x15""X""S""Y"
 						"\x00""\x00""\x00""\x00""\x04""\x04""\x04""\x0c""\x08"
@@ -484,7 +484,7 @@ START_TEST(test_close_read_high)
 }
 END_TEST
 
-START_TEST(test_close_qev_exit)
+START_TEST(test_rfc6455_close_qev_exit)
 {
 	gint err;
 	gchar buff[8];
@@ -510,39 +510,39 @@ int main()
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_sane);
-	tcase_add_test(tcase, test_handshake_slow);
-	tcase_add_test(tcase, test_handshake_invalid_http_headers);
-	tcase_add_test(tcase, test_handshake_no_upgrade_header);
-	tcase_add_test(tcase, test_handshake_no_ohai);
-	tcase_add_test(tcase, test_handshake_invalid_prefix);
-	tcase_add_test(tcase, test_heartbeats);
+	tcase_add_test(tcase, test_rfc6455_sane);
+	tcase_add_test(tcase, test_rfc6455_handshake_slow);
+	tcase_add_test(tcase, test_rfc6455_handshake_invalid_http_headers);
+	tcase_add_test(tcase, test_rfc6455_handshake_no_upgrade_header);
+	tcase_add_test(tcase, test_rfc6455_handshake_no_ohai);
+	tcase_add_test(tcase, test_rfc6455_handshake_invalid_prefix);
+	tcase_add_test(tcase, test_rfc6455_heartbeats);
 
 	tcase = tcase_create("Decode");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_decode);
-	tcase_add_test(tcase, test_decode_close);
-	tcase_add_test(tcase, test_decode_continuation_frame);
-	tcase_add_test(tcase, test_decode_unmasked);
-	tcase_add_test(tcase, test_decode_medium);
-	tcase_add_test(tcase, test_decode_long);
-	tcase_add_test(tcase, test_decode_invalid_utf8);
-	tcase_add_test(tcase, test_decode_invalid_qio_handshake);
+	tcase_add_test(tcase, test_rfc6455_decode);
+	tcase_add_test(tcase, test_rfc6455_decode_close);
+	tcase_add_test(tcase, test_rfc6455_decode_continuation_frame);
+	tcase_add_test(tcase, test_rfc6455_decode_unmasked);
+	tcase_add_test(tcase, test_rfc6455_decode_medium);
+	tcase_add_test(tcase, test_rfc6455_decode_long);
+	tcase_add_test(tcase, test_rfc6455_decode_invalid_utf8);
+	tcase_add_test(tcase, test_rfc6455_decode_invalid_qio_handshake);
 
 	tcase = tcase_create("Encode");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_encode_medium);
-	tcase_add_test(tcase, test_encode_long);
+	tcase_add_test(tcase, test_rfc6455_encode_medium);
+	tcase_add_test(tcase, test_rfc6455_encode_long);
 
 	tcase = tcase_create("Close Reasons");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_close_invalid_event_format);
-	tcase_add_test(tcase, test_close_timeout);
-	tcase_add_test(tcase, test_close_read_high);
-	tcase_add_test(tcase, test_close_qev_exit);
+	tcase_add_test(tcase, test_rfc6455_close_invalid_event_format);
+	tcase_add_test(tcase, test_rfc6455_close_timeout);
+	tcase_add_test(tcase, test_rfc6455_close_read_high);
+	tcase_add_test(tcase, test_rfc6455_close_qev_exit);
 
 	return test_do(sr);
 }

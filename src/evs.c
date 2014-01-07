@@ -72,7 +72,7 @@ static void _clean_ev_path(gchar *path)
 	}
 
 	// Remove any trailing slash
-	if (*writing != '/') {
+	if (*writing != '/' && writing != path) {
 		writing++;
 	}
 
@@ -136,7 +136,7 @@ struct event* evs_add_handler(
 
 	ev = evs_query_insert(ep, handler_fn, on_fn, off_fn, handle_children);
 	if (ev == NULL) {
-		WARN("Failed to create event %s: event already exists.", ep);
+		WARN("Failed to create event \"%s\": event already exists.", ep);
 	}
 
 	g_free(ep);
@@ -264,7 +264,7 @@ void evs_send_full(
 
 	if (!client_sub_has(client, sub)) {
 		CRITICAL("Client is not subscribed to %s%s. Sending it an event there "
-				"is wrong.", ev->ev_path, sub->ev_extra);
+				"is futile.", ev->ev_path, sub->ev_extra);
 	}
 
 	server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);

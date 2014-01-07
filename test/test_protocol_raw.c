@@ -8,7 +8,7 @@
 
 #include "test.h"
 
-START_TEST(test_handshake_slow)
+START_TEST(test_raw_handshake_slow)
 {
 	gchar buff[10];
 	qev_fd_t ts = test_socket();
@@ -27,7 +27,7 @@ START_TEST(test_handshake_slow)
 }
 END_TEST
 
-START_TEST(test_route_slow)
+START_TEST(test_raw_route_slow)
 {
 	qev_fd_t tc = test_client();
 
@@ -45,7 +45,7 @@ START_TEST(test_route_slow)
 }
 END_TEST
 
-START_TEST(test_route_invalid)
+START_TEST(test_raw_route_invalid)
 {
 	qev_fd_t tc;
 
@@ -66,7 +66,7 @@ START_TEST(test_route_invalid)
 }
 END_TEST
 
-START_TEST(test_minimal_event)
+START_TEST(test_raw_minimal_event)
 {
 	qev_fd_t tc = test_client();
 
@@ -86,7 +86,7 @@ START_TEST(test_minimal_event)
 }
 END_TEST
 
-START_TEST(test_heartbeats)
+START_TEST(test_raw_heartbeats)
 {
 	qev_fd_t tc = test_client();
 	struct client *client = test_get_client();
@@ -116,7 +116,7 @@ START_TEST(test_heartbeats)
 }
 END_TEST
 
-START_TEST(test_heartbeat_challenge)
+START_TEST(test_raw_heartbeat_challenge)
 {
 	qev_fd_t tc = test_client();
 	struct client *client = test_get_client();
@@ -141,12 +141,12 @@ int main()
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_handshake_slow);
-	tcase_add_test(tcase, test_route_slow);
-	tcase_add_test(tcase, test_route_invalid);
-	tcase_add_test(tcase, test_minimal_event);
-	tcase_add_test(tcase, test_heartbeats);
-	tcase_add_test(tcase, test_heartbeat_challenge);
+	tcase_add_test(tcase, test_raw_handshake_slow);
+	tcase_add_test(tcase, test_raw_route_slow);
+	tcase_add_test(tcase, test_raw_route_invalid);
+	tcase_add_test(tcase, test_raw_minimal_event);
+	tcase_add_test(tcase, test_raw_heartbeats);
+	tcase_add_test(tcase, test_raw_heartbeat_challenge);
 
 	return test_do(sr);
 }

@@ -8,7 +8,7 @@
 
 #include "test.h"
 
-START_TEST(test_sane)
+START_TEST(test_flash_sane)
 {
 	gint len;
 	gchar buff[128];
@@ -29,7 +29,7 @@ START_TEST(test_sane)
 }
 END_TEST
 
-START_TEST(test_slow)
+START_TEST(test_flash_slow)
 {
 	gint len;
 	gchar buff[128];
@@ -62,8 +62,8 @@ int main()
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_sane);
-	tcase_add_test(tcase, test_slow);
+	tcase_add_test(tcase, test_flash_sane);
+	tcase_add_test(tcase, test_flash_slow);
 
 	return test_do(sr);
 }
