@@ -53,7 +53,8 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 			sub = g_slice_alloc0(sizeof(*sub));
 			sub->ev = ev;
 			sub->ev_extra = g_strdup(ev_extra);
-			sub->subscribers = qev_list_new(qev_cfg_get_max_clients(), NULL);
+			sub->subscribers = qev_list_new_resizable(cfg_sub_min_size,
+											qev_cfg_get_max_clients(), NULL);
 			sub->refs = 1;
 
 			g_hash_table_replace(ev->subs, sub->ev_extra, sub);

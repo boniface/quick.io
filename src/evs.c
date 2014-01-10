@@ -79,8 +79,9 @@ static void _clean_ev_path(gchar *path)
 	*writing = '\0';
 }
 
-static void _broadcast(struct client *client, void *frames_)
+static void _broadcast(void *client_, void *frames_)
 {
+	struct client *client = client_;
 	GString **frames = frames_;
 	protocols_bcast_write(client, frames);
 }

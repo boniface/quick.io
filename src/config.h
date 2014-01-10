@@ -80,6 +80,11 @@ gchar *cfg_ssl_cert_path_1;
 gchar *cfg_ssl_key_path_1;
 
 /**
+ * The initial size for subscriptions.
+ */
+guint64 cfg_sub_min_size;
+
+/**
  * Registers all configuration options with QEV.
  */
 void config_init();

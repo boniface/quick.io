@@ -144,18 +144,22 @@ gboolean client_sub_add(
 	struct client *client,
 	struct subscription *sub)
 {
-	gint32 *idx;
-	gboolean good = TRUE;
+	gint32 *idx = NULL;
+	gboolean good = FALSE;
 
 	qev_lock(client);
 
 	if (client_sub_has(client, sub)) {
+		good = TRUE;
 		goto cleanup;
 	}
 
 	idx = _sub_get(client);
 	if (idx == NULL) {
-		good = FALSE;
+		goto cleanup;
+	}
+
+	if (!qev_list_try_add(sub->subscribers, client, idx)) {
 		goto cleanup;
 	}
 
@@ -163,14 +167,18 @@ gboolean client_sub_add(
 		client->subs = g_hash_table_new(NULL, NULL);
 	}
 
-	qev_list_add(sub->subscribers, client, idx);
 	g_hash_table_insert(client->subs, sub, idx);
+	good = TRUE;
 
 out:
 	qev_unlock(client);
 	return good;
 
 cleanup:
+	if (idx != NULL) {
+		_sub_put(client, idx);
+	}
+
 	sub_unref(sub);
 	goto out;
 }

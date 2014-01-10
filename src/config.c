@@ -8,10 +8,7 @@
 
 #include "quickio.h"
 
-static void _validate_port(
-	enum qev_cfg_type type G_GNUC_UNUSED,
-	union qev_cfg_val val,
-	GError **error)
+static void _validate_port(union qev_cfg_val val, GError **error)
 {
 	if (val.ui64 == 0 || val.ui64 > G_MAXUINT16) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
@@ -20,15 +17,22 @@ static void _validate_port(
 	}
 }
 
-static void _validate_heartbeat_interval(
-	enum qev_cfg_type type G_GNUC_UNUSED,
-	union qev_cfg_val val,
-	GError **error)
+static void _validate_heartbeat_interval(union qev_cfg_val val, GError **error)
 {
 	if (val.ui64 < 5 || val.ui64 > 60) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid heartbeat time: must be between 5 and 60. "
 					"%" G_GUINT64_FORMAT " is invalid.", val.ui64);
+	}
+}
+
+static void _validate_sub_min_size(union qev_cfg_val val, GError **error)
+{
+	if (val.ui64 == 0 || val.ui64 > qev_cfg_get_max_clients()) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Invalid min sub size: must be greater than 0 and less than "
+					"%" G_GUINT64_FORMAT " (the maximum number of clients "
+					"allowed to connect).", qev_cfg_get_max_clients());
 	}
 }
 
@@ -151,6 +155,17 @@ static struct qev_cfg _cfg[] = {
 		.validate = NULL,
 		.cb = NULL,
 		.read_only = TRUE,
+	},
+	{	.name = "sub-min-size",
+		.description = "The minimum size for subscription arrays. Should be "
+						"a power of 2. Any changes at runtime are only applied "
+						"to new subscriptions.",
+		.type = qev_cfg_uint64,
+		.val.ui64 = &cfg_sub_min_size,
+		.defval.ui64 = 8192,
+		.validate = _validate_sub_min_size,
+		.cb = NULL,
+		.read_only = FALSE,
 	},
 };
 

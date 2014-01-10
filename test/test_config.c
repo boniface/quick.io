@@ -26,6 +26,14 @@
 	"[quick.io]\n" \
 	"heartbeat-interval = 180\n"
 
+#define SUB_MIN_SIZE_0 \
+	"[quick.io]\n" \
+	"sub-min-size = 0\n"
+
+#define SUB_MIN_SIZE_1 \
+	"[quick.io]\n" \
+	"heartbeat-interval = 4294967295\n"
+
 static void _do(const gchar *cfg)
 {
 	gboolean die = FALSE;
@@ -89,6 +97,24 @@ START_TEST(test_config_invalid_heartbeat_interval_1)
 }
 END_TEST
 
+START_TEST(test_config_invalid_sub_min_size_0)
+{
+	guint64 before = cfg_sub_min_size;
+
+	_do(SUB_MIN_SIZE_0);
+	ck_assert_uint_eq(before, cfg_sub_min_size);
+}
+END_TEST
+
+START_TEST(test_config_invalid_sub_min_size_1)
+{
+	guint64 before = cfg_sub_min_size;
+
+	_do(SUB_MIN_SIZE_1);
+	ck_assert_uint_eq(before, cfg_sub_min_size);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -103,6 +129,8 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_ports_1);
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_0);
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_1);
+	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
+	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 
 	return test_do(sr);
 }
