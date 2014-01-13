@@ -188,6 +188,19 @@ START_TEST(test_apps_error_init)
 }
 END_TEST
 
+START_TEST(test_apps_error_duplicate)
+{
+	GString *buff = qev_buffer_get();
+	gchar *cwd = g_get_current_dir();
+	g_string_printf(buff, "/test = %s/%s\n", cwd, "apps/test_app_sane");
+
+	_set(buff->str);
+
+	g_free(cwd);
+	qev_buffer_put(buff);
+}
+END_TEST
+
 START_TEST(test_apps_error_exit)
 {
 	GString *buff = qev_buffer_get();
@@ -224,6 +237,7 @@ int main()
 	tcase_add_test(tcase, test_apps_error_path);
 	tcase_add_test(tcase, test_apps_error_invalid_app);
 	tcase_add_test(tcase, test_apps_error_init);
+	tcase_add_test(tcase, test_apps_error_duplicate);
 	tcase_add_test_raise_signal(tcase, test_apps_error_exit, FATAL_SIGNAL);
 
 	return test_do(sr);

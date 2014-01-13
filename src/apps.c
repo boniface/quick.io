@@ -26,6 +26,7 @@ static void _add_app(
 	const gchar *name,
 	const gchar *path)
 {
+	guint i;
 	gboolean ok;
 	qio_app_cb cb;
 	struct app app;
@@ -47,6 +48,15 @@ static void _add_app(
 		CRITICAL("Could not open app %s (%s): %s", name, full_path->str,
 					g_module_error());
 		goto out;
+	}
+
+	for (i = 0; i < _apps->len; i++) {
+		struct app *papp = g_ptr_array_index(_apps, i);
+		if (app.mod == papp->mod) {
+			WARN("Duplicate app detected %s (%s). Ignoring duplicate.",
+					name, full_path->str);
+			goto out;
+		}
 	}
 
 	ok = g_module_symbol(app.mod, "__qio_is_app", (void*)&magic_num) &&
