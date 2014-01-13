@@ -13,11 +13,6 @@
 #include "quickio.h"
 
 /**
- * The maximum number of subscriptions a single client may have.
- */
-guint64 cfg_max_subscriptions;
-
-/**
  * Address to bind to for plaintext connections.
  */
 gchar *cfg_bind_address;
@@ -44,6 +39,17 @@ guint64 cfg_bind_port_ssl;
 guint64 cfg_broadcast_threads;
 
 /**
+ * The maximum number of event subscriptions that may exist on a server.
+ */
+guint64 cfg_clients_max_subs;
+
+/**
+ * How subscriptions are distributed to clients as they're starting to run
+ * low on the server.
+ */
+guint64 cfg_clients_subs_fairness;
+
+/**
  * Number of threads to use to pump out heartbeats
  */
 guint64 cfg_heartbeat_threads;
@@ -51,7 +57,7 @@ guint64 cfg_heartbeat_threads;
 /**
  * How often the heartbeat sender should run. This should be set low (~10
  * seconds) to spread out the network traffic and system interrupts over
- * 1 minute, the time each client expects to see a heartbeat.
+ * 1 minute, the time each clfient expects to see a heartbeat.
  */
 guint64 cfg_heartbeat_interval;
 

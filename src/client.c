@@ -8,15 +8,49 @@
 
 #include "quickio.h"
 
-static gint32* _sub_get(struct client *client G_GNUC_UNUSED)
+static qev_stats_counter_t _total_subs;
+
+static gint32* _sub_get(struct client *client)
 {
-	// @todo actually implement that heuristic :-P
-	// @todo with expandable qev_lists + max subscribe stats/heuristic
-	return g_slice_alloc(sizeof(gint32));
+	guint pressure;
+	guint64 used;
+	gint32 *idx = NULL;
+	gboolean allocate = FALSE;
+
+	qev_lock(client);
+
+	used = _total_subs.count;
+
+	if (used >= cfg_clients_max_subs) {
+		; // No allocations allowed
+	} else if (cfg_clients_subs_fairness == 0) {
+		allocate = TRUE;
+	} else {
+		pressure = ((100 - cfg_clients_subs_fairness) / 100.0) * cfg_clients_max_subs;
+
+		if (used >= pressure) {
+			guint client_used = client->subs == NULL ? 0 : g_hash_table_size(client->subs);
+			guint max_per = MAX(1, cfg_clients_max_subs / qev_cfg_get_max_clients()) *
+							((20 / (.05 * cfg_clients_subs_fairness)) - 3);
+			allocate = max_per > client_used;
+		} else {
+			allocate = TRUE;
+		}
+	}
+
+	qev_unlock(client);
+
+	if (allocate) {
+		qev_stats_inc(_total_subs);
+		idx = g_slice_alloc(sizeof(gint32));
+	}
+
+	return idx;
 }
 
-static void _sub_put(struct client *client G_GNUC_UNUSED, gint32 *idx)
+static void _sub_put(gint32 *idx)
 {
+	qev_stats_dec(_total_subs);
 	g_slice_free1(sizeof(*idx), idx);
 }
 
@@ -159,7 +193,7 @@ gboolean client_sub_add(
 		goto cleanup;
 	}
 
-	if (!qev_list_try_add(sub->subscribers, client, idx)) {
+	if (!QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers, client, idx)) {
 		goto cleanup;
 	}
 
@@ -176,7 +210,7 @@ out:
 
 cleanup:
 	if (idx != NULL) {
-		_sub_put(client, idx);
+		_sub_put(idx);
 	}
 
 	sub_unref(sub);
@@ -198,7 +232,7 @@ gboolean client_sub_remove(struct client *client, struct subscription *sub)
 	if (idx != NULL) {
 		g_hash_table_remove(client->subs, sub);
 		qev_list_remove(sub->subscribers, idx);
-		_sub_put(client, idx);
+		_sub_put(idx);
 		sub_unref(sub);
 
 		removed = TRUE;
@@ -228,7 +262,7 @@ void client_sub_remove_all(struct client *client)
 		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&idx)) {
 			g_hash_table_iter_remove(&iter);
 			qev_list_remove(sub->subscribers, idx);
-			_sub_put(client, idx);
+			_sub_put(idx);
 			sub_unref(sub);
 		}
 
@@ -243,4 +277,9 @@ void client_close(struct client *client)
 {
 	_cb_remove_all(client);
 	client_sub_remove_all(client);
+}
+
+void client_init()
+{
+	qev_stats_add_counter("clients.total_subs", &_total_subs, FALSE);
 }

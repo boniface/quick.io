@@ -8,12 +8,12 @@
 
 #include "quickio.h"
 
-static void _validate_port(union qev_cfg_val val, GError **error)
+static void _validate_client_subs_fairness(union qev_cfg_val val, GError **error)
 {
-	if (val.ui64 == 0 || val.ui64 > G_MAXUINT16) {
+	if (val.ui64 > 100) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Invalid port number: %" G_GUINT64_FORMAT " doesn't work, must "
-					"be between 1 and %d.", val.ui64, G_MAXUINT16);
+					"Invalid subs fairness: must be between 0 and 100. "
+					"%" G_GUINT64_FORMAT " is invalid.", val.ui64);
 	}
 }
 
@@ -23,6 +23,15 @@ static void _validate_heartbeat_interval(union qev_cfg_val val, GError **error)
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid heartbeat time: must be between 5 and 60. "
 					"%" G_GUINT64_FORMAT " is invalid.", val.ui64);
+	}
+}
+
+static void _validate_port(union qev_cfg_val val, GError **error)
+{
+	if (val.ui64 == 0 || val.ui64 > G_MAXUINT16) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Invalid port number: %" G_GUINT64_FORMAT " doesn't work, must "
+					"be between 1 and %d.", val.ui64, G_MAXUINT16);
 	}
 }
 
@@ -84,6 +93,32 @@ static struct qev_cfg _cfg[] = {
 		.cb = NULL,
 		.read_only = FALSE,
 	},
+	{	.name = "clients-max-subs",
+		.description = "Maximum number of event subscriptions that may exist. "
+						"This is used to control memory limits on the server. "
+						"As an approximation, every 2^21 subscriptions use 1GB "
+						"of RAM.",
+		.type = qev_cfg_uint64,
+		.val.ui64 = &cfg_clients_max_subs,
+		.defval.ui64 = 4194304,
+		.validate = NULL,
+		.cb = NULL,
+		.read_only = FALSE,
+	},
+	{	.name = "clients-subs-fairness",
+		.description = "How subscriptions should be distributed to clients. 1 "
+						"indicates that subscriptions should be completely "
+						"evenly distributed amongst clients "
+						"(MAX(1, num_subscriptions / num_clients)), whereas 0 is "
+						"first-come, first-serve. A value in the middle balances "
+						"the two extremes.",
+		.type = qev_cfg_uint64,
+		.val.ui64 = &cfg_clients_subs_fairness,
+		.defval.ui64 = 80,
+		.validate = _validate_client_subs_fairness,
+		.cb = NULL,
+		.read_only = FALSE,
+	},
 	{	.name = "heartbeat-threads",
 		.description = "Number of threads used to pump out heartbeats.",
 		.type = qev_cfg_uint64,
@@ -100,15 +135,6 @@ static struct qev_cfg _cfg[] = {
 		.val.ui64 = &cfg_heartbeat_interval,
 		.defval.ui64 = 10,
 		.validate = _validate_heartbeat_interval,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "max-subscriptions",
-		.description = "Maximum number of subscriptions a client may have.",
-		.type = qev_cfg_uint64,
-		.val.ui64 = &cfg_max_subscriptions,
-		.defval.ui64 = 255,
-		.validate = NULL,
 		.cb = NULL,
 		.read_only = TRUE,
 	},

@@ -34,6 +34,10 @@
 	"[quick.io]\n" \
 	"heartbeat-interval = 4294967295\n"
 
+#define SUB_FAIRNESS \
+	"[quick.io]\n" \
+	"clients-subs-fairness = 4294967295\n"
+
 static void _do(const gchar *cfg)
 {
 	gboolean die = FALSE;
@@ -115,6 +119,15 @@ START_TEST(test_config_invalid_sub_min_size_1)
 }
 END_TEST
 
+START_TEST(test_config_invalid_client_subs_fairness)
+{
+	guint64 before = cfg_clients_subs_fairness;
+
+	_do(SUB_FAIRNESS);
+	ck_assert_uint_eq(before, cfg_clients_subs_fairness);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -131,6 +144,7 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_1);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
+	tcase_add_test(tcase, test_config_invalid_client_subs_fairness);
 
 	return test_do(sr);
 }

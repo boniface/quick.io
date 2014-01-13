@@ -169,6 +169,8 @@ static gboolean _app_init()
 						_stats_handler, NULL, NULL, FALSE);
 	qio.evs_add_handler(__qio_app, "/good",
 						_good_handler, _good_on, _good_off, FALSE);
+	qio.evs_add_handler(__qio_app, "/good-childs",
+						_good_handler, _good_on, _good_off, TRUE);
 	qio.evs_add_handler(__qio_app, "/good2",
 						_good_handler, _good_on, _good_off, FALSE);
 	qio.evs_add_handler(__qio_app, "/delayed",

@@ -80,8 +80,6 @@ struct client {
 	qev_timeout_t *timeout;
 
 	/**
-	 * Used as a set.
-	 *
 	 * Maps: struct subscription -> gint32 (qev_list index)
 	 */
 	GHashTable *subs;
@@ -190,3 +188,8 @@ void client_sub_remove_all(struct client *client);
  * A client has closed and should be completely cleaned up
  */
 void client_close(struct client *client);
+
+/**
+ * Initialize clients data
+ */
+void client_init();

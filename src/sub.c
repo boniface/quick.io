@@ -40,6 +40,7 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 		ev_extra = "";
 	}
 
+	// @todo should this use qev_lock?
 	g_rw_lock_reader_lock(&ev->subs_lock);
 
 	_get_if_exists(ev, ev_extra, &sub);

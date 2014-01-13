@@ -10,12 +10,13 @@ MAKEFLAGS += --no-print-directory
 #
 # USE_VALGRIND = 1
 
-CC = gcc
+export CC = gcc
 
 LIB_DIR = lib
 SRC_DIR = src
 TEST_DIR = test
 TEST_APPS_DIR = $(TEST_DIR)/apps
+QEV_DIR = lib/quick-event
 
 BINARY = quickio
 
@@ -70,7 +71,8 @@ BENCHMARKS = \
 
 LIBS = glib-2.0 gmodule-2.0 openssl
 LIBS_TEST = check
-LIBQEV = lib/quick-event/libqev.a
+LIBQEV = $(QEV_DIR)/libqev.a
+LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
 
 CFLAGS = \
 	-Wall \
@@ -92,6 +94,7 @@ CFLAGS_TEST = \
 	--coverage \
 	-fno-inline \
 	-I../$(SRC_DIR) \
+	-DQEV_ENABLE_MOCK \
 	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
 	$(shell pkg-config --cflags $(LIBS_TEST))
 
@@ -104,15 +107,16 @@ CFLAGS_BENCH = \
 	-O3
 
 LDFLAGS = \
-	$(CURDIR)/$(LIBQEV) \
 	-lm \
 	$(shell pkg-config --libs $(LIBS))
 
 LDFLAGS_DEBUG = \
+	$(CURDIR)/$(LIBQEV) \
 	-g \
 	-rdynamic
 
 LDFLAGS_TEST = \
+	$(CURDIR)/$(LIBQEV_TEST) \
 	-g \
 	-rdynamic \
 	--coverage \
@@ -187,9 +191,9 @@ $(TEST_APPS_DIR)/%.so: $(TEST_APPS_DIR)/%.c $(HEADERS)
 $(TEST_DIR)/test_%: CFLAGS += $(CFLAGS_TEST)
 $(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_BENCH)
 $(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
-$(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV)
+$(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
 
-$(LIBQEV):
-	cd lib/quick-event && $(MAKE)
+$(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/%:
+	cd lib/quick-event && $(MAKE) $*
