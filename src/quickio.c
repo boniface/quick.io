@@ -10,9 +10,11 @@
 
 void qio_main(int argc, char **argv)
 {
+	evs_init();
 	ASSERT(qev_init(argv, argc), "Could not init quick-event");
-
 	config_init();
+	protocols_init();
+	client_init();
 
 	if (cfg_bind_address != NULL) {
 		guint16 port = cfg_bind_port;

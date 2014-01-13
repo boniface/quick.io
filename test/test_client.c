@@ -8,6 +8,19 @@
 
 #include "test.h"
 
+START_TEST(test_client_shutdown)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	qev_exit();
+	close(tc);
+}
+END_TEST
+
 static enum evs_status _cb1(
 	client_t *client G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
@@ -144,6 +157,7 @@ START_TEST(test_client_subs_sane)
 	for (i = 0; i < tcs->len; i++) {
 		close(g_array_index(tcs, qev_fd_t, i));
 	}
+	g_array_free(tcs, TRUE);
 }
 END_TEST
 
@@ -196,6 +210,11 @@ int main()
 	Suite *s;
 	TCase *tcase;
 	test_new("client", &sr, &s);
+
+	tcase = tcase_create("Shutdown");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_client_shutdown);
 
 	tcase = tcase_create("Callbacks");
 	suite_add_tcase(s, tcase);

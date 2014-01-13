@@ -21,7 +21,7 @@
 	"poll-wait = 1\n" \
 	"read-high = 131072\n" \
 	"tcp-nodelay = true\n" \
-	"timeout = 200\n" \
+	"timeout = %d\n" \
 	"[quick.io]\n" \
 	"bind-address = localhost\n" \
 	"bind-port = %d\n" \
@@ -97,7 +97,7 @@ gboolean test_do(SRunner *sr)
 	gboolean configed;
 
 	c = g_string_sized_new(sizeof(CONFIG));
-	g_string_printf(c, CONFIG, PORT, PORT + 1);
+	g_string_printf(c, CONFIG, FATAL_SIGNAL == 5 ? 100 : 2000, PORT, PORT + 1);
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	g_string_free(c, TRUE);
 

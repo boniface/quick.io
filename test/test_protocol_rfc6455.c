@@ -538,6 +538,7 @@ int main()
 
 	tcase = tcase_create("Close Reasons");
 	suite_add_tcase(s, tcase);
+	tcase_set_timeout(tcase, 10);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_rfc6455_close_invalid_event_format);
 	tcase_add_test(tcase, test_rfc6455_close_timeout);

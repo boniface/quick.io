@@ -10,12 +10,8 @@
 
 gboolean qev_on_before_run()
 {
-	evs_init();
-	protocols_init();
-	client_init();
-
 	/*
-	 * Initialize last: don't let apps take over internal events.
+	 * Initialize dead last: don't let apps take over internal events.
 	 */
 	apps_init();
 
