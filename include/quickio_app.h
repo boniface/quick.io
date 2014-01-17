@@ -92,6 +92,14 @@
 				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
+ * If the condition is not true, it brings down the app with it,
+ * logging the given message as fatal.
+ */
+#define APP_ASSERT(format, ...) \
+	if (!(cond)) { \
+		APP_FATAL(msg, ##__VA_ARGS__); }
+
+/**
  * Clients are to be treated as a blob that cannot be modified. All the server
  * functions know what to do with them.
  */

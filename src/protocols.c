@@ -256,6 +256,5 @@ gboolean protocols_client_handshaked(struct client *client)
 
 void protocols_init()
 {
-	ASSERT(qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0),
-			"Could not setup timer for heartbeats");
+	qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0);
 }

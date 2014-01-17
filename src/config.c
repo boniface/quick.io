@@ -8,36 +8,48 @@
 
 #include "quickio.h"
 
-static void _validate_client_subs_fairness(union qev_cfg_val val, GError **error)
+static void _validate_client_subs_fairness(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
 {
-	if (val.ui64 > 100) {
+	if (val->ui64 > 100) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid subs fairness: must be between 0 and 100. "
-					"%" G_GUINT64_FORMAT " is invalid.", val.ui64);
+					"%" G_GUINT64_FORMAT " is invalid.", val->ui64);
 	}
 }
 
-static void _validate_heartbeat_interval(union qev_cfg_val val, GError **error)
+static void _validate_heartbeat_interval(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
 {
-	if (val.ui64 < 5 || val.ui64 > 60) {
+	if (val->ui64 < 5 || val->ui64 > 60) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid heartbeat time: must be between 5 and 60. "
-					"%" G_GUINT64_FORMAT " is invalid.", val.ui64);
+					"%" G_GUINT64_FORMAT " is invalid.", val->ui64);
 	}
 }
 
-static void _validate_port(union qev_cfg_val val, GError **error)
+static void _validate_port(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
 {
-	if (val.ui64 == 0 || val.ui64 > G_MAXUINT16) {
+	if (val->ui64 == 0 || val->ui64 > G_MAXUINT16) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid port number: %" G_GUINT64_FORMAT " doesn't work, must "
-					"be between 1 and %d.", val.ui64, G_MAXUINT16);
+					"be between 1 and %d.", val->ui64, G_MAXUINT16);
 	}
 }
 
-static void _validate_sub_min_size(union qev_cfg_val val, GError **error)
+static void _validate_sub_min_size(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
 {
-	if (val.ui64 == 0 || val.ui64 > qev_cfg_get_max_clients()) {
+	if (val->ui64 == 0 || val->ui64 > qev_cfg_get_max_clients()) {
 		*error = g_error_new(G_OPTION_ERROR, 0,
 					"Invalid min sub size: must be greater than 0 and less than "
 					"%" G_GUINT64_FORMAT " (the maximum number of clients "

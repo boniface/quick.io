@@ -234,10 +234,10 @@ int main()
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_apps_error_path);
-	tcase_add_test(tcase, test_apps_error_invalid_app);
-	tcase_add_test(tcase, test_apps_error_init);
-	tcase_add_test(tcase, test_apps_error_duplicate);
+	tcase_add_test_raise_signal(tcase, test_apps_error_path, FATAL_SIGNAL);
+	tcase_add_test_raise_signal(tcase, test_apps_error_invalid_app, FATAL_SIGNAL);
+	tcase_add_test_raise_signal(tcase, test_apps_error_init, FATAL_SIGNAL);
+	tcase_add_test_raise_signal(tcase, test_apps_error_duplicate, FATAL_SIGNAL);
 	tcase_add_test_raise_signal(tcase, test_apps_error_exit, FATAL_SIGNAL);
 
 	return test_do(sr);

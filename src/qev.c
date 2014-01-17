@@ -8,17 +8,15 @@
 
 #include "quickio.h"
 
-gboolean qev_on_before_run()
+void qev_on_before_run()
 {
 	/*
 	 * Initialize dead last: don't let apps take over internal events.
 	 */
 	apps_init();
-
-	return TRUE;
 }
 
-void qev_on_open(struct client *client, const gchar *ip G_GNUC_UNUSED)
+void qev_on_open(struct client *client)
 {
 	qev_timeout(client, &client->timeout);
 }

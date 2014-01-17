@@ -8,9 +8,7 @@
 
 // #define APP_ENABLE_DEBUG
 #define G_LOG_DOMAIN "test_app_sane"
-
 #include "../../include/quickio_app.h"
-#include <stdio.h>
 
 static GThread *_th = NULL;
 static GAsyncQueue *_aq = NULL;
@@ -199,7 +197,6 @@ static gboolean _app_exit()
 
 static gboolean _app_test()
 {
-	printf("app test!\n");
 	return TRUE;
 }
 

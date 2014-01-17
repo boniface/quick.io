@@ -8,7 +8,7 @@
 
 #include "quickio.h"
 
-static qev_stats_counter_t _total_subs;
+static qev_stats_counter_t *_total_subs;
 
 static gint32* _sub_get(struct client *client)
 {
@@ -19,7 +19,7 @@ static gint32* _sub_get(struct client *client)
 
 	qev_lock(client);
 
-	used = _total_subs.count;
+	used = qev_stats_counter_get(_total_subs);
 
 	if (used >= cfg_clients_max_subs) {
 		; // No allocations allowed
@@ -41,7 +41,7 @@ static gint32* _sub_get(struct client *client)
 	qev_unlock(client);
 
 	if (allocate) {
-		qev_stats_inc(_total_subs);
+		qev_stats_counter_inc(_total_subs);
 		idx = g_slice_alloc(sizeof(gint32));
 	}
 
@@ -50,7 +50,7 @@ static gint32* _sub_get(struct client *client)
 
 static void _sub_put(gint32 *idx)
 {
-	qev_stats_dec(_total_subs);
+	qev_stats_counter_dec(_total_subs);
 	g_slice_free1(sizeof(*idx), idx);
 }
 
@@ -281,5 +281,5 @@ void client_close(struct client *client)
 
 void client_init()
 {
-	qev_stats_add_counter("clients.total_subs", &_total_subs, FALSE);
+	_total_subs = qev_stats_counter("clients.total_subs", FALSE);
 }
