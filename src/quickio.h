@@ -15,11 +15,11 @@
 #define G_LOG_DOMAIN "quickio"
 #define QEV_CLIENT client
 
+#include <gmodule.h>
+#include "../lib/http-parser/http_parser.h"
 #include "apps_export.h"
 #include "../include/quickio_app.h"
-#include <gmodule.h>
 #include "../lib/quick-event/include/qev.h"
-#include "../lib/http-parser/http_parser.h"
 #include "apps.h"
 #include "client.h"
 #include "config.h"

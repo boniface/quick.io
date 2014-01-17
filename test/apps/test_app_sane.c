@@ -16,8 +16,14 @@ static gboolean _is_running = TRUE;
 
 static event_t *_ev_with_send = NULL;
 
-static gint _ons = 0;
-static gint _offs = 0;
+static qio_stats_gauge_t *_gauge = NULL;
+static qio_stats_gauge_t *_gauge_mon = NULL;
+
+static qio_stats_counter_t *_ons = NULL;
+static qio_stats_counter_t *_offs = NULL;
+
+static qio_stats_timer_t *_timer = NULL;
+static qio_stats_timer_t *_timer_mon = NULL;
 
 struct _work {
 	GSourceFunc fn;
@@ -41,7 +47,22 @@ static enum evs_status _stats_handler(
 {
 	GString *buff = qio.buffer_get();
 
-	qio.json_pack(buff, "[%d,%d]", _ons, _offs);
+	qio.stats_gauge_set(_gauge, 10);
+	qio.stats_gauge_set(_gauge_mon, 20);
+
+	qio_stats_time(_timer, {
+		g_usleep(10);
+	});
+
+	qio_stats_time(_timer_mon, {
+		g_usleep(10);
+	});
+
+	qio.json_pack(buff, "[%d,%d,%d,%d]",
+					qio.stats_counter_get(_ons),
+					qio.stats_counter_get(_offs),
+					qio.stats_gauge_get(_gauge),
+					qio.stats_gauge_get(_gauge_mon));
 	qio.evs_cb(client, client_cb, buff->str);
 
 	qio.buffer_put(buff);
@@ -70,7 +91,7 @@ static enum evs_status _good_handler(
 
 static enum evs_status _good_on(const struct evs_on_info *info G_GNUC_UNUSED)
 {
-	g_atomic_int_inc(&_ons);
+	qio_stats_counter_inc(_ons);
 	return EVS_STATUS_OK;
 }
 
@@ -78,7 +99,7 @@ static void _good_off(
 	client_t *client G_GNUC_UNUSED,
 	const gchar *ev_extra G_GNUC_UNUSED)
 {
-	g_atomic_int_inc(&_offs);
+	qio_stats_counter_inc(_offs);
 }
 
 static gboolean _delayed_on_cb(void *info_)
@@ -160,6 +181,17 @@ static void* _run(void *nothing G_GNUC_UNUSED)
 
 static gboolean _app_init()
 {
+	_gauge = qio.stats_gauge(__qio_app, "gauge");
+	_gauge_mon = qio.stats_gauge_monitor(__qio_app, "gauge_mon", NULL);
+
+	_ons = qio.stats_counter(__qio_app, "ons", FALSE);
+	_offs = qio.stats_counter_monitor(__qio_app, "offs", FALSE, NULL);
+
+	_timer = qio.stats_timer(__qio_app, "timer");
+	_timer_mon = qio.stats_timer_monitor(__qio_app, "timer_mon",
+									NULL, NULL, NULL,
+									NULL, NULL, NULL);
+
 	_aq = g_async_queue_new();
 	_th = g_thread_new("test_app_sane", _run, NULL);
 

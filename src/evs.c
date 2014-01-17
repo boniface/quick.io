@@ -54,31 +54,6 @@ static const gchar _allowed_chars[256] = {
  */
 static GAsyncQueue *_broadcasts = NULL;
 
-static void _clean_ev_path(gchar *path)
-{
-	gchar *curr = path;
-	gchar *writing = path;
-
-	while (*curr != '\0') {
-		if (_allowed_chars[(guchar)*curr] && writing != curr) {
-			if (!(*writing == '/' && *curr == '/')) {
-				writing++;
-			}
-
-			*writing = *curr;
-		}
-
-		curr++;
-	}
-
-	// Remove any trailing slash
-	if (*writing != '/' && writing != path) {
-		writing++;
-	}
-
-	*writing = '\0';
-}
-
 static void _broadcast(void *client_, void *frames_)
 {
 	struct client *client = client_;
@@ -133,7 +108,7 @@ struct event* evs_add_handler(
 	struct event *ev;
 	gchar *ep = g_strdup(ev_path);
 
-	_clean_ev_path(ep);
+	evs_clean_path(ep);
 
 	ev = evs_query_insert(ep, handler_fn, on_fn, off_fn, handle_children);
 	if (ev == NULL) {
@@ -143,6 +118,31 @@ struct event* evs_add_handler(
 	g_free(ep);
 
 	return ev;
+}
+
+void evs_clean_path(gchar *path)
+{
+	gchar *curr = path;
+	gchar *writing = path;
+
+	while (*curr != '\0') {
+		if (_allowed_chars[(guchar)*curr] && writing != curr) {
+			if (!(*writing == '/' && *curr == '/')) {
+				writing++;
+			}
+
+			*writing = *curr;
+		}
+
+		curr++;
+	}
+
+	// Remove any trailing slash
+	if (*writing != '/' && writing != path) {
+		writing++;
+	}
+
+	*writing = '\0';
 }
 
 enum evs_status evs_no_on(const struct evs_on_info *info G_GNUC_UNUSED)
@@ -161,7 +161,7 @@ void evs_route(
 	enum evs_status status = EVS_STATUS_ERR;
 	enum evs_code code = CODE_UNKNOWN;
 
-	_clean_ev_path(ev_path);
+	evs_clean_path(ev_path);
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
@@ -292,7 +292,7 @@ void evs_send_bruteforce(
 	JSON_OR_NULL(json);
 
 	g_string_printf(path, "%s/%s", ev_path, ev_extra ? : "");
-	_clean_ev_path(path->str);
+	evs_clean_path(path->str);
 
 	protocols_send(client, path->str, "", server_cb, json);
 

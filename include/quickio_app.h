@@ -13,13 +13,6 @@
 #include <glib.h>
 
 /**
- * Allow exported functions to be declared here without trouble
- */
-#ifndef QIO_EXPORT
-	#define QIO_EXPORT
-#endif
-
-/**
  * Used to verify that modules are QIO apps.
  */
 #define QIO_MAGIC_NUM 0xfc63e18a
@@ -46,8 +39,8 @@
 	 * Disable when building for prod
 	 */
 	#define APP_DEBUG(format, ...) \
-				g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, \
-					"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+		g_log(APP_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, \
+			"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 #else
 	/**
 	 * Output debug info to the console, only when not built for prod.
@@ -59,37 +52,37 @@
  * General useful information
  */
 #define APP_INFO(format, ...) \
-			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, \
-				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+	g_log(APP_LOG_DOMAIN, G_LOG_LEVEL_INFO, \
+		"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * Output warning
  */
 #define APP_WARN(format, ...) \
-			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, \
-				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+	g_log(APP_LOG_DOMAIN, G_LOG_LEVEL_WARNING, \
+		"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * Like perror()
  */
 #define APP_PERROR(format, ...) \
-			g_log(QEV_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, \
-				"%s:%d : " format ": %s", __FILE__, __LINE__, ##__VA_ARGS__, \
-				strerror(errno))
+	g_log(APP_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, \
+		"%s:%d : " format ": %s", __FILE__, __LINE__, ##__VA_ARGS__, \
+		strerror(errno))
 
 /**
  * Output critical, non-fatal error
  */
 #define APP_CRITICAL(format, ...) \
-			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, \
-				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+	g_log(APP_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, \
+		"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * A fatal error, after which nothing can continue.
  */
 #define APP_FATAL(format, ...) \
-			g_log(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, \
-				"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
+	g_log(APP_LOG_DOMAIN, G_LOG_LEVEL_ERROR, \
+		"%s:%d : " format, __FILE__, __LINE__, ##__VA_ARGS__)
 
 /**
  * If the condition is not true, it brings down the app with it,
@@ -98,6 +91,128 @@
 #define APP_ASSERT(format, ...) \
 	if (!(cond)) { \
 		APP_FATAL(msg, ##__VA_ARGS__); }
+
+/**
+ * Increments a counter
+ *
+ * @param counter
+ *     A pointer to the counter struct
+ *
+ * @return
+ *     The value after increment
+ */
+#define qio_stats_counter_inc(counter) qio.stats_counter_add(counter, 1);
+
+/**
+ * Decrements a counter
+ *
+ * @param counter
+ *     A pointer to the counter struct
+ *
+ * @return
+ *     The value after decrement
+ */
+#define qio_stats_counter_dec(counter) qio.stats_counter_add(counter, -1);
+
+/**
+ * Times the execution of the given block of code.
+ *
+ * @param timer
+ *     A pointer to the timer
+ * @param block
+ *     The block to time
+ */
+#define qio_stats_time(timer, block) { \
+	gint64 qio_stats_timer_start = g_get_monotonic_time(); \
+	block; \
+	qio.stats_timer_record(timer, g_get_monotonic_time() - qio_stats_timer_start); }
+
+/**
+ * For determining if something should be alerted on
+ */
+struct qio_stats_threshold {
+	/**
+	 * If the threshold has been configured and is active.
+	 */
+	gboolean active;
+
+	/**
+	 * If there is a warn value for this threshold
+	 */
+	gboolean has_warn;
+
+	/**
+	 * The compare for warn is greater
+	 */
+	gboolean warn_greater;
+
+	/**
+	 * If warn_greater, warn when val > warn, otherwise when val < warn.
+	 */
+	gint64 warn;
+
+	/**
+	 * If there is a warn value for this threshold
+	 */
+	gboolean has_crit;
+
+	/**
+	 * The compare for critical is greater
+	 */
+	gboolean crit_greater;
+
+	/**
+	 * If crit_greater, warn when val > crit, otherwise when val < crit.
+	 */
+	gint64 crit;
+};
+
+/**
+ * A custom monitoring function. Returns a value (typically 0 - 3) indicating
+ * how everything is going, typically based off of values in thresh.
+ *
+ * @param val
+ *     The value of the stat
+ * @param thresh
+ *     The array of thresholds configured
+ * @param thrs
+ *     The number of thresholds
+ * @param msg[out]
+ *     Message to be included with the return value; print your status message
+ *     into the given GString.
+ *
+ * @return
+ *     By convention, returns take one of the following values, but it's
+ *     acceptable to return different values if your sink knows what to do
+ *     with them.
+ * @return
+ *     0 when OK
+ * @return
+ *     1 when WARNING
+ * @return
+ *     2 when CRITICAL
+ * @return
+ *     3 when UNKNOWN
+ */
+typedef gint (*qio_stats_monitor_fn)(
+	const gint64 val,
+	const struct qio_stats_threshold thresh,
+	GString *msg);
+
+/**
+ * A gauge stat
+ */
+typedef struct qio_stats_gauge qio_stats_gauge_t;
+
+/**
+ * A counter stat
+ */
+typedef struct qio_stats_counter qio_stats_counter_t;
+
+/**
+ * A timer stat
+ */
+typedef struct qio_stats_timer qio_stats_timer_t;
 
 /**
  * Clients are to be treated as a blob that cannot be modified. All the server
@@ -509,6 +624,175 @@ struct qio_exports {
 		event_t *ev,
 		const gchar *ev_extra,
 		const gchar *json);
+
+	/**
+	 * Adds a gauge to the stats lineup.
+	 *
+	 * @param name
+	 *     The name of the stat (may be `A-Za-z0-9._-`, `.` being
+	 *     the path separator)
+	 *
+	 * @return
+	 *     The stat, useful for qio.qio_stats_gauge_set/get()
+	 */
+	qio_stats_gauge_t* (*stats_gauge)(void *app, const gchar *name);
+
+	/**
+	 * Adds a gauge to the stats lineup.
+	 *
+	 * @param name
+	 *     The name of the stat (may be `A-Za-z0-9._-`, `.` being
+	 *     the path separator)
+	 * @param monitor
+	 *     A custom monitor function.
+	 *
+	 * @return
+	 *     The stat, useful for qio.qio_stats_gauge_set/get()
+	 */
+	qio_stats_gauge_t* (*stats_gauge_monitor)(
+		void *app,
+		const gchar *name,
+		const qio_stats_monitor_fn monitor);
+
+	/**
+	 * Set the gauge to the given value.
+	 *
+	 * @param gauge
+	 *     The gauge to set
+	 * @param val
+	 *     The value to set to
+	 */
+	void (*stats_gauge_set)(qio_stats_gauge_t *gauge, gint64 val);
+
+	/**
+	 * Get the value of the gauge right now.
+	 *
+	 * @param gauge
+	 *     The gauge to set
+	 *
+	 * @return
+	 *     The value of the gauge
+	 */
+	gint64 (*stats_gauge_get)(qio_stats_gauge_t *gauge);
+
+	/**
+	 * Adds a counter to the stats lineup
+	 *
+	 * @param name
+	 *     The name of the stat (may be `A-Za-z0-9._-`, `.` being
+	 *     the path separator)
+	 * @param reset_on_flush
+	 *     If the counter should be reset between stats flushes
+	 *
+	 * @return
+	 *     The stat, useful for qio.stats_counter_inc/dec() and
+	 *     qio.stats_counter_get()
+	 */
+	qio_stats_counter_t* (*stats_counter)(
+		void *app,
+		const gchar *name,
+		const gboolean reset_on_flush);
+
+	/**
+	 * Adds a counter to the stats lineup
+	 *
+	 * @param name
+	 *     The name of the stat (may be `A-Za-z0-9._-`, `.` being
+	 *     the path separator)
+	 * @param reset_on_flush
+	 *     If the counter should be reset between stats flushes
+	 * @param monitor
+	 *     A custom monitor function.
+	 *
+	 * @return
+	 *     The stat, useful for qio.stats_counter_inc/dec() and
+	 *     qio.stats_counter_get()
+	 */
+	qio_stats_counter_t* (*stats_counter_monitor)(
+		void *app,
+		const gchar *name,
+		const gboolean reset_on_flush,
+		const qio_stats_monitor_fn monitor);
+
+	/**
+	 * Add the given value to the counter
+	 *
+	 * @param counter
+	 *     The counter to add the value to
+	 * @param val
+	 *     The value to add, be it positive or negative.
+	 *
+	 * @return
+	 *     The value of the counter after the operation
+	 */
+	gint64 (*stats_counter_add)(qio_stats_counter_t *counter, const gint64 val);
+
+	/**
+	 * Get the given value to the counter at this instant
+	 *
+	 * @param counter
+	 *     The counter to add the value to
+	 *
+	 * @return
+	 *     The value of the counter right now
+	 */
+	gint64 (*stats_counter_get)(qio_stats_counter_t *counter);
+
+	/**
+	 * Adds a timer to the stats lineup.
+	 *
+	 * @param name
+	 *     The name of the stat (may be `A-Za-z0-9._-`, `.` being
+	 *     the path separator)
+	 *
+	 * @return
+	 *     The timer, used for qio.stats_record_time()
+	 */
+	qio_stats_timer_t* (*stats_timer)(void *app, const gchar *name);
+
+	/**
+	 * Adds a timer to the stats lineup.
+	 *
+	 * @param name
+	 *     The name of the stat (may be `A-Za-z0-9._-`, `.` being
+	 *     the path separator)
+	 * @param monitor_sum
+	 *     Custom monitor for the timer's sum value
+	 * @param monitor_stddev
+	 *     Custom monitor for the timer's standard deviation value
+	 * @param monitor_mean
+	 *     Custom monitor for the timer's mean value
+	 * @param monitor_max
+	 *     Custom monitor for the timer's max value
+	 * @param monitor_min
+	 *     Custom monitor for the timer's min value
+	 * @param monitor_count
+	 *     Custom monitor for the timer's count
+	 *
+	 * @return
+	 *     The timer, used for qio.stats_record_time()
+	 */
+	qio_stats_timer_t* (*stats_timer_monitor)(
+		void *app,
+		const gchar *name,
+		const qio_stats_monitor_fn monitor_sum,
+		const qio_stats_monitor_fn monitor_stddev,
+		const qio_stats_monitor_fn monitor_mean,
+		const qio_stats_monitor_fn monitor_max,
+		const qio_stats_monitor_fn monitor_min,
+		const qio_stats_monitor_fn monitor_count);
+
+	/**
+	 * Records a time to the timer.
+	 *
+	 * @param timer
+	 *     The timer struct
+	 * @param us
+	 *     Microseconds to record
+	 */
+	void (*stats_timer_record)(
+		qio_stats_timer_t *timer,
+		const gint64 us);
 
 	/**
 	 * Unpack a string into some JSON

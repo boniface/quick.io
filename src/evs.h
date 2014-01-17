@@ -113,6 +113,12 @@ struct event* evs_add_handler(
 enum evs_status evs_no_on(const struct evs_on_info *info);
 
 /**
+ * Given a path, clean is up such that is matches exactly what QIO expects
+ * paths to be
+ */
+void evs_clean_path(gchar *path);
+
+/**
  * Routes an event from a client.
  *
  * @param client
