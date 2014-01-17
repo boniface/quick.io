@@ -130,6 +130,7 @@ ifdef USE_VALGRIND
 		valgrind \
 			--quiet \
 			--suppressions=../lib/quick-event/test/valgrind.supp \
+			--suppressions=../lib/quick-event/test/valgrind_expected.supp \
 			--tool=memcheck \
 			--leak-check=full \
 			--leak-resolution=high \
