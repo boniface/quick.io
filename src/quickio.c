@@ -28,6 +28,8 @@ void qio_main(int argc, char **argv)
 					cfg_ssl_cert_path_1, cfg_ssl_key_path_1);
 	}
 
+	qev_setnofile(qev_cfg_get_max_clients());
+
 	if (cfg_user != NULL) {
 		qev_chuser(cfg_user);
 	}

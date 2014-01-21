@@ -1,3 +1,3 @@
-app/quickio_app.h /usr/include
-app/quickio_app_test.h /usr/include
-build_release/quickio-testapps /usr/bin/
+src/*.h /usr/include/quickio/
+lib/quick-event/src/*.h /usr/include/quickio/quick-event/
+quickio-testapps /usr/bin/

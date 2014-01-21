@@ -2,7 +2,7 @@ Source: quickio
 Maintainer: Andrew Stone <andrew@clovar.com>
 Section: web
 Priority: optional
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Build-Depends: debhelper (>= 9), check (>= 0.9.8), libc6-dev (>= 2.13), libglib2.0-dev (>= 2.32), libssl-dev (>= 1.0.0)
 
 Package: quickio

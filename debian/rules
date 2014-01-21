@@ -11,7 +11,8 @@ clean:
 
 build:
 	dh_testdir
-	$(MAKE) -j4 release
+	$(MAKE) -j8 release
+	$(MAKE) -j8 quickio-testapps
 
 install: build
 	dh_testdir
@@ -20,6 +21,7 @@ install: build
 	dh_install
 	dh_installman
 	dh_shlibdeps
+	rm debian/quickio-dev/usr/include/quickio/quick-event/*_priv.h
 
 binary-arch: build install
 	dh_testdir

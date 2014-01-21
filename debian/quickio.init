@@ -16,11 +16,9 @@ PIDFILE=/var/run/quickio.pid
 CONFIG_FILE=/etc/quickio/quickio.ini
 CONFIG_DIR=/etc/quickio/apps
 
-if [ -f /etc/default/quickio ]; then
-	. /etc/default/quickio
-fi
+. /lib/lsb/init-functions
 
-test -x $BINARY || exit 0
+test -x $BINARY || exit 1
 
 _print_status() {
 	if [ -z $? ]; then
@@ -32,7 +30,7 @@ _print_status() {
 
 start() {
 	ulimit -n "$FD_LIMIT"
-	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=$CONFIG_FILE --config-dir=$CONFIG_DIR
+	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=/etc/quickio/quickio.ini
 }
 
 stop() {

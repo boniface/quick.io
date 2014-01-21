@@ -19,6 +19,7 @@ TEST_APPS_DIR = $(TEST_DIR)/apps
 QEV_DIR = $(CURDIR)/lib/quick-event
 
 BINARY = quickio
+TESTAPPS = quickio-testapps
 
 HEADERS = $(shell find $(SRC_DIR) -name '*.h')
 
@@ -71,9 +72,11 @@ LIBS_TEST = check
 LIBQEV = $(QEV_DIR)/libqev.a
 LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
 
-CFLAGS = \
+CFLAGS += \
 	-Wall \
 	-Wextra \
+	-Werror=format-security \
+	-fPIE \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-D_FORTIFY_SOURCE=2 \
@@ -101,10 +104,12 @@ CFLAGS_DEBUG = \
 	-fno-inline \
 	-DQEV_LOG_DEBUG
 
-CFLAGS_PROD = \
+CFLAGS_RELEASE = \
 	-O3
 
-LDFLAGS = \
+LDFLAGS += \
+	-Wl,-z,relro \
+	-Wl,-z,now \
 	-lm \
 	$(shell pkg-config --libs $(LIBS))
 
@@ -120,7 +125,7 @@ LDFLAGS_TEST = \
 	--coverage \
 	$(shell pkg-config --libs $(LIBS_TEST))
 
-LDFLAGS_PROD = \
+LDFLAGS_RELEASE = \
 	$(LIBQEV)
 
 ifdef USE_VALGRIND
@@ -142,21 +147,30 @@ else
 	MEMTEST =
 endif
 
+DEBUILD_ARGS = \
+	-uc \
+	-us \
+	-tc \
+	-I.git* \
+	-I*sublime*
+
 all:
 	@echo "Choose one of the following:"
 	@echo "    make run - run quickio in debug mode"
 	@echo "    make clean - clean up everything"
 
-run: CFLAGS += $(CFLAGS_DEBUG)
-run: LDFLAGS += $(LDFLAGS_DEBUG)
+run: export CFLAGS += $(CFLAGS_DEBUG)
+run: export LDFLAGS += $(LDFLAGS_DEBUG)
 run: $(BINARY)
 	$(MEMTEST) ./$(BINARY)
 
-prod: CFLAGS += $(CFLAGS_PROD)
-prod: LDFLAGS += $(LDFLAGS_PROD)
-prod: $(BINARY)
-prod:
-	./$(BINARY)
+release: export CFLAGS += $(CFLAGS_RELEASE)
+release: export LDFLAGS += $(LDFLAGS_RELEASE)
+release: $(BINARY)
+	strip -s $^
+
+deb:
+	debuild $(DEBUILD_ARGS)
 
 test: $(TESTS)
 	./lib/quick-event/ext/gcovr \
@@ -182,11 +196,17 @@ clean:
 	$(MAKE) -C lib/quick-event/ clean
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f $(BINARY)
+	rm -f $(TESTAPPS)
 	$(MAKE) -C docs clean
 
 $(BINARY): $(BIN_OBJECTS) $(LIBQEV)
 	@echo '-------- Compiling quickio --------'
-	@$(CC) $^ -o $@ $(LDFLAGS)
+	$(CC) $^ -o $@ $(LDFLAGS)
+
+$(TESTAPPS): app/quickio-testapps.c
+	@echo '-------- Compiling quickio-testapps --------'
+	@$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	@strip -s $@
 
 .PHONY: $(TESTS)
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
@@ -204,9 +224,9 @@ $(TEST_APPS_DIR)/%.so: $(TEST_APPS_DIR)/%.c $(HEADERS)
 	@echo '-------- Compiling app $@ --------'
 	@cd $(TEST_APPS_DIR) && $(CC) -shared -fPIC $(CFLAGS) $*.c -o $*.so
 
-$(TEST_DIR)/test_%: CFLAGS += $(CFLAGS_TEST)
-$(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_PROD)
-$(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
+$(TEST_DIR)/test_%: export CFLAGS += $(CFLAGS_TEST)
+$(TEST_DIR)/bench_%: export CFLAGS += $(CFLAGS_RELEASE)
+$(TEST_DIR)/%: export LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)

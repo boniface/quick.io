@@ -1,5 +1,4 @@
-build_release/quickio /usr/bin/
+quickio /usr/bin/
 debian/quickio.files/quickio_limits.conf /etc/security/limits.d/
-debian/quickio.files/quickio /etc/default
 debian/quickio.files/quickio.conf /etc/sysctl.d/
 quickio.ini /etc/quickio/

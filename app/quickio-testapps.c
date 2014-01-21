@@ -34,7 +34,7 @@ static GOptionEntry command_options[] = {
 	{"quickio-path", 'p', 0, G_OPTION_ARG_FILENAME, &_quickio_path,
 		"Absolute path to the quickio binary; searches the path if not given.",
 		"/usr/bin/quickio"},
-	{NULL}
+	{NULL, 0, 0, 0, NULL, NULL, NULL},
 };
 
 static gboolean _parse_args(int argc, gchar **argv)
