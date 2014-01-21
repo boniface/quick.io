@@ -12,12 +12,11 @@ MAKEFLAGS += --no-print-directory
 
 export CC = gcc
 
-CWD ?= $(CURDIR)
-LIB_DIR = $(CWD)/lib
-SRC_DIR = $(CWD)/src
-TEST_DIR = $(CWD)/test
+LIB_DIR = lib
+SRC_DIR = src
+TEST_DIR = test
 TEST_APPS_DIR = $(TEST_DIR)/apps
-QEV_DIR = $(CWD)/lib/quick-event
+QEV_DIR = $(CURDIR)/lib/quick-event
 
 BINARY = quickio
 
@@ -39,6 +38,9 @@ OBJECTS = \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
 	$(SRC_DIR)/sub.o
+
+OBJECTS_TEST = \
+	$(patsubst %,../%,$(OBJECTS))
 
 BIN_OBJECTS = \
 	$(OBJECTS) \
@@ -76,7 +78,7 @@ CFLAGS = \
 	--param=ssp-buffer-size=4 \
 	-D_FORTIFY_SOURCE=2 \
 	-std=gnu99 \
-	-I$(SRC_DIR) \
+	-I$(CURDIR)/$(SRC_DIR) \
 	$(shell pkg-config --cflags $(LIBS))
 
 CFLAGS_OBJ = \
@@ -188,7 +190,7 @@ $(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_BENCH)
 $(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
-	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS) -o $* $(LDFLAGS)
+	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
 
 $(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/%:
 	cd $(QEV_DIR) && $(MAKE) $*

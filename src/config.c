@@ -205,6 +205,15 @@ static struct qev_cfg _cfg[] = {
 		.cb = NULL,
 		.read_only = FALSE,
 	},
+	{	.name = "user",
+		.description = "Drop all permissions and run as this user.",
+		.type = QEV_CFG_STR,
+		.val.str = &cfg_user,
+		.defval.str = NULL,
+		.validate = NULL,
+		.cb = NULL,
+		.read_only = TRUE,
+	},
 };
 
 void config_init()

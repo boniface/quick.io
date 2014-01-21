@@ -91,6 +91,11 @@ gchar *cfg_ssl_key_path_1;
 guint64 cfg_sub_min_size;
 
 /**
+ * The user the server should run as
+ */
+gchar *cfg_user;
+
+/**
  * Registers all configuration options with QEV.
  */
 void config_init();

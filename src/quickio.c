@@ -28,6 +28,10 @@ void qio_main(int argc, char **argv)
 					cfg_ssl_cert_path_1, cfg_ssl_key_path_1);
 	}
 
+	if (cfg_user != NULL) {
+		qev_chuser(cfg_user);
+	}
+
 	// @todo stomp address + port?
 
 	qev_run();

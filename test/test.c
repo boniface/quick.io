@@ -31,6 +31,7 @@
 	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
 	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
 	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
+	"user = %s\n" \
 	"[quick.io-apps]\n" \
 	"/test = ./apps/test_app_sane\n"
 
@@ -97,7 +98,9 @@ gboolean test_do(SRunner *sr)
 	gboolean configed;
 
 	c = g_string_sized_new(sizeof(CONFIG));
-	g_string_printf(c, CONFIG, FATAL_SIGNAL == 5 ? 100 : 2000, PORT, PORT + 1);
+	g_string_printf(c, CONFIG,
+			FATAL_SIGNAL == 5 ? 100 : 2000,
+			PORT, PORT + 1, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	g_string_free(c, TRUE);
 
