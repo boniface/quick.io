@@ -23,9 +23,14 @@
  */
 #define QEV_CLIENT client
 
+#ifdef QIO_SERVER
+	#include "http-parser/http_parser.h"
+	#include "quick-event/src/qev.h"
+#else
+	#include "quick-event/qev.h"
+#endif
+
 #include <gmodule.h>
-#include "../lib/http-parser/http_parser.h"
-#include "../lib/quick-event/include/qev.h"
 #include "evs.h"
 #include "apps.h"
 #include "client.h"

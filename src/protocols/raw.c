@@ -88,13 +88,13 @@ GString* protocol_raw_frame(
 	const evs_cb_t server_cb,
 	const gchar *json)
 {
-	gchar size[sizeof(guint64)];
+	guint64 size;
 	GString *buff = qev_buffer_get();
 	GString *e = protocol_raw_format(ev_path, ev_extra, server_cb, json);
 
-	*((guint64*)size) = GUINT64_TO_BE(e->len);
+	size = GUINT64_TO_BE(e->len);
 
-	g_string_append_len(buff, size, sizeof(size));
+	g_string_append_len(buff, (gchar*)&size, sizeof(size));
 	g_string_append_len(buff, e->str, e->len);
 
 	qev_buffer_put(e);

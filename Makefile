@@ -10,7 +10,7 @@ MAKEFLAGS += --no-print-directory
 #
 # USE_VALGRIND = 1
 
-export CC = gcc
+export CC = clang
 
 LIB_DIR = lib
 SRC_DIR = src
@@ -78,6 +78,8 @@ CFLAGS = \
 	--param=ssp-buffer-size=4 \
 	-D_FORTIFY_SOURCE=2 \
 	-std=gnu99 \
+	-DQIO_SERVER \
+	-I$(CURDIR)/$(LIB_DIR) \
 	-I$(CURDIR)/$(SRC_DIR) \
 	$(shell pkg-config --cflags $(LIBS))
 
@@ -99,7 +101,7 @@ CFLAGS_DEBUG = \
 	-fno-inline \
 	-DQEV_LOG_DEBUG
 
-CFLAGS_BENCH = \
+CFLAGS_PROD = \
 	-O3
 
 LDFLAGS = \
@@ -117,6 +119,9 @@ LDFLAGS_TEST = \
 	-rdynamic \
 	--coverage \
 	$(shell pkg-config --libs $(LIBS_TEST))
+
+LDFLAGS_PROD = \
+	$(LIBQEV)
 
 ifdef USE_VALGRIND
 	CFLAGS += -DFATAL_SIGNAL=9
@@ -147,6 +152,12 @@ run: LDFLAGS += $(LDFLAGS_DEBUG)
 run: $(BINARY)
 	$(MEMTEST) ./$(BINARY)
 
+prod: CFLAGS += $(CFLAGS_PROD)
+prod: LDFLAGS += $(LDFLAGS_PROD)
+prod: $(BINARY)
+prod:
+	./$(BINARY)
+
 test: $(TESTS)
 	./lib/quick-event/ext/gcovr \
 		--root=. \
@@ -171,6 +182,7 @@ clean:
 	$(MAKE) -C lib/quick-event/ clean
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f $(BINARY)
+	$(MAKE) -C docs clean
 
 $(BINARY): $(BIN_OBJECTS) $(LIBQEV)
 	@echo '-------- Compiling quickio --------'
@@ -193,7 +205,7 @@ $(TEST_APPS_DIR)/%.so: $(TEST_APPS_DIR)/%.c $(HEADERS)
 	@cd $(TEST_APPS_DIR) && $(CC) -shared -fPIC $(CFLAGS) $*.c -o $*.so
 
 $(TEST_DIR)/test_%: CFLAGS += $(CFLAGS_TEST)
-$(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_BENCH)
+$(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_PROD)
 $(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
