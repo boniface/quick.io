@@ -27,9 +27,23 @@ static qev_stats_counter_t *_offs = NULL;
 static qev_stats_timer_t *_timer = NULL;
 static qev_stats_timer_t *_timer_mon = NULL;
 
+static gint64 _sane_value = 0;
+
 struct _work {
 	GSourceFunc fn;
 	void *data;
+};
+
+static struct qev_cfg _cfg[] = {
+	{	.name = "sane-value",
+		.description = "A sane value",
+		.type = QEV_CFG_INT64,
+		.val.i64 = &_sane_value,
+		.defval.i64 = 10,
+		.validate = NULL,
+		.cb = NULL,
+		.read_only = TRUE,
+	},
 };
 
 static void _do_work(GSourceFunc fn, void *data)
@@ -60,11 +74,12 @@ static enum evs_status _stats_handler(
 		g_usleep(10);
 	});
 
-	qev_json_pack(buff, "[%d,%d,%d,%d]",
+	qev_json_pack(buff, "[%d,%d,%d,%d,%d]",
 					qev_stats_counter_get(_ons),
 					qev_stats_counter_get(_offs),
 					qev_stats_gauge_get(_gauge),
-					qev_stats_gauge_get(_gauge_mon));
+					qev_stats_gauge_get(_gauge_mon),
+					_sane_value);
 	evs_cb(client, client_cb, buff->str);
 
 	qev_buffer_put(buff);
@@ -216,6 +231,8 @@ static gboolean _app_init()
 						NULL, _delayed_reject_on, NULL, FALSE);
 	_ev_with_send = evs_add_handler(EV_PREFIX, "/with-send",
 						NULL, _with_send_on, NULL, FALSE);
+
+	qev_cfg_add("test_app_sane", _cfg, G_N_ELEMENTS(_cfg));
 
 	return TRUE;
 }

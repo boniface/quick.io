@@ -48,7 +48,14 @@ static void _add_app(
 	app->mod = g_module_open(full_path->str, G_MODULE_BIND_LOCAL);
 	ASSERT(app->mod != NULL,
 			"Could not open app %s (%s): %s", name, full_path->str,
-			g_module_error())
+			g_module_error());
+
+	/*
+	 * For config: unloading modules causes segfaults on exit because the
+	 * modules can be closed an removed from memory. Keep them in memory at
+	 * all times: not like they can be removed at runtime anyway.
+	 */
+	g_module_make_resident(app->mod);
 
 	for (i = 0; i < _apps->len; i++) {
 		struct app *oapp = g_ptr_array_index(_apps, i);
@@ -86,7 +93,6 @@ static void _cleanup()
 		struct app *app = g_ptr_array_index(_apps, i);
 		ASSERT(app->exit(), "App failed to exit: %s", app->name);
 		g_free(app->name);
-		g_module_close(app->mod);
 		g_slice_free1(sizeof(*app), app);
 	}
 
