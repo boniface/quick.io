@@ -103,9 +103,9 @@ struct client {
  * @param client
  *     The client to create a callback for
  * @param cb_fn
- *     The function to call when the client triggers the callback. @args{not-null}
+ *     The function to call when the client triggers the callback. @arg{not-null}
  * @param cb_data
- *     Data to come with the callback @args{transfer-full}
+ *     Data to come with the callback @arg{transfer-full}
  * @param free_fn
  *     Frees cb_data
  *
@@ -143,7 +143,7 @@ enum evs_status client_cb_fire(
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question @args{transfer-none}
+ *     The subscription in question @arg{transfer-none}
  *
  * @return
  *     If the client has the subscription
@@ -156,7 +156,7 @@ gboolean client_sub_has(struct client *client, struct subscription *sub);
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question @args{transfer-full}
+ *     The subscription in question @arg{transfer-full}
  *
  * @return
  *     If the subscription was successful.
@@ -169,7 +169,7 @@ gboolean client_sub_add(struct client *client, struct subscription *sub);
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question @args{transfer-none}
+ *     The subscription in question @arg{transfer-none}
  *
  * @return
  *     If the subscription was removed.

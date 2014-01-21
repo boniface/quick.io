@@ -275,7 +275,7 @@ enum evs_status evs_no_on(const struct evs_on_info *info);
  * Given a path, clean is up such that is matches exactly what QIO expects
  * paths to be.
  *
- * @param prefix
+ * @param ev_prefix
  *     The prefix to prepend to the path
  * @param ev_path
  *     The event path
@@ -284,7 +284,7 @@ enum evs_status evs_no_on(const struct evs_on_info *info);
  *
  * @return
  *     The cleaned path. qev_buffer_put when you're done with it.
- *     @args{transfer-full}
+ *     @arg{transfer-full}
  */
 GString* evs_clean_path(
 	const gchar *ev_prefix,
@@ -361,7 +361,7 @@ void evs_send(
  * @param cb_fn
  *     The function to execute on callback
  * @param cb_data
- *     Data to pass into the function @args{transfer-full}
+ *     Data to pass into the function @arg{transfer-full}
  * @param free_fn
  *     Frees the cb_data
  */
@@ -395,7 +395,7 @@ void evs_send_full(
  * @param cb_fn
  *     Function to execute on callback
  * @param cb_data
- *     Data to pass into the function @args{transfer-full}
+ *     Data to pass into the function @arg{transfer-full}
  * @param free_fn
  *     Frees the cb_data
  */
@@ -416,12 +416,8 @@ void evs_send_bruteforce(
  * @param success
  *     If the checks were successful and the client should be added to the
  *     subscription. An error callback is sent if false.
- * @param client
- *     The client to subscribe
- * @param sub
- *     The subscription to put the client in
- * @param client_cb
- *     The callback to send to the client
+ * @param info
+ *     The callback information, originally given with the callback
  */
 void evs_on_cb(
 	const gboolean success,
@@ -493,12 +489,12 @@ void evs_cb(
  *     Any data to include with the callback
  * @param cb_fn
  *     The function to be called when the client responds to the server
- *     callback. @args{allow-null}
+ *     callback. @arg{allow-null}
  * @param cb_data
  *     Data to be given back to the callback when the client responds
- *     @args{transfer-full}
+ *     @arg{transfer-full}
  * @param free_fn
- *     Function that frees cb_data @args{allow-null}
+ *     Function that frees cb_data @arg{allow-null}
  */
 void evs_cb_with_cb(
 	struct client *client,
@@ -556,7 +552,7 @@ void evs_err_cb(
  *     callback.
  * @param cb_data
  *     Data to be given back to the callback when the client responds
- *     @args{transfer-full}
+ *     @arg{transfer-full}
  * @param free_fn
  *     Function that frees cb_data
  */

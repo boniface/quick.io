@@ -1,6 +1,6 @@
 /**
  * Every configuration option that QIO has.
- * @file config.h
+ * @file quick.io/src/config.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2013 iHeartRadio

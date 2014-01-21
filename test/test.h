@@ -59,12 +59,10 @@ qev_fd_t test_client();
 /**
  * Send a message from the client to the server.
  *
- * @param tclient
+ * @param tc
  *     The test client to write to
  * @param data
  *     The data to frame and send
- * @param len
- *     The length of the data. 0 to strlen() it data to find out.
  */
 void test_send(
 	qev_fd_t tc,
@@ -73,7 +71,7 @@ void test_send(
 /**
  * Send a message from the client to the server.
  *
- * @param tclient
+ * @param tc
  *     The test client to write to
  * @param data
  *     The data to frame and send
@@ -88,7 +86,7 @@ void test_send_len(
 /**
  * Receive a message from the server to the client.
  *
- * @param tclient
+ * @param tc
  *     The client to read from.
  * @param data
  *     Where the data should be put. Will be null-terminated.

@@ -1,6 +1,6 @@
 /**
  * For doing fast lookups of ev_path -> handler.
- * @file events_query.h
+ * @file evs_query.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2013 iHeartRadio

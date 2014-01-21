@@ -1,4 +1,4 @@
-.PHONY: clean test
+.PHONY: clean docs test
 
 #
 # Hide annoying messages
@@ -153,6 +153,13 @@ test: $(TESTS)
 		--exclude=test \
 		--exclude=lib \
 		--exclude='.*\.h'
+
+docs:
+	$(MAKE) -C docs html
+	doxygen
+
+docs-watch:
+	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
 
 clean:
 	find -name '*.gcno' -exec rm {} \;

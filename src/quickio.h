@@ -12,14 +12,19 @@
 #pragma once
 
 #ifndef G_LOG_DOMAIN
+	/**
+	 * We log to quickio. Apps should override to log to their own names.
+	 */
 	#define G_LOG_DOMAIN "quickio"
 #endif
 
+/**
+ * Our client is of type `struct client`
+ */
 #define QEV_CLIENT client
 
 #include <gmodule.h>
 #include "../lib/http-parser/http_parser.h"
-#include "apps_export.h"
 #include "../lib/quick-event/include/qev.h"
 #include "evs.h"
 #include "apps.h"
