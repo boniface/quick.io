@@ -6,11 +6,8 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
-// #define APP_ENABLE_DEBUG
 #define G_LOG_DOMAIN "test_app_failures"
-
-#include "../../include/quickio_app.h"
-#include <stdio.h>
+#include "quickio.h"
 
 static gboolean _app_exit()
 {

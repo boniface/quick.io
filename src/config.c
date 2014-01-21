@@ -61,7 +61,7 @@ static struct qev_cfg _cfg[] = {
 	{	.name = "bind-address",
 		.description = "Address to bind to for plaintext connections. "
 						"NULL to disable plaintext",
-		.type = qev_cfg_str,
+		.type = QEV_CFG_STR,
 		.val.str = &cfg_bind_address,
 		.defval.str = "0.0.0.0",
 		.validate = NULL,
@@ -70,7 +70,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "bind-port",
 		.description = "Port to bind to for plaintext connections.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_bind_port,
 		.defval.ui64 = 8080,
 		.validate = _validate_port,
@@ -80,7 +80,7 @@ static struct qev_cfg _cfg[] = {
 	{	.name = "bind-address-ssl",
 		.description = "Address to bind to for SSL connections. "
 						"NULL to disable SSL.",
-		.type = qev_cfg_str,
+		.type = QEV_CFG_STR,
 		.val.str = &cfg_bind_address_ssl,
 		.defval.str = NULL,
 		.validate = NULL,
@@ -89,7 +89,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "bind-port-ssl",
 		.description = "Port to bind to for SSL connections.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_bind_port_ssl,
 		.defval.ui64 = 4433,
 		.validate = _validate_port,
@@ -98,7 +98,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "broadcast-threads",
 		.description = "Number of threads used to pump out each broadcasted message.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_broadcast_threads,
 		.defval.ui64 = 2,
 		.validate = NULL,
@@ -110,7 +110,7 @@ static struct qev_cfg _cfg[] = {
 						"This is used to control memory limits on the server. "
 						"As an approximation, every 2^21 subscriptions use 1GB "
 						"of RAM.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_clients_max_subs,
 		.defval.ui64 = 4194304,
 		.validate = NULL,
@@ -124,7 +124,7 @@ static struct qev_cfg _cfg[] = {
 						"(MAX(1, num_subscriptions / num_clients)), whereas 0 is "
 						"first-come, first-serve. A value in the middle balances "
 						"the two extremes.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_clients_subs_fairness,
 		.defval.ui64 = 80,
 		.validate = _validate_client_subs_fairness,
@@ -133,7 +133,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "heartbeat-threads",
 		.description = "Number of threads used to pump out heartbeats.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_heartbeat_threads,
 		.defval.ui64 = 8,
 		.validate = NULL,
@@ -143,7 +143,7 @@ static struct qev_cfg _cfg[] = {
 	{	.name = "heartbeat-interval",
 		.description = "How often the clients should be polled to see if "
 						"they need heartbeats.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_heartbeat_interval,
 		.defval.ui64 = 10,
 		.validate = _validate_heartbeat_interval,
@@ -156,7 +156,7 @@ static struct qev_cfg _cfg[] = {
 						"starting from _your_ certificate on top, all "
 						"intermediaries, then the root CA. Typically, this is "
 						"an RSA certificate.",
-		.type = qev_cfg_str,
+		.type = QEV_CFG_STR,
 		.val.str = &cfg_ssl_cert_path_0,
 		.defval.str = NULL,
 		.validate = NULL,
@@ -165,7 +165,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "ssl-key-path-0",
 		.description = "The key that corresponds to certificate 0.",
-		.type = qev_cfg_str,
+		.type = QEV_CFG_STR,
 		.val.str = &cfg_ssl_key_path_0,
 		.defval.str = NULL,
 		.validate = NULL,
@@ -178,7 +178,7 @@ static struct qev_cfg _cfg[] = {
 						"starting from _your_ certificate on top, all "
 						"intermediaries, then the root CA. Typically, this is "
 						"an ECDSA certificate.",
-		.type = qev_cfg_str,
+		.type = QEV_CFG_STR,
 		.val.str = &cfg_ssl_cert_path_1,
 		.defval.str = NULL,
 		.validate = NULL,
@@ -187,7 +187,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "ssl-key-path-1",
 		.description = "The key that corresponds to certificate 1.",
-		.type = qev_cfg_str,
+		.type = QEV_CFG_STR,
 		.val.str = &cfg_ssl_key_path_1,
 		.defval.str = NULL,
 		.validate = NULL,
@@ -198,7 +198,7 @@ static struct qev_cfg _cfg[] = {
 		.description = "The minimum size for subscription arrays. Should be "
 						"a power of 2. Any changes at runtime are only applied "
 						"to new subscriptions.",
-		.type = qev_cfg_uint64,
+		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_sub_min_size,
 		.defval.ui64 = 8192,
 		.validate = _validate_sub_min_size,

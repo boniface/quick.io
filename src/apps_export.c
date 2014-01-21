@@ -142,7 +142,7 @@ static gboolean _json_unpack(
 	status = qev_json_vunpack(json, NULL, spec, args);
 	va_end(args);
 
-	return status == qev_json_ok;
+	return status == QEV_JSON_OK;
 }
 
 static gboolean _json_pack(
@@ -157,7 +157,7 @@ static gboolean _json_pack(
 	status = qev_json_vpack(buff, spec, args);
 	va_end(args);
 
-	return status == qev_json_ok;
+	return status == QEV_JSON_OK;
 }
 
 static struct qio_exports _exports = {

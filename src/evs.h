@@ -18,6 +18,164 @@
 #define EVS_NO_CALLBACK (0l)
 
 /**
+ * Callbacks are just gigantic integers, 0 meaning "no callback".
+ */
+typedef guint64 evs_cb_t;
+
+/**
+ * The handler function type.
+ *
+ * @param client
+ *     The client that triggered the event.
+ */
+typedef enum evs_status (*evs_handler_fn)(
+	struct client *client,
+	const gchar *ev_extra,
+	const evs_cb_t client_cb,
+	gchar *json);
+
+/**
+ * The handler for when a client unsubscribes.
+ *
+ * @param client
+ *     The client that unsubscribed.
+ */
+typedef void (*evs_off_fn)(
+	struct client *client,
+	const gchar *ev_extra);
+
+/**
+ * Function called when the client sends a callback to the server
+ */
+typedef enum evs_status (*evs_cb_fn)(
+	struct client *client,
+	const evs_cb_t client_cb,
+	gchar *json);
+
+/**
+ * From handlers, these values instruct the server how to handle everything
+ */
+enum evs_status {
+	/**
+	 * The event was handled and a default callback should be sent, if
+	 * the client requested.
+	 *
+	 * For subscriptions, this indicates that a subscription is valid
+	 * and should be accepted.
+	 */
+	EVS_STATUS_OK,
+
+	/**
+	 * There was an error with the handler and a generic error should be
+	 * sent back to the client.
+	 *
+	 * For subscriptions, this indicates that a subscription is invalid
+	 * and should be rejected.
+	 */
+	EVS_STATUS_ERR,
+
+	/**
+	 * The event was handled and any necessary callbacks (including error
+	 * callbacks) have been dispatched by the handler / are going to be
+	 * dispatched in the future when data becomes available.
+	 *
+	 * For subscriptions, this indicates that the subscription_handler
+	 * has already / will dispatch the correct subscription callbacks
+	 * when it can.
+	 */
+	EVS_STATUS_HANDLED,
+};
+
+/**
+ * Codes used for callbacks.
+ * We're not doing anything HTTP with QIO, but the HTTP error codes are pretty
+ * well know, so reusing what already exists just makes more sense.
+ */
+enum evs_code {
+	/**
+	 * Everything went as expected
+	 */
+	CODE_OK = 200,
+
+	/**
+	 * Malformed data was sent. It's not fatal, just annoying.
+	 */
+	CODE_BAD = 400,
+
+	/**
+	 * You're not allowed to do that.
+	 */
+	CODE_UNAUTH = 401,
+
+	/**
+	 * Yeah, I'm going to need you to go ahead and not use something that
+	 * doesn't exist.
+	 */
+	CODE_NOT_FOUND = 404,
+
+	/**
+	 * The server understood the request but needs to client to calm down.
+	 * Aka. you've been rate-limited.
+	 */
+	CODE_ENHANCE_CALM = 420,
+
+	/**
+	 * An unknown error occurred
+	 */
+	CODE_UNKNOWN = 500,
+};
+
+/**
+ * Contains all the fields necessary to send a callback to a client about
+ * a subscription.
+ *
+ * To make a copy of this struct, use: qio.evs_on_info_copy(). To free the
+ * memory allocated from there, use qio.evs_on_info_free().
+ */
+struct evs_on_info {
+	/**
+	 * Any extra parameters sent with the event
+	 */
+	gchar *ev_extra;
+
+	/**
+	 * Reference to the susbcription. Apps should consider this completely
+	 * opaque and MAY NEVER touch it.
+	 */
+	struct subscription *sub;
+
+ 	/**
+ 	 * The client that sent the subscription
+ 	 */
+	struct client *client;
+
+	/**
+	 * The callback id to be sent. Don't mess with this.
+	 */
+	evs_cb_t client_cb;
+};
+
+/**
+ * The handler for when a client subscribes.
+ *
+ * @todo Indicate if there are already clients subscribed to the event
+ *
+ * @param info
+ *     A self-contained struct of info that can be hurled around; contains
+ *     all information needed to send a subscribe callback to a client. If
+ *     you intend on returning EVS_STATUS_HANDLED and are passing this
+ *     struct to another thread or using it anywhere else, you MUST use
+ *     qio.evs_on_info_copy() to make sure all references this struct contains
+ *     are usable (qio.evs_on_info_free() cleans it all up).
+ * @param ev_extra
+ *     Any extra paramters that came with the subscription
+ *
+ * @return
+ *     What should be done with the subscription.
+ */
+typedef enum evs_status (*evs_on_fn)(const struct evs_on_info *info);
+
+/**
  * Events are stored in a prefix tree for fast, nice lookups.
  */
 struct event {
@@ -82,7 +240,7 @@ void event_clear(struct event *ev);
 /**
  * Creates a handler for an event
  *
- * @param prefix
+ * @param ev_prefix
  *     A prefix to add to the event path
  * @param ev_path
  *     The path for the event
@@ -99,6 +257,7 @@ void event_clear(struct event *ev);
  *     /test/event/path, /test/event/other, /test/event/more.
  */
 struct event* evs_add_handler(
+	const gchar *ev_prefix,
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
 	const evs_on_fn on_fn,
@@ -114,9 +273,23 @@ enum evs_status evs_no_on(const struct evs_on_info *info);
 
 /**
  * Given a path, clean is up such that is matches exactly what QIO expects
- * paths to be
+ * paths to be.
+ *
+ * @param prefix
+ *     The prefix to prepend to the path
+ * @param ev_path
+ *     The event path
+ * @param ev_extra
+ *     Any extra path segments
+ *
+ * @return
+ *     The cleaned path. qev_buffer_put when you're done with it.
+ *     @args{transfer-full}
  */
-void evs_clean_path(gchar *path);
+GString* evs_clean_path(
+	const gchar *ev_prefix,
+	const gchar *ev_path,
+	const gchar *ev_extra);
 
 /**
  * Routes an event from a client.
@@ -169,8 +342,8 @@ void evs_on(
  *     Any data to include with the event
  */
 void evs_send(
-	client_t *client,
-	event_t *ev,
+	struct client *client,
+	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json);
 
@@ -193,8 +366,8 @@ void evs_send(
  *     Frees the cb_data
  */
 void evs_send_full(
-	client_t *client,
-	event_t *ev,
+	struct client *client,
+	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json,
 	const evs_cb_fn cb_fn,
@@ -211,6 +384,8 @@ void evs_send_full(
  *
  * @param client
  *     The client to send the event to
+ * @param ev_prefix
+ *     A prefix to add to the event path
  * @param ev_path
  *     The event path to brute force
  * @param ev_extra
@@ -226,6 +401,7 @@ void evs_send_full(
  */
 void evs_send_bruteforce(
 	struct client *client,
+	const gchar *ev_prefix,
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const gchar *json,
@@ -301,7 +477,7 @@ void evs_off(
  *     Any data to include with the callback
  */
 void evs_cb(
-	client_t *client,
+	struct client *client,
 	const evs_cb_t client_cb,
 	const gchar *json);
 
@@ -349,7 +525,7 @@ void evs_cb_with_cb(
  *     Any data to include with the callback
  */
 void evs_err_cb(
-	client_t *client,
+	struct client *client,
 	const evs_cb_t client_cb,
 	const enum evs_code code,
 	const gchar *err_msg,
@@ -385,7 +561,7 @@ void evs_err_cb(
  *     Function that frees cb_data
  */
 void evs_cb_full(
-	client_t *client,
+	struct client *client,
 	const evs_cb_t client_cb,
 	const enum evs_code code,
 	const gchar *err_msg,
@@ -405,7 +581,7 @@ void evs_cb_full(
  *     The json to send to everyone
  */
 void evs_broadcast(
-	event_t *ev,
+	struct event *ev,
 	const gchar *ev_extra,
 	const gchar *json);
 

@@ -281,5 +281,5 @@ void client_close(struct client *client)
 
 void client_init()
 {
-	_total_subs = qev_stats_counter("clients.total_subs", FALSE);
+	_total_subs = qev_stats_counter("clients", "total_subs", FALSE);
 }

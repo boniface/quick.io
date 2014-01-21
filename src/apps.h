@@ -13,6 +13,26 @@
 #include "quickio.h"
 
 /**
+ * Used to verify that modules are QIO apps.
+ */
+#define QIO_MAGIC_NUM 0xfc63e18a
+
+/**
+ * For an app: sets up all the necessary callbacks
+ */
+#define QUICKIO_APP(init, run, exit, test) \
+	guint __qio_is_app = QIO_MAGIC_NUM; \
+	gboolean __qio_app_init() \
+	{ \
+		return init(); } \
+	gboolean __qio_app_exit() \
+	{ \
+		return exit(); } \
+	gboolean __qio_app_test() \
+	{ \
+		return test(); }
+
+/**
  * Callback type expected from the apps
  */
 typedef gboolean (*qio_app_cb)();
@@ -22,14 +42,9 @@ typedef gboolean (*qio_app_cb)();
  */
 struct app {
 	/**
-	 * The name of the app. If starts with /, it's the same as the prefix
+	 * The name of the app, just for logging purposes.
 	 */
 	gchar *name;
-
-	/**
-	 * A prefix that should be forced on everything the app does
-	 */
-	gchar *prefix;
 
 	/**
 	 * The actual module. Closed when QIO is shutting down.
@@ -39,7 +54,7 @@ struct app {
 	/**
 	 * Default setup and run function.
 	 */
-	gboolean (*init)(void *app, struct qio_exports exports);
+	qio_app_cb init;
 
 	/**
 	 * Makes the app exit
@@ -56,3 +71,9 @@ struct app {
  * Listens for new apps in configuration and runs them as they're discovered.
  */
 void apps_init();
+
+/**
+ * If the app doesn't want to implement one of the functions, this may be
+ * used as a shorcut
+ */
+static G_GNUC_UNUSED gboolean qio_app_noop() { return TRUE; }

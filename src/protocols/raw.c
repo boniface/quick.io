@@ -15,7 +15,7 @@
 #define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x15""/qio/heartbeat:0=null"
 
 static enum evs_status _heartbeat_cb(
-	client_t *client G_GNUC_UNUSED,
+	struct client *client G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
 	gchar *json G_GNUC_UNUSED)
 {
@@ -134,7 +134,7 @@ void protocol_raw_do_heartbeat(
 		qev_close(client, RAW_HEARTATTACK);
 		return;
 	} else if (client->last_recv < hb->challenge) {
-		evs_send_bruteforce(client, "/qio/heartbeat", NULL, NULL,
+		evs_send_bruteforce(client, "/qio", "/heartbeat", NULL, NULL,
 						_heartbeat_cb, NULL, NULL);
 	} else if (client->last_send < hb->heartbeat) {
 		qev_write(client, heartbeat, heartbeat_len);

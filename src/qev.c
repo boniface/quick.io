@@ -46,10 +46,12 @@ void qev_on_udp(
 
 void qev_on_exit() {}
 
-struct client* qev_client_new() {
+struct client* qev_client_new()
+{
 	return g_slice_alloc0(sizeof(struct client));
 }
 
-void qev_client_free(struct client *client) {
+void qev_client_free(struct client *client)
+{
 	g_slice_free1(sizeof(*client), client);
 }

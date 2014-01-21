@@ -99,6 +99,7 @@ void event_clear(struct event *ev)
 }
 
 struct event* evs_add_handler(
+	const gchar *prefix,
 	const gchar *ev_path,
 	const evs_handler_fn handler_fn,
 	const evs_on_fn on_fn,
@@ -106,24 +107,38 @@ struct event* evs_add_handler(
 	const gboolean handle_children)
 {
 	struct event *ev;
-	gchar *ep = g_strdup(ev_path);
+	GString *ep = evs_clean_path(prefix, ev_path, NULL);
 
-	evs_clean_path(ep);
-
-	ev = evs_query_insert(ep, handler_fn, on_fn, off_fn, handle_children);
+	ev = evs_query_insert(ep->str, handler_fn, on_fn, off_fn, handle_children);
 	if (ev == NULL) {
-		WARN("Failed to create event \"%s\": event already exists.", ep);
+		WARN("Failed to create event \"%s\": event already exists.", ep->str);
 	}
 
-	g_free(ep);
+	qev_buffer_put(ep);
 
 	return ev;
 }
 
-void evs_clean_path(gchar *path)
+GString* evs_clean_path(
+	const gchar *ev_prefix,
+	const gchar *ev_path,
+	const gchar *ev_extra)
 {
-	gchar *curr = path;
-	gchar *writing = path;
+	gchar *curr;
+	gchar *writing;
+	GString *p = qev_buffer_get();
+
+	g_string_printf(p, "%s/%s/%s",
+		ev_prefix == NULL ? "" : ev_prefix,
+		ev_path == NULL ? "" : ev_path,
+		ev_extra == NULL ? "" : ev_extra);
+
+	if (p->str[0] != '/') {
+		g_string_prepend_c(p, '/');
+	}
+
+	curr = p->str;
+	writing = p->str;
 
 	while (*curr != '\0') {
 		if (_allowed_chars[(guchar)*curr] && writing != curr) {
@@ -138,11 +153,14 @@ void evs_clean_path(gchar *path)
 	}
 
 	// Remove any trailing slash
-	if (*writing != '/' && writing != path) {
+	if (*writing != '/' && writing != p->str) {
 		writing++;
 	}
 
 	*writing = '\0';
+	g_string_set_size(p, writing - p->str);
+
+	return p;
 }
 
 enum evs_status evs_no_on(const struct evs_on_info *info G_GNUC_UNUSED)
@@ -160,8 +178,6 @@ void evs_route(
 	gchar *ev_extra = NULL;
 	enum evs_status status = EVS_STATUS_ERR;
 	enum evs_code code = CODE_UNKNOWN;
-
-	evs_clean_path(ev_path);
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
@@ -280,6 +296,7 @@ void evs_send_full(
 
 void evs_send_bruteforce(
 	struct client *client,
+	const gchar *ev_prefix,
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const gchar *json,
@@ -287,12 +304,11 @@ void evs_send_bruteforce(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	GString *path = qev_buffer_get();
+	GString *path;
 	evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
 	JSON_OR_NULL(json);
 
-	g_string_printf(path, "%s/%s", ev_path, ev_extra ? : "");
-	evs_clean_path(path->str);
+	path = evs_clean_path(ev_prefix, ev_path, ev_extra);
 
 	protocols_send(client, path->str, "", server_cb, json);
 

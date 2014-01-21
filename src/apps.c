@@ -35,7 +35,6 @@ static void _add_app(
 	struct app *app = g_slice_alloc0(sizeof(*app));
 
 	app->name = g_strdup(name);
-	app->prefix = g_strdup(name[0] == '/' ? name : "");
 
 	ASSERT(valsc == 1, "Expected single path for %s, found %" G_GSIZE_FORMAT,
 				name, valsc);
@@ -71,7 +70,7 @@ static void _add_app(
 		CALLBACKS
 	#undef X
 
-	ASSERT(app->init(app, apps_export_get_fns()),
+	ASSERT(app->init(),
 			"Could not initialize app (%s): init() failed",
 			name);
 
@@ -87,7 +86,6 @@ static void _cleanup()
 		struct app *app = g_ptr_array_index(_apps, i);
 		ASSERT(app->exit(), "App failed to exit: %s", app->name);
 		g_free(app->name);
-		g_free(app->prefix);
 		g_module_close(app->mod);
 		g_slice_free1(sizeof(*app), app);
 	}

@@ -12,10 +12,10 @@ START_TEST(test_evs_multiple_add_handler)
 {
 	struct event *ev;
 
-	ev = evs_add_handler("/multiple_add", NULL, NULL, NULL, TRUE);
+	ev = evs_add_handler(NULL, "/multiple_add", NULL, NULL, NULL, TRUE);
 	ck_assert(ev != NULL);
 
-	ev = evs_add_handler("/multiple_add", NULL, NULL, NULL, TRUE);
+	ev = evs_add_handler("", "/multiple_add", NULL, NULL, NULL, TRUE);
 	ck_assert(ev == NULL);
 }
 END_TEST
@@ -24,14 +24,48 @@ START_TEST(test_evs_root_handler)
 {
 	struct event *ev;
 
-	ev = evs_add_handler("/", NULL, NULL, NULL, TRUE);
+	ev = evs_add_handler("", "/", NULL, NULL, NULL, TRUE);
 	ck_assert(ev == NULL);
 
-	ev = evs_add_handler("", NULL, NULL, NULL, TRUE);
+	ev = evs_add_handler(NULL, "", NULL, NULL, NULL, TRUE);
 	ck_assert(ev == NULL);
 
-	ev = evs_add_handler("/t", NULL, NULL, NULL, TRUE);
+	ev = evs_add_handler(NULL, "/t", NULL, NULL, NULL, TRUE);
 	ck_assert(ev != NULL);
+
+	ev = evs_add_handler("meow", "/t", NULL, NULL, NULL, TRUE);
+	ck_assert(ev != NULL);
+}
+END_TEST
+
+START_TEST(test_evs_clean_path)
+{
+	GString *p;
+
+	p = evs_clean_path(NULL, NULL, NULL);
+	ck_assert_str_eq(p->str, "");
+	ck_assert_int_eq(p->len, 0);
+	qev_buffer_put(p);
+
+	p = evs_clean_path("", "", "");
+	ck_assert_str_eq(p->str, "");
+	ck_assert_int_eq(p->len, 0);
+	qev_buffer_put(p);
+
+	p = evs_clean_path("/", "/", "/");
+	ck_assert_str_eq(p->str, "");
+	ck_assert_int_eq(p->len, 0);
+	qev_buffer_put(p);
+
+	p = evs_clean_path("/a", "/b", "/c");
+	ck_assert_str_eq(p->str, "/a/b/c");
+	ck_assert_int_eq(p->len, 6);
+	qev_buffer_put(p);
+
+	p = evs_clean_path("", "/b", "/c//////////////");
+	ck_assert_str_eq(p->str, "/b/c");
+	ck_assert_int_eq(p->len, 4);
+	qev_buffer_put(p);
 }
 END_TEST
 
@@ -254,6 +288,7 @@ int main()
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_evs_multiple_add_handler);
 	tcase_add_test(tcase, test_evs_root_handler);
+	tcase_add_test(tcase, test_evs_clean_path);
 
 	tcase = tcase_create("Clients");
 	suite_add_tcase(s, tcase);

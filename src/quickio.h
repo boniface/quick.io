@@ -11,19 +11,20 @@
 
 #pragma once
 
-#define QUICKIO_SERVER
-#define G_LOG_DOMAIN "quickio"
+#ifndef G_LOG_DOMAIN
+	#define G_LOG_DOMAIN "quickio"
+#endif
+
 #define QEV_CLIENT client
 
 #include <gmodule.h>
 #include "../lib/http-parser/http_parser.h"
 #include "apps_export.h"
-#include "../include/quickio_app.h"
 #include "../lib/quick-event/include/qev.h"
+#include "evs.h"
 #include "apps.h"
 #include "client.h"
 #include "config.h"
-#include "evs.h"
 #include "evs_qio.h"
 #include "evs_query.h"
 #include "sub.h"

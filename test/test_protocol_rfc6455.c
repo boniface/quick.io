@@ -383,7 +383,7 @@ START_TEST(test_rfc6455_encode_medium)
 
 	g_string_set_size(json, 256);
 	memset(json->str, 'a', json->len);
-	evs_send_bruteforce(client, "/test", "/2", json->str, NULL, NULL, NULL);
+	evs_send_bruteforce(client, "/test", "/2", "", json->str, NULL, NULL, NULL);
 
 	err = recv(tc, buff, sizeof(buff), 0);
 	buff[err] = '\0';
@@ -408,7 +408,7 @@ START_TEST(test_rfc6455_encode_long)
 
 	g_string_set_size(json, 0xffff + 1);
 	memset(json->str, 'a', json->len);
-	evs_send_bruteforce(client, "/test", "/2", json->str, NULL, NULL, NULL);
+	evs_send_bruteforce(client, "/test", "/2", "", json->str, NULL, NULL, NULL);
 
 	err = recv(tc, buff, sizeof(buff), 0);
 	buff[err] = '\0';

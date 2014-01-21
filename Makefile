@@ -12,22 +12,20 @@ MAKEFLAGS += --no-print-directory
 
 export CC = gcc
 
-LIB_DIR = lib
-SRC_DIR = src
-TEST_DIR = test
+CWD ?= $(CURDIR)
+LIB_DIR = $(CWD)/lib
+SRC_DIR = $(CWD)/src
+TEST_DIR = $(CWD)/test
 TEST_APPS_DIR = $(TEST_DIR)/apps
-QEV_DIR = lib/quick-event
+QEV_DIR = $(CWD)/lib/quick-event
 
 BINARY = quickio
 
-HEADERS = \
-	$(shell find $(SRC_DIR) -name '*.h') \
-	include/quickio_app.h
+HEADERS = $(shell find $(SRC_DIR) -name '*.h')
 
 OBJECTS = \
 	$(LIB_DIR)/http-parser/http_parser.o \
 	$(SRC_DIR)/apps.o \
-	$(SRC_DIR)/apps_export.o \
 	$(SRC_DIR)/client.o \
 	$(SRC_DIR)/config.o \
 	$(SRC_DIR)/evs.o \
@@ -45,9 +43,6 @@ OBJECTS = \
 BIN_OBJECTS = \
 	$(OBJECTS) \
 	$(SRC_DIR)/main.o
-
-OBJECTS_TEST = \
-	$(patsubst %,../%,$(OBJECTS))
 
 TESTS = \
 	test_apps \
@@ -86,8 +81,7 @@ CFLAGS = \
 
 CFLAGS_OBJ = \
 	$(CFLAGS) \
-	-c \
-	-fvisibility=hidden
+	-c
 
 CFLAGS_TEST = \
 	-g \
@@ -111,12 +105,12 @@ LDFLAGS = \
 	$(shell pkg-config --libs $(LIBS))
 
 LDFLAGS_DEBUG = \
-	$(CURDIR)/$(LIBQEV) \
+	$(LIBQEV) \
 	-g \
 	-rdynamic
 
 LDFLAGS_TEST = \
-	$(CURDIR)/$(LIBQEV_TEST) \
+	$(LIBQEV_TEST) \
 	-g \
 	-rdynamic \
 	--coverage \
@@ -129,8 +123,8 @@ ifdef USE_VALGRIND
 		G_DEBUG=gc-friendly \
 		valgrind \
 			--quiet \
-			--suppressions=../lib/quick-event/test/valgrind.supp \
-			--suppressions=../lib/quick-event/test/valgrind_expected.supp \
+			--suppressions=$(QEV_DIR)/test/valgrind.supp \
+			--suppressions=$(QEV_DIR)/test/valgrind_expected.supp \
 			--tool=memcheck \
 			--leak-check=full \
 			--leak-resolution=high \
@@ -194,7 +188,7 @@ $(TEST_DIR)/bench_%: CFLAGS += $(CFLAGS_BENCH)
 $(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
-	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
+	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS) -o $* $(LDFLAGS)
 
 $(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/%:
-	cd lib/quick-event && $(MAKE) $*
+	cd $(QEV_DIR) && $(MAKE) $*

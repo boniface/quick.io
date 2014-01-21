@@ -22,7 +22,7 @@ START_TEST(test_client_shutdown)
 END_TEST
 
 static enum evs_status _cb1(
-	client_t *client G_GNUC_UNUSED,
+	struct client *client G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
 	gchar *json G_GNUC_UNUSED)
 {
@@ -30,7 +30,7 @@ static enum evs_status _cb1(
 }
 
 static enum evs_status _cb0(
-	client_t *client,
+	struct client *client,
 	const evs_cb_t client_cb,
 	gchar *json G_GNUC_UNUSED)
 {
@@ -41,7 +41,7 @@ static enum evs_status _cb0(
 }
 
 static enum evs_status _handler(
-	client_t *client,
+	struct client *client,
 	const gchar *ev_extra G_GNUC_UNUSED,
 	const evs_cb_t client_cb,
 	gchar *json G_GNUC_UNUSED)
@@ -54,7 +54,7 @@ static enum evs_status _handler(
 static void _setup_callbacks()
 {
 	test_setup();
-	evs_add_handler("/test/client/cb", _handler, NULL, NULL, FALSE);
+	evs_add_handler("/test", "/client/cb", _handler, NULL, NULL, FALSE);
 }
 
 START_TEST(test_client_callbacks)

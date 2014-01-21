@@ -41,7 +41,7 @@ static enum evs_status _off(
 	enum qev_json_status jstatus;
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
-	if (jstatus != qev_json_ok || ev_path == NULL) {
+	if (jstatus != QEV_JSON_OK || ev_path == NULL) {
 		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		return EVS_STATUS_HANDLED;
 	}
@@ -69,7 +69,7 @@ static enum evs_status _on(
 	enum qev_json_status jstatus;
 
 	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
-	if (jstatus != qev_json_ok || ev_path == NULL) {
+	if (jstatus != QEV_JSON_OK || ev_path == NULL) {
 		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
 		goto out;
 	}
@@ -97,8 +97,8 @@ static enum evs_status _ping(
 
 void evs_qio_init()
 {
-	evs_add_handler("/qio/callback", _callback, evs_no_on, NULL, TRUE);
-	evs_add_handler("/qio/off", _off, evs_no_on, NULL, FALSE);
-	evs_add_handler("/qio/on", _on, evs_no_on, NULL, FALSE);
-	evs_add_handler("/qio/ping", _ping, evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio", "/callback", _callback, evs_no_on, NULL, TRUE);
+	evs_add_handler("/qio", "/off", _off, evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio", "/on", _on, evs_no_on, NULL, FALSE);
+	evs_add_handler("/qio", "/ping", _ping, evs_no_on, NULL, FALSE);
 }
