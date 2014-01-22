@@ -92,11 +92,11 @@ START_TEST(test_raw_heartbeats)
 	struct client *client = test_get_client();
 
 	test_heartbeat();
-	test_msg(tc, "/qio/heartbeat:0=null");
 
-	test_heartbeat();
+	// Not expecting a heartbeat on open
+	test_ping(tc);
+
 	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51);
-
 	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:0=null");
 
@@ -110,8 +110,8 @@ START_TEST(test_raw_heartbeats)
 
 	client->last_recv = qev_monotonic - QEV_SEC_TO_USEC(60 * 17);
 	test_heartbeat();
-
 	test_client_dead(tc);
+
 	close(tc);
 }
 END_TEST

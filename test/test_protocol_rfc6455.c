@@ -188,9 +188,13 @@ START_TEST(test_rfc6455_heartbeats)
 	struct client *client = test_get_client();
 
 	test_heartbeat();
+
+	// Not expecting a heartbeat on open
+	ck_assert_int_eq(send(tc, _ping, strlen(_ping), 0), strlen(_ping));
 	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert_int_eq(err, strlen(_ping_response));
 	buff[err] = '\0';
-	ck_assert_str_eq(buff, "\x81\x15""/qio/heartbeat:0=null");
+	ck_assert_str_eq(buff, _ping_response);
 
 	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51);
 	test_heartbeat();
@@ -209,8 +213,8 @@ START_TEST(test_rfc6455_heartbeats)
 
 	err = recv(tc, buff, sizeof(buff), 0);
 	ck_assert(memcmp(buff, "\x88\00", err) == 0);
-
 	test_client_dead(tc);
+
 	close(tc);
 }
 END_TEST
