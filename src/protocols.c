@@ -15,9 +15,13 @@
 #define HANDSHAKED 0x8000
 
 /**
- * Standard heartbeat interval for QIO
+ * Standard heartbeat interval for QIO + 1 seconds. There's a race condition
+ * with client->last_send and the heartbeat timer: since it's measured in
+ * microseconds, minor variations cause it to suddenly be greater than
+ * client->last_send when it really shouldn't. Just give it a slight
+ * passing to ensure that heartbeats are really only sent out every 60 seconds.
  */
-#define HEARTBEAT_INTERVAL QEV_SEC_TO_USEC(60)
+#define HEARTBEAT_INTERVAL QEV_SEC_TO_USEC(61)
 
 /**
  * How often to send a challenge heartbeat
