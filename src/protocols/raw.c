@@ -132,15 +132,13 @@ void protocol_raw_do_heartbeat(
 {
 	if (client->last_recv < hb->dead) {
 		qev_close(client, RAW_HEARTATTACK);
-		return;
 	} else if (client->last_recv < hb->challenge) {
 		evs_send_bruteforce(client, "/qio", "/heartbeat", NULL, NULL,
 						_heartbeat_cb, NULL, NULL);
 	} else if (client->last_send < hb->heartbeat) {
 		qev_write(client, heartbeat, heartbeat_len);
+		client->last_send = qev_monotonic;
 	}
-
-	client->last_send = qev_monotonic;
 }
 
 enum protocol_status protocol_raw_handle(
