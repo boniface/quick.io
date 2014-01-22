@@ -5,6 +5,11 @@
 #
 MAKEFLAGS += --no-print-directory
 
+VERSION_NAME = banished bongo
+VERSION_MAJOR = 0
+VERSION_MINOR = 2
+VERSION_MICRO = 0
+
 #
 # If the test cases should be run in valgrind. Comment this out to disable
 #
@@ -72,7 +77,7 @@ LIBS_TEST = check
 LIBQEV = $(QEV_DIR)/libqev.a
 LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
 
-CFLAGS += \
+CFLAGS = \
 	-Wall \
 	-Wextra \
 	-Werror=format-security \
@@ -82,6 +87,10 @@ CFLAGS += \
 	-D_FORTIFY_SOURCE=2 \
 	-std=gnu99 \
 	-DQIO_SERVER \
+	-DVERSION_NAME="$(VERSION_NAME)" \
+	-DVERSION_MAJOR=$(VERSION_MAJOR) \
+	-DVERSION_MINOR=$(VERSION_MINOR) \
+	-DVERSION_MICRO=$(VERSION_MICRO) \
 	-I$(CURDIR)/$(LIB_DIR) \
 	-I$(CURDIR)/$(SRC_DIR) \
 	$(shell pkg-config --cflags $(LIBS))
@@ -107,7 +116,7 @@ CFLAGS_DEBUG = \
 CFLAGS_RELEASE = \
 	-O3
 
-LDFLAGS += \
+LDFLAGS = \
 	-Wl,-z,relro \
 	-Wl,-z,now \
 	-lm \
@@ -151,8 +160,7 @@ DEBUILD_ARGS = \
 	-uc \
 	-us \
 	-tc \
-	-I.git* \
-	-I*sublime*
+	-I.git*
 
 all:
 	@echo "Choose one of the following:"
