@@ -2,3 +2,4 @@ debian/quickio.files/quickio.pc usr/lib/pkgconfig
 lib/quick-event/src/*.h usr/include/quickio/quick-event
 quickio-testapps usr/bin
 src/*.h usr/include/quickio
+src/protocols/*.h usr/include/quickio/protocols
