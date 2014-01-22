@@ -20,7 +20,7 @@
 /**
  * For an app: sets up all the necessary callbacks
  */
-#define QUICKIO_APP(init, run, exit, test) \
+#define QUICKIO_APP(init, exit, test) \
 	guint __qio_is_app = QIO_MAGIC_NUM; \
 	gboolean __qio_app_init() \
 	{ \

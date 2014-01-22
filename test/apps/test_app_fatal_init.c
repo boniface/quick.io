@@ -17,5 +17,4 @@ static gboolean _app_init()
 QUICKIO_APP(
 	_app_init,
 	qio_app_noop,
-	qio_app_noop,
 	qio_app_noop);
