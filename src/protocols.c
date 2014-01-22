@@ -103,6 +103,7 @@ static void _handshake(struct client *client, void *data)
 
 	switch (status) {
 		case PROT_OK:
+			client->last_send = qev_monotonic;
 			client->protocol_flags |= HANDSHAKED;
 			qev_timeout_clear(&client->timeout);
 			break;
@@ -126,6 +127,8 @@ static void _route(struct client *client)
 
 	switch (status) {
 		case PROT_OK:
+			client->last_recv = qev_monotonic;
+
 			/*
 			 * This isn't too elegant, but this timeout is only ever set
 			 * on connect and in the read thread, so if it's not set,
