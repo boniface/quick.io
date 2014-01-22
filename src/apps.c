@@ -108,16 +108,11 @@ void apps_init()
 	qev_cleanup_fn(_cleanup);
 }
 
-gboolean apps_test()
+void apps_test()
 {
 	guint i;
 	for (i = 0; i < _apps->len; i++) {
 		struct app *app = g_ptr_array_index(_apps, i);
-		if (!app->test()) {
-			CRITICAL("Test failure in app: %s", app->name);
-			return FALSE;
-		}
+		ASSERT(app->test(), "Tests failed in app: %s", app->name);
 	}
-
-	return TRUE;
 }

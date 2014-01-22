@@ -151,6 +151,12 @@ START_TEST(test_apps_on_with_evs_send)
 }
 END_TEST
 
+START_TEST(test_apps_apps_test)
+{
+	apps_test();
+}
+END_TEST
+
 START_TEST(test_apps_error_path)
 {
 	GString *buff = qev_buffer_get();
@@ -230,6 +236,7 @@ int main()
 	tcase_add_test(tcase, test_apps_on_reject);
 	tcase_add_test(tcase, test_apps_on_delayed_reject);
 	tcase_add_test(tcase, test_apps_on_with_evs_send);
+	tcase_add_test(tcase, test_apps_apps_test);
 
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
