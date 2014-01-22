@@ -13,14 +13,14 @@
 
 #define INI_FILE "quickio_testapps.ini"
 #define INI \
+	"[quick-event]\n" \
+	"threads = 2\n" \
 	"[quick.io]\n" \
 	"bind-address = 0.0.0.0\n" \
 	"bind-port = 55439\n" \
-	"run-app-test = true\n" \
-	"threads = 2\n" \
+	"run-app-tests = true\n" \
 	"[quick.io-apps]\n" \
-	"app = %s/%s\n" \
-	"[app]\n"
+	"app = %s/%s\n"
 
 #define GLOB_PATTERN "test_*.so"
 
@@ -48,9 +48,6 @@ static gboolean _parse_args(int argc, gchar **argv)
 
 	if (_quickio_path == NULL) {
 		_quickio_path = "quickio";
-	} else if (!g_file_test(_quickio_path, G_FILE_TEST_EXISTS)) {
-		fprintf(stderr, "QuickIO executable does not exist at \"%s\"", _quickio_path);
-		goto error;
 	}
 
 	// If no apps given, we default to all in the current directory
@@ -78,27 +75,26 @@ error:
 
 int main(int argc, char **argv)
 {
+	gchar *cwd = g_get_current_dir();
+	GString *buff = g_string_sized_new(1024);
+
 	if (!_parse_args(argc, argv)) {
 		return 1;
 	}
 
 	if (_apps == NULL || g_strv_length(_apps) == 0) {
-		fprintf(stderr, "No applications found to test (looking for: " GLOB_PATTERN ").\n");
+		fprintf(stderr, "No applications found to test "
+						"(looking for: " GLOB_PATTERN ").\n");
 		return 2;
 	}
 
-	gchar here[1024];
-	if (getcwd(here, sizeof(here)) == NULL) {
-		perror("Could not get working directory.");
-		return 3;
-	}
-
-	GString *buff = g_string_sized_new(1024);
-
 	for (guint i = 0; i < g_strv_length(_apps); i++) {
-		gchar *app = *(_apps + i);
+		gboolean ok;
+		gint exit_status;
+		GError *error = NULL;
+		gchar *app = _apps[i];
 
-		g_string_printf(buff, INI, here, app);
+		g_string_printf(buff, INI, cwd, app);
 		g_file_set_contents(INI_FILE, buff->str, buff->len, NULL);
 
 		g_string_printf(buff, "Running app tests on: %s", app);
@@ -112,29 +108,29 @@ int main(int argc, char **argv)
 
 		gchar *argv[] = {
 			_quickio_path,
-			"-c",
-			INI_FILE,
+			"--config-file=" INI_FILE,
 			NULL,
 		};
 
-		gint exit_status;
-		GError *error = NULL;
-		gboolean ok = g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+		ok = g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
 								NULL, NULL, &exit_status, &error);
-
 		g_unlink(INI_FILE);
 
 		if (!ok) {
-			printf("Error: %s\n", error->message);
-			return 4;
+			fprintf(stderr, "Error: %s\n", error->message);
+			return 3;
 		}
 
 		if (exit_status != 0) {
-			fprintf(stderr, "\nError: tests failed on \"%s\" (exit status %d). Exiting.\n",
-							app, exit_status);
-			return 4;
+			fprintf(stderr, "\nError: tests failed on \"%s\" "
+						"(exit status %d). Exiting.\n",
+						app, exit_status);
+			return 3;
 		}
 	}
+
+	g_string_free(buff, TRUE);
+	g_free(cwd);
 
 	return 0;
 }

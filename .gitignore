@@ -12,6 +12,7 @@ bench_*
 !test_*.c
 !bench_*.c
 quickio
+quickio-testapps
 test/test_*.ini
 
 /*.sublime*

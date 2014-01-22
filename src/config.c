@@ -150,6 +150,16 @@ static struct qev_cfg _cfg[] = {
 		.cb = NULL,
 		.read_only = TRUE,
 	},
+	{	.name = "run-app-tests",
+		.description = "If QuickIO should run app tests instead of running "
+						"the server.",
+		.type = QEV_CFG_BOOL,
+		.val.bool = &cfg_run_app_tests,
+		.defval.bool = FALSE,
+		.validate = NULL,
+		.cb = NULL,
+		.read_only = TRUE,
+	},
 	{	.name = "ssl-cert-path-0",
 		.description = "The first certificate to use for the SSL connection. "
 						"This MUST be a full certificate chain in PEM format, "

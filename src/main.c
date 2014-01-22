@@ -11,6 +11,14 @@
 int main(int argc, char **argv)
 {
 	qio_main(argc, argv);
-	qev_wait_for_exit();
+
+	if (cfg_run_app_tests) {
+		gboolean good = apps_test();
+		qev_exit();
+		return good == FALSE;
+	} else {
+		qev_wait_for_exit();
+	}
+
 	return 0;
 }

@@ -62,6 +62,11 @@ guint64 cfg_heartbeat_threads;
 guint64 cfg_heartbeat_interval;
 
 /**
+ * If the server should run app tests and exit.
+ */
+gboolean cfg_run_app_tests;
+
+/**
  * The first certificate to use for the SSL connection. This MUST be a full
  * certificate chain in PEM format, starting from _your_ certificate on top,
  * all intermediaries, then the root CA.

@@ -73,6 +73,11 @@ struct app {
 void apps_init();
 
 /**
+ * Runs app->test() on all the apps.
+ */
+gboolean apps_test();
+
+/**
  * If the app doesn't want to implement one of the functions, this may be
  * used as a shorcut
  */

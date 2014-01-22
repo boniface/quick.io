@@ -19,7 +19,7 @@ TEST_APPS_DIR = $(TEST_DIR)/apps
 QEV_DIR = $(CURDIR)/lib/quick-event
 
 BINARY = quickio
-TESTAPPS = quickio-testapps
+BINARY_TESTAPPS = quickio-testapps
 
 HEADERS = $(shell find $(SRC_DIR) -name '*.h')
 
@@ -43,7 +43,7 @@ OBJECTS = \
 OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
 
-BIN_OBJECTS = \
+BINARY_OBJECTS = \
 	$(OBJECTS) \
 	$(SRC_DIR)/main.o
 
@@ -191,19 +191,19 @@ clean:
 	find -name '*.gcda' -exec rm {} \;
 	find -name '*.xml' -exec rm {} \;
 	find test -name 'test_*.ini' -exec rm {} \;
-	rm -f $(BIN_OBJECTS)
+	rm -f $(BINARY_OBJECTS)
 	rm -f $(TEST_APPS)
 	$(MAKE) -C lib/quick-event/ clean
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f $(BINARY)
-	rm -f $(TESTAPPS)
+	rm -f $(BINARY_TESTAPPS)
 	$(MAKE) -C docs clean
 
-$(BINARY): $(BIN_OBJECTS) $(LIBQEV)
+$(BINARY): $(BINARY_OBJECTS) $(LIBQEV)
 	@echo '-------- Compiling quickio --------'
-	$(CC) $^ -o $@ $(LDFLAGS)
+	@$(CC) $^ -o $@ $(LDFLAGS)
 
-$(TESTAPPS): app/quickio-testapps.c
+$(BINARY_TESTAPPS): src/quickio-testapps.c
 	@echo '-------- Compiling quickio-testapps --------'
 	@$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 	@strip -s $@
