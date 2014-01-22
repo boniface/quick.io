@@ -196,7 +196,13 @@ START_TEST(test_rfc6455_heartbeats)
 	buff[err] = '\0';
 	ck_assert_str_eq(buff, _ping_response);
 
-	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51);
+	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51) - QEV_MS_TO_USEC(1000);;
+	test_heartbeat();
+	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(buff, "\x81\x15""/qio/heartbeat:0=null");
+
+	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(70);
 	test_heartbeat();
 	err = recv(tc, buff, sizeof(buff), 0);
 	buff[err] = '\0';
@@ -210,7 +216,6 @@ START_TEST(test_rfc6455_heartbeats)
 
 	client->last_recv = qev_monotonic - QEV_SEC_TO_USEC(60 * 17);
 	test_heartbeat();
-
 	err = recv(tc, buff, sizeof(buff), 0);
 	ck_assert(memcmp(buff, "\x88\00", err) == 0);
 	test_client_dead(tc);

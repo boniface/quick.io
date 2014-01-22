@@ -96,7 +96,7 @@ START_TEST(test_raw_heartbeats)
 	// Not expecting a heartbeat on open
 	test_ping(tc);
 
-	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51);
+	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51) - QEV_MS_TO_USEC(1000);
 	test_heartbeat();
 	test_msg(tc, "/qio/heartbeat:0=null");
 
