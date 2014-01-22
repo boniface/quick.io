@@ -54,6 +54,33 @@ static const gchar _allowed_chars[256] = {
  */
 static GAsyncQueue *_broadcasts = NULL;
 
+static guint _clean_path(gchar *path)
+{
+	gchar *curr = path;
+	gchar *writing = path;
+
+	while (*curr != '\0') {
+		if (_allowed_chars[(guchar)*curr] && writing != curr) {
+			if (!(*writing == '/' && *curr == '/')) {
+				writing++;
+			}
+
+			*writing = *curr;
+		}
+
+		curr++;
+	}
+
+	// Remove any trailing slash
+	if (*writing != '/' && writing != path) {
+		writing++;
+	}
+
+	*writing = '\0';
+
+	return writing - path;
+}
+
 static void _broadcast(void *client_, void *frames_)
 {
 	struct client *client = client_;
@@ -124,8 +151,7 @@ GString* evs_clean_path(
 	const gchar *ev_path,
 	const gchar *ev_extra)
 {
-	gchar *curr;
-	gchar *writing;
+
 	GString *p = qev_buffer_get();
 
 	g_string_printf(p, "%s/%s/%s",
@@ -137,28 +163,7 @@ GString* evs_clean_path(
 		g_string_prepend_c(p, '/');
 	}
 
-	curr = p->str;
-	writing = p->str;
-
-	while (*curr != '\0') {
-		if (_allowed_chars[(guchar)*curr] && writing != curr) {
-			if (!(*writing == '/' && *curr == '/')) {
-				writing++;
-			}
-
-			*writing = *curr;
-		}
-
-		curr++;
-	}
-
-	// Remove any trailing slash
-	if (*writing != '/' && writing != p->str) {
-		writing++;
-	}
-
-	*writing = '\0';
-	g_string_set_size(p, writing - p->str);
+	g_string_set_size(p, _clean_path(p->str));
 
 	return p;
 }
@@ -179,6 +184,7 @@ void evs_route(
 	enum evs_status status = EVS_STATUS_ERR;
 	enum evs_code code = CODE_UNKNOWN;
 
+	_clean_path(ev_path);
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
 		DEBUG("Could not find handler for event: %s", ev_path);

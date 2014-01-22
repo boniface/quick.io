@@ -209,6 +209,22 @@ START_TEST(test_evs_send_doesnt_handle_children)
 }
 END_TEST
 
+START_TEST(test_evs_malformed_path)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"///////???qio//////**ping///////:1=null",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	test_cb(tc,
+		"qio/ping***&^^$#@:1=null",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_callback_invalid_id)
 {
 	qev_fd_t tc = test_client();
@@ -301,6 +317,7 @@ int main()
 	tcase_add_test(tcase, test_evs_off_not_subscribed);
 	tcase_add_test(tcase, test_evs_unsubscribed_send);
 	tcase_add_test(tcase, test_evs_send_doesnt_handle_children);
+	tcase_add_test(tcase, test_evs_malformed_path);
 
 	tcase = tcase_create("QIO Builtins");
 	suite_add_tcase(s, tcase);
