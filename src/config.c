@@ -118,7 +118,7 @@ static struct qev_cfg _cfg[] = {
 		.read_only = FALSE,
 	},
 	{	.name = "clients-subs-fairness",
-		.description = "How subscriptions should be distributed to clients. 1 "
+		.description = "How fairly subscriptions are allocated to clients. 100 "
 						"indicates that subscriptions should be completely "
 						"evenly distributed amongst clients "
 						"(MAX(1, num_subscriptions / num_clients)), whereas 0 is "
@@ -142,7 +142,7 @@ static struct qev_cfg _cfg[] = {
 	},
 	{	.name = "heartbeat-interval",
 		.description = "How often the clients should be polled to see if "
-						"they need heartbeats.",
+						"they need heartbeats, in seconds.",
 		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_heartbeat_interval,
 		.defval.ui64 = 10,
