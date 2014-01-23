@@ -10,14 +10,15 @@
 
 static qev_stats_counter_t *_total_subs;
 
+/**
+ * Assumes lock on client is held
+ */
 static gint32* _sub_get(struct client *client)
 {
 	guint pressure;
 	guint64 used;
 	gint32 *idx = NULL;
 	gboolean allocate = FALSE;
-
-	qev_lock(client);
 
 	used = qev_stats_counter_get(_total_subs);
 
@@ -38,8 +39,6 @@ static gint32* _sub_get(struct client *client)
 		}
 	}
 
-	qev_unlock(client);
-
 	if (allocate) {
 		qev_stats_counter_inc(_total_subs);
 		idx = g_slice_alloc(sizeof(gint32));
@@ -52,6 +51,30 @@ static void _sub_put(gint32 *idx)
 {
 	qev_stats_counter_dec(_total_subs);
 	g_slice_free1(sizeof(*idx), idx);
+}
+
+/**
+ * Assumes lock on client is held
+ */
+static void _sub_remove_all(struct client *client)
+{
+	GHashTableIter iter;
+	struct subscription *sub;
+	gint32 *idx;
+
+	if (client->subs != NULL) {
+		g_hash_table_iter_init(&iter, client->subs);
+
+		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&idx)) {
+			g_hash_table_iter_remove(&iter);
+			qev_list_remove(sub->subscribers, idx);
+			_sub_put(idx);
+			sub_unref(sub);
+		}
+
+		g_hash_table_unref(client->subs);
+		client->subs = NULL;
+	}
 }
 
 static void _cb_data_free(void *cb_data, const qev_free_fn free_fn)
@@ -73,6 +96,9 @@ static void _cb_free(struct client *client, const guint i)
 	_cb_remove(client, i);
 }
 
+/**
+ * Assumes lock on client is held
+ */
 static void _cb_remove_all(struct client *client)
 {
 	guint i;
@@ -248,35 +274,14 @@ out:
 	return removed;
 }
 
-void client_sub_remove_all(struct client *client)
-{
-	GHashTableIter iter;
-	struct subscription *sub;
-	gint32 *idx;
-
-	qev_lock(client);
-
-	if (client->subs != NULL) {
-		g_hash_table_iter_init(&iter, client->subs);
-
-		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&idx)) {
-			g_hash_table_iter_remove(&iter);
-			qev_list_remove(sub->subscribers, idx);
-			_sub_put(idx);
-			sub_unref(sub);
-		}
-
-		g_hash_table_unref(client->subs);
-		client->subs = NULL;
-	}
-
-	qev_unlock(client);
-}
-
 void client_close(struct client *client)
 {
+	qev_lock(client);
+
 	_cb_remove_all(client);
-	client_sub_remove_all(client);
+	_sub_remove_all(client);
+
+	qev_unlock(client);
 }
 
 void client_init()

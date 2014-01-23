@@ -177,14 +177,6 @@ gboolean client_sub_add(struct client *client, struct subscription *sub);
 gboolean client_sub_remove(struct client *client, struct subscription *sub);
 
 /**
- * Removes all subscriptions from the client.
- *
- * @param client
- *     The client in question
- */
-void client_sub_remove_all(struct client *client);
-
-/**
  * A client has closed and should be completely cleaned up
  */
 void client_close(struct client *client);
