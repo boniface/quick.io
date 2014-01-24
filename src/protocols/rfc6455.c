@@ -24,6 +24,11 @@
 #define CHALLENGE_KEY "Sec-WebSocket-Key"
 
 /**
+ * The header key that points to what subprotocol is being used
+ */
+#define PROTOCOL_KEY "Sec-WebSocket-Protocol"
+
+/**
  * Completely disables caching for HTTP requests
  */
 #define HTTP_NOCACHE \
@@ -41,6 +46,7 @@
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
+	"Sec-WebSocket-Protocol: quickio\r\n" \
 	"Sec-WebSocket-Accept: %s\r\n" \
 	HTTP_NOCACHE
 
@@ -97,22 +103,7 @@ struct _parser_data {
 	 * The length of the key that was just found
 	 */
 	gsize key_len;
-
-	/**
-	 * Path that was found
-	 */
-	gchar *path;
 };
-
-static gint _parser_on_path(http_parser *parser, const gchar *at, gsize len)
-{
-	struct _parser_data *pdata = parser->data;
-
-	pdata->path = (gchar*)at;
-	*(pdata->path + len) = '\0';
-
-	return 0;
-}
 
 static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
 {
@@ -145,7 +136,7 @@ static gint _parser_on_value(http_parser *parser, const gchar *at, gsize len)
 	return 0;
 }
 
-static GHashTable* _parse_headers(GString *rbuff, gchar **path)
+static GHashTable* _parse_headers(GString *rbuff)
 {
 	static __thread GHashTable *headers;
 
@@ -164,7 +155,6 @@ static GHashTable* _parse_headers(GString *rbuff, gchar **path)
 	memset(&pdata, 0, sizeof(pdata));
 	memset(&settings, 0, sizeof(settings));
 
-	settings.on_url = _parser_on_path;
 	settings.on_header_field = _parser_on_key;
 	settings.on_header_value = _parser_on_value;
 
@@ -182,8 +172,6 @@ static GHashTable* _parse_headers(GString *rbuff, gchar **path)
 	if (!parser.upgrade) {
 		return NULL;
 	}
-
-	*path = pdata.path;
 
 	return headers;
 }
@@ -258,7 +246,7 @@ static enum protocol_status _decode(
 
 	for (i = 0; i < len; i++) {
 		// @todo __builtin_prefetch, will that help at all?
-		msg[i] = (gchar)(str[i] ^ mask[i & 3]);
+		msg[i] = str[i] ^ mask[i & 3];
 	}
 
 	*(msg + len) = '\0';
@@ -346,7 +334,6 @@ enum protocol_handles protocol_rfc6455_handles(
 	 * of the handshake
 	 */
 	GHashTable *headers;
-	gchar *path;
 	GString *rbuff = client->qev_client.rbuff;
 
 	if (!g_str_has_suffix(rbuff->str, WEB_SOCKET_HEADER_TERMINATOR) &&
@@ -362,11 +349,10 @@ enum protocol_handles protocol_rfc6455_handles(
 	 * Once we start messing with the headers, we're claiming the client, so
 	 * PROT_YES is our only return value after this point.
 	 */
-	headers = _parse_headers(rbuff, &path);
+	headers = _parse_headers(rbuff);
 
 	if (headers == NULL ||
-		path == NULL ||
-		!g_str_has_suffix(path, "/qio") ||
+		g_strcmp0(g_hash_table_lookup(headers, PROTOCOL_KEY), "quickio") != 0 ||
 		!g_hash_table_contains(headers, CHALLENGE_KEY) ||
 		g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
 

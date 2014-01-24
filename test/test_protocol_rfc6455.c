@@ -9,9 +9,10 @@
 #include "test.h"
 
 #define HEADERS \
- 	"GET ws://localhost/qio HTTP/1.1\r\n" \
+ 	"GET ws://localhost HTTP/1.1\r\n" \
 	"Host: localhost\r\n" \
 	"Sec-WebSocket-Key: JF+JVs2N4NAX39FAAkkdIA==\r\n" \
+	"Sec-WebSocket-Protocol: quickio\r\n" \
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \
 	"Sec-WebSocket-Version: 13\r\n\r\n"
@@ -21,6 +22,7 @@
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
+	"Sec-WebSocket-Protocol: quickio\r\n" \
 	"Sec-WebSocket-Accept: Nf+/kB4wxkn+6EPeanngB3VZNwU=\r\n" \
 	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
 	"Pragma: no-cache\r\n" \
@@ -148,7 +150,7 @@ START_TEST(test_rfc6455_handshake_no_ohai)
 	const gchar *inval = "\x81\x82""abcd""tu";
 
 	gint err;
-	gchar buff[256];
+	gchar buff[512];
 	qev_fd_t ts = test_socket();
 
 	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
@@ -365,7 +367,7 @@ START_TEST(test_rfc6455_decode_invalid_qio_handshake)
 	const gchar *inval = "\x81\x82""abcd""\xe1""\xe2";
 
 	gint err;
-	gchar buff[256];
+	gchar buff[512];
 	qev_fd_t ts = test_socket();
 
 	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
