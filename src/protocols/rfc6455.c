@@ -396,8 +396,6 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	guint64 frame_len;
 	enum protocol_status status = _decode(client, &len, &frame_len);
 
-	// @todo while loop here to drain the buffer
-
 	if (status == PROT_OK) {
 		status = protocol_raw_handle(client, len, frame_len);
 	}
@@ -419,7 +417,7 @@ GString* protocol_rfc6455_frame(
 {
 	GString *f = qev_buffer_get();
 	GString *e = protocol_raw_format(ev_path, ev_extra, server_cb, json);
-	const guint len = e->len;
+	const gsize len = e->len;
 
 	g_string_append_c(f, '\x81');
 

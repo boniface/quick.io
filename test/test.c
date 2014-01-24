@@ -20,6 +20,7 @@
 	"[quick-event]\n" \
 	"poll-wait = 1\n" \
 	"read-high = 131072\n" \
+	"read-high-burst = 131072\n" \
 	"tcp-nodelay = true\n" \
 	"timeout = %d\n" \
 	"[quick.io]\n" \

@@ -131,6 +131,22 @@ START_TEST(test_raw_heartbeat_challenge)
 }
 END_TEST
 
+START_TEST(test_raw_multiple_messages)
+{
+	gint64 err;
+	qev_fd_t tc = test_client();
+
+	err = send(tc,
+			"\x00\x00\x00\x00\x00\x00\x00\x10/qio/ping:1=null"
+			"\x00\x00\x00\x00\x00\x00\x00\x10/qio/ping:2=null", 48, 0);
+	ck_assert(err == 48);
+	test_msg(tc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+	test_msg(tc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -147,6 +163,7 @@ int main()
 	tcase_add_test(tcase, test_raw_minimal_event);
 	tcase_add_test(tcase, test_raw_heartbeats);
 	tcase_add_test(tcase, test_raw_heartbeat_challenge);
+	tcase_add_test(tcase, test_raw_multiple_messages);
 
 	return test_do(sr);
 }

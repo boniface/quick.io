@@ -51,30 +51,20 @@ enum protocol_status protocol_raw_handshake(
 enum protocol_status protocol_raw_route(struct client *client)
 {
 	guint64 len;
-	enum protocol_status status;
 	GString *rbuff = client->qev_client.rbuff;
 
-	while (TRUE) {
-		if (rbuff->len == 0) {
-			return PROT_OK;
-		}
-
-		if (rbuff->len < sizeof(guint64)) {
-			return PROT_AGAIN;
-		}
-
-		len = GUINT64_FROM_BE(*((guint64*)rbuff->str));
-		if (rbuff->len < (len + sizeof(guint64))) {
-			return PROT_AGAIN;
-		}
-
-		memmove(rbuff->str, rbuff->str + sizeof(guint64), len);
-
-		status = protocol_raw_handle(client, len, len + sizeof(guint64));
-		if (status != PROT_OK) {
-			return status;
-		}
+	if (rbuff->len < sizeof(guint64)) {
+		return PROT_AGAIN;
 	}
+
+	len = GUINT64_FROM_BE(*((guint64*)rbuff->str));
+	if (rbuff->len < (len + sizeof(guint64))) {
+		return PROT_AGAIN;
+	}
+
+	memmove(rbuff->str, rbuff->str + sizeof(guint64), len);
+
+	return protocol_raw_handle(client, len, len + sizeof(guint64));
 }
 
 void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb)
@@ -128,7 +118,7 @@ void protocol_raw_do_heartbeat(
 	struct client *client,
 	struct heartbeat *hb,
 	const gchar *heartbeat,
-	const guint heartbeat_len)
+	const gsize heartbeat_len)
 {
 	if (client->last_recv < hb->dead) {
 		qev_close(client, RAW_HEARTATTACK);

@@ -247,6 +247,32 @@ START_TEST(test_rfc6455_decode)
 }
 END_TEST
 
+START_TEST(test_rfc6455_decode_multiple)
+{
+	guint i;
+	gint err;
+	gchar buff[128];
+	qev_fd_t tc = _client();
+	GString *ping = qev_buffer_get();
+
+	g_string_printf(ping, "%s%s", _ping, _ping);
+
+	err = send(tc, ping->str, ping->len, 0);
+	ck_assert_int_eq(err, ping->len);
+
+	for (i = 0; i < 2; i++) {
+		err = recv(tc, buff, strlen(_ping_response), 0);
+		ck_assert_int_eq(err, strlen(_ping_response));
+
+		buff[err] = '\0';
+		ck_assert_str_eq(_ping_response, buff);
+	}
+
+	qev_buffer_put(ping);
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_rfc6455_decode_close)
 {
 	gint err;
@@ -533,6 +559,7 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_rfc6455_decode);
+	tcase_add_test(tcase, test_rfc6455_decode_multiple);
 	tcase_add_test(tcase, test_rfc6455_decode_close);
 	tcase_add_test(tcase, test_rfc6455_decode_continuation_frame);
 	tcase_add_test(tcase, test_rfc6455_decode_unmasked);

@@ -125,32 +125,34 @@ static void _route(struct client *client)
 {
 	enum protocol_status status = PROT_FATAL;
 
-	if (client->protocol->route != NULL) {
-		status = client->protocol->route(client);
-	}
+	do {
+		if (client->protocol->route != NULL) {
+			status = client->protocol->route(client);
+		}
 
-	switch (status) {
-		case PROT_OK:
-			client->last_recv = qev_monotonic;
+		switch (status) {
+			case PROT_OK:
+				client->last_recv = qev_monotonic;
 
-			/*
-			 * This isn't too elegant, but this timeout is only ever set
-			 * on connect and in the read thread, so if it's not set,
-			 * this little check will save some.
-			 */
-			if (client->timeout != NULL) {
-				qev_timeout_clear(&client->timeout);
-			}
-			break;
+				/*
+				 * This isn't too elegant, but this timeout is only ever set
+				 * on connect and in the read thread, so if it's not set,
+				 * this little check will save some.
+				 */
+				if (client->timeout != NULL) {
+					qev_timeout_clear(&client->timeout);
+				}
+				break;
 
-		case PROT_AGAIN:
-			qev_timeout(client, &client->timeout);
-			break;
+			case PROT_AGAIN:
+				qev_timeout(client, &client->timeout);
+				break;
 
-		case PROT_FATAL:
-			qev_close(client, QIO_CLOSE_UNKNOWN_ERROR);
-			break;
-	}
+			case PROT_FATAL:
+				qev_close(client, QIO_CLOSE_UNKNOWN_ERROR);
+				break;
+		}
+	} while (status == PROT_OK && client->qev_client.rbuff->len > 0);
 }
 
 static void _heartbeat_cb(struct client *client, void *hb_)

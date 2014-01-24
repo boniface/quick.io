@@ -104,7 +104,7 @@ void protocol_raw_do_heartbeat(
 	struct client *client,
 	struct heartbeat *hb,
 	const gchar *heartbeat,
-	const guint heartbeat_len);
+	const gsize heartbeat_len);
 
 /**
  * Handles a raw frame from a client.

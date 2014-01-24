@@ -42,7 +42,7 @@ void qev_on_tick()
 
 void qev_on_udp(
 	const gchar *msg G_GNUC_UNUSED,
-	const guint len G_GNUC_UNUSED,
+	const gsize len G_GNUC_UNUSED,
 	const gchar *ip G_GNUC_UNUSED) {}
 
 void qev_on_exit() {}
