@@ -28,6 +28,10 @@ void qio_main(int argc, char **argv)
 					cfg_ssl_cert_path_1, cfg_ssl_key_path_1);
 	}
 
+	if (cfg_support_flash) {
+		qev_listen("0.0.0.0", 843);
+	}
+
 	qev_setnofile(qev_cfg_get_max_clients());
 
 	if (cfg_user != NULL) {

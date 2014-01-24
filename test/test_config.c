@@ -38,6 +38,10 @@
 	"[quick.io]\n" \
 	"clients-subs-fairness = 4294967295\n"
 
+#define SUPPORT_FLASH \
+	"[quick.io]\n" \
+	"support-flash = true\n"
+
 static void _do(const gchar *cfg)
 {
 	gboolean die = FALSE;
@@ -128,6 +132,15 @@ START_TEST(test_config_invalid_client_subs_fairness)
 }
 END_TEST
 
+START_TEST(test_config_coverage_support_flash)
+{
+	gchar *args[] = {"test"};
+
+	_do(SUPPORT_FLASH);
+	qio_main(1, args);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -145,6 +158,10 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 	tcase_add_test(tcase, test_config_invalid_client_subs_fairness);
+
+	tcase = tcase_create("Coverage");
+	suite_add_tcase(s, tcase);
+	tcase_add_test_raise_signal(tcase, test_config_coverage_support_flash, FATAL_SIGNAL);
 
 	return test_do(sr);
 }

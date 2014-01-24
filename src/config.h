@@ -96,6 +96,11 @@ gchar *cfg_ssl_key_path_1;
 guint64 cfg_sub_min_size;
 
 /**
+ * If the server should listen on port
+ */
+gboolean cfg_support_flash;
+
+/**
  * The user the server should run as
  */
 gchar *cfg_user;

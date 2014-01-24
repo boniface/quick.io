@@ -31,6 +31,7 @@
 	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
 	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
 	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
+	"support-flash = false\n" \
 	"user = %s\n" \
 	"[quick.io-apps]\n" \
 	"/test = ./apps/test_app_sane\n"
