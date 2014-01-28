@@ -18,8 +18,6 @@ CONFIG_DIR=/etc/quickio/apps
 
 . /lib/lsb/init-functions
 
-test -x $BINARY || exit 1
-
 _print_status() {
 	if [ -z $? ]; then
 		echo "fail"
@@ -29,13 +27,18 @@ _print_status() {
 }
 
 start() {
-	ulimit -n "$FD_LIMIT"
+	if [ ! -x "$BINARY" ]; then
+		echo "$BINARY doesn't exist."
+		exit 1
+	fi
 	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=/etc/quickio/quickio.ini
 }
 
 stop() {
-	start-stop-daemon --stop --quiet --pidfile $PIDFILE
-	rm $PIDFILE
+	if [ -e "$PIDFILE" ]; then
+		start-stop-daemon --stop --quiet --pidfile $PIDFILE
+		rm $PIDFILE
+	fi
 }
 
 status() {

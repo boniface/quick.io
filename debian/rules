@@ -1,44 +1,17 @@
 #!/usr/bin/make -f
 
-# Uncomment to enable verbose mode.
 #export DH_VERBOSE=1
 
-clean:
-	dh_testdir
-	dh_testroot
+DESTDIR = $(CURDIR)/debian/tmp
+
+%:
+	dh $@
+
+override_dh_auto_test:
+	dh_auto_test -- -j8
+
+override_dh_auto_install:
 	$(MAKE) clean
-	dh_clean
-
-build:
-	dh_testdir
-	$(MAKE) -j8 release
-	$(MAKE) -j8 quickio-testapps
-
-install: build
-	dh_testdir
-	dh_testroot
-	dh_installdirs
-	dh_install
-	dh_installman
-	dh_shlibdeps
-	rm debian/quickio-dev/usr/include/quickio/quick-event/*_priv.h
-
-binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs
-	dh_installinit -u'start 50 2 3 4 5 . stop 50 0 1 6 .'
-	dh_installdocs
-	dh_installlogrotate
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-binary: binary-arch
-build-arch: build
-build-indep: build
-
-.PHONY: build clean binary-indep binary-arch binary install
+	dh_auto_install -- \
+		-j8 \
+		INSTALL_ROOT=$(DESTDIR)

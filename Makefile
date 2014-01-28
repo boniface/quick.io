@@ -16,6 +16,8 @@ VERSION_MICRO = 0
 # USE_VALGRIND = 1
 
 export CC = clang
+INSTALL_BIN = install
+INSTALL = $(INSTALL_BIN) -m 644
 
 LIB_DIR = lib
 SRC_DIR = src
@@ -156,6 +158,19 @@ else
 	MEMTEST =
 endif
 
+INSTALL_ROOT ?=
+INSTALL_PREFIX ?= $(INSTALL_ROOT)/usr
+INSTALL_BIN_DIR ?= $(INSTALL_PREFIX)/bin
+INSTALL_ETC_DIR ?= $(INSTALL_ROOT)/etc/quickio
+INSTALL_APP_LIB_DIR ?= $(INSTALL_ROOT)/usr/lib/quickio
+INSTALL_INCLUDE_DIR ?= $(INSTALL_PREFIX)/include/quickio
+INSTALL_INCLUDE_PROT_DIR ?= $(INSTALL_PREFIX)/include/quickio/protocols
+INSTALL_INCLUDE_QEV_DIR ?= $(INSTALL_PREFIX)/include/quickio/quick-event
+INSTALL_INIT_DIR = $(INSTALL_ROOT)/etc/init.d
+INSTALL_LIMITS_DIR = $(INSTALL_ROOT)/etc/security/limits.d
+INSTALL_PKGCFG_DIR ?= $(INSTALL_PREFIX)/lib/pkgconfig
+INSTALL_SYSCTL_DIR = $(INSTALL_ROOT)/etc/sysctl.d
+
 DEBUILD_ARGS = \
 	-uc \
 	-us \
@@ -175,7 +190,6 @@ run: $(BINARY)
 release: export CFLAGS += $(CFLAGS_RELEASE)
 release: export LDFLAGS += $(LDFLAGS_RELEASE)
 release: $(BINARY)
-	strip -s $^
 
 deb:
 	debuild $(DEBUILD_ARGS)
@@ -193,6 +207,38 @@ docs:
 
 docs-watch:
 	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
+
+install: release $(BINARY_TESTAPPS)
+	mkdir -p \
+		$(INSTALL_APP_LIB_DIR) \
+		$(INSTALL_BIN_DIR) \
+		$(INSTALL_ETC_DIR) \
+		$(INSTALL_INCLUDE_DIR) \
+		$(INSTALL_INCLUDE_PROT_DIR) \
+		$(INSTALL_INCLUDE_QEV_DIR) \
+		$(INSTALL_LIMITS_DIR) \
+		$(INSTALL_PKGCFG_DIR) \
+		$(INSTALL_SYSCTL_DIR)
+	$(INSTALL_BIN) $(BINARY) $(INSTALL_BIN_DIR)
+	$(INSTALL_BIN) $(BINARY_TESTAPPS) $(INSTALL_BIN_DIR)
+	$(INSTALL) src/*.h $(INSTALL_INCLUDE_DIR)
+	$(INSTALL) src/protocols/*.h $(INSTALL_INCLUDE_PROT_DIR)
+	$(INSTALL) lib/quick-event/src/*.h $(INSTALL_INCLUDE_QEV_DIR)
+	$(INSTALL) quickio.ini $(INSTALL_ETC_DIR)
+	$(INSTALL) quickio.pc $(INSTALL_PKGCFG_DIR)
+	$(INSTALL) -D limits.conf $(INSTALL_LIMITS_DIR)/quickio.conf
+	$(INSTALL) -D sysctl.conf $(INSTALL_SYSCTL_DIR)/quickio.conf
+	$(INSTALL) debian/quickio.init $(INSTALL_INIT_DIR)
+
+uninstall:
+	rm -f $(INSTALL_BIN_DIR)/$(BINARY)
+	rm -f $(INSTALL_BIN_DIR)/$(BINARY_TESTAPPS)
+	rm -rf $(INSTALL_APP_LIB_DIR)
+	rm -rf $(INSTALL_ETC_DIR)
+	rm -rf $(INSTALL_INCLUDE_DIR)
+	rm -f $(INSTALL_LIMITS_DIR)/quickio.conf
+	rm -f $(INSTALL_PKGCFG_DIR)/quickio.pc
+	rm -f $(INSTALL_SYSCTL_DIR)/quickio.conf
 
 clean:
 	find -name '*.gcno' -exec rm {} \;

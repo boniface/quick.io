@@ -54,10 +54,10 @@ static const gchar _allowed_chars[256] = {
  */
 static GAsyncQueue *_broadcasts = NULL;
 
-static guint _clean_path(gchar *path)
+static guint _clean_path(gchar *ev_path)
 {
-	gchar *curr = path;
-	gchar *writing = path;
+	gchar *curr = ev_path;
+	gchar *writing = ev_path;
 
 	while (*curr != '\0') {
 		if (_allowed_chars[(guchar)*curr] && writing != curr) {
@@ -72,13 +72,13 @@ static guint _clean_path(gchar *path)
 	}
 
 	// Remove any trailing slash
-	if (*writing != '/' && writing != path) {
+	if (*writing != '/' && writing != ev_path) {
 		writing++;
 	}
 
 	*writing = '\0';
 
-	return writing - path;
+	return writing - ev_path;
 }
 
 static void _broadcast(void *client_, void *frames_)
