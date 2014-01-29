@@ -46,8 +46,7 @@ static void _add_app(
 
 	app->mod = g_module_open(full_path->str, G_MODULE_BIND_LOCAL);
 	ASSERT(app->mod != NULL,
-			"Could not open app %s (%s): %s", name, full_path->str,
-			g_module_error());
+			"Could not open app %s: %s", name, g_module_error());
 
 	/*
 	 * For config: unloading modules causes segfaults on exit because the
