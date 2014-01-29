@@ -15,7 +15,10 @@ VERSION_MICRO = 0
 #
 # USE_VALGRIND = 1
 
-export CC = clang
+ifeq ($(CC),cc)
+	export CC = clang
+endif
+
 INSTALL_BIN = install
 INSTALL = $(INSTALL_BIN) -m 644
 
@@ -82,6 +85,7 @@ LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
 CFLAGS = \
 	-Wall \
 	-Wextra \
+	-Wformat \
 	-Werror=format-security \
 	-fPIE \
 	-fstack-protector \
@@ -97,9 +101,9 @@ CFLAGS = \
 	-I$(CURDIR)/$(SRC_DIR) \
 	$(shell pkg-config --cflags $(LIBS))
 
-CFLAGS_OBJ = \
-	$(CFLAGS) \
-	-c
+ifeq ($(CC),gcc)
+	CFLAGS += -flto
+endif
 
 CFLAGS_TEST = \
 	-g \
@@ -119,6 +123,7 @@ CFLAGS_RELEASE = \
 	-O3
 
 LDFLAGS = \
+	-pie \
 	-Wl,-z,relro \
 	-Wl,-z,now \
 	-lm \
@@ -272,7 +277,7 @@ $(BENCHMARKS): % : $(TEST_APPS) $(TEST_DIR)/%
 
 %.o: %.c $(HEADERS)
 	@echo '-------- Compiling $@ --------'
-	@$(CC) $(CFLAGS_OBJ) $< -o $@
+	@$(CC) -c $(CFLAGS) $< -o $@
 
 $(TEST_APPS_DIR)/%.so: $(TEST_APPS_DIR)/%.c $(HEADERS)
 	@echo '-------- Compiling app $@ --------'
