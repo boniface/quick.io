@@ -8,16 +8,6 @@
 
 #include "test.h"
 
-#define PORTS_0 \
-	"[quick.io]\n" \
-	"bind-port = 120521\n" \
-	"bind-port-ssl = 321987\n"
-
-#define PORTS_1 \
-	"[quick.io]\n" \
-	"bind-port = 0\n" \
-	"bind-port-ssl = 0\n"
-
 #define HEARTBEAT_0 \
 	"[quick.io]\n" \
 	"heartbeat-interval = 3\n"
@@ -68,24 +58,6 @@ abort:
 	die = TRUE;
 	goto out;
 }
-
-START_TEST(test_config_invalid_ports_0)
-{
-	guint64 before = cfg_bind_port;
-
-	_do(PORTS_0);
-	ck_assert_uint_eq(before, cfg_bind_port);
-}
-END_TEST
-
-START_TEST(test_config_invalid_ports_1)
-{
-	guint64 before = cfg_bind_port;
-
-	_do(PORTS_1);
-	ck_assert_uint_eq(before, cfg_bind_port);
-}
-END_TEST
 
 START_TEST(test_config_invalid_heartbeat_interval_0)
 {
@@ -151,8 +123,6 @@ int main()
 	tcase = tcase_create("Options");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_config_invalid_ports_0);
-	tcase_add_test(tcase, test_config_invalid_ports_1);
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_0);
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_1);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);

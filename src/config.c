@@ -32,18 +32,6 @@ static void _validate_heartbeat_interval(
 	}
 }
 
-static void _validate_port(
-	const gchar *name G_GNUC_UNUSED,
-	union qev_cfg_val *val,
-	GError **error)
-{
-	if (val->ui64 == 0 || val->ui64 > G_MAXUINT16) {
-		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Invalid port number: %" G_GUINT64_FORMAT " doesn't work, must "
-					"be between 1 and %d.", val->ui64, G_MAXUINT16);
-	}
-}
-
 static void _validate_sub_min_size(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
@@ -73,7 +61,7 @@ static struct qev_cfg _cfg[] = {
 		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_bind_port,
 		.defval.ui64 = 8080,
-		.validate = _validate_port,
+		.validate = qev_cfg_validate_port,
 		.cb = NULL,
 		.read_only = TRUE,
 	},
@@ -92,7 +80,7 @@ static struct qev_cfg _cfg[] = {
 		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_bind_port_ssl,
 		.defval.ui64 = 4433,
-		.validate = _validate_port,
+		.validate = qev_cfg_validate_port,
 		.cb = NULL,
 		.read_only = TRUE,
 	},
