@@ -19,6 +19,7 @@
 	"bind-address = 0.0.0.0\n" \
 	"bind-port = 55439\n" \
 	"run-app-tests = true\n" \
+	"support-flash = false\n" \
 	"[quick.io-apps]\n" \
 	"app = %s/%s\n"
 
