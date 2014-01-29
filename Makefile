@@ -85,7 +85,6 @@ LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
 CFLAGS = \
 	-Wall \
 	-Wextra \
-	-Wformat \
 	-Werror=format-security \
 	-fPIE \
 	-fstack-protector \
@@ -187,10 +186,12 @@ all:
 	@echo "    make run - run quickio in debug mode"
 	@echo "    make clean - clean up everything"
 
-run: export CFLAGS += $(CFLAGS_DEBUG)
-run: export LDFLAGS += $(LDFLAGS_DEBUG)
-run: $(BINARY)
-	$(MEMTEST) ./$(BINARY)
+debug: export CFLAGS += $(CFLAGS_DEBUG)
+debug: export LDFLAGS += $(LDFLAGS_DEBUG)
+debug: $(BINARY)
+
+run: debug
+	./$(BINARY)
 
 release: export CFLAGS += $(CFLAGS_RELEASE)
 release: export LDFLAGS += $(LDFLAGS_RELEASE)
