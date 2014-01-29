@@ -28,10 +28,6 @@
 	"[quick.io]\n" \
 	"clients-subs-fairness = 4294967295\n"
 
-#define SUPPORT_FLASH \
-	"[quick.io]\n" \
-	"support-flash = true\n"
-
 static void _do(const gchar *cfg)
 {
 	gboolean die = FALSE;
@@ -45,7 +41,6 @@ static void _do(const gchar *cfg)
 	}
 
 out:
-
 	unlink("test_config.ini");
 
 	if (die) {
@@ -107,8 +102,7 @@ END_TEST
 START_TEST(test_config_coverage_support_flash)
 {
 	gchar *args[] = {"test"};
-
-	_do(SUPPORT_FLASH);
+	cfg_support_flash = TRUE;
 	qio_main(1, args);
 }
 END_TEST

@@ -13,8 +13,7 @@
 
 #define CALLBACKS \
 	X(init) \
-	X(exit) \
-	X(test)
+	X(exit)
 
 /**
  * No need for a lock on this: all qev_cfg callbacks are joined on a single
@@ -70,9 +69,10 @@ static void _add_app(
 				name, full_path->str)
 
 	#define X(fn) \
-		if (g_module_symbol(app->mod, "__qio_app_" G_STRINGIFY(fn), (void*)&cb)) { \
-			qio_app_cb *acb = (qio_app_cb*)&app->fn; \
-			*acb = cb; }
+		ASSERT(g_module_symbol(app->mod, "__qio_app_" G_STRINGIFY(fn), (void*)&cb), \
+				"App missing default QuickIO function %s: %s (%s)", \
+				"__qio_app_" G_STRINGIFY(fn), name, full_path->str); \
+			app->fn = cb;
 
 		CALLBACKS
 	#undef X
@@ -112,7 +112,13 @@ void apps_test()
 {
 	guint i;
 	for (i = 0; i < _apps->len; i++) {
+		qio_app_cb test;
 		struct app *app = g_ptr_array_index(_apps, i);
-		ASSERT(app->test(), "Tests failed in app: %s", app->name);
+
+		ASSERT(g_module_symbol(app->mod, "__qio_app_test", (void*)&test),
+				"Could not load test function for app: %s. "
+				"Did you use QUICKIO_APP_TEST?",
+				app->name);
+		ASSERT(test(), "Tests failed in app: %s", app->name);
 	}
 }

@@ -20,14 +20,19 @@
 /**
  * For an app: sets up all the necessary callbacks
  */
-#define QUICKIO_APP(init, exit, test) \
+#define QUICKIO_APP(init, exit) \
 	guint __qio_is_app = QIO_MAGIC_NUM; \
 	gboolean __qio_app_init() \
 	{ \
 		return init(); } \
 	gboolean __qio_app_exit() \
 	{ \
-		return exit(); } \
+		return exit(); }
+
+/**
+ * For an app: sets up all the necessary callbacks
+ */
+#define QUICKIO_APP_TEST(test) \
 	gboolean __qio_app_test() \
 	{ \
 		return test(); }
@@ -60,11 +65,6 @@ struct app {
 	 * Makes the app exit
 	 */
 	qio_app_cb exit;
-
-	/**
-	 * Runs the app's test cases
-	 */
-	qio_app_cb test;
 };
 
 /**

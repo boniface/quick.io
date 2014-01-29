@@ -254,5 +254,6 @@ static gboolean _app_test()
 
 QUICKIO_APP(
 	_app_init,
-	_app_exit,
-	_app_test);
+	_app_exit);
+
+QUICKIO_APP_TEST(_app_test);
