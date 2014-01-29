@@ -1,2 +1,3 @@
-usr/lib/pkgconfig/quickio.pc
 usr/bin/quickio-testapps
+usr/include/quickio
+usr/lib/pkgconfig/quickio.pc
