@@ -103,6 +103,28 @@ START_TEST(test_apps_on)
 }
 END_TEST
 
+START_TEST(test_apps_on_empty_broadcast)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	evs_broadcast_path("/test/good", "\"json!\"");
+	evs_broadcast_tick();
+	test_msg(tc, "/test/good:0=\"json!\"");
+
+	evs_broadcast_path("/test/good", NULL);
+	evs_broadcast_tick();
+	test_msg(tc, "/test/good:0=null");
+
+	evs_broadcast_path("/test/good", "");
+	evs_broadcast_tick();
+	test_msg(tc, "/test/good:0=null");
+}
+END_TEST
+
 START_TEST(test_apps_on_delayed)
 {
 	qev_fd_t tc = test_client();
@@ -232,6 +254,7 @@ int main()
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_apps_sane);
 	tcase_add_test(tcase, test_apps_on);
+	tcase_add_test(tcase, test_apps_on_empty_broadcast);
 	tcase_add_test(tcase, test_apps_on_delayed);
 	tcase_add_test(tcase, test_apps_on_reject);
 	tcase_add_test(tcase, test_apps_on_delayed_reject);

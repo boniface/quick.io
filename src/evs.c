@@ -469,6 +469,8 @@ void evs_broadcast(
 	const gchar *ev_extra,
 	const gchar *json)
 {
+	JSON_OR_NULL(json);
+
 	struct _broadcast bc = {
 		.sub = sub_get(ev, ev_extra),
 		.json = g_strdup(json),
