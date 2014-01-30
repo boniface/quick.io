@@ -63,6 +63,7 @@
 #define MASKED_BIT 0x80
 #define MASK_LEN 0x7f
 
+#define OPCODE 0x0f
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
@@ -194,7 +195,7 @@ static enum protocol_status _decode(
 	guint64 len;
 	gchar mask[4];
 
-	if (str[0] & OPCODE_CLOSE) {
+	if ((str[0] & OPCODE) == OPCODE_CLOSE) {
 		qev_close(client, QEV_CLOSE_HUP);
 		return PROT_FATAL;
 	}
@@ -203,7 +204,7 @@ static enum protocol_status _decode(
 		return PROT_AGAIN;
 	}
 
-	if (!(str[0] & OPCODE_TEXT)) {
+	if ((str[0] & OPCODE) != OPCODE_TEXT) {
 		qev_close(client, RFC6455_UNSUPPORTED_OPCODE);
 		return PROT_FATAL;
 	}
