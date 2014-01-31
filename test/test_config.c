@@ -125,7 +125,7 @@ int main()
 
 	tcase = tcase_create("Coverage");
 	suite_add_tcase(s, tcase);
-	tcase_add_test_raise_signal(tcase, test_config_coverage_support_flash, FATAL_SIGNAL);
+	tcase_add_test_raise_signal(tcase, test_config_coverage_support_flash, 5);
 
 	return test_do(sr);
 }

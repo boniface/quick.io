@@ -13,7 +13,7 @@ VERSION_MICRO = 0
 #
 # If the test cases should be run in valgrind. Comment this out to disable
 #
-# USE_VALGRIND = 1
+# export USE_VALGRIND = 1
 
 ifeq ($(CC),cc)
 	export CC = clang
