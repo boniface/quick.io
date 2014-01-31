@@ -107,7 +107,7 @@ START_TEST(test_evs_on_off_children)
 
 	test_cb(tc,
 		"/qio/on:2=\"/test/delayed-childs/invalid\"",
-		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
+		"/qio/callback/2:0={\"code\":404,\"data\":null,\"err_msg\":null}");
 
 	test_cb(tc,
 		"/qio/off:3=\"/test/delayed-childs/child\"",

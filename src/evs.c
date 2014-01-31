@@ -364,7 +364,12 @@ void evs_on_cb(
 	enum evs_code code = CODE_OK;
 
 	if (!success) {
-		code = CODE_UNAUTH;
+		if (info->sub->ev->handle_children) {
+			code = CODE_NOT_FOUND;
+		} else {
+			code = CODE_UNAUTH;
+		}
+
 		sub_unref(info->sub);
 		goto out;
 	}
