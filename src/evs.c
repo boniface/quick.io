@@ -264,7 +264,7 @@ void evs_send(
 	evs_send_full(client, ev, ev_extra, json, NULL, NULL, NULL);
 }
 
-void evs_send_info(struct evs_on_info *info, const gchar *json)
+void evs_send_info(const struct evs_on_info *info, const gchar *json)
 {
 	evs_send_info_full(info, json, NULL, NULL, NULL);
 }
@@ -301,7 +301,7 @@ void evs_send_full(
 }
 
 void evs_send_info_full(
-	struct evs_on_info *info,
+	const struct evs_on_info *info,
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,

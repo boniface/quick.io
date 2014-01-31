@@ -355,7 +355,7 @@ void evs_send(
  * @param json
  *     Any data to include with the event
  */
-void evs_send_info(struct evs_on_info *info, const gchar *json);
+void evs_send_info(const struct evs_on_info *info, const gchar *json);
 
 /**
  * Sends an event to a specific client.
@@ -414,7 +414,7 @@ void evs_send_full(
  *     Frees the cb_data
  */
 void evs_send_info_full(
-	struct evs_on_info *info,
+	const struct evs_on_info *info,
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
