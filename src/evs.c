@@ -264,6 +264,19 @@ void evs_send(
 	evs_send_full(client, ev, ev_extra, json, NULL, NULL, NULL);
 }
 
+void evs_send_info(struct evs_on_info *info, const gchar *json)
+{
+	evs_send_info_full(info, json, NULL, NULL, NULL);
+}
+
+void evs_send_sub(
+	struct client *client,
+	struct subscription *sub,
+	const gchar *json)
+{
+	evs_send_sub_full(client, sub, json, NULL, NULL, NULL);
+}
+
 void evs_send_full(
 	struct client *client,
 	struct event *ev,
@@ -273,9 +286,7 @@ void evs_send_full(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	evs_cb_t server_cb;
 	struct subscription *sub = sub_get(ev, ev_extra);
-	JSON_OR_NULL(json);
 
 	if (!ev->handle_children && ev_extra != NULL && *ev_extra != '\0') {
 		WARN("Sending event %s%s to client, but %s doesn't handle_children, "
@@ -283,21 +294,45 @@ void evs_send_full(
 				ev->ev_path, sub->ev_extra, ev->ev_path);
 	}
 
+	evs_send_sub_full(client, sub, json, cb_fn, cb_data, free_fn);
+
+	// @todo from that former memory leak: test multiple clients hitting things at random and really hard
+	sub_unref(sub);
+}
+
+void evs_send_info_full(
+	struct evs_on_info *info,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn)
+{
+	evs_send_sub_full(info->client, info->sub, json, cb_fn, cb_data, free_fn);
+}
+
+void evs_send_sub_full(
+	struct client *client,
+	struct subscription *sub,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn)
+{
+	evs_cb_t server_cb;
+	JSON_OR_NULL(json);
+
 	qev_lock(client);
 
 	if (!client_sub_has(client, sub)) {
 		CRITICAL("Client is not subscribed to %s%s. Sending it an event there "
-				"is futile.", ev->ev_path, sub->ev_extra);
+				"is futile.", sub->ev->ev_path, sub->ev_extra);
 	}
 
 	server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
 
 	qev_unlock(client);
 
-	protocols_send(client, ev->ev_path, sub->ev_extra, server_cb, json);
-
-	// @todo from that former memory leak: test multiple clients hitting things at random and really hard
-	sub_unref(sub);
+	protocols_send(client, sub->ev->ev_path, sub->ev_extra, server_cb, json);
 }
 
 void evs_send_bruteforce(

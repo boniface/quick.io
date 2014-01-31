@@ -225,6 +225,27 @@ START_TEST(test_evs_malformed_path)
 }
 END_TEST
 
+START_TEST(test_evs_send_sub)
+{
+	gchar *extra = NULL;
+	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
+	struct event *ev = evs_query("/test/good", &extra);
+	struct subscription *sub = sub_get(ev, extra);
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	evs_send_sub(client, sub, "\"hooray!\"");
+
+	test_msg(tc, "/test/good:0=\"hooray!\"");
+
+	sub_unref(sub);
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_callback_invalid_id)
 {
 	qev_fd_t tc = test_client();
@@ -318,6 +339,7 @@ int main()
 	tcase_add_test(tcase, test_evs_unsubscribed_send);
 	tcase_add_test(tcase, test_evs_send_doesnt_handle_children);
 	tcase_add_test(tcase, test_evs_malformed_path);
+	tcase_add_test(tcase, test_evs_send_sub);
 
 	tcase = tcase_create("QIO Builtins");
 	suite_add_tcase(s, tcase);

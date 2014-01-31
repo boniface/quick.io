@@ -164,7 +164,7 @@ static gboolean _with_send_on_cb(void *info_)
 {
 	struct evs_on_info *info = info_;
 	evs_on_cb(TRUE, info);
-	evs_send(info->client, _ev_with_send, NULL, "\"with-send!\"");
+	evs_send_info(info, "\"with-send!\"");
 	evs_on_info_free(info);
 	return G_SOURCE_REMOVE;
 }

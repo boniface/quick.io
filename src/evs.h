@@ -333,7 +333,7 @@ void evs_on(
  * Sends an event to a specific client.
  *
  * @param client
- *     The client to send the callback to
+ *     The client to send the event to
  * @param ev
  *     The event to send
  * @param ev_extra
@@ -345,6 +345,31 @@ void evs_send(
 	struct client *client,
 	struct event *ev,
 	const gchar *ev_extra,
+	const gchar *json);
+
+/**
+ * Sends an event to a specific client.
+ *
+ * @param info
+ *     The event info, typically from an event subscription.
+ * @param json
+ *     Any data to include with the event
+ */
+void evs_send_info(struct evs_on_info *info, const gchar *json);
+
+/**
+ * Sends an event to a specific client.
+ *
+ * @param client
+ *     The client to send the event to
+ * @param sub
+ *     The subscription that references the event being sent to the client.
+ * @param json
+ *     Any data to include with the event
+ */
+void evs_send_sub(
+	struct client *client,
+	struct subscription *sub,
 	const gchar *json);
 
 /**
@@ -373,6 +398,51 @@ void evs_send_full(
 	const evs_cb_fn cb_fn,
 	void *cb_data,
 	const GDestroyNotify free_fn);
+
+/**
+ * Sends an event to a specific client, requesting a callback from the client.
+ *
+ * @param info
+ *     The event info, typically from an event subscription.
+ * @param json
+ *     Any data to include with the event
+ * @param cb_fn
+ *     The function to execute on callback
+ * @param cb_data
+ *     Data to pass into the function @arg{transfer-full}
+ * @param free_fn
+ *     Frees the cb_data
+ */
+void evs_send_info_full(
+	struct evs_on_info *info,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const GDestroyNotify free_fn);
+
+/**
+ * Sends an event to a specific client, requesting a callback from the client.
+ *
+ * @param client
+ *     The client to send the callback to
+ * @param sub
+ *     The subscription that references the event being sent to the client.
+ * @param json
+ *     Any data to include with the event
+ * @param cb_fn
+ *     The function to execute on callback
+ * @param cb_data
+ *     Data to pass into the function @arg{transfer-full}
+ * @param free_fn
+ *     Frees the cb_data
+ */
+void evs_send_sub_full(
+	struct client *client,
+	struct subscription *sub,
+	const gchar *json,
+	const evs_cb_fn cb_fn,
+	void *cb_data,
+	const qev_free_fn free_fn);
 
 /**
  * Send an event to a client, damn the consequences.
