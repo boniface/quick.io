@@ -111,16 +111,23 @@ void test_config()
 	qev_buffer_put(c);
 }
 
+void test_config_rm()
+{
+	unlink(CONFIG_FILE);
+}
+
 gboolean test_do(SRunner *sr)
 {
 	gint failures;
+
+	test_config();
 
 	srunner_run_all(sr, CK_NORMAL);
 	failures = srunner_ntests_failed(sr);
 	srunner_free(sr);
 
 	unlink(CONFIG_FILE);
-	g_free(_xml_file);
+	test_config_rm();
 
 	return failures > 0;
 }
@@ -135,7 +142,6 @@ void test_setup()
 void test_teardown()
 {
 	qev_exit();
-	unlink(CONFIG_FILE);
 }
 
 qev_fd_t test_socket()

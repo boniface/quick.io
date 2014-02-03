@@ -38,6 +38,7 @@ int main()
 	qev_buffer_put(buff);
 
 	test_teardown();
+	test_config_rm();
 
 	return 0;
 }

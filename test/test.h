@@ -41,6 +41,11 @@ gboolean test_do(SRunner *sr);
 void test_config();
 
 /**
+ * Remove the created configuration file
+ */
+void test_config_rm();
+
+/**
  * A checked fixture: starts up QIO and gets everything ready
  * for a test
  */
