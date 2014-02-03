@@ -139,8 +139,7 @@ struct evs_on_info {
 	gchar *ev_extra;
 
 	/**
-	 * Reference to the susbcription. Apps should consider this completely
-	 * opaque and MAY NEVER touch it.
+	 * Reference to the susbcription.
 	 */
 	struct subscription *sub;
 
@@ -157,8 +156,6 @@ struct evs_on_info {
 
 /**
  * The handler for when a client subscribes.
- *
- * @todo Indicate if there are already clients subscribed to the event
  *
  * @param info
  *     A self-contained struct of info that can be hurled around; contains

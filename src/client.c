@@ -147,7 +147,6 @@ evs_cb_t client_cb_new(
 
 	qev_unlock(client);
 
-	// @todo test limits of callbacks
 	return (i << 16) | cb.id;
 }
 

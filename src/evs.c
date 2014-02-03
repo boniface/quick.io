@@ -11,7 +11,7 @@
 /**
  * Path used for all callbacks
  */
-#define CB_PATH_FORMAT "/qio/callback/%" G_GUINT64_FORMAT
+#define CB_PATH_FORMAT "/qio/callback/%" G_GUINT32_FORMAT
 
 
 /**
@@ -192,7 +192,7 @@ void evs_route(
 		goto out;
 	}
 
-	DEBUG("Got event: client=%p, ev_path=%s, ev_extra=%s, callback=%lu, json=%s",
+	DEBUG("Got event: client=%p, ev_path=%s, ev_extra=%s, callback=%" G_GUINT32_FORMAT ", json=%s",
 			client, ev_path, ev_extra, client_cb, json);
 
 	if (ev->handler_fn != NULL) {
