@@ -3,18 +3,30 @@ Maintainer: Andrew Stone <andrew@clovar.com>
 Section: web
 Priority: optional
 Standards-Version: 3.9.5
-Build-Depends: debhelper (>= 9), check (>= 0.9.8), libc6-dev (>= 2.13), libglib2.0-dev (>= 2.32), libssl-dev (>= 1.0.0)
+Build-Depends:
+	check (>= 0.9.8),
+	debhelper (>= 9),
+	libc6-dev (>= 2.13),
+	libglib2.0-dev (>= 2.32),
+	libssl-dev (>= 1.0.0),
+	python
 
 Package: quickio
 Architecture: i386 amd64
 Multi-Arch: no
 Depends: adduser, ${misc:Depends}, ${shlibs:Depends}
 Description: Quick WebSocket server
- QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
+	QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
 
 Package: quickio-dev
 Architecture: i386 amd64
 Multi-Arch: foreign
-Depends: adduser, ${misc:Depends}, ${shlibs:Depends}, quickio (= ${binary:Version})
+Depends:
+	${misc:Depends},
+	${shlibs:Depends},
+	libglib2.0-dev (>= 2.32),
+	libssl-dev (>= 1.0.0),
+	pkg-config (>= 0.16.0),
+	quickio (= ${binary:Version})
 Description: Quick WebSocket server
- QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
+	QuickIO is an incredibly fast, incredibly lightweight WebSocket server.

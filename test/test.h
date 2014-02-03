@@ -11,6 +11,7 @@
 
 #include <check.h>
 #include "quickio.h"
+#include "check_compat.h"
 
 /**
  * Create a new test suite, ready for running.

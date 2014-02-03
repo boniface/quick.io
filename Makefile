@@ -179,8 +179,7 @@ INSTALL_SYSCTL_DIR = $(INSTALL_ROOT)/etc/sysctl.d
 DEBUILD_ARGS = \
 	-uc \
 	-us \
-	-tc \
-	-I.git*
+	-tc
 
 all:
 	@echo "Choose one of the following:"
@@ -200,6 +199,9 @@ release: $(BINARY)
 
 deb:
 	debuild $(DEBUILD_ARGS)
+
+deb-stable:
+	sbuild -d wheezy-amd64
 
 test: $(TESTS)
 	./lib/quick-event/ext/gcovr \
