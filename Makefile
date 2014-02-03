@@ -75,7 +75,8 @@ TEST_APPS = \
 	$(TEST_APPS_DIR)/test_app_sane.so
 
 BENCHMARKS = \
-	bench_evs_query
+	bench_evs_query \
+	bench_protocol_rfc6455
 
 LIBS = glib-2.0 gmodule-2.0 openssl
 LIBS_TEST = check
@@ -291,5 +292,5 @@ $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
 
-$(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/%:
+$(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/% :
 	cd $(QEV_DIR) && $(MAKE) $*

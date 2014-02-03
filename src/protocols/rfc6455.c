@@ -246,7 +246,6 @@ static enum protocol_status _decode(
 	str += header_len;
 
 	for (i = 0; i < len; i++) {
-		// @todo __builtin_prefetch, will that help at all?
 		msg[i] = str[i] ^ mask[i & 3];
 	}
 

@@ -8,6 +8,10 @@
 
 #include "test.h"
 
+#ifndef PORT
+	#define PORT 41238
+#endif
+
 /**
  * Location of this test's config file
  */
@@ -93,23 +97,23 @@ void test_new(
 	srunner_set_xml(*sr, _xml_file);
 }
 
-gboolean test_do(SRunner *sr)
+void test_config()
 {
-	GString *c;
-	gint failures;
 	gboolean configed;
+	GString *c = qev_buffer_get();
 
-	c = g_string_sized_new(sizeof(CONFIG));
 	g_string_printf(c, CONFIG,
 			FATAL_SIGNAL == 5 ? 100 : 2000,
 			PORT, PORT + 1, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
-	g_string_free(c, TRUE);
+	ASSERT(configed, "Could not create test config file");
 
-	if (!configed) {
-		CRITICAL("Could not create test config file");
-		return 1;
-	}
+	qev_buffer_put(c);
+}
+
+gboolean test_do(SRunner *sr)
+{
+	gint failures;
 
 	srunner_run_all(sr, CK_NORMAL);
 	failures = srunner_ntests_failed(sr);
@@ -131,6 +135,7 @@ void test_setup()
 void test_teardown()
 {
 	qev_exit();
+	unlink(CONFIG_FILE);
 }
 
 qev_fd_t test_socket()

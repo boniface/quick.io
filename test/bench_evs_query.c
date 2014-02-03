@@ -79,7 +79,7 @@ int main()
 {
 	guint i;
 	qev_bench_t *bench;
-	bench = qev_bench_new("events_query", "bench_events_query.xml");
+	bench = qev_bench_new("evs_query", "bench_evs_query.xml");
 
 	qev_init(NULL, 0);
 	qev_run();

@@ -36,6 +36,11 @@ void test_new(
 gboolean test_do(SRunner *sr);
 
 /**
+ * Create the default test config file
+ */
+void test_config();
+
+/**
  * A checked fixture: starts up QIO and gets everything ready
  * for a test
  */
