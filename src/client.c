@@ -115,7 +115,7 @@ evs_cb_t client_cb_new(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	guint i;
+	guint16 i;
 	struct client_cb cb;
 
 	if (cb_fn == NULL) {
