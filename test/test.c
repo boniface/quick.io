@@ -22,6 +22,7 @@
  */
 #define CONFIG \
 	"[quick-event]\n" \
+	"max-clients = %lu\n" \
 	"poll-wait = 1\n" \
 	"read-high = 131072\n" \
 	"read-high-burst = 131072\n" \
@@ -99,10 +100,16 @@ void test_new(
 
 void test_config()
 {
+	gint err;
 	gboolean configed;
+	struct rlimit rl;
 	GString *c = qev_buffer_get();
 
+	err = getrlimit(RLIMIT_NOFILE, &rl);
+	ASSERT(err == 0, "Could not get file limits");
+
 	g_string_printf(c, CONFIG,
+			rl.rlim_cur,
 			FATAL_SIGNAL == 5 ? 100 : 2000,
 			PORT, PORT + 1, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);

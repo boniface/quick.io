@@ -32,9 +32,7 @@ void qio_main(int argc, char **argv)
 		qev_listen("0.0.0.0", 843);
 	}
 
-	#if FATAL_SIGNAL == 5
-		qev_setnofile(qev_cfg_get_max_clients());
-	#endif
+	qev_setnofile(qev_cfg_get_max_clients());
 
 	if (cfg_user != NULL) {
 		qev_chuser(cfg_user);

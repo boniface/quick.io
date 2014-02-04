@@ -144,6 +144,8 @@ LDFLAGS_TEST = \
 LDFLAGS_RELEASE = \
 	$(LIBQEV)
 
+VG_SUPPRESSIONS = valgrind.supp
+
 ifdef USE_VALGRIND
 	CFLAGS += -DFATAL_SIGNAL=9
 	MEMTEST = \
@@ -151,8 +153,7 @@ ifdef USE_VALGRIND
 		G_DEBUG=gc-friendly \
 		valgrind \
 			--quiet \
-			--suppressions=$(QEV_DIR)/test/valgrind.supp \
-			--suppressions=$(QEV_DIR)/test/valgrind_expected.supp \
+			--suppressions=$(CURDIR)/$(VG_SUPPRESSIONS) \
 			--tool=memcheck \
 			--leak-check=full \
 			--leak-resolution=high \
@@ -217,7 +218,7 @@ docs:
 docs-watch:
 	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
 
-install: release $(BINARY_TESTAPPS)
+install: release $(BINARY_TESTAPPS) $(VG_SUPPRESSIONS)
 	mkdir -p \
 		$(INSTALL_APP_LIB_DIR) \
 		$(INSTALL_BIN_DIR) \
@@ -233,6 +234,7 @@ install: release $(BINARY_TESTAPPS)
 	$(INSTALL) src/*.h $(INSTALL_INCLUDE_DIR)
 	$(INSTALL) src/protocols/*.h $(INSTALL_INCLUDE_PROT_DIR)
 	$(INSTALL) lib/quick-event/src/*.h $(INSTALL_INCLUDE_QEV_DIR)
+	$(INSTALL) $(VG_SUPPRESSIONS) $(INSTALL_INCLUDE_DIR)
 	$(INSTALL) quickio.ini $(INSTALL_ETC_DIR)
 	$(INSTALL) quickio.pc $(INSTALL_PKGCFG_DIR)
 	$(INSTALL) -D limits.conf $(INSTALL_LIMITS_DIR)/quickio.conf
@@ -272,7 +274,7 @@ $(BINARY_TESTAPPS): src/quickio-testapps.c
 	@strip -s $@
 
 .PHONY: $(TESTS)
-$(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
+$(TESTS): % : $(TEST_APPS) $(TEST_DIR)/% $(VG_SUPPRESSIONS)
 	@cd $(TEST_DIR) && $(MEMTEST) ./$@
 
 .PHONY: $(BENCHMARKS)
@@ -293,6 +295,9 @@ $(TEST_DIR)/%: export LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
+
+$(VG_SUPPRESSIONS): $(QEV_DIR)/test/valgrind.supp $(QEV_DIR)/test/valgrind_expected.supp
+	cat $^ > $(VG_SUPPRESSIONS)
 
 $(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/% :
 	cd $(QEV_DIR) && $(MAKE) $*

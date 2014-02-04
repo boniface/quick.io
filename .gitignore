@@ -14,5 +14,6 @@ bench_*
 quickio
 quickio-testapps
 test/test_*.ini
+valgrind.supp
 
 /*.sublime*
