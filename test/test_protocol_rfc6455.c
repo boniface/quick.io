@@ -226,6 +226,33 @@ START_TEST(test_rfc6455_heartbeats)
 }
 END_TEST
 
+START_TEST(test_rfc6455_heartbeat_before_handshake)
+{
+	gint err;
+	gchar buff[1024];
+	qev_fd_t ts = test_socket();
+
+	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
+					sizeof(HEADERS) - 1);
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(err > 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(HEADERS_RESPONSE, buff);
+
+	// Ensure the client doesn't see this
+	test_heartbeat();
+
+	ck_assert_int_eq(send(ts, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1, 0),
+					sizeof(QIO_HANDSHAKE) - 1);
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(err > 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(HANDSHAKE_RESPONSE, buff);
+
+	close(ts);
+}
+END_TEST
+
 START_TEST(test_rfc6455_decode)
 {
 	gint err;
@@ -554,6 +581,7 @@ int main()
 	tcase_add_test(tcase, test_rfc6455_handshake_no_ohai);
 	tcase_add_test(tcase, test_rfc6455_handshake_invalid_prefix);
 	tcase_add_test(tcase, test_rfc6455_heartbeats);
+	tcase_add_test(tcase, test_rfc6455_heartbeat_before_handshake);
 
 	tcase = tcase_create("Decode");
 	suite_add_tcase(s, tcase);

@@ -159,7 +159,9 @@ static void _heartbeat_cb(struct client *client, void *hb_)
 {
 	struct heartbeat *hb = hb_;
 
-	if (client->protocol != NULL && client->protocol->heartbeat != NULL) {
+	if (protocols_client_handshaked(client) &&
+		client->protocol->heartbeat != NULL) {
+
 		client->protocol->heartbeat(client, hb);
 	}
 }
