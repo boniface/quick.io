@@ -57,6 +57,14 @@ struct subscription {
 struct subscription* sub_get(struct event *ev, const gchar *ev_extra);
 
 /**
+ * Increase the reference count on the subscription.
+ *
+ * @param sub
+ *     The subscription you're done with.
+ */
+struct subscription* sub_ref(struct subscription *sub);
+
+/**
  * Release a reference to the subscription, cleaning it up if there
  * are no more references.
  *

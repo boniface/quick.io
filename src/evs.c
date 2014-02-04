@@ -391,6 +391,7 @@ struct evs_on_info* evs_on_info_copy(
 	struct evs_on_info *ret = g_slice_copy(sizeof(*info), info);
 
 	qev_ref(info->client);
+	sub_ref(info->sub);
 
 	if (with_ev_extra) {
 		ret->ev_extra = g_strdup(info->ev_extra);
@@ -404,6 +405,7 @@ struct evs_on_info* evs_on_info_copy(
 void evs_on_info_free(struct evs_on_info *info)
 {
 	qev_unref(info->client);
+	sub_unref(info->sub);
 
 	if (info->ev_extra) {
 		g_free(info->ev_extra);

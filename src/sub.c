@@ -67,6 +67,12 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 	return sub;
 }
 
+struct subscription* sub_ref(struct subscription *sub)
+{
+	__sync_add_and_fetch(&sub->refs, 1);
+	return sub;
+}
+
 void sub_unref(struct subscription *sub)
 {
 	struct event *ev = sub->ev;
