@@ -36,9 +36,7 @@ static void _do(const gchar *cfg)
 		goto abort;
 	}
 
-	if (!qev_cfg_parse("test_config.ini")) {
-		goto abort;
-	}
+	test_setup_with_config("test_config.ini");
 
 out:
 	unlink("test_config.ini");
@@ -56,46 +54,36 @@ abort:
 
 START_TEST(test_config_invalid_heartbeat_interval_0)
 {
-	guint64 before = cfg_heartbeat_interval;
-
 	_do(HEARTBEAT_0);
-	ck_assert_uint_eq(before, cfg_heartbeat_interval);
+	ck_assert_uint_eq(cfg_heartbeat_interval, 10);
 }
 END_TEST
 
 START_TEST(test_config_invalid_heartbeat_interval_1)
 {
-	guint64 before = cfg_heartbeat_interval;
-
 	_do(HEARTBEAT_1);
-	ck_assert_uint_eq(before, cfg_heartbeat_interval);
+	ck_assert_uint_eq(cfg_heartbeat_interval, 10);
 }
 END_TEST
 
 START_TEST(test_config_invalid_sub_min_size_0)
 {
-	guint64 before = cfg_sub_min_size;
-
 	_do(SUB_MIN_SIZE_0);
-	ck_assert_uint_eq(before, cfg_sub_min_size);
+	ck_assert_uint_eq(cfg_sub_min_size, 8192);
 }
 END_TEST
 
 START_TEST(test_config_invalid_sub_min_size_1)
 {
-	guint64 before = cfg_sub_min_size;
-
 	_do(SUB_MIN_SIZE_1);
-	ck_assert_uint_eq(before, cfg_sub_min_size);
+	ck_assert_uint_eq(cfg_sub_min_size, 8192);
 }
 END_TEST
 
 START_TEST(test_config_invalid_client_subs_fairness)
 {
-	guint64 before = cfg_clients_subs_fairness;
-
 	_do(SUB_FAIRNESS);
-	ck_assert_uint_eq(before, cfg_clients_subs_fairness);
+	ck_assert_uint_eq(cfg_clients_subs_fairness, 80);
 }
 END_TEST
 
@@ -116,7 +104,7 @@ int main()
 
 	tcase = tcase_create("Options");
 	suite_add_tcase(s, tcase);
-	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_checked_fixture(tcase, NULL, test_teardown);
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_0);
 	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_1);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);

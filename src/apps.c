@@ -23,8 +23,7 @@ static GPtrArray *_apps = NULL;
 
 static void _add_app(
 	const gchar *name,
-	gchar **vals,
-	const gsize valsc)
+	const gchar *path)
 {
 	guint i;
 	gboolean ok;
@@ -35,13 +34,10 @@ static void _add_app(
 
 	app->name = g_strdup(name);
 
-	ASSERT(valsc == 1, "Expected single path for %s, found %" G_GSIZE_FORMAT,
-				name, valsc);
-
-	if (strspn(*vals, PATH_STARTERS) == 0) {
-		g_string_printf(full_path, "%s/%s", PATH_LIB_DIR, *vals);
+	if (strspn(path, PATH_STARTERS) == 0) {
+		g_string_printf(full_path, "%s/%s", PATH_LIB_DIR, path);
 	} else {
-		g_string_assign(full_path, *vals);
+		g_string_assign(full_path, path);
 	}
 
 	app->mod = g_module_open(full_path->str, G_MODULE_BIND_LOCAL);

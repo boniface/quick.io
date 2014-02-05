@@ -146,6 +146,13 @@ void test_setup()
 	qev_timer(_heartbeat_timer, 0, 1);
 }
 
+void test_setup_with_config(gchar *config)
+{
+	gchar *args[] = {"test", "--config-file=" CONFIG_FILE, "-f", config};
+	qio_main(4, args);
+	qev_timer(_heartbeat_timer, 0, 1);
+}
+
 void test_teardown()
 {
 	qev_exit();

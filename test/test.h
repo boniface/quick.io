@@ -53,6 +53,11 @@ void test_config_rm();
 void test_setup();
 
 /**
+ * Setup the server including the given config path
+ */
+void test_setup_with_config(gchar *config);
+
+/**
  * A checked teardown: tears down QIO and frees up all memory used
  */
 void test_teardown();

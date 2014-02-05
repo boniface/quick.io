@@ -18,9 +18,7 @@ static void _set(const gchar *vars)
 		goto abort;
 	}
 
-	if (!qev_cfg_parse("test_apps_errors.ini")) {
-		goto abort;
-	}
+	test_setup_with_config("test_apps_errors.ini");
 
 out:
 	unlink("test_apps_errors.ini");
@@ -263,7 +261,7 @@ int main()
 
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
-	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_checked_fixture(tcase, NULL, test_teardown);
 	tcase_add_test_raise_signal(tcase, test_apps_error_path, FATAL_SIGNAL);
 	tcase_add_test_raise_signal(tcase, test_apps_error_invalid_app, FATAL_SIGNAL);
 	tcase_add_test_raise_signal(tcase, test_apps_error_init, FATAL_SIGNAL);
