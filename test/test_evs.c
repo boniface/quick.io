@@ -146,8 +146,9 @@ START_TEST(test_evs_on_already_subscribed)
 		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:4=\"/test/delayed\"", 66, MSG_NOSIGNAL);
 	ck_assert_int_eq(err, 66);
 
+	test_msg(tc, "/qio/callback/4:0={\"code\":202,\"data\":null,"
+					"\"err_msg\":\"subscription pending\"}");
 	test_msg(tc, "/qio/callback/3:0={\"code\":200,\"data\":null}");
-	test_msg(tc, "/qio/callback/4:0={\"code\":200,\"data\":null}");
 
 	test_cb(tc,
 		"/qio/off:5=\"/test/delayed\"",
@@ -246,6 +247,176 @@ START_TEST(test_evs_send_sub)
 }
 END_TEST
 
+START_TEST(test_evs_on)
+{
+	guint i;
+	gchar buff[128];
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/good2\"",
+		"/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	evs_broadcast_path("/test/good", "\"json!\"");
+	evs_broadcast_path("/test/good2", "\"json!\"");
+	evs_broadcast_tick();
+
+	for (i = 0; i < 2; i++) {
+		/*
+		 * No implied ordering for broadcasts
+		 */
+		test_recv(tc, buff, sizeof(buff));
+		ck_assert(g_str_has_prefix(buff, "/test/good"));
+		ck_assert(g_str_has_suffix(buff, "\"json!\""));
+	}
+
+	test_cb(tc,
+		"/qio/off:3=\"/test/good2\"",
+		"/qio/callback/3:0={\"code\":200,\"data\":null}");
+
+	for (i = 0; i < 2; i++) {
+		evs_broadcast_path("/test/good", "\"json!\"");
+		evs_broadcast_path("/test/good2", "\"json!\"");
+	}
+
+	evs_broadcast_tick();
+
+	for (i = 0; i < 2; i++) {
+		test_msg(tc, "/test/good:0=\"json!\"");
+	}
+
+	test_cb(tc,
+		"/test/stats:100=",
+		"/qio/callback/100:0={\"code\":200,\"data\":[2,1,10,20,10]}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_evs_on_empty_broadcast)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	evs_broadcast_path("/test/good", "\"json!\"");
+	evs_broadcast_tick();
+	test_msg(tc, "/test/good:0=\"json!\"");
+
+	evs_broadcast_path("/test/good", NULL);
+	evs_broadcast_tick();
+	test_msg(tc, "/test/good:0=null");
+
+	evs_broadcast_path("/test/good", "");
+	evs_broadcast_tick();
+	test_msg(tc, "/test/good:0=null");
+}
+END_TEST
+
+START_TEST(test_evs_on_delayed)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/delayed\"",
+		"/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_evs_on_reject)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/reject\"",
+		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_evs_on_delayed_reject)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/delayed-reject\"",
+		"/qio/callback/2:0={\"code\":401,\"data\":null,\"err_msg\":null}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_evs_on_with_evs_send)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:2=\"/test/with-send\"",
+		"/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_evs_off_before_on_cb)
+{
+	gint err;
+	qev_fd_t tc = test_client();
+
+	err = send(tc,
+		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:1=\"/test/delayed\""
+		"\x00\x00\x00\x00\x00\x00\x00\x1a/qio/off:2=\"/test/delayed\"",
+		67, MSG_NOSIGNAL);
+	ck_assert_int_eq(err, 67);
+
+	test_msg(tc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
+	test_msg(tc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	evs_broadcast_path("/test/delayed", "\"json!\"");
+	evs_broadcast_tick();
+
+	test_ping(tc);
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_evs_on_off_on_before_first_on_cb)
+{
+	gint err;
+	qev_fd_t tc = test_client();
+
+	err = send(tc,
+		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:1=\"/test/delayed\""
+		"\x00\x00\x00\x00\x00\x00\x00\x1a/qio/off:2=\"/test/delayed\""
+		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:3=\"/test/delayed\"",
+		100, MSG_NOSIGNAL);
+	ck_assert_int_eq(err, 100);
+
+	test_msg(tc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
+	test_msg(tc, "/qio/callback/3:0={\"code\":202,\"data\":null,"
+					"\"err_msg\":\"subscription pending\"}");
+	test_msg(tc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	evs_broadcast_path("/test/delayed", "\"json!\"");
+	evs_broadcast_tick();
+
+	test_msg(tc, "/test/delayed:0=\"json!\"");
+	test_ping(tc);
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_callback_invalid_id)
 {
 	qev_fd_t tc = test_client();
@@ -327,7 +498,7 @@ int main()
 	tcase_add_test(tcase, test_evs_root_handler);
 	tcase_add_test(tcase, test_evs_clean_path);
 
-	tcase = tcase_create("Clients");
+	tcase = tcase_create("Events");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_evs_404);
@@ -340,6 +511,14 @@ int main()
 	tcase_add_test(tcase, test_evs_send_doesnt_handle_children);
 	tcase_add_test(tcase, test_evs_malformed_path);
 	tcase_add_test(tcase, test_evs_send_sub);
+	tcase_add_test(tcase, test_evs_on);
+	tcase_add_test(tcase, test_evs_on_empty_broadcast);
+	tcase_add_test(tcase, test_evs_on_delayed);
+	tcase_add_test(tcase, test_evs_on_reject);
+	tcase_add_test(tcase, test_evs_on_delayed_reject);
+	tcase_add_test(tcase, test_evs_on_with_evs_send);
+	tcase_add_test(tcase, test_evs_off_before_on_cb);
+	tcase_add_test(tcase, test_evs_on_off_on_before_first_on_cb);
 
 	tcase = tcase_create("QIO Builtins");
 	suite_add_tcase(s, tcase);

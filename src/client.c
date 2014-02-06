@@ -13,11 +13,11 @@ static qev_stats_counter_t *_total_subs;
 /**
  * Assumes lock on client is held
  */
-static gint32* _sub_get(struct client *client)
+static struct client_sub* _sub_alloc(struct client *client)
 {
 	guint pressure;
 	guint64 used;
-	gint32 *idx = NULL;
+	struct client_sub *csub = NULL;
 	gboolean allocate = FALSE;
 
 	used = qev_stats_counter_get(_total_subs);
@@ -41,16 +41,67 @@ static gint32* _sub_get(struct client *client)
 
 	if (allocate) {
 		qev_stats_counter_inc(_total_subs);
-		idx = g_slice_alloc(sizeof(gint32));
+		csub = g_slice_alloc0(sizeof(*csub));
 	}
 
-	return idx;
+	return csub;
 }
 
-static void _sub_put(gint32 *idx)
+static void _sub_free(struct client_sub *csub)
 {
 	qev_stats_counter_dec(_total_subs);
-	g_slice_free1(sizeof(*idx), idx);
+	g_slice_free1(sizeof(*csub), csub);
+}
+
+/**
+ * Gets the client's subscription, if there is one. You MUST be holding
+ * a lock on the client.
+ */
+static struct client_sub* _sub_get(
+	struct client *client,
+	struct subscription *sub)
+{
+	if (client->subs == NULL) {
+		return NULL;
+	}
+	return g_hash_table_lookup(client->subs, sub);
+}
+
+static gboolean _sub_remove(
+	struct client *client,
+	struct subscription *sub,
+	const gboolean rejected)
+{
+	gboolean removed = FALSE;
+	struct client_sub *csub = NULL;
+
+	qev_lock(client);
+
+	csub = _sub_get(client, sub);
+	if (csub == NULL) {
+		goto out;
+	}
+
+	if (!rejected && csub->pending) {
+		csub->tombstone = TRUE;
+	} else {
+		g_hash_table_remove(client->subs, sub);
+		qev_list_remove(sub->subscribers, &csub->idx);
+		_sub_free(csub);
+		sub_unref(sub);
+
+		removed = TRUE;
+
+		if (g_hash_table_size(client->subs) == 0) {
+			g_hash_table_unref(client->subs);
+			client->subs = NULL;
+		}
+	}
+
+out:
+	qev_unlock(client);
+
+	return removed;
 }
 
 /**
@@ -60,15 +111,15 @@ static void _sub_remove_all(struct client *client)
 {
 	GHashTableIter iter;
 	struct subscription *sub;
-	gint32 *idx;
+	struct client_sub *csub;
 
 	if (client->subs != NULL) {
 		g_hash_table_iter_init(&iter, client->subs);
 
-		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&idx)) {
+		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&csub)) {
 			g_hash_table_iter_remove(&iter);
-			qev_list_remove(sub->subscribers, idx);
-			_sub_put(idx);
+			qev_list_remove(sub->subscribers, &csub->idx);
+			_sub_free(csub);
 			sub_unref(sub);
 		}
 
@@ -182,43 +233,50 @@ enum evs_status client_cb_fire(
 	return status;
 }
 
-gboolean client_sub_has(struct client *client, struct subscription *sub)
+gboolean client_sub_active(struct client *client, struct subscription *sub)
 {
-	gboolean has = FALSE;
+	gboolean active;
+	struct client_sub *csub;
 
 	qev_lock(client);
 
-	if (client->subs == NULL) {
-		goto out;
-	}
+	csub = _sub_get(client, sub);
+	active = csub != NULL && !csub->pending && !csub->tombstone;
 
-	has = g_hash_table_contains(client->subs, sub);
-
-out:
 	qev_unlock(client);
-	return has;
+
+	return active;
 }
 
-gboolean client_sub_add(
+enum client_sub_state client_sub_add(
 	struct client *client,
 	struct subscription *sub)
 {
-	gint32 *idx = NULL;
-	gboolean good = FALSE;
+	gboolean added;
+	enum client_sub_state sstate;
+	struct client_sub *csub = NULL;
 
 	qev_lock(client);
 
-	if (client_sub_has(client, sub)) {
-		good = TRUE;
+	csub = _sub_get(client, sub);
+	if (csub != NULL) {
+		csub->tombstone = FALSE;
+		if (csub->pending) {
+			sstate = CLIENT_SUB_PENDING;
+		} else {
+			sstate = CLIENT_SUB_ACTIVE;
+		}
+		goto out;
+	}
+
+	csub = _sub_alloc(client);
+	if (csub == NULL) {
 		goto cleanup;
 	}
 
-	idx = _sub_get(client);
-	if (idx == NULL) {
-		goto cleanup;
-	}
-
-	if (!QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers, client, idx)) {
+	added = QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers,
+							client, &csub->idx);
+	if (!added) {
 		goto cleanup;
 	}
 
@@ -226,51 +284,54 @@ gboolean client_sub_add(
 		client->subs = g_hash_table_new(NULL, NULL);
 	}
 
-	g_hash_table_insert(client->subs, sub, idx);
-	good = TRUE;
+	csub->pending = TRUE;
+	sub_ref(sub);
+	g_hash_table_insert(client->subs, sub, csub);
+	sstate = CLIENT_SUB_CREATED;
 
 out:
 	qev_unlock(client);
-	return good;
+	return sstate;
 
 cleanup:
-	if (idx != NULL) {
-		_sub_put(idx);
+	sstate = CLIENT_SUB_NULL;
+	if (csub != NULL) {
+		_sub_free(csub);
 	}
 
-	sub_unref(sub);
 	goto out;
 }
 
-gboolean client_sub_remove(struct client *client, struct subscription *sub)
+gboolean client_sub_approve(
+	struct client *client,
+	struct subscription *sub)
 {
-	gint32 *idx;
-	gboolean removed = FALSE;
+	gboolean approved = FALSE;
+	struct client_sub *csub = NULL;
 
 	qev_lock(client);
 
-	if (client->subs == NULL) {
-		goto out;
-	}
+	csub = _sub_get(client, sub);
+	csub->pending = FALSE;
+	approved = csub->tombstone == FALSE;
 
-	idx = g_hash_table_lookup(client->subs, sub);
-	if (idx != NULL) {
-		g_hash_table_remove(client->subs, sub);
-		qev_list_remove(sub->subscribers, idx);
-		_sub_put(idx);
-		sub_unref(sub);
-
-		removed = TRUE;
-
-		if (g_hash_table_size(client->subs) == 0) {
-			g_hash_table_unref(client->subs);
-			client->subs = NULL;
-		}
-	}
-
-out:
 	qev_unlock(client);
-	return removed;
+
+	return approved;
+}
+
+void client_sub_reject(
+	struct client *client,
+	struct subscription *sub)
+{
+	_sub_remove(client, sub, TRUE);
+}
+
+gboolean client_sub_remove(
+	struct client *client,
+	struct subscription *sub)
+{
+	return _sub_remove(client, sub, FALSE);
 }
 
 void client_close(struct client *client)

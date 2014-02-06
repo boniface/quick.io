@@ -97,6 +97,16 @@ static void _broadcast_free(void *bc_)
 	g_slice_free1(sizeof(*bc), bc);
 }
 
+static void _off(
+	struct client *client,
+	struct subscription *sub)
+{
+	gboolean removed = client_sub_remove(client, sub);
+	if (removed && sub->ev->off_fn != NULL) {
+		sub->ev->off_fn(client, sub->ev_extra);
+	}
+}
+
 void event_init(
 	struct event *ev,
 	const gchar *ev_path,
@@ -192,7 +202,8 @@ void evs_route(
 		goto out;
 	}
 
-	DEBUG("Got event: client=%p, ev_path=%s, ev_extra=%s, callback=%" G_GUINT32_FORMAT ", json=%s",
+	DEBUG("Got event: client=%p, ev_path=%s, ev_extra=%s, "
+			"callback=%" G_GUINT32_FORMAT ", json=%s",
 			client, ev_path, ev_extra, client_cb, json);
 
 	if (ev->handler_fn != NULL) {
@@ -220,39 +231,49 @@ void evs_on(
 	gchar *ev_extra,
 	const evs_cb_t client_cb)
 {
-	struct evs_on_info info;
-	struct subscription *sub;
-	enum evs_status status = EVS_STATUS_OK;
-
-	DEBUG("Subscribing to: ev_path=%s, ev_extra=%s", ev->ev_path, ev_extra);
-
-	sub = sub_get(ev, ev_extra);
-
-	info = (struct evs_on_info){
+	struct subscription *sub = sub_get(ev, ev_extra);
+	struct evs_on_info info = {
 		.ev_extra = ev_extra,
 		.sub = sub,
 		.client = client,
 		.client_cb = client_cb,
 	};
 
+	DEBUG("Subscribing to: ev_path=%s, ev_extra=%s", ev->ev_path, ev_extra);
+
 	qev_lock(client);
 
-	if (client_sub_has(client, sub)) {
-		evs_cb(client, client_cb, NULL);
-		sub_unref(sub);
-		goto out;
+	switch (client_sub_add(client, sub)) {
+		case CLIENT_SUB_PENDING:
+			evs_err_cb(client, client_cb, CODE_ACCEPTED,
+						"subscription pending", NULL);
+			break;
+
+		case CLIENT_SUB_TOMBSTONED: // shouldn't happen, but keep compiler quiet
+		case CLIENT_SUB_NULL:
+			evs_err_cb(client, client_cb, CODE_ENHANCE_CALM, NULL, NULL);
+			break;
+
+		case CLIENT_SUB_ACTIVE:
+			evs_cb(client, client_cb, NULL);
+			break;
+
+		case CLIENT_SUB_CREATED: {
+			enum evs_status status = EVS_STATUS_OK;
+			if (ev->on_fn != NULL) {
+				status = ev->on_fn(&info);
+			}
+
+			if (status != EVS_STATUS_HANDLED) {
+				evs_on_cb(status == EVS_STATUS_OK, &info);
+			}
+
+			break;
+		}
 	}
 
-	if (ev->on_fn != NULL) {
-		status = ev->on_fn(&info);
-	}
-
-	if (status != EVS_STATUS_HANDLED) {
-		evs_on_cb(status == EVS_STATUS_OK, &info);
-	}
-
-out:
 	qev_unlock(client);
+	sub_unref(sub);
 }
 
 void evs_send(
@@ -290,11 +311,11 @@ void evs_send_full(
 
 	if (!ev->handle_children && ev_extra != NULL && *ev_extra != '\0') {
 		WARN("Sending event %s%s to client, but %s doesn't handle_children, "
-				"so no subscription was possible.",
+				"so no subscription was possible. Refusing to send event.",
 				ev->ev_path, sub->ev_extra, ev->ev_path);
+	} else {
+		evs_send_sub_full(client, sub, json, cb_fn, cb_data, free_fn);
 	}
-
-	evs_send_sub_full(client, sub, json, cb_fn, cb_data, free_fn);
 
 	// @todo from that former memory leak: test multiple clients hitting things at random and really hard
 	sub_unref(sub);
@@ -318,21 +339,11 @@ void evs_send_sub_full(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	evs_cb_t server_cb;
-	JSON_OR_NULL(json);
-
-	qev_lock(client);
-
-	if (!client_sub_has(client, sub)) {
-		CRITICAL("Client is not subscribed to %s%s. Sending it an event there "
-				"is futile.", sub->ev->ev_path, sub->ev_extra);
+	if (client_sub_active(client, sub)) {
+		JSON_OR_NULL(json);
+		evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
+		protocols_send(client, sub->ev->ev_path, sub->ev_extra, server_cb, json);
 	}
-
-	server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
-
-	qev_unlock(client);
-
-	protocols_send(client, sub->ev->ev_path, sub->ev_extra, server_cb, json);
 }
 
 void evs_send_bruteforce(
@@ -360,28 +371,27 @@ void evs_on_cb(
 	const gboolean success,
 	const struct evs_on_info *info)
 {
-	gboolean good;
 	enum evs_code code = CODE_OK;
 
-	if (!success) {
+	qev_lock(info->client);
+
+	if (success) {
+		if (!client_sub_approve(info->client, info->sub)) {
+			_off(info->client, info->sub);
+		}
+	} else {
 		if (info->sub->ev->handle_children) {
 			code = CODE_NOT_FOUND;
 		} else {
 			code = CODE_UNAUTH;
 		}
 
-		sub_unref(info->sub);
-		goto out;
+		client_sub_reject(info->client, info->sub);
 	}
 
-	good = client_sub_add(info->client, info->sub);
-	if (!good) {
-		code = CODE_ENHANCE_CALM;
-	}
+	qev_unlock(info->client);
 
-out:
 	evs_err_cb(info->client, info->client_cb, code, NULL, NULL);
-	return;
 }
 
 struct evs_on_info* evs_on_info_copy(
@@ -420,12 +430,7 @@ void evs_off(
 	const gchar *ev_extra)
 {
 	struct subscription *sub = sub_get(ev, ev_extra);
-	gboolean removed = client_sub_remove(client, sub);
-
-	if (removed && sub->ev->off_fn != NULL) {
-		sub->ev->off_fn(client, ev_extra);
-	}
-
+	_off(client, sub);
 	sub_unref(sub);
 }
 

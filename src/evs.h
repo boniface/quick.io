@@ -98,6 +98,11 @@ enum evs_code {
 	CODE_OK = 200,
 
 	/**
+	 * A previous request for the exact same thing is currently being processed.
+	 */
+	CODE_ACCEPTED = 202,
+
+	/**
 	 * Malformed data was sent. It's not fatal, just annoying.
 	 */
 	CODE_BAD = 400,

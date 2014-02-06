@@ -13,6 +13,58 @@
 #include "quickio.h"
 
 /**
+ * Client subscriptions go through multiple states, explained here.
+ */
+enum client_sub_state {
+	/**
+	 * The subscription already exists and is in the pending state (probably
+	 * went async with verification).
+	 */
+	CLIENT_SUB_PENDING,
+
+	/**
+	 * The subscription exists and is going to be removed, but evs_on_cb()
+	 * hasn't been called by the owner, so removal is being delayed until then.
+	 */
+	CLIENT_SUB_TOMBSTONED,
+
+	/**
+	 * The subscription was created and is in the pending state.
+	 */
+	CLIENT_SUB_CREATED,
+
+	/**
+	 * The subscription is active and valid.
+	 */
+	CLIENT_SUB_ACTIVE,
+
+	/**
+	 * The client has no such subscription.
+	 */
+	CLIENT_SUB_NULL,
+};
+
+/**
+ * Information about the client's subscription to an event.
+ */
+struct client_sub {
+	/**
+	 * Where the client lives in the sub list
+	 */
+	gint32 idx;
+
+	/**
+	 * If the subscription is pending: the on() callback went async
+	 */
+	gboolean pending;
+
+	/**
+	 * If an unsubscribe came in before evs_on_cb() came through
+	 */
+	gboolean tombstone;
+};
+
+/**
  * Information necessary to fire a callback
  */
 struct client_cb {
@@ -138,7 +190,7 @@ enum evs_status client_cb_fire(
 	gchar *json);
 
 /**
- * Checks if a client is subscribed to the given susbcription
+ * Checks if a client is subscribed to the given susbcription.
  *
  * @param client
  *     The client in question
@@ -146,9 +198,9 @@ enum evs_status client_cb_fire(
  *     The subscription in question @arg{transfer-none}
  *
  * @return
- *     If the client has the subscription
+ *     If the client has the subscription and it's active.
  */
-gboolean client_sub_has(struct client *client, struct subscription *sub);
+gboolean client_sub_active(struct client *client, struct subscription *sub);
 
 /**
  * Adds the subscription to the client.
@@ -158,10 +210,51 @@ gboolean client_sub_has(struct client *client, struct subscription *sub);
  * @param sub
  *     The subscription in question @arg{transfer-full}
  *
- * @return
- *     If the subscription was successful.
+ * @return CLIENT_SUB_PENDING
+ *     When a previous subscription is still pending
+ * @return CLIENT_SUB_NULL
+ *     When the client has too many subscriptions and needs to enhance its calm.
+ * @return CLIENT_SUB_ACTIVE
+ *     The client is already subscribed to this event, and the event is active.
+ * @return CLIENT_SUB_CREATED
+ *     Sub has been accepted and is in the pending state, waiting for a call to
+ *     client_sub_approve()/reject().
+ *
  */
-gboolean client_sub_add(struct client *client, struct subscription *sub);
+enum client_sub_state client_sub_add(
+	struct client *client,
+	struct subscription *sub);
+
+/**
+ * Marks the subscription as approved.
+ *
+ * @param client
+ *     The client to approve the subscription on
+ * @param sub
+ *     The subscription to approve
+ *
+ * @return
+ *     Since it's possible for a client to unsubscribe from an event before
+ *     a subscription succeeds, it's possible for approval to fail. If the
+ *     event was tombstoned, this will return FALSE, and the appropriate
+ *     unsubscription should take place. If this returns TRUE, everything
+ *     is good.
+ */
+gboolean client_sub_approve(
+	struct client *client,
+	struct subscription *sub);
+
+/**
+ * Removes a pending subscription
+ *
+ * @param client
+ *     The client to reject the subscription on
+ * @param sub
+ *     The subscription to reject
+ */
+void client_sub_reject(
+	struct client *client,
+	struct subscription *sub);
 
 /**
  * Removes the subscription from the client.
