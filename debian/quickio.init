@@ -31,7 +31,7 @@ start() {
 		echo "$BINARY doesn't exist."
 		exit 1
 	fi
-	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY -- --config-file=/etc/quickio/quickio.ini
+	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE -b --exec $BINARY
 }
 
 stop() {

@@ -31,6 +31,9 @@ QEV_DIR = $(CURDIR)/lib/quick-event
 BINARY = quickio
 BINARY_TESTAPPS = quickio-testapps
 
+CFG_DEBUG = "quickio.debug.ini"
+CFG_RELEASE = "/etc/quickio/quickio.ini"
+
 HEADERS = $(shell find $(SRC_DIR) -name '*.h')
 
 OBJECTS = \
@@ -117,10 +120,12 @@ CFLAGS_TEST = \
 CFLAGS_DEBUG = \
 	-g \
 	-fno-inline \
+	-DQIO_DEFAULT_CFG=\"$(CFG_DEBUG)\" \
 	-DQEV_LOG_DEBUG
 
 CFLAGS_RELEASE = \
-	-O3
+	-O3 \
+	-DQIO_DEFAULT_CFG=\"$(CFG_RELEAS"E\)
 
 LDFLAGS = \
 	-pie \
@@ -262,6 +267,7 @@ clean:
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f $(BINARY)
 	rm -f $(BINARY_TESTAPPS)
+	rm -f $(VG_SUPPRESSIONS)
 	$(MAKE) -C docs clean
 
 $(BINARY): $(BINARY_OBJECTS) $(LIBQEV)
