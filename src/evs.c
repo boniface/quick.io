@@ -101,10 +101,16 @@ static void _off(
 	struct client *client,
 	struct subscription *sub)
 {
-	gboolean removed = client_sub_remove(client, sub);
+	gboolean removed;
+
+	qev_lock(client);
+
+	removed = client_sub_remove(client, sub);
 	if (removed && sub->ev->off_fn != NULL) {
 		sub->ev->off_fn(client, sub->ev_extra);
 	}
+
+	qev_unlock(client);
 }
 
 void event_init(
