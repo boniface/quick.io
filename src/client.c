@@ -302,7 +302,7 @@ cleanup:
 	goto out;
 }
 
-gboolean client_sub_approve(
+gboolean client_sub_accept(
 	struct client *client,
 	struct subscription *sub)
 {

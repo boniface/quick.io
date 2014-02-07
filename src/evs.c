@@ -382,7 +382,7 @@ void evs_on_cb(
 	qev_lock(info->client);
 
 	if (success) {
-		if (!client_sub_approve(info->client, info->sub)) {
+		if (!client_sub_accept(info->client, info->sub)) {
 			_off(info->client, info->sub);
 		}
 	} else {

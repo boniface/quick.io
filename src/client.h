@@ -218,7 +218,7 @@ gboolean client_sub_active(struct client *client, struct subscription *sub);
  *     The client is already subscribed to this event, and the event is active.
  * @return CLIENT_SUB_CREATED
  *     Sub has been accepted and is in the pending state, waiting for a call to
- *     client_sub_approve()/reject().
+ *     client_sub_accept()/reject().
  *
  */
 enum client_sub_state client_sub_add(
@@ -226,12 +226,12 @@ enum client_sub_state client_sub_add(
 	struct subscription *sub);
 
 /**
- * Marks the subscription as approved.
+ * Marks the subscription as accepted.
  *
  * @param client
- *     The client to approve the subscription on
+ *     The client to accept the subscription on
  * @param sub
- *     The subscription to approve
+ *     The subscription to accept
  *
  * @return
  *     Since it's possible for a client to unsubscribe from an event before
@@ -240,7 +240,7 @@ enum client_sub_state client_sub_add(
  *     unsubscription should take place. If this returns TRUE, everything
  *     is good.
  */
-gboolean client_sub_approve(
+gboolean client_sub_accept(
 	struct client *client,
 	struct subscription *sub);
 
