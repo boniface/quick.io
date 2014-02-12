@@ -331,6 +331,29 @@ START_TEST(test_evs_on_delayed)
 }
 END_TEST
 
+START_TEST(test_evs_on_delayed_with_broadcast)
+{
+	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
+
+	test_send(tc, "/qio/on:2=\"/test/delayed\"");
+	QEV_WAIT_FOR(client->subs != NULL && g_hash_table_size(client->subs) > 0);
+
+	evs_broadcast_path("/test/delayed", NULL);
+	evs_broadcast_tick();
+
+	test_msg(tc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	evs_broadcast_path("/test/delayed", NULL);
+	evs_broadcast_tick();
+	test_msg(tc, "/test/delayed:0=null");
+
+	test_ping(tc);
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_on_reject)
 {
 	qev_fd_t tc = test_client();
@@ -514,6 +537,7 @@ int main()
 	tcase_add_test(tcase, test_evs_on);
 	tcase_add_test(tcase, test_evs_on_empty_broadcast);
 	tcase_add_test(tcase, test_evs_on_delayed);
+	tcase_add_test(tcase, test_evs_on_delayed_with_broadcast);
 	tcase_add_test(tcase, test_evs_on_reject);
 	tcase_add_test(tcase, test_evs_on_delayed_reject);
 	tcase_add_test(tcase, test_evs_on_with_evs_send);

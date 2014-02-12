@@ -101,12 +101,9 @@ static void _off(
 	struct client *client,
 	struct subscription *sub)
 {
-	gboolean removed;
-
 	qev_lock(client);
 
-	removed = client_sub_remove(client, sub);
-	if (removed && sub->ev->off_fn != NULL) {
+	if (sub->ev->off_fn != NULL) {
 		sub->ev->off_fn(client, sub->ev_extra);
 	}
 
@@ -255,7 +252,7 @@ void evs_on(
 						"subscription pending", NULL);
 			break;
 
-		case CLIENT_SUB_TOMBSTONED: // shouldn't happen, but keep compiler quiet
+		case CLIENT_SUB_TOMBSTONED: // can't happen, but keep compiler quiet
 		case CLIENT_SUB_NULL:
 			evs_err_cb(client, client_cb, CODE_ENHANCE_CALM, NULL, NULL);
 			break;
@@ -382,9 +379,19 @@ void evs_on_cb(
 	qev_lock(info->client);
 
 	if (success) {
-		if (!client_sub_accept(info->client, info->sub)) {
-			_off(info->client, info->sub);
+		switch (client_sub_accept(info->client, info->sub)) {
+			case CLIENT_SUB_NULL:
+				code = CODE_ENHANCE_CALM;
+			case CLIENT_SUB_TOMBSTONED:
+				_off(info->client, info->sub);
+				break;
+
+			case CLIENT_SUB_PENDING: // can't happen: keep the compiler quiet
+			case CLIENT_SUB_CREATED: // can't happen: keep the compiler quiet
+			case CLIENT_SUB_ACTIVE:
+				break;
 		}
+
 	} else {
 		if (info->sub->ev->handle_children) {
 			code = CODE_NOT_FOUND;
@@ -435,8 +442,18 @@ void evs_off(
 	struct event *ev,
 	const gchar *ev_extra)
 {
+	gboolean removed;
 	struct subscription *sub = sub_get(ev, ev_extra);
-	_off(client, sub);
+
+	qev_lock(client);
+
+	removed = client_sub_remove(client, sub);
+	if (removed) {
+		_off(client, sub);
+	}
+
+	qev_unlock(client);
+
 	sub_unref(sub);
 }
 

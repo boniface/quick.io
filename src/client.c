@@ -67,6 +67,22 @@ static struct client_sub* _sub_get(
 	return g_hash_table_lookup(client->subs, sub);
 }
 
+static void _sub_cleanup(
+	struct client *client,
+	struct subscription *sub,
+	struct client_sub *csub)
+{
+	g_hash_table_remove(client->subs, sub);
+	qev_list_remove(sub->subscribers, &csub->idx);
+	_sub_free(csub);
+	sub_unref(sub);
+
+	if (g_hash_table_size(client->subs) == 0) {
+		g_hash_table_unref(client->subs);
+		client->subs = NULL;
+	}
+}
+
 static gboolean _sub_remove(
 	struct client *client,
 	struct subscription *sub,
@@ -85,17 +101,8 @@ static gboolean _sub_remove(
 	if (!rejected && csub->pending) {
 		csub->tombstone = TRUE;
 	} else {
-		g_hash_table_remove(client->subs, sub);
-		qev_list_remove(sub->subscribers, &csub->idx);
-		_sub_free(csub);
-		sub_unref(sub);
-
 		removed = TRUE;
-
-		if (g_hash_table_size(client->subs) == 0) {
-			g_hash_table_unref(client->subs);
-			client->subs = NULL;
-		}
+		_sub_cleanup(client, sub, csub);
 	}
 
 out:
@@ -252,7 +259,6 @@ enum client_sub_state client_sub_add(
 	struct client *client,
 	struct subscription *sub)
 {
-	gboolean added;
 	enum client_sub_state sstate;
 	struct client_sub *csub = NULL;
 
@@ -271,13 +277,8 @@ enum client_sub_state client_sub_add(
 
 	csub = _sub_alloc(client);
 	if (csub == NULL) {
-		goto cleanup;
-	}
-
-	added = QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers,
-							client, &csub->idx);
-	if (!added) {
-		goto cleanup;
+		sstate = CLIENT_SUB_NULL;
+		goto out;
 	}
 
 	if (client->subs == NULL) {
@@ -292,32 +293,43 @@ enum client_sub_state client_sub_add(
 out:
 	qev_unlock(client);
 	return sstate;
-
-cleanup:
-	sstate = CLIENT_SUB_NULL;
-	if (csub != NULL) {
-		_sub_free(csub);
-	}
-
-	goto out;
 }
 
-gboolean client_sub_accept(
+enum client_sub_state client_sub_accept(
 	struct client *client,
 	struct subscription *sub)
 {
-	gboolean approved = FALSE;
+	gboolean ok;
+	enum client_sub_state sstate;
 	struct client_sub *csub = NULL;
 
 	qev_lock(client);
 
 	csub = _sub_get(client, sub);
-	csub->pending = FALSE;
-	approved = csub->tombstone == FALSE;
 
+	ok = QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers,
+							client, &csub->idx);
+	if (!ok) {
+		sstate = CLIENT_SUB_NULL;
+		goto cleanup;
+	} else {
+		csub->pending = FALSE;
+		ok = csub->tombstone == FALSE;
+		if (ok) {
+			sstate = CLIENT_SUB_ACTIVE;
+		} else {
+			sstate = CLIENT_SUB_TOMBSTONED;
+			goto cleanup;
+		}
+	}
+
+out:
 	qev_unlock(client);
+	return sstate;
 
-	return approved;
+cleanup:
+	_sub_cleanup(client, sub, csub);
+	goto out;
 }
 
 void client_sub_reject(

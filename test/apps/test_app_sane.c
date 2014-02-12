@@ -186,7 +186,7 @@ static void* _run(void *nothing G_GNUC_UNUSED)
 		/*
 		 * Make this sleep a while so that all work is truly _delayed_.
 		 */
-		g_usleep(500);
+		g_usleep(QEV_MS_TO_USEC(10));
 		w->fn(w->data);
 		g_slice_free1(sizeof(*w), w);
 	}

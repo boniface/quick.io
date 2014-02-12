@@ -233,14 +233,18 @@ enum client_sub_state client_sub_add(
  * @param sub
  *     The subscription to accept
  *
- * @return
+ * @return CLIENT_SUB_TOMBSTONED
  *     Since it's possible for a client to unsubscribe from an event before
- *     a subscription succeeds, it's possible for approval to fail. If the
- *     event was tombstoned, this will return FALSE, and the appropriate
- *     unsubscription should take place. If this returns TRUE, everything
- *     is good.
+ *     a subscription succeeds, it's possible for approval to fail. If this is
+ *     returned, only the off callback need be fired; the sub is automaticall
+ *     removed from the client internally.
+ * @return CLIENT_SUB_NULL
+ *     There was an error setting up the subscription: the client should be
+ *     told to enhance his calm
+ * @return CLIENT_SUB_ACTIVE
+ *     Everything went as planned
  */
-gboolean client_sub_accept(
+enum client_sub_state client_sub_accept(
 	struct client *client,
 	struct subscription *sub);
 

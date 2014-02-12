@@ -190,7 +190,7 @@ END_TEST
 
 START_TEST(test_client_subs_list_add_fail)
 {
-	qev_mock_add("client_sub_add", "qev_list_try_add", FALSE, NULL, 0);
+	qev_mock_add("client_sub_accept", "qev_list_try_add", FALSE, NULL, 0);
 
 	qev_fd_t tc = test_client();
 	GString *buff = qev_buffer_get();
