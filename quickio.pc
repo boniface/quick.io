@@ -3,4 +3,5 @@ includedir=/usr/include
 Name: QuickIO server
 Description: Location for headers used for developing QuickIO apps
 Version: 0.2.0
+Requires: glib-2.0
 Cflags: -I${includedir}/quickio
