@@ -16,17 +16,17 @@
 /**
  * Header key that defines the version of websocket being used
  */
-#define VERSION_KEY "Sec-WebSocket-Version"
+#define VERSION_KEY "sec-websocket-version"
 
 /**
  * The header key that points to the challenge key
  */
-#define CHALLENGE_KEY "Sec-WebSocket-Key"
+#define CHALLENGE_KEY "sec-websocket-key"
 
 /**
  * The header key that points to what subprotocol is being used
  */
-#define PROTOCOL_KEY "Sec-WebSocket-Protocol"
+#define PROTOCOL_KEY "sec-websocket-protocol"
 
 /**
  * Completely disables caching for HTTP requests
@@ -118,6 +118,7 @@ static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
 
 static gint _parser_on_value(http_parser *parser, const gchar *at, gsize len)
 {
+	gchar *c;
 	gchar *header;
 	gchar *value;
 	struct _parser_data *pdata = parser->data;
@@ -128,6 +129,18 @@ static gint _parser_on_value(http_parser *parser, const gchar *at, gsize len)
 
 		value = ((gchar*)at);
 		*(value + len) = '\0';
+
+		/*
+		 * HTTP headers are case insensitive, so throw everything to lowercase
+		 * for the hash table
+		 */
+		c = header;
+		while (*c) {
+			if (g_ascii_isupper(*c)) {
+				*c = *c - 'A' + 'a';
+			}
+			c++;
+		}
 
 		g_hash_table_insert(pdata->headers, header, value);
 	}
