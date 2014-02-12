@@ -21,6 +21,23 @@ START_TEST(test_client_shutdown)
 }
 END_TEST
 
+START_TEST(test_client_shutdown_while_subscribing)
+{
+	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
+
+	test_send(tc, "/qio/on:1=\"/test/delayed\"");
+	QEV_WAIT_FOR(client->subs != NULL && g_hash_table_size(client->subs) > 0);
+
+	client_close(client);
+
+	test_msg(tc, "/qio/callback/1:0={\"code\":420,\"data\":null,\"err_msg\":null}");
+
+	qev_exit();
+	close(tc);
+}
+END_TEST
+
 static enum evs_status _cb1(
 	struct client *client G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
@@ -215,6 +232,7 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_client_shutdown);
+	tcase_add_test(tcase, test_client_shutdown_while_subscribing);
 
 	tcase = tcase_create("Callbacks");
 	suite_add_tcase(s, tcase);

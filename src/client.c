@@ -300,17 +300,21 @@ enum client_sub_state client_sub_accept(
 	struct subscription *sub)
 {
 	gboolean ok;
-	enum client_sub_state sstate;
+	enum client_sub_state sstate = CLIENT_SUB_NULL;
 	struct client_sub *csub = NULL;
 
 	qev_lock(client);
 
 	csub = _sub_get(client, sub);
 
+	// Possible if the client closed before the callback came through
+	if (csub == NULL) {
+		goto out;
+	}
+
 	ok = QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers,
 							client, &csub->idx);
 	if (!ok) {
-		sstate = CLIENT_SUB_NULL;
 		goto cleanup;
 	} else {
 		csub->pending = FALSE;
