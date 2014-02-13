@@ -72,3 +72,8 @@ struct subscription* sub_ref(struct subscription *sub);
  *     The subscription you're done with.
  */
 void sub_unref(struct subscription *sub);
+
+/**
+ * Get subs ready to run
+ */
+void sub_init();

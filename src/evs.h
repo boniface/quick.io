@@ -691,6 +691,14 @@ void evs_broadcast_path(
 void evs_broadcast_tick();
 
 /**
- * Initialize events
+ * Initialize events. There are two init calls here because events
+ * need to persist for the life of the server. If events aren't the
+ * _LAST_ things torn down, QEV might close clients after events have
+ * been freed, thus causing invalid accesses to freed events.
  */
 void evs_init();
+
+/**
+ * Initialize the stats in events
+ */
+void evs_stats_init();

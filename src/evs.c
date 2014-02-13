@@ -49,6 +49,12 @@ static const gchar _allowed_chars[256] = {
 	1,  1,  1,
 };
 
+static qev_stats_counter_t *_stat_evs_sent;
+static qev_stats_counter_t *_stat_evs_callbacks_sent;
+static qev_stats_counter_t *_stat_evs_received;
+static qev_stats_counter_t *_stat_evs_broadcasts_unique;
+static qev_stats_counter_t *_stat_evs_broadcasts_messages;
+
 /**
  * All pending broadcasts
  */
@@ -58,7 +64,9 @@ static void _broadcast(void *client_, void *frames_)
 {
 	struct client *client = client_;
 	GString **frames = frames_;
+
 	protocols_bcast_write(client, frames);
+	qev_stats_counter_inc(_stat_evs_broadcasts_messages);
 }
 
 static void _broadcast_free(void *bc_)
@@ -207,6 +215,7 @@ void evs_route(
 	DEBUG("Got event: client=%p, ev_path=%s, ev_extra=%s, "
 			"callback=%" G_GUINT32_FORMAT ", json=%s",
 			client, ev_path, ev_extra, client_cb, json);
+	qev_stats_counter_inc(_stat_evs_received);
 
 	if (ev->handler_fn != NULL) {
 		status = ev->handler_fn(client, ev_extra, client_cb, json);
@@ -345,6 +354,7 @@ void evs_send_sub_full(
 		JSON_OR_NULL(json);
 		evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
 		protocols_send(client, sub->ev->ev_path, sub->ev_extra, server_cb, json);
+		qev_stats_counter_inc(_stat_evs_sent);
 	}
 }
 
@@ -365,6 +375,7 @@ void evs_send_bruteforce(
 	path = evs_make_path(ev_prefix, ev_path, ev_extra);
 
 	protocols_send(client, path->str, "", server_cb, json);
+	qev_stats_counter_inc(_stat_evs_sent);
 
 	qev_buffer_put(path);
 }
@@ -528,6 +539,7 @@ void evs_cb_full(
 	}
 
 	protocols_send(client, path->str, "", server_cb, jbuff->str);
+	qev_stats_counter_inc(_stat_evs_callbacks_sent);
 
 	qev_buffer_put(path);
 	qev_buffer_put(jbuff);
@@ -573,11 +585,19 @@ void evs_broadcast_tick()
 
 		protocols_bcast_free(frames);
 		_broadcast_free(bc);
+
+		qev_stats_counter_inc(_stat_evs_broadcasts_unique);
 	}
 
 	qev_buffer_put(path);
 }
 
+/*
+ * There are two init calls here because events
+ * need to persist for the life of the server. If events aren't the
+ * _LAST_ things torn down, QEV might close clients after events have
+ * been freed, thus causing invalid accesses to freed events.
+ */
 void evs_init()
 {
 	_broadcasts = g_async_queue_new_full(_broadcast_free);
@@ -586,4 +606,15 @@ void evs_init()
 
 	evs_query_init();
 	evs_qio_init();
+}
+
+void evs_stats_init()
+{
+	_stat_evs_sent = qev_stats_counter("evs", "sent", TRUE);
+	_stat_evs_callbacks_sent = qev_stats_counter("evs", "callbacks_sent", TRUE);
+	_stat_evs_received = qev_stats_counter("evs", "received", TRUE);
+	_stat_evs_broadcasts_unique = qev_stats_counter("evs.broadcasts",
+										"unique", TRUE);
+	_stat_evs_broadcasts_messages = qev_stats_counter("evs.broadcasts",
+										"messages", TRUE);
 }

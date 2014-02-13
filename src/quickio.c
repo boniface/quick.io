@@ -16,6 +16,8 @@ void qio_main(int argc, char **argv)
 
 	evs_init();
 	qev_init("quickio", argv, argc);
+	evs_stats_init();
+	sub_init();
 	config_init();
 	protocols_init();
 	client_init();

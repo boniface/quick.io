@@ -8,6 +8,10 @@
 
 #include "quickio.h"
 
+static qev_stats_counter_t *_stat_total;
+static qev_stats_counter_t *_stat_added;
+static qev_stats_counter_t *_stat_removed;
+
 static gboolean _get_if_exists(
 	struct event *ev,
 	const gchar *ev_extra,
@@ -59,6 +63,9 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 			sub->refs = 1;
 
 			g_hash_table_replace(ev->subs, sub->ev_extra, sub);
+
+			qev_stats_counter_inc(_stat_total);
+			qev_stats_counter_inc(_stat_added);
 		}
 
 		g_rw_lock_writer_unlock(&ev->subs_lock);
@@ -96,4 +103,14 @@ void sub_unref(struct subscription *sub)
 	g_free(sub->ev_extra);
 	qev_list_free(sub->subscribers);
 	g_slice_free1(sizeof(*sub), sub);
+
+	qev_stats_counter_dec(_stat_total);
+	qev_stats_counter_inc(_stat_removed);
+}
+
+void sub_init()
+{
+	_stat_total = qev_stats_counter("subs", "total", FALSE);
+	_stat_added = qev_stats_counter("subs", "added", TRUE);
+	_stat_removed = qev_stats_counter("subs", "removed", TRUE);
 }
