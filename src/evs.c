@@ -54,33 +54,6 @@ static const gchar _allowed_chars[256] = {
  */
 static GAsyncQueue *_broadcasts = NULL;
 
-static guint _clean_path(gchar *ev_path)
-{
-	gchar *curr = ev_path;
-	gchar *writing = ev_path;
-
-	while (*curr != '\0') {
-		if (_allowed_chars[(guchar)*curr] && writing != curr) {
-			if (!(*writing == '/' && *curr == '/')) {
-				writing++;
-			}
-
-			*writing = *curr;
-		}
-
-		curr++;
-	}
-
-	// Remove any trailing slash
-	if (*writing != '/' && writing != ev_path) {
-		writing++;
-	}
-
-	*writing = '\0';
-
-	return writing - ev_path;
-}
-
 static void _broadcast(void *client_, void *frames_)
 {
 	struct client *client = client_;
@@ -147,7 +120,7 @@ struct event* evs_add_handler(
 	const gboolean handle_children)
 {
 	struct event *ev;
-	GString *ep = evs_clean_path(prefix, ev_path, NULL);
+	GString *ep = evs_make_path(prefix, ev_path, NULL);
 
 	ev = evs_query_insert(ep->str, handler_fn, on_fn, off_fn, handle_children);
 	if (ev == NULL) {
@@ -159,12 +132,38 @@ struct event* evs_add_handler(
 	return ev;
 }
 
-GString* evs_clean_path(
+guint evs_clean_path(gchar *ev_path)
+{
+	gchar *curr = ev_path;
+	gchar *writing = ev_path;
+
+	while (*curr != '\0') {
+		if (_allowed_chars[(guchar)*curr] && writing != curr) {
+			if (!(*writing == '/' && *curr == '/')) {
+				writing++;
+			}
+
+			*writing = *curr;
+		}
+
+		curr++;
+	}
+
+	// Remove any trailing slash
+	if (*writing != '/' && writing != ev_path) {
+		writing++;
+	}
+
+	*writing = '\0';
+
+	return writing - ev_path;
+}
+
+GString* evs_make_path(
 	const gchar *ev_prefix,
 	const gchar *ev_path,
 	const gchar *ev_extra)
 {
-
 	GString *p = qev_buffer_get();
 
 	g_string_printf(p, "%s/%s/%s",
@@ -176,7 +175,7 @@ GString* evs_clean_path(
 		g_string_prepend_c(p, '/');
 	}
 
-	g_string_set_size(p, _clean_path(p->str));
+	g_string_set_size(p, evs_clean_path(p->str));
 
 	return p;
 }
@@ -197,7 +196,7 @@ void evs_route(
 	enum evs_status status = EVS_STATUS_ERR;
 	enum evs_code code = CODE_UNKNOWN;
 
-	_clean_path(ev_path);
+	evs_clean_path(ev_path);
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
 		DEBUG("Could not find handler for event: %s", ev_path);
@@ -363,7 +362,7 @@ void evs_send_bruteforce(
 	evs_cb_t server_cb = client_cb_new(client, cb_fn, cb_data, free_fn);
 	JSON_OR_NULL(json);
 
-	path = evs_clean_path(ev_prefix, ev_path, ev_extra);
+	path = evs_make_path(ev_prefix, ev_path, ev_extra);
 
 	protocols_send(client, path->str, "", server_cb, json);
 

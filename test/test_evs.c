@@ -38,31 +38,31 @@ START_TEST(test_evs_root_handler)
 }
 END_TEST
 
-START_TEST(test_evs_clean_path)
+START_TEST(test_evs_make_path)
 {
 	GString *p;
 
-	p = evs_clean_path(NULL, NULL, NULL);
+	p = evs_make_path(NULL, NULL, NULL);
 	ck_assert_str_eq(p->str, "");
 	ck_assert_int_eq(p->len, 0);
 	qev_buffer_put(p);
 
-	p = evs_clean_path("", "", "");
+	p = evs_make_path("", "", "");
 	ck_assert_str_eq(p->str, "");
 	ck_assert_int_eq(p->len, 0);
 	qev_buffer_put(p);
 
-	p = evs_clean_path("/", "/", "/");
+	p = evs_make_path("/", "/", "/");
 	ck_assert_str_eq(p->str, "");
 	ck_assert_int_eq(p->len, 0);
 	qev_buffer_put(p);
 
-	p = evs_clean_path("/a", "/b", "/c");
+	p = evs_make_path("/a", "/b", "/c");
 	ck_assert_str_eq(p->str, "/a/b/c");
 	ck_assert_int_eq(p->len, 6);
 	qev_buffer_put(p);
 
-	p = evs_clean_path("", "/b", "/c//////////////");
+	p = evs_make_path("", "/b", "/c//////////////");
 	ck_assert_str_eq(p->str, "/b/c");
 	ck_assert_int_eq(p->len, 4);
 	qev_buffer_put(p);
@@ -519,7 +519,7 @@ int main()
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_evs_multiple_add_handler);
 	tcase_add_test(tcase, test_evs_root_handler);
-	tcase_add_test(tcase, test_evs_clean_path);
+	tcase_add_test(tcase, test_evs_make_path);
 
 	tcase = tcase_create("Events");
 	suite_add_tcase(s, tcase);

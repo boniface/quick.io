@@ -274,7 +274,19 @@ struct event* evs_add_handler(
 enum evs_status evs_no_on(const struct evs_on_info *info);
 
 /**
- * Given a path, clean is up such that is matches exactly what QIO expects
+ * Given an arbitrary, full path, clean it up entirely (in place) so that it
+ * conforms with QIO standards.
+ *
+ * @param ev_path
+ *     The path to clean up
+ *
+ * @return
+ *     The length of the cleaned path
+ */
+guint evs_clean_path(gchar *ev_path);
+
+/**
+ * Given a path, make it such that is matches exactly what QIO expects
  * paths to be.
  *
  * @param ev_prefix
@@ -288,7 +300,7 @@ enum evs_status evs_no_on(const struct evs_on_info *info);
  *     The cleaned path. qev_buffer_put when you're done with it.
  *     @arg{transfer-full}
  */
-GString* evs_clean_path(
+GString* evs_make_path(
 	const gchar *ev_prefix,
 	const gchar *ev_path,
 	const gchar *ev_extra);

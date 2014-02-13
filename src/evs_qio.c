@@ -29,34 +29,6 @@ static enum evs_status _callback(
 	return client_cb_fire(client, server_cb, client_cb, json);
 }
 
-static enum evs_status _off(
-	struct client *client,
-	const gchar *_ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb,
-	gchar *json)
-{
-	gchar *ev_path;
-	gchar *ev_extra;
-	struct event *ev;
-	enum qev_json_status jstatus;
-
-	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
-	if (jstatus != QEV_JSON_OK || ev_path == NULL) {
-		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
-		return EVS_STATUS_HANDLED;
-	}
-
-	ev = evs_query(ev_path, &ev_extra);
-	if (ev == NULL) {
-		evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
-		return EVS_STATUS_HANDLED;
-	}
-
-	evs_off(client, ev, ev_extra);
-
-	return EVS_STATUS_OK;
-}
-
 static enum evs_status _on(
 	struct client *client,
 	const gchar *_ev_extra G_GNUC_UNUSED,
@@ -66,13 +38,14 @@ static enum evs_status _on(
 	gchar *ev_path;
 	gchar *ev_extra;
 	struct event *ev;
-	enum qev_json_status jstatus;
 
-	jstatus = qev_json_unpack(json, NULL, "%s", &ev_path);
-	if (jstatus != QEV_JSON_OK || ev_path == NULL) {
+	if (*json != '"') {
 		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
-		goto out;
+		return EVS_STATUS_HANDLED;
 	}
+
+	ev_path = json + 1;
+	evs_clean_path(ev_path);
 
 	ev = evs_query(ev_path, &ev_extra);
 	if (ev == NULL) {
@@ -84,6 +57,35 @@ static enum evs_status _on(
 
 out:
 	return EVS_STATUS_HANDLED;
+}
+
+static enum evs_status _off(
+	struct client *client,
+	const gchar *_ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb,
+	gchar *json)
+{
+	gchar *ev_path;
+	gchar *ev_extra;
+	struct event *ev;
+
+	if (*json != '"') {
+		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+		return EVS_STATUS_HANDLED;
+	}
+
+	ev_path = json + 1;
+	evs_clean_path(ev_path);
+
+	ev = evs_query(ev_path, &ev_extra);
+	if (ev == NULL) {
+		evs_err_cb(client, client_cb, CODE_NOT_FOUND, NULL, NULL);
+		return EVS_STATUS_HANDLED;
+	}
+
+	evs_off(client, ev, ev_extra);
+
+	return EVS_STATUS_OK;
 }
 
 static enum evs_status _ping(
