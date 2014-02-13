@@ -8,7 +8,7 @@ case "$1" in
 		if ! getent group quickio > /dev/null; then
 			addgroup --system quickio
 		fi
-		
+
 		if ! getent passwd quickio > /dev/null; then
 			adduser --quiet \
 				--system \
@@ -18,15 +18,15 @@ case "$1" in
 				--no-create-home \
 				quickio
 		fi
-		
+
 		touch /var/log/quickio.log
 		chown quickio:quickio /var/log/quickio.log
-		sysctl -p /etc/sysctl.d/quickio.conf
+		sysctl -e -p /etc/sysctl.d/quickio.conf
 	;;
-	
+
 	abort-upgrade|abort-remove|abort-deconfigure|upgrade)
 	;;
-	
+
 	*)
 		echo "postinst called with unknown argument \`$1'" >&2
 		exit 1
