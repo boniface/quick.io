@@ -8,7 +8,14 @@
 
 #include "quickio.h"
 
-static qev_stats_counter_t *_total_subs;
+static qev_stats_counter_t *_stat_subs_total;
+static qev_stats_counter_t *_stat_subs_added;
+static qev_stats_counter_t *_stat_subs_removed;
+
+static qev_stats_counter_t *_stat_callbacks_total;
+static qev_stats_counter_t *_stat_callbacks_created;
+static qev_stats_counter_t *_stat_callbacks_fired;
+static qev_stats_counter_t *_stat_callbacks_evicted;
 
 /**
  * Assumes lock on client is held
@@ -20,7 +27,7 @@ static struct client_sub* _sub_alloc(struct client *client)
 	struct client_sub *csub = NULL;
 	gboolean allocate = FALSE;
 
-	used = qev_stats_counter_get(_total_subs);
+	used = qev_stats_counter_get(_stat_subs_total);
 
 	if (used >= cfg_clients_max_subs) {
 		; // No allocations allowed
@@ -40,7 +47,9 @@ static struct client_sub* _sub_alloc(struct client *client)
 	}
 
 	if (allocate) {
-		qev_stats_counter_inc(_total_subs);
+		qev_stats_counter_inc(_stat_subs_total);
+		qev_stats_counter_inc(_stat_subs_added);
+
 		csub = g_slice_alloc0(sizeof(*csub));
 	}
 
@@ -49,7 +58,8 @@ static struct client_sub* _sub_alloc(struct client *client)
 
 static void _sub_free(struct client_sub *csub)
 {
-	qev_stats_counter_dec(_total_subs);
+	qev_stats_counter_dec(_stat_subs_total);
+	qev_stats_counter_inc(_stat_subs_removed);
 	g_slice_free1(sizeof(*csub), csub);
 }
 
@@ -146,6 +156,7 @@ static void _cb_remove(struct client *client, const guint i)
 {
 	g_slice_free1(sizeof(**client->cbs), client->cbs[i]);
 	client->cbs[i] = NULL;
+	qev_stats_counter_dec(_stat_callbacks_total);
 }
 
 static void _cb_free(struct client *client, const guint i)
@@ -192,6 +203,7 @@ evs_cb_t client_cb_new(
 	if (i == G_N_ELEMENTS(client->cbs)) {
 		i = (guint)g_random_int_range(0, G_N_ELEMENTS(client->cbs));
 		_cb_free(client, i);
+		qev_stats_counter_inc(_stat_callbacks_evicted);
 	}
 
 	cb = (struct client_cb){
@@ -204,6 +216,9 @@ evs_cb_t client_cb_new(
 	client->cbs[i] = g_slice_copy(sizeof(cb), &cb);
 
 	qev_unlock(client);
+
+	qev_stats_counter_inc(_stat_callbacks_total);
+	qev_stats_counter_inc(_stat_callbacks_created);
 
 	return (i << 16) | cb.id;
 }
@@ -221,7 +236,7 @@ enum evs_status client_cb_fire(
 
 	qev_lock(client);
 
-	if (client->cbs[slot]->id == id) {
+	if (client->cbs[slot] != NULL && client->cbs[slot]->id == id) {
 		cb = *client->cbs[slot];
 		_cb_remove(client, slot);
 	}
@@ -236,6 +251,8 @@ enum evs_status client_cb_fire(
 
 	status = cb.cb_fn(client, client_cb, json);
 	_cb_data_free(cb.cb_data, cb.free_fn);
+
+	qev_stats_counter_inc(_stat_callbacks_fired);
 
 	return status;
 }
@@ -362,5 +379,16 @@ void client_close(struct client *client)
 
 void client_init()
 {
-	_total_subs = qev_stats_counter("clients", "total_subs", FALSE);
+	_stat_subs_total = qev_stats_counter("clients.subs", "total", FALSE);
+	_stat_subs_added = qev_stats_counter("clients.subs", "added", TRUE);
+	_stat_subs_removed = qev_stats_counter("clients.subs", "removed", TRUE);
+
+	_stat_callbacks_total = qev_stats_counter("clients.callbacks",
+									"total", FALSE);
+	_stat_callbacks_created = qev_stats_counter("clients.callbacks",
+									"created", TRUE);
+	_stat_callbacks_fired = qev_stats_counter("clients.callbacks",
+									"fired", TRUE);
+	_stat_callbacks_evicted = qev_stats_counter("clients.callbacks",
+									"evicted", TRUE);
 }
