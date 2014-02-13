@@ -33,6 +33,7 @@
 	"bind-port = %d\n" \
 	"bind-address-ssl = localhost\n" \
 	"bind-port-ssl = %d\n" \
+	"bind-path = quickio.%d.sock\n" \
 	"ssl-key-path-0 = ../lib/quick-event/certs/rsa/test.key\n" \
 	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
 	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
@@ -111,7 +112,7 @@ void test_config()
 	g_string_printf(c, CONFIG,
 			rl.rlim_cur,
 			FATAL_SIGNAL == 5 ? 100 : 2000,
-			PORT, PORT + 1, getlogin());
+			PORT, PORT + 1, PORT, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	ASSERT(configed, "Could not create test config file");
 

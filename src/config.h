@@ -33,6 +33,11 @@ gchar *cfg_bind_address_ssl;
 guint64 cfg_bind_port_ssl;
 
 /**
+ * The path to create a unix socket at for listening for connections locally.
+ */
+gchar *cfg_bind_path;
+
+/**
  * Number of threads used to pump out each broadcasted message. These threads
  * come from the qev_pool of threads.
  */
