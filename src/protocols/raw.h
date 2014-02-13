@@ -40,6 +40,11 @@ enum protocol_raw_hb {
 };
 
 /**
+ * Sets up everything to run
+ */
+void protocol_raw_init();
+
+/**
  * If flash can handle this client
  */
 enum protocol_handles protocol_raw_handles(struct client *client, void **data);

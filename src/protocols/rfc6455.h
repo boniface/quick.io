@@ -33,6 +33,11 @@ enum rfc6455_close_reasons {
 };
 
 /**
+ * Sets up everything to run
+ */
+void protocol_rfc6455_init();
+
+/**
  * If rfc6455 can handle this client
  */
 enum protocol_handles protocol_rfc6455_handles(

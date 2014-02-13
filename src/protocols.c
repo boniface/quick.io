@@ -39,6 +39,7 @@
  */
 static struct protocol _protocols[] = {
 	{	.id = 0,
+		.init = protocol_rfc6455_init,
 		.handles = protocol_rfc6455_handles,
 		.handshake = protocol_rfc6455_handshake,
 		.route = protocol_rfc6455_route,
@@ -47,6 +48,7 @@ static struct protocol _protocols[] = {
 		.close = protocol_rfc6455_close,
 	},
 	{	.id = 1,
+		.init = protocol_stomp_init,
 		.handles = protocol_stomp_handles,
 		.handshake = protocol_stomp_handshake,
 		.route = protocol_stomp_route,
@@ -55,6 +57,7 @@ static struct protocol _protocols[] = {
 		.close = NULL,
 	},
 	{	.id = 2,
+		.init = protocol_flash_init,
 		.handles = protocol_flash_handles,
 		.handshake = protocol_flash_handshake,
 		.route = NULL,
@@ -63,6 +66,7 @@ static struct protocol _protocols[] = {
 		.close = NULL,
 	},
 	{	.id = 3,
+		.init = protocol_raw_init,
 		.handles = protocol_raw_handles,
 		.handshake = protocol_raw_handshake,
 		.route = protocol_raw_route,
@@ -267,5 +271,14 @@ gboolean protocols_client_handshaked(struct client *client)
 
 void protocols_init()
 {
+	guint i;
+
 	qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0);
+
+	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
+		struct protocol *p = _protocols + i;
+		if (p->init != NULL) {
+			p->init();
+		}
+	}
 }

@@ -106,6 +106,13 @@ struct _parser_data {
 	gsize key_len;
 };
 
+static qev_stats_counter_t *_stat_handshakes;
+static qev_stats_counter_t *_stat_handshakes_http;
+static qev_stats_counter_t *_stat_handshakes_http_invalid;
+static qev_stats_counter_t *_stat_handshakes_qio;
+static qev_stats_counter_t *_stat_handshakes_qio_invalid;
+static qev_stats_timer_t *_stat_route_time;
+
 static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
 {
 	struct _parser_data *pdata = parser->data;
@@ -323,19 +330,37 @@ static enum protocol_status _handshake_qio(struct client *client)
 
 	status = _decode(client, &len, &frame_len);
 	if (status != PROT_OK) {
+		qev_stats_counter_inc(_stat_handshakes_qio_invalid);
 		return status;
 	}
 
 	good = protocol_raw_check_handshake(client);
 	if (good) {
+		qev_stats_counter_inc(_stat_handshakes_qio);
 		qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
 		status = PROT_OK;
 	} else {
+		qev_stats_counter_inc(_stat_handshakes_qio_invalid);
 		qev_close(client, QIO_CLOSE_INVALID_HANDSHAKE);
 		status = PROT_FATAL;
 	}
 
 	return status;
+}
+
+void protocol_rfc6455_init()
+{
+	_stat_handshakes = qev_stats_counter("protocol.rfc6455",
+								"handshakes", TRUE);
+	_stat_handshakes_http = qev_stats_counter("protocol.rfc6455",
+								"handshakes.http", TRUE);
+	_stat_handshakes_http_invalid = qev_stats_counter("protocol.rfc6455",
+								"handshakes.http_invalid", TRUE);
+	_stat_handshakes_qio = qev_stats_counter("protocol.rfc6455",
+								"handshakes.qio", TRUE);
+	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
+								"handshakes.qio_invalid", TRUE);
+	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
 }
 
 enum protocol_handles protocol_rfc6455_handles(
@@ -387,6 +412,7 @@ enum protocol_status protocol_rfc6455_handshake(
 	 * be sent back to the client.
 	 */
 	if (client->protocol_flags & HTTP_UNSUPPORTED) {
+		qev_stats_counter_inc(_stat_handshakes_http_invalid);
 		qev_close(client, QIO_CLOSE_NOT_SUPPORTED);
 		return PROT_FATAL;
 	}
@@ -396,6 +422,7 @@ enum protocol_status protocol_rfc6455_handshake(
 		_handshake_http(client, headers);
 
 		client->protocol_flags |= HTTP_HANDSHAKED;
+		qev_stats_counter_inc(_stat_handshakes_http);
 
 		return PROT_AGAIN;
 	} else {
@@ -407,11 +434,14 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 {
 	guint64 len;
 	guint64 frame_len;
-	enum protocol_status status = _decode(client, &len, &frame_len);
+	enum protocol_status status;
 
-	if (status == PROT_OK) {
-		status = protocol_raw_handle(client, len, frame_len);
-	}
+	qev_stats_time(_stat_route_time, {
+		status = _decode(client, &len, &frame_len);
+		if (status == PROT_OK) {
+			status = protocol_raw_handle(client, len, frame_len);
+		}
+	});
 
 	return status;
 }

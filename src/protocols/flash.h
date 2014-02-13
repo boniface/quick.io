@@ -14,6 +14,11 @@
 #include "quickio.h"
 
 /**
+ * Sets up everything to run
+ */
+void protocol_flash_init();
+
+/**
  * If flash can handle this client
  */
 enum protocol_handles protocol_flash_handles(struct client *client, void **data);

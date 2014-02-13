@@ -13,6 +13,11 @@
 #include "quickio.h"
 
 /**
+ * Sets up everything to run
+ */
+void protocol_stomp_init();
+
+/**
  * If stomp can handle this client
  */
 enum protocol_handles protocol_stomp_handles(struct client *client, void **data);

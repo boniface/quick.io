@@ -21,6 +21,13 @@
 		"<allow-access-from domain=\"*\" to-ports=\"*\" />" \
 	"</cross-domain-policy>"
 
+static qev_stats_counter_t *_stat_handshakes;
+
+void protocol_flash_init()
+{
+	_stat_handshakes = qev_stats_counter("protocol.flash", "handshakes", TRUE);
+}
+
 enum protocol_handles protocol_flash_handles(
 	struct client *client,
 	void **data G_GNUC_UNUSED)
@@ -50,5 +57,8 @@ enum protocol_status protocol_flash_handshake(
 
 	qev_write(client, FLASH_POLICY_RESPONSE, sizeof(FLASH_POLICY_RESPONSE) - 1);
 	qev_close(client, QIO_CLOSE_DONE);
+
+	qev_stats_counter_inc(_stat_handshakes);
+
 	return PROT_FATAL;
 }

@@ -83,6 +83,11 @@ struct protocol {
 	guint id;
 
 	/**
+	 * Sets up the protocol to run.
+	 */
+	void (*init)();
+
+	/**
 	 * Function that determines if the protocol can handle the client
 	 *
 	 * @param client

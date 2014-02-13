@@ -14,12 +14,21 @@
 
 #define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x15""/qio/heartbeat:0=null"
 
+static qev_stats_counter_t *_stat_handshakes;
+static qev_stats_timer_t *_stat_route_time;
+
 static enum evs_status _heartbeat_cb(
 	struct client *client G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
 	gchar *json G_GNUC_UNUSED)
 {
 	return EVS_STATUS_OK;
+}
+
+void protocol_raw_init()
+{
+	_stat_handshakes = qev_stats_counter("protocol.raw", "handshakes", TRUE);
+	_stat_route_time = qev_stats_timer("protocol.raw", "route");
 }
 
 enum protocol_handles protocol_raw_handles(
@@ -45,12 +54,16 @@ enum protocol_status protocol_raw_handshake(
 {
 	qev_write(client, HANDSHAKE, sizeof(HANDSHAKE) -1);
 	g_string_truncate(client->qev_client.rbuff, 0);
+
+	qev_stats_counter_inc(_stat_handshakes);
+
 	return PROT_OK;
 }
 
 enum protocol_status protocol_raw_route(struct client *client)
 {
 	guint64 len;
+	enum protocol_status status;
 	GString *rbuff = client->qev_client.rbuff;
 
 	if (rbuff->len < sizeof(guint64)) {
@@ -64,7 +77,11 @@ enum protocol_status protocol_raw_route(struct client *client)
 
 	memmove(rbuff->str, rbuff->str + sizeof(guint64), len);
 
-	return protocol_raw_handle(client, len, len + sizeof(guint64));
+	qev_stats_time(_stat_route_time, {
+		status = protocol_raw_handle(client, len, len + sizeof(guint64));
+	});
+
+	return status;
 }
 
 void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb)
