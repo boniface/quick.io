@@ -26,7 +26,7 @@ struct _ptrie {
 	 * Any array of possible children.
 	 * index 0 = '-'
 	 */
-	struct _ptrie *childs['z' - '-'];
+	struct _ptrie *childs['z' - '-' + 1];
 };
 
 static struct _ptrie _events;
