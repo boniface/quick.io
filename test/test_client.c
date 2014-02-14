@@ -103,7 +103,7 @@ START_TEST(test_client_callbacks_invalid)
 }
 END_TEST
 
-START_TEST(test_client_callbacks_limits)
+START_TEST(test_client_callbacks_all)
 {
 	guint i;
 	guint64 cb;
@@ -137,6 +137,24 @@ START_TEST(test_client_callbacks_limits)
 
 	close(tc);
 	qev_buffer_put(buff);
+}
+END_TEST
+
+START_TEST(test_client_callbacks_limits)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/callback/-1:1=null",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,"
+			"\"err_msg\":\"callback doesn't exist\"}");
+
+	test_cb(tc,
+		"/qio/callback/-1:-1=null",
+		"/qio/callback/4294967295:0={\"code\":404,\"data\":null,"
+			"\"err_msg\":\"callback doesn't exist\"}");
+
+	close(tc);
 }
 END_TEST
 
@@ -250,6 +268,7 @@ int main()
 	tcase_add_checked_fixture(tcase, _setup_callbacks, test_teardown);
 	tcase_add_test(tcase, test_client_callbacks);
 	tcase_add_test(tcase, test_client_callbacks_invalid);
+	tcase_add_test(tcase, test_client_callbacks_all);
 	tcase_add_test(tcase, test_client_callbacks_limits);
 
 	tcase = tcase_create("Subs");

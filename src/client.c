@@ -234,6 +234,10 @@ enum evs_status client_cb_fire(
 	guint16 slot = server_cb >> 16;
 	guint16 id = server_cb & 0xffff;
 
+	if (slot > G_N_ELEMENTS(client->cbs)) {
+		goto error;
+	}
+
 	qev_lock(client);
 
 	if (client->cbs[slot] != NULL && client->cbs[slot]->id == id) {
@@ -244,9 +248,7 @@ enum evs_status client_cb_fire(
 	qev_unlock(client);
 
 	if (cb.cb_fn == NULL) {
-		evs_err_cb(client, client_cb, CODE_NOT_FOUND,
-							"callback doesn't exist", NULL);
-		return EVS_STATUS_HANDLED;
+		goto error;
 	}
 
 	status = cb.cb_fn(client, client_cb, json);
@@ -255,6 +257,11 @@ enum evs_status client_cb_fire(
 	qev_stats_counter_inc(_stat_callbacks_fired);
 
 	return status;
+
+error:
+	evs_err_cb(client, client_cb, CODE_NOT_FOUND,
+				"callback doesn't exist", NULL);
+	return EVS_STATUS_HANDLED;
 }
 
 gboolean client_sub_active(struct client *client, struct subscription *sub)
