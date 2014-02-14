@@ -215,11 +215,19 @@ START_TEST(test_evs_malformed_path)
 	qev_fd_t tc = test_client();
 
 	test_cb(tc,
+		"/qio/on:1=\"\334ufff",
+		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+
+	test_cb(tc,
 		"///////???qio//////**ping///////:1=null",
 		"/qio/callback/1:0={\"code\":200,\"data\":null}");
 
 	test_cb(tc,
 		"qio/ping***&^^$#@:1=null",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	test_cb(tc,
+		"///////???qio//////**ping***&^^$#@///////:1=null",
 		"/qio/callback/1:0={\"code\":200,\"data\":null}");
 
 	close(tc);

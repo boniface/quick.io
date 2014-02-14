@@ -142,24 +142,27 @@ struct event* evs_add_handler(
 
 guint evs_clean_path(gchar *ev_path)
 {
-	gchar *curr = ev_path;
-	gchar *writing = ev_path;
+	register gchar *curr = ev_path;
+	register gchar *writing = ev_path;
 
 	while (*curr != '\0') {
-		if (_allowed_chars[(guchar)*curr] && writing != curr) {
-			if (!(*writing == '/' && *curr == '/')) {
-				writing++;
-			}
-
+		if (_allowed_chars[(guchar)*curr]) {
 			*writing = *curr;
+			writing++;
 		}
 
-		curr++;
+		if (*curr == '/') {
+			do {
+				curr++;
+			} while (*curr == '/');
+		} else {
+			curr++;
+		}
 	}
 
 	// Remove any trailing slash
-	if (*writing != '/' && writing != ev_path) {
-		writing++;
+	if (writing != ev_path && *(writing - 1) == '/') {
+		writing--;
 	}
 
 	*writing = '\0';
