@@ -234,7 +234,7 @@ enum evs_status client_cb_fire(
 	guint16 slot = server_cb >> 16;
 	guint16 id = server_cb & 0xffff;
 
-	if (slot > G_N_ELEMENTS(client->cbs)) {
+	if (slot >= G_N_ELEMENTS(client->cbs)) {
 		goto error;
 	}
 

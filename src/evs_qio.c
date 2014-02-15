@@ -14,7 +14,7 @@ static enum evs_status _callback(
 	const evs_cb_t client_cb,
 	gchar *json)
 {
-	evs_cb_t server_cb = 0;
+	evs_cb_t server_cb = EVS_NO_CALLBACK;
 
 	if (*ev_extra == '/') {
 		server_cb = g_ascii_strtoull(ev_extra + 1, NULL, 10);
