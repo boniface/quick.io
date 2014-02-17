@@ -11,7 +11,7 @@
 /**
  * Path used for all callbacks
  */
-#define CB_PATH_FORMAT "/qio/callback/%" G_GUINT32_FORMAT
+#define CB_PATH_FORMAT "/qio/callback/%" G_GUINT64_FORMAT
 
 
 /**

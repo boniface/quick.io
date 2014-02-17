@@ -8,7 +8,7 @@
 
 #include "quickio.h"
 
-#define EV_FORMAT "%s%s:%" G_GUINT32_FORMAT "=%s"
+#define EV_FORMAT "%s%s:%" G_GUINT64_FORMAT "=%s"
 
 #define HANDSHAKE "/qio/ohai"
 

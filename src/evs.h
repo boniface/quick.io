@@ -20,7 +20,7 @@
 /**
  * Callbacks are just gigantic integers, 0 meaning "no callback".
  */
-typedef guint32 evs_cb_t;
+typedef guint64 evs_cb_t;
 
 /**
  * The handler function type.

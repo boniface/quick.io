@@ -153,7 +153,7 @@ START_TEST(test_client_callbacks_limits)
 
 	test_cb(tc,
 		"/qio/callback/-1:-1=null",
-		"/qio/callback/4294967295:0={\"code\":404,\"data\":null,"
+		"/qio/callback/18446744073709551615:0={\"code\":404,\"data\":null,"
 			"\"err_msg\":\"callback doesn't exist\"}");
 
 	for (i = 0; i < G_N_ELEMENTS(((struct client*)NULL)->cbs) * 2; i++) {
