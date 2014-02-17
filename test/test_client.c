@@ -169,6 +169,35 @@ START_TEST(test_client_callbacks_limits)
 }
 END_TEST
 
+START_TEST(test_client_callbacks_overflow)
+{
+	const guint total_cbs = G_N_ELEMENTS(((struct client*)NULL)->cbs);
+
+	guint i;
+	guint32 cb;
+	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
+	GString *buff = qev_buffer_get();
+	g_string_set_size(buff, 127);
+
+	client->cbs_id -= total_cbs / 2;
+
+	for (i = 0; i < total_cbs; i++) {
+		test_send(tc, "/test/client/cb:1=");
+		test_recv(tc, buff->str, buff->allocated_len);
+
+		cb = g_ascii_strtoull(buff->str + sizeof("/qio/callback/1:") - 1, NULL, 10);
+		ck_assert_uint_gt(cb, 0);
+
+		g_string_printf(buff, "/qio/callback/%u:0=null", cb);
+		test_send(tc, buff->str);
+	}
+
+	qev_buffer_put(buff);
+	close(tc);
+}
+END_TEST
+
 static void _setup_subs()
 {
 	test_setup();
@@ -281,6 +310,7 @@ int main()
 	tcase_add_test(tcase, test_client_callbacks_invalid);
 	tcase_add_test(tcase, test_client_callbacks_all);
 	tcase_add_test(tcase, test_client_callbacks_limits);
+	tcase_add_test(tcase, test_client_callbacks_overflow);
 
 	tcase = tcase_create("Subs");
 	suite_add_tcase(s, tcase);

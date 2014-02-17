@@ -206,8 +206,11 @@ evs_cb_t client_cb_new(
 		qev_stats_counter_inc(_stat_callbacks_evicted);
 	}
 
+	client->cbs_id++;
+	client->cbs_id = MAX(1, client->cbs_id);
+
 	cb = (struct client_cb){
-		.id = ++client->cbs_id,
+		.id = client->cbs_id,
 		.cb_fn = cb_fn,
 		.cb_data = cb_data,
 		.free_fn = free_fn,
