@@ -87,7 +87,6 @@ CFLAGS = \
 	-Wall \
 	-Wextra \
 	-Werror=format-security \
-	-fPIE \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-D_FORTIFY_SOURCE=2 \
@@ -119,11 +118,16 @@ CFLAGS_DEBUG = \
 	-fno-inline \
 	-DQEV_LOG_DEBUG
 
+CFLAGS_PROFILE = \
+	-O3 \
+	-g \
+	-pg
+
 CFLAGS_RELEASE = \
+	-fPIE \
 	-O3
 
 LDFLAGS = \
-	-pie \
 	-Wl,-z,relro \
 	-Wl,-z,now \
 	-lm \
@@ -141,10 +145,13 @@ LDFLAGS_TEST = \
 	--coverage \
 	$(shell pkg-config --libs $(LIBS_TEST))
 
-LDFLAGS_RELEASE = \
+LDFLAGS_PROFILE = \
+	-pg \
 	$(LIBQEV)
 
-VG_SUPPRESSIONS = valgrind.supp
+LDFLAGS_RELEASE = \
+	-pie \
+	$(LIBQEV)
 
 ifdef USE_VALGRIND
 	CFLAGS += -DFATAL_SIGNAL=9
@@ -163,6 +170,8 @@ else
 	CFLAGS += -DFATAL_SIGNAL=5
 	MEMTEST =
 endif
+
+VG_SUPPRESSIONS = valgrind.supp
 
 INSTALL_ROOT ?=
 INSTALL_PREFIX ?= $(INSTALL_ROOT)/usr
@@ -191,12 +200,17 @@ debug: export CFLAGS += $(CFLAGS_DEBUG)
 debug: export LDFLAGS += $(LDFLAGS_DEBUG)
 debug: $(BINARY)
 
-run: debug
-	./$(BINARY)
+profile: export CFLAGS += $(CFLAGS_PROFILE)
+profile: export LDFLAGS += $(LDFLAGS_PROFILE)
+profile: $(BINARY)
+
 
 release: export CFLAGS += $(CFLAGS_RELEASE)
 release: export LDFLAGS += $(LDFLAGS_RELEASE)
 release: $(BINARY)
+
+run: debug
+	./$(BINARY)
 
 deb:
 	debuild $(DEBUILD_ARGS)
@@ -263,6 +277,8 @@ clean:
 	rm -f $(BINARY)
 	rm -f $(BINARY_TESTAPPS)
 	rm -f $(VG_SUPPRESSIONS)
+	rm -f gmon.out
+	rm -f test/*.sock
 	$(MAKE) -C docs clean
 
 $(BINARY): $(BINARY_OBJECTS) $(LIBQEV)
