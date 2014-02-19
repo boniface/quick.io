@@ -10,10 +10,6 @@
 
 void qio_main(int argc, char **argv)
 {
-	#ifdef QIO_DEFAULT_CFG
-		qev_cfg_set_default_file(QIO_DEFAULT_CFG);
-	#endif
-
 	evs_init();
 	qev_init("quickio", argv, argc);
 	evs_stats_init();
