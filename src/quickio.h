@@ -31,6 +31,7 @@
 #endif
 
 #include <gmodule.h>
+#include "atomic.h"
 #include "evs.h"
 #include "apps.h"
 #include "client.h"
