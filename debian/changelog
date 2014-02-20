@@ -1,4 +1,4 @@
-quickio (0.2.0) UNRELEASED; urgency=low
+quickio (0.2.0) stable; urgency=low
 
   * Drasticall cleaned up QuickIO base.
   * Simplified application interface.
@@ -7,7 +7,7 @@ quickio (0.2.0) UNRELEASED; urgency=low
 
  -- Andrew Stone <andrew@clovar.com>  Tue, 21 Jan 2014 15:46:56 -0500
 
-quickio (0.1.0) UNRELEASED; urgency=low
+quickio (0.1.0) stable; urgency=low
 
   * Initial release.
 

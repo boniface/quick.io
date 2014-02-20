@@ -187,8 +187,6 @@ INSTALL_PKGCFG_DIR ?= $(INSTALL_PREFIX)/lib/pkgconfig
 INSTALL_SYSCTL_DIR = $(INSTALL_ROOT)/etc/sysctl.d
 
 DEBUILD_ARGS = \
-	-uc \
-	-us \
 	-tc
 
 all:
@@ -216,7 +214,7 @@ deb:
 	debuild $(DEBUILD_ARGS)
 
 deb-stable:
-	sbuild -d wheezy-amd64
+	sbuild -d wheezy
 
 test: $(TESTS)
 	./lib/quick-event/ext/gcovr \
