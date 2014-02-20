@@ -111,6 +111,7 @@ static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_qio;
 static qev_stats_counter_t *_stat_handshakes_qio_invalid;
+static qev_stats_counter_t *_stat_handshakes_qio_missing;
 static qev_stats_timer_t *_stat_route_time;
 
 static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
@@ -356,6 +357,8 @@ void protocol_rfc6455_init()
 								"handshakes.qio", TRUE);
 	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
 								"handshakes.qio_invalid", TRUE);
+	_stat_handshakes_qio_missing = qev_stats_counter("protocol.rfc6455",
+								"handshakes.qio_missing", TRUE);
 	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
 }
 
@@ -515,7 +518,13 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 
 			case QEV_CLOSE_TIMEOUT:
 				// error code: 1008
-				qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
+				if (protocols_client_handshaked(client)) {
+					qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
+				} else {
+					qev_stats_counter_inc(_stat_handshakes_qio_missing);
+					qev_write(client, "\x88\x17\x03\xf0""missing qio handshake", 25);
+				}
+
 				break;
 
 			case QEV_CLOSE_READ_HIGH:
