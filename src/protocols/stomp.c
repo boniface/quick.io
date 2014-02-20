@@ -13,14 +13,12 @@ void protocol_stomp_init()
 
 }
 
-enum protocol_handles protocol_stomp_handles(struct client *client G_GNUC_UNUSED, void **data G_GNUC_UNUSED)
+enum protocol_handles protocol_stomp_handles(struct client *client G_GNUC_UNUSED)
 {
 	return PROT_NO;
 }
 
-enum protocol_status protocol_stomp_handshake(
-	struct client *client G_GNUC_UNUSED,
-	void *data G_GNUC_UNUSED)
+enum protocol_status protocol_stomp_handshake(struct client *client G_GNUC_UNUSED)
 {
 	return PROT_FATAL;
 }

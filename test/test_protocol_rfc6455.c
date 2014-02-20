@@ -119,7 +119,7 @@ START_TEST(test_rfc6455_partial_write_finish)
 }
 END_TEST
 
-START_TEST(test_rfc6455_handshake_slow)
+START_TEST(test_rfc6455_handshake_partial)
 {
 	const gchar *headers = HEADERS;
 	qev_fd_t ts = test_socket();
@@ -207,27 +207,6 @@ START_TEST(test_rfc6455_handshake_message_before_ohai)
 
 	err = recv(ts, buff, sizeof(buff), 0);
 	ck_assert(memcmp(buff, "\x88\x13\x03\xea""invalid handshake", err) == 0);
-
-	test_client_dead(ts);
-	close(ts);
-}
-END_TEST
-
-START_TEST(test_rfc6455_handshake_no_ohai)
-{
-	gint err;
-	gchar buff[512];
-	qev_fd_t ts = test_socket();
-
-	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
-					sizeof(HEADERS) - 1);
-	err = recv(ts, buff, sizeof(buff), 0);
-	ck_assert(err > 0);
-	buff[err] = '\0';
-	ck_assert_str_eq(HEADERS_RESPONSE, buff);
-
-	err = recv(ts, buff, sizeof(buff), 0);
-	ck_assert(memcmp(buff, "\x88\x17\x03\xf0""missing qio handshake", err) == 0);
 
 	test_client_dead(ts);
 	close(ts);
@@ -641,11 +620,10 @@ int main()
 	tcase_add_test(tcase, test_rfc6455_sane);
 	tcase_add_test(tcase, test_rfc6455_partial_write);
 	tcase_add_test(tcase, test_rfc6455_partial_write_finish);
-	tcase_add_test(tcase, test_rfc6455_handshake_slow);
+	tcase_add_test(tcase, test_rfc6455_handshake_partial);
 	tcase_add_test(tcase, test_rfc6455_handshake_invalid_http_headers);
 	tcase_add_test(tcase, test_rfc6455_handshake_no_upgrade_header);
 	tcase_add_test(tcase, test_rfc6455_handshake_message_before_ohai);
-	tcase_add_test(tcase, test_rfc6455_handshake_no_ohai);
 	tcase_add_test(tcase, test_rfc6455_handshake_invalid_prefix);
 	tcase_add_test(tcase, test_rfc6455_heartbeats);
 	tcase_add_test(tcase, test_rfc6455_heartbeat_before_handshake);

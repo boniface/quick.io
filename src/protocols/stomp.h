@@ -20,12 +20,12 @@ void protocol_stomp_init();
 /**
  * If stomp can handle this client
  */
-enum protocol_handles protocol_stomp_handles(struct client *client, void **data);
+enum protocol_handles protocol_stomp_handles(struct client *client);
 
 /**
  * To do the stomp handshake
  */
-enum protocol_status protocol_stomp_handshake(struct client *client, void *data);
+enum protocol_status protocol_stomp_handshake(struct client *client);
 
 /**
  * Routes the data received from a client

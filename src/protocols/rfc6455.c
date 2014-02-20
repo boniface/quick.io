@@ -67,19 +67,10 @@
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
-#define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
-
-/**
- * Indicates that a client was speaking HTTP but was not intended for us or had
- * some other error (eg. missing headers) and should be terminated.
- */
-#define HTTP_UNSUPPORTED 0x4000
-
-/**
- * Indicates that a client has finished the HTTP part of the handshake
- * but still needs to complete the QIO handshake
- */
 #define HTTP_HANDSHAKED 0x0001
+#define QIO_HANDSHAKED 0x0002
+
+#define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
 
 /**
  * For all the parser callbacks, we need all this junk
@@ -111,7 +102,7 @@ static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_qio;
 static qev_stats_counter_t *_stat_handshakes_qio_invalid;
-static qev_stats_counter_t *_stat_handshakes_qio_missing;
+static qev_stats_counter_t *_stat_handshakes_qio_pending;
 static qev_stats_timer_t *_stat_route_time;
 
 static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
@@ -320,10 +311,10 @@ static void _handshake_http(
 
 static enum protocol_status _handshake_qio(struct client *client)
 {
-	enum protocol_status status;
 	gboolean good;
 	guint64 len;
 	guint64 frame_len;
+	enum protocol_status status;
 
 	status = _decode(client, &len, &frame_len);
 	if (status != PROT_OK) {
@@ -333,9 +324,11 @@ static enum protocol_status _handshake_qio(struct client *client)
 
 	good = protocol_raw_check_handshake(client);
 	if (good) {
+		client->protocol_flags |= QIO_HANDSHAKED;
 		qev_stats_counter_inc(_stat_handshakes_qio);
 		qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
 		status = PROT_OK;
+		qev_stats_counter_dec(_stat_handshakes_qio_pending);
 	} else {
 		qev_stats_counter_inc(_stat_handshakes_qio_invalid);
 		qev_close(client, QIO_CLOSE_INVALID_HANDSHAKE);
@@ -357,20 +350,13 @@ void protocol_rfc6455_init()
 								"handshakes.qio", TRUE);
 	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
 								"handshakes.qio_invalid", TRUE);
-	_stat_handshakes_qio_missing = qev_stats_counter("protocol.rfc6455",
-								"handshakes.qio_missing", TRUE);
+	_stat_handshakes_qio_pending = qev_stats_counter("protocol.rfc6455",
+								"handshakes.qio_pending", FALSE);
 	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
 }
 
-enum protocol_handles protocol_rfc6455_handles(
-	struct client *client,
-	void **data)
+enum protocol_handles protocol_rfc6455_handles(struct client *client)
 {
-	/**
-	 * This is a thread-local value that is only valid for this leg
-	 * of the handshake
-	 */
-	GHashTable *headers;
 	GString *rbuff = client->qev_client.rbuff;
 
 	if (!g_str_has_suffix(rbuff->str, WEB_SOCKET_HEADER_TERMINATOR) &&
@@ -382,51 +368,32 @@ enum protocol_handles protocol_rfc6455_handles(
 		return PROT_NO;
 	}
 
+	return PROT_YES;
+}
+
+enum protocol_status protocol_rfc6455_handshake(struct client *client)
+{
 	/*
-	 * Once we start messing with the headers, we're claiming the client, so
-	 * PROT_YES is our only return value after this point.
+	 * This is a thread-local value that is only valid for this function
 	 */
-	headers = _parse_headers(rbuff);
+	GHashTable *headers = _parse_headers(client->qev_client.rbuff);
 
 	if (headers == NULL ||
 		g_strcmp0(g_hash_table_lookup(headers, PROTOCOL_KEY), "quickio") != 0 ||
 		!g_hash_table_contains(headers, CHALLENGE_KEY) ||
 		g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
 
-		client->protocol_flags |= HTTP_UNSUPPORTED;
-	}
-
-	*data = headers;
-
-	return PROT_YES;
-}
-
-enum protocol_status protocol_rfc6455_handshake(
-	struct client *client,
-	void *data)
-{
-	/*
-	 * This flag is set in handles(): must wait for the protocol
-	 * to be set before closing so that an error message can
-	 * be sent back to the client.
-	 */
-	if (client->protocol_flags & HTTP_UNSUPPORTED) {
 		qev_stats_counter_inc(_stat_handshakes_http_invalid);
 		qev_close(client, QIO_CLOSE_NOT_SUPPORTED);
 		return PROT_FATAL;
 	}
 
-	if (!(client->protocol_flags & HTTP_HANDSHAKED)) {
-		GHashTable *headers = data;
-		_handshake_http(client, headers);
+	client->protocol_flags |= HTTP_HANDSHAKED;
+	_handshake_http(client, headers);
+	qev_stats_counter_inc(_stat_handshakes_http);
+	qev_stats_counter_inc(_stat_handshakes_qio_pending);
 
-		client->protocol_flags |= HTTP_HANDSHAKED;
-		qev_stats_counter_inc(_stat_handshakes_http);
-
-		return PROT_AGAIN;
-	} else {
-		return _handshake_qio(client);
-	}
+	return PROT_OK;
 }
 
 enum protocol_status protocol_rfc6455_route(struct client *client)
@@ -435,20 +402,26 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	guint64 frame_len;
 	enum protocol_status status;
 
-	qev_stats_time(_stat_route_time, {
-		status = _decode(client, &len, &frame_len);
-		if (status == PROT_OK) {
-			status = protocol_raw_handle(client, len, frame_len);
-		}
-	});
+	if (client->protocol_flags & QIO_HANDSHAKED) {
+		qev_stats_time(_stat_route_time, {
+			status = _decode(client, &len, &frame_len);
+			if (status == PROT_OK) {
+				status = protocol_raw_handle(client, len, frame_len);
+			}
+		});
+	} else {
+		status = _handshake_qio(client);
+	}
 
 	return status;
 }
 
 void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb)
 {
-	protocol_raw_do_heartbeat(client, hb,
+	if (client->protocol_flags & QIO_HANDSHAKED) {
+		protocol_raw_do_heartbeat(client, hb,
 							HEARTBEAT, sizeof(HEARTBEAT) - 1);
+	}
 }
 
 GString* protocol_rfc6455_frame(
@@ -485,6 +458,10 @@ GString* protocol_rfc6455_frame(
 void protocol_rfc6455_close(struct client *client, guint reason)
 {
 	if (client->protocol_flags & HTTP_HANDSHAKED) {
+		if (!(client->protocol_flags & QIO_HANDSHAKED)) {
+			qev_stats_counter_dec(_stat_handshakes_qio_pending);
+		}
+
 		switch (reason) {
 			case QEV_CLOSE_EXITING:
 				// error code: 1001
@@ -517,14 +494,7 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 				break;
 
 			case QEV_CLOSE_TIMEOUT:
-				// error code: 1008
-				if (protocols_client_handshaked(client)) {
-					qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
-				} else {
-					qev_stats_counter_inc(_stat_handshakes_qio_missing);
-					qev_write(client, "\x88\x17\x03\xf0""missing qio handshake", 25);
-				}
-
+				qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
 				break;
 
 			case QEV_CLOSE_READ_HIGH:

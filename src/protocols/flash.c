@@ -28,9 +28,7 @@ void protocol_flash_init()
 	_stat_handshakes = qev_stats_counter("protocol.flash", "handshakes", TRUE);
 }
 
-enum protocol_handles protocol_flash_handles(
-	struct client *client,
-	void **data G_GNUC_UNUSED)
+enum protocol_handles protocol_flash_handles(struct client *client)
 {
 	GString *rbuff = client->qev_client.rbuff;
 
@@ -45,9 +43,7 @@ enum protocol_handles protocol_flash_handles(
 	return PROT_NO;
 }
 
-enum protocol_status protocol_flash_handshake(
-	struct client *client,
-	void *data G_GNUC_UNUSED)
+enum protocol_status protocol_flash_handshake(struct client *client)
 {
 	/*
 	 * While I absolutely abhor closing a client in a handshake, it's pretty

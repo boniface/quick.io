@@ -92,12 +92,8 @@ struct protocol {
 	 *
 	 * @param client
 	 *     The client that we're checking
-	 * @param data
-	 *     If this protocol can handle the client, this data
-	 *     will only be passed back into handshake immediately after this call;
-	 *     all future calls to handshake will receive NULL.
 	 */
-	enum protocol_handles (*handles)(struct client *client, void **data);
+	enum protocol_handles (*handles)(struct client *client);
 
 	/**
 	 * Completes the handshake with the client. Once a protocol has accepted
@@ -106,12 +102,8 @@ struct protocol {
 	 *
 	 * @param client
 	 *     The client to handshake with
-	 * @param data
-	 *     Whatever data came from the previous handles() call; this
-	 *     will _only_ be set on the first call to handshake() after handles(),
-	 *     not on any subsequent calls.
 	 */
-	enum protocol_status (*handshake)(struct client *client, void *data);
+	enum protocol_status (*handshake)(struct client *client);
 
 	/**
 	 * Reads and routes data available on the client

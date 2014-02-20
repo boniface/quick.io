@@ -76,13 +76,13 @@ static struct protocol _protocols[] = {
 	},
 };
 
-static gboolean _find_handler(struct client *client, void **data)
+static gboolean _find_handler(struct client *client)
 {
 	guint i;
 	gboolean supported = FALSE;
 
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
-		enum protocol_handles handles = _protocols[i].handles(client, data);
+		enum protocol_handles handles = _protocols[i].handles(client);
 
 		switch (handles) {
 			case PROT_YES:
@@ -105,9 +105,9 @@ static gboolean _find_handler(struct client *client, void **data)
 	return FALSE;
 }
 
-static void _handshake(struct client *client, void *data)
+static void _handshake(struct client *client)
 {
-	enum protocol_status status = client->protocol->handshake(client, data);
+	enum protocol_status status = client->protocol->handshake(client);
 
 	switch (status) {
 		case PROT_OK:
@@ -172,16 +172,14 @@ static void _heartbeat_cb(struct client *client, void *hb_)
 
 void protocols_route(struct client *client)
 {
-	void *data = NULL;
-
 	client->last_recv = qev_monotonic;
 
-	if (client->protocol == NULL && !_find_handler(client, &data)) {
+	if (client->protocol == NULL && !_find_handler(client)) {
 		return;
 	}
 
 	if (!protocols_client_handshaked(client)) {
-		_handshake(client, data);
+		_handshake(client);
 		return;
 	}
 

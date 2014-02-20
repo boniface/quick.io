@@ -102,8 +102,9 @@ struct client {
 	 * The state of the client at the protocol level. Protocols may only
 	 * touch this once they have signaled that they handle the client.
 	 *
-	 * @note Protocols may only use bits 0-14, bit 15 (identified by 0x8000) is
-	 * reserved for the protocol router.
+	 * @note
+	 *     Protocols may only use bits 0-14, bit 15 (identified by 0x8000) is
+	 *     reserved for the protocol router.
 	 */
 	guint16 protocol_flags;
 
@@ -126,8 +127,9 @@ struct client {
 	/**
 	 * The only timeout that will be set on a client from QIO.
 	 *
-	 * @attention This MAY ONLY ever be set on connect and in the protocols.
-	 * It may never be altered anywhere else.
+	 * @attention
+	 *     This MAY ONLY ever be set on connect and in the protocols.
+	 *     It may never be altered anywhere else.
 	 */
 	qev_timeout_t *timeout;
 

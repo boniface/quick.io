@@ -31,9 +31,7 @@ void protocol_raw_init()
 	_stat_route_time = qev_stats_timer("protocol.raw", "route");
 }
 
-enum protocol_handles protocol_raw_handles(
-	struct client *client,
-	void **data G_GNUC_UNUSED)
+enum protocol_handles protocol_raw_handles(struct client *client)
 {
 	gchar *str = client->qev_client.rbuff->str;
 
@@ -48,9 +46,7 @@ enum protocol_handles protocol_raw_handles(
 	return PROT_NO;
 }
 
-enum protocol_status protocol_raw_handshake(
-	struct client *client,
-	void *data G_GNUC_UNUSED)
+enum protocol_status protocol_raw_handshake(struct client *client)
 {
 	qev_write(client, HANDSHAKE, sizeof(HANDSHAKE) -1);
 	g_string_truncate(client->qev_client.rbuff, 0);

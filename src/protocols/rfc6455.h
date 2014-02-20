@@ -40,16 +40,12 @@ void protocol_rfc6455_init();
 /**
  * If rfc6455 can handle this client
  */
-enum protocol_handles protocol_rfc6455_handles(
-	struct client *client,
-	void **data);
+enum protocol_handles protocol_rfc6455_handles(struct client *client);
 
 /**
  * To do the rfc6455 handshake
  */
-enum protocol_status protocol_rfc6455_handshake(
-	struct client *client,
-	void *data);
+enum protocol_status protocol_rfc6455_handshake(struct client *client);
 
 /**
  * Routes the data received from a client

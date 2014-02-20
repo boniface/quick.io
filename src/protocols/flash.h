@@ -21,12 +21,12 @@ void protocol_flash_init();
 /**
  * If flash can handle this client
  */
-enum protocol_handles protocol_flash_handles(struct client *client, void **data);
+enum protocol_handles protocol_flash_handles(struct client *client);
 
 /**
  * To complete the single, simple flash handshake.
  */
-enum protocol_status protocol_flash_handshake(struct client *client, void *data);
+enum protocol_status protocol_flash_handshake(struct client *client);
 
 /**
  * Routes the data received from a client
