@@ -227,10 +227,6 @@ void test_send_len(
 	guint64 wlen = len;
 	gchar size[sizeof(guint64)];
 
-	if (len == 0) {
-		wlen = strlen(data);
-	}
-
 	*((guint64*)size) = GUINT64_TO_BE(wlen);
 
 	err = send(tc, size, sizeof(size), MSG_NOSIGNAL);

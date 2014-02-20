@@ -8,7 +8,7 @@
 
 #include "test.h"
 
-START_TEST(test_raw_handshake_slow)
+START_TEST(test_raw_handshake_partial)
 {
 	gchar buff[10];
 	qev_fd_t ts = test_socket();
@@ -27,7 +27,7 @@ START_TEST(test_raw_handshake_slow)
 }
 END_TEST
 
-START_TEST(test_raw_route_slow)
+START_TEST(test_raw_route_partial)
 {
 	qev_fd_t tc = test_client();
 
@@ -157,8 +157,8 @@ int main()
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
-	tcase_add_test(tcase, test_raw_handshake_slow);
-	tcase_add_test(tcase, test_raw_route_slow);
+	tcase_add_test(tcase, test_raw_handshake_partial);
+	tcase_add_test(tcase, test_raw_route_partial);
 	tcase_add_test(tcase, test_raw_route_invalid);
 	tcase_add_test(tcase, test_raw_minimal_event);
 	tcase_add_test(tcase, test_raw_heartbeats);

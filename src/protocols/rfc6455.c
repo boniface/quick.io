@@ -253,7 +253,7 @@ static enum protocol_status _decode(
 		memcpy(mask, str + 10, 4);
 	}
 
-	if (rbuff->len < len) {
+	if (rbuff->len < (header_len + len)) {
 		return PROT_AGAIN;
 	}
 

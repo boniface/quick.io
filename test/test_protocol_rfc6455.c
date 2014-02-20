@@ -76,6 +76,49 @@ START_TEST(test_rfc6455_sane)
 }
 END_TEST
 
+START_TEST(test_rfc6455_partial_write)
+{
+	gint err;
+	gchar buff[128];
+	qev_fd_t tc = _client();
+	guint64 wlen = strlen(_ping) - 2;
+
+	err = send(tc, _ping, wlen, MSG_NOSIGNAL);
+	ck_assert(err == (gint64)wlen);
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert(memcmp(buff, "\x88\x10\x03\xf0""client timeout", err) == 0);
+
+	close(tc);
+}
+END_TEST
+
+START_TEST(test_rfc6455_partial_write_finish)
+{
+	gint64 err;
+	gchar buff[128];
+	qev_fd_t tc = _client();
+	gint64 wlen = strlen(_ping) - 2;
+
+	gint on = 1;
+	err = setsockopt(tc, IPPROTO_TCP, TCP_NODELAY, (void*)&on, sizeof(on));
+	ck_assert(err == 0);
+
+	err = send(tc, _ping, wlen, MSG_NOSIGNAL);
+	ck_assert(err == wlen);
+
+	err = send(tc, _ping + wlen, 2, MSG_NOSIGNAL);
+	ck_assert(err == 2);
+
+	err = recv(tc, buff, sizeof(buff), 0);
+	ck_assert_int_eq(err, strlen(_ping_response));
+	buff[err] = '\0';
+	ck_assert_str_eq(buff, _ping_response);
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_rfc6455_handshake_slow)
 {
 	const gchar *headers = HEADERS;
@@ -575,6 +618,8 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_rfc6455_sane);
+	tcase_add_test(tcase, test_rfc6455_partial_write);
+	tcase_add_test(tcase, test_rfc6455_partial_write_finish);
 	tcase_add_test(tcase, test_rfc6455_handshake_slow);
 	tcase_add_test(tcase, test_rfc6455_handshake_invalid_http_headers);
 	tcase_add_test(tcase, test_rfc6455_handshake_no_upgrade_header);
