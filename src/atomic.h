@@ -23,7 +23,8 @@
  */
 static inline gboolean atomic_inc_not_zero(guint *to)
 {
-	guint val = *((volatile guint*)to);
+	__sync_synchronize();
+	guint val = *to;
 
 	while (TRUE) {
 		guint old;
