@@ -68,7 +68,6 @@
 #define OPCODE_CLOSE 0x08
 
 #define HTTP_HANDSHAKED 0x0001
-#define QIO_HANDSHAKED 0x0002
 
 #define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
 
@@ -102,7 +101,6 @@ static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_qio;
 static qev_stats_counter_t *_stat_handshakes_qio_invalid;
-static qev_stats_counter_t *_stat_handshakes_qio_pending;
 static qev_stats_timer_t *_stat_route_time;
 
 static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
@@ -318,21 +316,15 @@ static enum protocol_status _handshake_qio(struct client *client)
 
 	status = _decode(client, &len, &frame_len);
 	if (status != PROT_OK) {
-		if (status == PROT_FATAL) {
-			qev_stats_counter_inc(_stat_handshakes_qio_invalid);
-		}
 		return status;
 	}
 
 	good = protocol_raw_check_handshake(client);
 	if (good) {
-		client->protocol_flags |= QIO_HANDSHAKED;
 		qev_stats_counter_inc(_stat_handshakes_qio);
 		qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
 		status = PROT_OK;
-		qev_stats_counter_dec(_stat_handshakes_qio_pending);
 	} else {
-		qev_stats_counter_inc(_stat_handshakes_qio_invalid);
 		qev_close(client, QIO_CLOSE_INVALID_HANDSHAKE);
 		status = PROT_FATAL;
 	}
@@ -352,8 +344,6 @@ void protocol_rfc6455_init()
 								"handshakes.qio", TRUE);
 	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
 								"handshakes.qio_invalid", TRUE);
-	_stat_handshakes_qio_pending = qev_stats_counter("protocol.rfc6455",
-								"handshakes.qio_pending", FALSE);
 	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
 }
 
@@ -375,27 +365,36 @@ enum protocol_handles protocol_rfc6455_handles(struct client *client)
 
 enum protocol_status protocol_rfc6455_handshake(struct client *client)
 {
-	/*
-	 * This is a thread-local value that is only valid for this function
-	 */
-	GHashTable *headers = _parse_headers(client->qev_client.rbuff);
+	enum protocol_status status;
 
-	if (headers == NULL ||
-		g_strcmp0(g_hash_table_lookup(headers, PROTOCOL_KEY), "quickio") != 0 ||
-		!g_hash_table_contains(headers, CHALLENGE_KEY) ||
-		g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
+	if (!(client->protocol_flags & HTTP_HANDSHAKED)) {
+		/*
+		 * This is a thread-local value that is only valid for this function
+		 */
+		GHashTable *headers = _parse_headers(client->qev_client.rbuff);
 
-		qev_stats_counter_inc(_stat_handshakes_http_invalid);
-		qev_close(client, QIO_CLOSE_NOT_SUPPORTED);
-		return PROT_FATAL;
+		if (headers == NULL ||
+			g_strcmp0(g_hash_table_lookup(headers, PROTOCOL_KEY), "quickio") != 0 ||
+			!g_hash_table_contains(headers, CHALLENGE_KEY) ||
+			g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
+
+			qev_stats_counter_inc(_stat_handshakes_http_invalid);
+			qev_close(client, QIO_CLOSE_NOT_SUPPORTED);
+			status = PROT_FATAL;
+		} else {
+			_handshake_http(client, headers);
+			client->protocol_flags |= HTTP_HANDSHAKED;
+			qev_stats_counter_inc(_stat_handshakes_http);
+			status = PROT_AGAIN;
+		}
+	} else {
+		status = _handshake_qio(client);
+		if (status == PROT_FATAL) {
+			qev_stats_counter_inc(_stat_handshakes_qio_invalid);
+		}
 	}
 
-	client->protocol_flags |= HTTP_HANDSHAKED;
-	_handshake_http(client, headers);
-	qev_stats_counter_inc(_stat_handshakes_http);
-	qev_stats_counter_inc(_stat_handshakes_qio_pending);
-
-	return PROT_OK;
+	return status;
 }
 
 enum protocol_status protocol_rfc6455_route(struct client *client)
@@ -404,26 +403,20 @@ enum protocol_status protocol_rfc6455_route(struct client *client)
 	guint64 frame_len;
 	enum protocol_status status;
 
-	if (client->protocol_flags & QIO_HANDSHAKED) {
-		qev_stats_time(_stat_route_time, {
-			status = _decode(client, &len, &frame_len);
-			if (status == PROT_OK) {
-				status = protocol_raw_handle(client, len, frame_len);
-			}
-		});
-	} else {
-		status = _handshake_qio(client);
-	}
+	qev_stats_time(_stat_route_time, {
+		status = _decode(client, &len, &frame_len);
+		if (status == PROT_OK) {
+			status = protocol_raw_handle(client, len, frame_len);
+		}
+	});
 
 	return status;
 }
 
 void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb)
 {
-	if (client->protocol_flags & QIO_HANDSHAKED) {
-		protocol_raw_do_heartbeat(client, hb,
-							HEARTBEAT, sizeof(HEARTBEAT) - 1);
-	}
+	protocol_raw_do_heartbeat(client, hb,
+					HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
 GString* protocol_rfc6455_frame(
@@ -460,10 +453,6 @@ GString* protocol_rfc6455_frame(
 void protocol_rfc6455_close(struct client *client, guint reason)
 {
 	if (client->protocol_flags & HTTP_HANDSHAKED) {
-		if (!(client->protocol_flags & QIO_HANDSHAKED)) {
-			qev_stats_counter_dec(_stat_handshakes_qio_pending);
-		}
-
 		switch (reason) {
 			case QEV_CLOSE_EXITING:
 				// error code: 1001
