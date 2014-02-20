@@ -187,7 +187,8 @@ INSTALL_PKGCFG_DIR ?= $(INSTALL_PREFIX)/lib/pkgconfig
 INSTALL_SYSCTL_DIR = $(INSTALL_ROOT)/etc/sysctl.d
 
 DEBUILD_ARGS = \
-	-tc
+	-tc \
+	-b
 
 all:
 	@echo "Choose one of the following:"
