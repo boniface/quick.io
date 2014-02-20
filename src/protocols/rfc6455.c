@@ -190,10 +190,6 @@ static GHashTable* _parse_headers(GString *rbuff)
 		return NULL;
 	}
 
-	if (!parser.upgrade) {
-		return NULL;
-	}
-
 	return headers;
 }
 
