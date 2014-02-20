@@ -119,7 +119,7 @@ START_TEST(test_rfc6455_partial_write_finish)
 }
 END_TEST
 
-START_TEST(test_rfc6455_handshake_partial)
+START_TEST(test_rfc6455_handshake_http_partial)
 {
 	const gchar *headers = HEADERS;
 	qev_fd_t ts = test_socket();
@@ -133,7 +133,7 @@ START_TEST(test_rfc6455_handshake_partial)
 }
 END_TEST
 
-START_TEST(test_rfc6455_handshake_invalid_http_headers)
+START_TEST(test_rfc6455_handshake_http_invalid_headers)
 {
 	const gchar *headers =
 		"GET ws://localhost/qio HTTP/1.1\r\n"
@@ -160,7 +160,7 @@ START_TEST(test_rfc6455_handshake_invalid_http_headers)
 }
 END_TEST
 
-START_TEST(test_rfc6455_handshake_no_upgrade_header)
+START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 {
 	const gchar *headers =
 		"GET ws://localhost/qio HTTP/1.1\r\n"
@@ -184,6 +184,33 @@ START_TEST(test_rfc6455_handshake_no_upgrade_header)
 		"Expires: 0\r\n\r\n");
 
 	test_client_dead(ts);
+	close(ts);
+}
+END_TEST
+
+START_TEST(test_rfc6455_handshake_qio_partial)
+{
+	gint err;
+	gchar buff[512];
+	qev_fd_t ts = test_socket();
+
+	ck_assert_int_eq(send(ts, HEADERS, sizeof(HEADERS) - 1, 0),
+					sizeof(HEADERS) - 1);
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(err > 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(HEADERS_RESPONSE, buff);
+
+	ck_assert_int_eq(send(ts, QIO_HANDSHAKE, 3, 0), 3);
+	test_wait_for_buff(3);
+	ck_assert_int_eq(send(ts, QIO_HANDSHAKE + 3, sizeof(QIO_HANDSHAKE)-4, 0),
+					sizeof(QIO_HANDSHAKE)-4);
+
+	err = recv(ts, buff, sizeof(buff), 0);
+	ck_assert(err > 0);
+	buff[err] = '\0';
+	ck_assert_str_eq(HANDSHAKE_RESPONSE, buff);
+
 	close(ts);
 }
 END_TEST
@@ -620,9 +647,10 @@ int main()
 	tcase_add_test(tcase, test_rfc6455_sane);
 	tcase_add_test(tcase, test_rfc6455_partial_write);
 	tcase_add_test(tcase, test_rfc6455_partial_write_finish);
-	tcase_add_test(tcase, test_rfc6455_handshake_partial);
-	tcase_add_test(tcase, test_rfc6455_handshake_invalid_http_headers);
-	tcase_add_test(tcase, test_rfc6455_handshake_no_upgrade_header);
+	tcase_add_test(tcase, test_rfc6455_handshake_http_partial);
+	tcase_add_test(tcase, test_rfc6455_handshake_http_invalid_headers);
+	tcase_add_test(tcase, test_rfc6455_handshake_http_no_upgrade_header);
+	tcase_add_test(tcase, test_rfc6455_handshake_qio_partial);
 	tcase_add_test(tcase, test_rfc6455_handshake_message_before_ohai);
 	tcase_add_test(tcase, test_rfc6455_handshake_invalid_prefix);
 	tcase_add_test(tcase, test_rfc6455_heartbeats);

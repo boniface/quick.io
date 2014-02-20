@@ -318,7 +318,9 @@ static enum protocol_status _handshake_qio(struct client *client)
 
 	status = _decode(client, &len, &frame_len);
 	if (status != PROT_OK) {
-		qev_stats_counter_inc(_stat_handshakes_qio_invalid);
+		if (status == PROT_FATAL) {
+			qev_stats_counter_inc(_stat_handshakes_qio_invalid);
+		}
 		return status;
 	}
 
