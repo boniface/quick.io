@@ -96,7 +96,6 @@ struct _parser_data {
 	gsize key_len;
 };
 
-static qev_stats_counter_t *_stat_handshakes;
 static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_qio;
@@ -334,8 +333,6 @@ static enum protocol_status _handshake_qio(struct client *client)
 
 void protocol_rfc6455_init()
 {
-	_stat_handshakes = qev_stats_counter("protocol.rfc6455",
-								"handshakes", TRUE);
 	_stat_handshakes_http = qev_stats_counter("protocol.rfc6455",
 								"handshakes.http", TRUE);
 	_stat_handshakes_http_invalid = qev_stats_counter("protocol.rfc6455",
