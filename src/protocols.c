@@ -76,6 +76,8 @@ static struct protocol _protocols[] = {
 	},
 };
 
+static qev_stats_counter_t *_stat_heartbeats;
+
 static gboolean _find_handler(struct client *client)
 {
 	guint i;
@@ -166,6 +168,7 @@ static void _heartbeat_cb(struct client *client, void *hb_)
 	if (protocols_client_handshaked(client) &&
 		client->protocol->heartbeat != NULL) {
 
+		qev_stats_counter_inc(_stat_heartbeats);
 		client->protocol->heartbeat(client, hb);
 	}
 }
@@ -270,6 +273,8 @@ gboolean protocols_client_handshaked(struct client *client)
 void protocols_init()
 {
 	guint i;
+
+	_stat_heartbeats = qev_stats_counter("protocol", "heartbeats", TRUE);
 
 	qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0);
 
