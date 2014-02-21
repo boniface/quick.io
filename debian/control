@@ -28,5 +28,6 @@ Depends:
 	libssl-dev (>= 1.0.0),
 	pkg-config (>= 0.16.0),
 	quickio (= ${binary:Version})
-Description: Quick WebSocket server
-	QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
+Description: Development files for building QuickIO apps
+	Provides development files and helper binaries for building and testing
+	QuickIO apps.
