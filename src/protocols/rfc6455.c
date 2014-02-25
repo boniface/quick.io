@@ -126,7 +126,12 @@ static enum protocol_status _decode(
 	guint16 header_len = 0;
 	guint64 i;
 	guint64 len;
+	guint64 max;
 	gchar mask[4];
+	union {
+		gchar c[sizeof(__uint128_t)];
+		__uint128_t i;
+	} mask128;
 
 	if ((str[0] & OPCODE) == OPCODE_CLOSE) {
 		qev_close(client, QEV_CLOSE_HUP);
@@ -174,11 +179,41 @@ static enum protocol_status _decode(
 		return PROT_AGAIN;
 	}
 
+
 	*len_ = len;
 	*frame_len = len + header_len;
 	str += header_len;
 
-	for (i = 0; i < len; i++) {
+	/*
+	 * The following mess warrants an explanation: it's quite a bit
+	 * faster than the naive decode.
+	 *
+	 * The following steps are taken:
+	 *   0) Create a 128 bit masking key from 4 32bit ones.
+	 *   1) Gob through 128 bits at a time, until the next XOR would go past
+	 *      the end of the buffer.
+	 *   2) Gob through 64 bits at a time, until the next XOR would overflow
+	 *   3) Finish off going through any last characters.
+	 */
+	for (i = 0; i < sizeof(mask128) / sizeof(mask); i++) {
+		memcpy(mask128.c + (i * sizeof(mask)), mask, sizeof(mask));
+	}
+
+	max = len - (len & (sizeof(__uint128_t) - 1));
+	for (i = 0; i < max; i += sizeof(__uint128_t)) {
+		__builtin_prefetch(str + i + sizeof(__uint128_t), 1, 3);
+		__uint128_t from = *((__uint128_t*)(str + i));
+		*((__uint128_t*)(msg + i)) = from ^ mask128.i;
+	}
+
+	max = len - (len & (sizeof(guint64) - 1));
+	for (; i < max; i += sizeof(guint64)) {
+		__builtin_prefetch(str + i + sizeof(guint64), 1, 3);
+		guint64 from = *((guint64*)(str + i));
+		*((guint64*)(msg + i)) = from ^ mask128.i;
+	}
+
+	for (; i < len; i++) {
 		msg[i] = str[i] ^ mask[i & 3];
 	}
 

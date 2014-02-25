@@ -100,6 +100,9 @@ CFLAGS = \
 	-DVERSION_MICRO=$(VERSION_MICRO) \
 	-I$(CURDIR)/$(LIB_DIR) \
 	-I$(CURDIR)/$(SRC_DIR) \
+	-mfpmath=sse \
+	-msse \
+	-msse2 \
 	$(shell pkg-config --cflags $(LIBS))
 
 ifeq ($(CC),gcc)
