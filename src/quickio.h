@@ -24,7 +24,6 @@
 #define QEV_CLIENT client
 
 #ifdef QIO_SERVER
-	#include "http-parser/http_parser.h"
 	#include "quick-event/src/qev.h"
 #else
 	#include "quick-event/qev.h"
@@ -39,11 +38,13 @@
 #include "evs_qio.h"
 #include "evs_query.h"
 #include "sub.h"
+#include "str.h"
 #include "protocols.h"
 #include "protocols/flash.h"
 #include "protocols/raw.h"
 #include "protocols/rfc6455.h"
 #include "protocols/stomp.h"
+#include "protocols/util.h"
 
 /**
  * Extends the reasons for closing a client

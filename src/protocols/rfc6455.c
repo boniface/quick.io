@@ -16,17 +16,17 @@
 /**
  * Header key that defines the version of websocket being used
  */
-#define VERSION_KEY "sec-websocket-version"
+#define VERSION_KEY "Sec-WebSocket-Version"
 
 /**
  * The header key that points to the challenge key
  */
-#define CHALLENGE_KEY "sec-websocket-key"
+#define CHALLENGE_KEY "Sec-WebSocket-Key"
 
 /**
  * The header key that points to what subprotocol is being used
  */
-#define PROTOCOL_KEY "sec-websocket-protocol"
+#define PROTOCOL_KEY "Sec-WebSocket-Protocol"
 
 /**
  * Completely disables caching for HTTP requests
@@ -53,8 +53,15 @@
 #define HTTP_HEADER_TERMINATOR "\n\n"
 #define WEB_SOCKET_HEADER_TERMINATOR "\r\n\r\n"
 
+/**
+ * Predefined and formatted RFC6455 messages
+ */
 #define QIO_HANDSHAKE "\x81\x09/qio/ohai"
+#define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
 
+/**
+ * RFC6455 byte locations
+ */
 #define PAYLOAD_SHORT 125
 #define PAYLOAD_MEDIUM 126
 #define PAYLOAD_LONG 127
@@ -67,9 +74,10 @@
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
+/**
+ * Protocol flags
+ */
 #define HTTP_HANDSHAKED 0x0001
-
-#define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
 
 /**
  * For all the parser callbacks, we need all this junk
@@ -101,86 +109,6 @@ static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_qio;
 static qev_stats_counter_t *_stat_handshakes_qio_invalid;
 static qev_stats_timer_t *_stat_route_time;
-
-static gint _parser_on_key(http_parser *parser, const gchar *at, gsize len)
-{
-	struct _parser_data *pdata = parser->data;
-
-	pdata->key = (gchar*)at;
-	pdata->key_len = len;
-
-	return 0;
-}
-
-static gint _parser_on_value(http_parser *parser, const gchar *at, gsize len)
-{
-	gchar *c;
-	gchar *header;
-	gchar *value;
-	struct _parser_data *pdata = parser->data;
-
-	if (pdata->key_len > 0) {
-		header = pdata->key;
-		*(header + pdata->key_len) = '\0';
-
-		value = ((gchar*)at);
-		*(value + len) = '\0';
-
-		/*
-		 * HTTP headers are case insensitive, so throw everything to lowercase
-		 * for the hash table
-		 */
-		c = header;
-		while (*c) {
-			if (g_ascii_isupper(*c)) {
-				*c = *c - 'A' + 'a';
-			}
-			c++;
-		}
-
-		g_hash_table_insert(pdata->headers, header, value);
-	}
-
-	pdata->key_len = 0;
-
-	return 0;
-}
-
-static GHashTable* _parse_headers(GString *rbuff)
-{
-	static __thread GHashTable *headers;
-
-	gsize len;
-	http_parser parser;
-	http_parser_settings settings;
-	struct _parser_data pdata;
-
-	if (G_UNLIKELY(headers == NULL)) {
-		headers = g_hash_table_new(g_str_hash, g_str_equal);
-		qev_cleanup_thlocal(headers, (qev_free_fn)g_hash_table_unref);
-	}
-
-	g_hash_table_remove_all(headers);
-
-	memset(&pdata, 0, sizeof(pdata));
-	memset(&settings, 0, sizeof(settings));
-
-	settings.on_header_field = _parser_on_key;
-	settings.on_header_value = _parser_on_value;
-
-	pdata.buffer = rbuff;
-	pdata.headers = headers;
-
-	http_parser_init(&parser, HTTP_REQUEST);
-	parser.data = &pdata;
-	len = http_parser_execute(&parser, &settings, rbuff->str, rbuff->len);
-
-	if (len != rbuff->len) {
-		return NULL;
-	}
-
-	return headers;
-}
 
 static enum protocol_status _decode(
 	struct client *client,
@@ -368,7 +296,7 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client)
 		/*
 		 * This is a thread-local value that is only valid for this function
 		 */
-		GHashTable *headers = _parse_headers(client->qev_client.rbuff);
+		GHashTable *headers = protocol_util_parse_headers(client->qev_client.rbuff);
 
 		if (headers == NULL ||
 			g_strcmp0(g_hash_table_lookup(headers, PROTOCOL_KEY), "quickio") != 0 ||

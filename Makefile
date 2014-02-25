@@ -34,7 +34,6 @@ BINARY_TESTAPPS = quickio-testapps
 HEADERS = $(shell find $(SRC_DIR) -name '*.h')
 
 OBJECTS = \
-	$(LIB_DIR)/http-parser/http_parser.o \
 	$(SRC_DIR)/apps.o \
 	$(SRC_DIR)/client.o \
 	$(SRC_DIR)/config.o \
@@ -46,9 +45,11 @@ OBJECTS = \
 	$(SRC_DIR)/protocols/raw.o \
 	$(SRC_DIR)/protocols/rfc6455.o \
 	$(SRC_DIR)/protocols/stomp.o \
+	$(SRC_DIR)/protocols/util.o \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
-	$(SRC_DIR)/sub.o
+	$(SRC_DIR)/sub.o \
+	$(SRC_DIR)/str.o
 
 OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
@@ -66,6 +67,7 @@ TESTS = \
 	test_protocol_flash \
 	test_protocol_raw \
 	test_protocol_rfc6455 \
+	test_protocol_util \
 	test_sub
 
 TEST_APPS = \
