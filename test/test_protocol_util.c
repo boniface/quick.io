@@ -21,7 +21,7 @@ START_TEST(test_protocol_util_parse_headers_0)
 	tbl = protocol_util_parse_headers(buff);
 
 	ck_assert_uint_eq(g_hash_table_size(tbl), 1);
-	ck_assert_str_eq(g_hash_table_lookup(tbl, "key"), "value");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "key"), "value ");
 
 	qev_buffer_put(buff);
 }
@@ -46,8 +46,8 @@ START_TEST(test_protocol_util_parse_headers_1)
 	tbl = protocol_util_parse_headers(buff);
 
 	ck_assert_uint_eq(g_hash_table_size(tbl), 2);
-	ck_assert_str_eq(g_hash_table_lookup(tbl, "key"), "value");
-	ck_assert_str_eq(g_hash_table_lookup(tbl, "key2"), "me");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "key"), "value ");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "key2"), "me         		 ");
 
 	qev_buffer_put(buff);
 }
@@ -106,7 +106,7 @@ START_TEST(test_protocol_util_parse_headers_5)
 	GString *buff = qev_buffer_get();
 
 	g_string_assign(buff,
-	 	"GET ws://localhost HTTP/1.1\r\n"
+		"GET ws://localhost HTTP/1.1\r\n"
 		"null: \0localhost\r\n\r\n");
 
 	tbl = protocol_util_parse_headers(buff);
@@ -123,7 +123,7 @@ START_TEST(test_protocol_util_parse_headers_6)
 	GString *buff = qev_buffer_get();
 
 	g_string_assign(buff,
-	 	"GET ws://localhost HTTP/1.1\r\n"
+		"GET ws://localhost HTTP/1.1\r\n"
 		"one: \1localhost\r\n\r\n");
 
 	tbl = protocol_util_parse_headers(buff);
@@ -141,7 +141,7 @@ START_TEST(test_protocol_util_parse_headers_7)
 	GString *buff = qev_buffer_get();
 
 	g_string_assign(buff,
-	 	"GET ws://localhost HTTP/1.1\n"
+		"GET ws://localhost HTTP/1.1\n"
 		"Host: localhost\n"
 		"Sec-WebSocket-Key: key\n"
 		"Sec-WebSocket-Protocol: quickio\n"
@@ -150,15 +150,15 @@ START_TEST(test_protocol_util_parse_headers_7)
 		"Sec-WebSocket-Version: 13\n\n");
 
 	tbl = protocol_util_parse_headers(buff);
+
+	ck_assert_uint_eq(g_hash_table_size(tbl), 6);
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "connection"), "Upgrade");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "host"), "localhost");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-key"), "key");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-protocol"), "quickio");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-version"), "13");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-version"), "13");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "upgrade"), "websocket");
-	ck_assert_str_eq(g_hash_table_lookup(tbl, "connection"), "Upgrade");
-
-	ck_assert_uint_eq(g_hash_table_size(tbl), 6);
 
 	qev_buffer_put(buff);
 }
@@ -170,7 +170,7 @@ START_TEST(test_protocol_util_parse_headers_8)
 	GString *buff = qev_buffer_get();
 
 	g_string_assign(buff,
-	 	"GET ws://localhost HTTP/1.1\r"
+		"GET ws://localhost HTTP/1.1\r"
 		"Host: localhost\r"
 		"Sec-WebSocket-Key: key\r"
 		"Sec-WebSocket-Protocol: quickio\r"
@@ -181,13 +181,46 @@ START_TEST(test_protocol_util_parse_headers_8)
 	tbl = protocol_util_parse_headers(buff);
 
 	ck_assert_uint_eq(g_hash_table_size(tbl), 6);
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "connection"), "Upgrade");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "host"), "localhost");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-key"), "key");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-protocol"), "quickio");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-version"), "13");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-version"), "13");
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "upgrade"), "websocket");
+
+	qev_buffer_put(buff);
+}
+END_TEST
+
+START_TEST(test_protocol_util_parse_headers_9)
+{
+	GHashTable *tbl;
+	GString *buff = qev_buffer_get();
+
+	g_string_assign(buff,
+		"GET / HTTP/1.1\r\n"
+		"Host: localhost\r\n"
+		"Upgrade: websocket\r\n"
+		"Connection: Upgrade\r\n"
+		"Sec-WebSocket-Key: key\r\n"
+		"Origin: http://someplace.com\r\n"
+		"Sec-WebSocket-Version: 13\r\n"
+		"Cookie: \r\n"
+		"User-Agent: Mozilla/5.0 and other stuff\r\n"
+		"Sec-WebSocket-Protocol: quickio\r\n");
+
+	tbl = protocol_util_parse_headers(buff);
+
+	ck_assert_uint_eq(g_hash_table_size(tbl), 9);
 	ck_assert_str_eq(g_hash_table_lookup(tbl, "connection"), "Upgrade");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "host"), "localhost");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "origin"), "http://someplace.com");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-key"), "key");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-protocol"), "quickio");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-version"), "13");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "sec-websocket-version"), "13");
+	ck_assert_str_eq(g_hash_table_lookup(tbl, "upgrade"), "websocket");
 
 	qev_buffer_put(buff);
 }
@@ -212,6 +245,7 @@ int main()
 	tcase_add_test(tcase, test_protocol_util_parse_headers_6);
 	tcase_add_test(tcase, test_protocol_util_parse_headers_7);
 	tcase_add_test(tcase, test_protocol_util_parse_headers_8);
+	tcase_add_test(tcase, test_protocol_util_parse_headers_9);
 
 	return test_do(sr);
 }

@@ -73,10 +73,10 @@ GHashTable* protocol_util_parse_headers(GString *buff)
 	 * the first line and continue with parsing
 	 */
 	_skip(&head, DELIM_NEWLINE);
-	_skip_past_delim(&head, DELIM_SPACE);
 	while (TRUE) {
+		_skip_past_delim(&head, DELIM_SPACE);
 		gchar *key = _skip(&head, DELIM_COLON | DELIM_SPACE);
-		gchar *val = _skip(&head, DELIM_SPACE | DELIM_NEWLINE);
+		gchar *val = _skip(&head, DELIM_NEWLINE);
 		if (key == NULL || val == NULL) {
 			break;
 		}
