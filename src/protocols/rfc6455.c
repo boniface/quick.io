@@ -201,14 +201,12 @@ static enum protocol_status _decode(
 
 	max = len - (len & (sizeof(__uint128_t) - 1));
 	for (i = 0; i < max; i += sizeof(__uint128_t)) {
-		__builtin_prefetch(str + i + sizeof(__uint128_t), 1, 3);
 		__uint128_t from = *((__uint128_t*)(str + i));
 		*((__uint128_t*)(msg + i)) = from ^ mask128.i;
 	}
 
 	max = len - (len & (sizeof(guint64) - 1));
 	for (; i < max; i += sizeof(guint64)) {
-		__builtin_prefetch(str + i + sizeof(guint64), 1, 3);
 		guint64 from = *((guint64*)(str + i));
 		*((guint64*)(msg + i)) = from ^ mask128.i;
 	}
