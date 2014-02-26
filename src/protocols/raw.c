@@ -113,7 +113,12 @@ GString* protocol_raw_format(
 	const gchar *json)
 {
 	GString *buff = qev_buffer_get();
-	g_string_printf(buff, EV_FORMAT, ev_path, ev_extra, server_cb, json);
+
+	g_string_printf(buff, "%s%s:", ev_path, ev_extra);
+	qev_buffer_append_uint(buff, server_cb);
+	g_string_append_c(buff, '=');
+	g_string_append(buff, json);
+
 	return buff;
 }
 

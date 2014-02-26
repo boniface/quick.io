@@ -531,7 +531,9 @@ void evs_cb_full(
 	path = qev_buffer_get();
 	jbuff = qev_buffer_get();
 
-	g_string_printf(path, CB_PATH_FORMAT, client_cb);
+	// Substantially faster than g_string_printf()
+	g_string_assign(path, "/qio/callback/");
+	qev_buffer_append_uint(path, server_cb);
 
 	if (code == CODE_OK) {
 		g_string_printf(jbuff, CB_OK_JSON_FORMAT, code, json);
