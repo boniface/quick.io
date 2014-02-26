@@ -45,10 +45,10 @@ status() {
 	pgrep -F $PIDFILE > /dev/null
 	if [ $? -eq 0 ]; then
 		PID=`cat $PIDFILE`
-		echo "Quick.IO is running with pid $PID"
+		echo "$DESC is running with pid $PID"
 		exit 0
 	else
-		echo "Quick.IO is not running"
+		echo "$DESC is not running"
 		if [ -e "$PIDFILE" ]; then
 			exit 1
 		else

@@ -14,7 +14,11 @@ Build-Depends:
 Package: quickio
 Architecture: i386 amd64
 Multi-Arch: foreign
-Depends: adduser, procps, ${misc:Depends}, ${shlibs:Depends}
+Depends:
+	adduser,
+	procps,
+	${misc:Depends},
+	${shlibs:Depends}
 Description: Quick WebSocket server
 	QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
 
