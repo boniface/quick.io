@@ -254,7 +254,7 @@ enum evs_status client_cb_fire(
 		goto error;
 	}
 
-	status = cb.cb_fn(client, client_cb, json);
+	status = cb.cb_fn(client, cb.cb_data, client_cb, json);
 	_cb_data_free(cb.cb_data, cb.free_fn);
 
 	qev_stats_counter_inc(_stat_callbacks_fired);

@@ -19,6 +19,7 @@ static qev_stats_timer_t *_stat_route_time;
 
 static enum evs_status _heartbeat_cb(
 	struct client *client G_GNUC_UNUSED,
+	const void *data G_GNUC_UNUSED,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
 	gchar *json G_GNUC_UNUSED)
 {

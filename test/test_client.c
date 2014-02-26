@@ -40,21 +40,34 @@ END_TEST
 
 static enum evs_status _cb1(
 	struct client *client G_GNUC_UNUSED,
+	const void *data,
 	const evs_cb_t client_cb G_GNUC_UNUSED,
 	gchar *json G_GNUC_UNUSED)
 {
-	return EVS_STATUS_OK;
+	const guint *num = data;
+
+	if (*num == 1) {
+		return EVS_STATUS_OK;
+	} else {
+		return EVS_STATUS_ERR;
+	}
 }
 
 static enum evs_status _cb0(
 	struct client *client,
+	const void *data,
 	const evs_cb_t client_cb,
 	gchar *json G_GNUC_UNUSED)
 {
-	guint *num = g_malloc(sizeof(*num));
-	*num = 1;
-	evs_cb_with_cb(client, client_cb, "1", _cb1, num, g_free);
-	return EVS_STATUS_HANDLED;
+	const guint *num = data;
+	if (*num == 0) {
+		guint *num2 = g_malloc(sizeof(*num));
+		*num2 = 1;
+		evs_cb_with_cb(client, client_cb, "1", _cb1, num2, g_free);
+		return EVS_STATUS_HANDLED;
+	} else {
+		return EVS_STATUS_ERR;
+	}
 }
 
 static enum evs_status _handler(
@@ -64,6 +77,7 @@ static enum evs_status _handler(
 	gchar *json G_GNUC_UNUSED)
 {
 	guint *num = g_malloc0(sizeof(*num));
+	*num = 0;
 	evs_cb_with_cb(client, client_cb, "0", _cb0, num, g_free);
 	return EVS_STATUS_HANDLED;
 }

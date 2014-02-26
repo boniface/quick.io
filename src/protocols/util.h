@@ -16,6 +16,9 @@
  * From the given buffer, parse out HTTP headers, ignoring the first line
  * (which is typically the GET, POST, etc line).
  *
+ * @note
+ *     Values might have trailing white space, it's not removed for you.
+ *
  * @param buff
  *     The buffer to parse the headers out of.
  *

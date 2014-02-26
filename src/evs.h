@@ -49,6 +49,7 @@ typedef void (*evs_off_fn)(
  */
 typedef enum evs_status (*evs_cb_fn)(
 	struct client *client,
+	const void *data,
 	const evs_cb_t client_cb,
 	gchar *json);
 
