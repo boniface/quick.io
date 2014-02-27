@@ -34,21 +34,24 @@
 #define HTTP_NOCACHE \
 	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
 	"Pragma: no-cache\r\n" \
-	"Expires: 0\r\n\r\n"
+	"Expires: 0\r\n"
 
 #define HTTP_400 \
 	"HTTP/1.1 400 Bad Request\r\n" \
 	"Connection: close\r\n" \
-	HTTP_NOCACHE
+	HTTP_NOCACHE "\r\n"
 
+/**
+ * Ready for the B64-encoded key to be appended. Must be followed with \r\n\r\n
+ */
 #define HTTP_101 \
 	"HTTP/1.1 101 Switching Protocols\r\n" \
 	"Upgrade: websocket\r\n" \
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
 	"Sec-WebSocket-Protocol: quickio\r\n" \
-	"Sec-WebSocket-Accept: %s\r\n" \
-	HTTP_NOCACHE
+	HTTP_NOCACHE \
+	"Sec-WebSocket-Accept: "
 
 #define HTTP_HEADER_TERMINATOR "\n\n"
 #define WEB_SOCKET_HEADER_TERMINATOR "\r\n\r\n"
@@ -227,41 +230,39 @@ static enum protocol_status _decode(
 
 static void _handshake_http(
 	struct client *client,
-	GHashTable *headers)
+	const gchar *key)
 {
-	gsize size;
 	gsize b64len;
 	gint state = 0;
 	gint save = 0;
-	GChecksum *sha1 = g_checksum_new(G_CHECKSUM_SHA1);
-	GString *sha = qev_buffer_get();
+	GString *buff = qev_buffer_get();
 	GString *b64 = qev_buffer_get();
-	const gchar *key = g_hash_table_lookup(headers, CHALLENGE_KEY);
 
-	g_string_append(sha, key);
-	g_string_append(sha, HASH_KEY);
+	g_string_append(buff, key);
+	g_string_append_len(buff, HASH_KEY, strlen(HASH_KEY));
 
-	size = sha->len;
-	g_checksum_update(sha1, (guchar*)sha->str, sha->len);
-	g_checksum_get_digest(sha1, (guchar*)sha->str, &size);
-	g_string_set_size(sha, size);
+	SHA1((guchar*)buff->str, buff->len, (guchar*)buff->str);
+	g_string_set_size(buff, SHA_DIGEST_LENGTH);
 
 	/*
 	 * This line brought to your courtesy of "wut". Wut, for when you know
 	 * you have to do something but just take their word for it.
 	 * See: https://developer.gnome.org/glib/2.37/glib-Base64-Encoding.html#g-base64-encode-step
 	 */
-	g_string_set_size(b64, (size / 3 + 1) * 4 + 1);
+	g_string_set_size(b64, (SHA_DIGEST_LENGTH / 3 + 1) * 4 + 4);
 
-	b64len = g_base64_encode_step((guchar*)sha->str, size, FALSE, b64->str,
+	b64len = g_base64_encode_step((guchar*)buff->str, SHA_DIGEST_LENGTH, FALSE, b64->str,
 									&state, &save);
 	b64len += g_base64_encode_close(FALSE, b64->str + b64len, &state, &save);
 	g_string_set_size(b64, b64len);
 
-	qev_writef(client, HTTP_101, b64->str);
+	g_string_truncate(buff, 0);
+	g_string_append_len(buff, HTTP_101, strlen(HTTP_101));
+	g_string_append_len(buff, b64->str, b64->len);
+	g_string_append_len(buff, "\r\n\r\n", 4);
+	qev_write(client, buff->str, buff->len);
 
-	g_checksum_free(sha1);
-	qev_buffer_put(sha);
+	qev_buffer_put(buff);
 	qev_buffer_put(b64);
 
 	g_string_truncate(client->qev_client.rbuff, 0);
@@ -326,21 +327,26 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client)
 	enum protocol_status status;
 
 	if (!(client->protocol_flags & HTTP_HANDSHAKED)) {
-		/*
-		 * This is a thread-local value that is only valid for this function
-		 */
-		GHashTable *headers = protocol_util_parse_headers(client->qev_client.rbuff);
+		gchar *protocol;
+		gchar *key;
+		gchar *version;
 
-		if (headers == NULL ||
-			g_strcmp0(g_hash_table_lookup(headers, PROTOCOL_KEY), "quickio") != 0 ||
-			!g_hash_table_contains(headers, CHALLENGE_KEY) ||
-			g_strcmp0(g_hash_table_lookup(headers, VERSION_KEY), "13") != 0) {
+		struct protocol_headers headers;
+		protocol_util_headers(client->qev_client.rbuff, &headers);
+
+		protocol = protocol_util_headers_get(&headers, PROTOCOL_KEY);
+		key = protocol_util_headers_get(&headers, CHALLENGE_KEY);
+		version = protocol_util_headers_get(&headers, VERSION_KEY);
+
+		if (key == NULL ||
+			g_strcmp0(protocol, "quickio") != 0 ||
+			g_strcmp0(version, "13") != 0) {
 
 			qev_stats_counter_inc(_stat_handshakes_http_invalid);
 			qev_close(client, QIO_CLOSE_NOT_SUPPORTED);
 			status = PROT_FATAL;
 		} else {
-			_handshake_http(client, headers);
+			_handshake_http(client, key);
 			client->protocol_flags |= HTTP_HANDSHAKED;
 			qev_stats_counter_inc(_stat_handshakes_http);
 			status = PROT_AGAIN;
@@ -456,6 +462,6 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 				break;
 		}
 	} else {
-		qev_write(client, HTTP_400, sizeof(HTTP_400) - 1);
+		qev_write(client, HTTP_400, strlen(HTTP_400));
 	}
 }

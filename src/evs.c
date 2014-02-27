@@ -11,13 +11,15 @@
 /**
  * Path used for all callbacks
  */
-#define CB_PATH_FORMAT "/qio/callback/%" G_GUINT64_FORMAT
-
+#define CB_PATH "/qio/callback/"
 
 /**
- * For STATUS_OK callbacks, this is the JSON data to send
+ * For callbacks, rather than using printf, it's faster just to append
+ * things to the string. Here are the broken parts of the message.
  */
-#define CB_OK_JSON_FORMAT "{\"code\":%d,\"data\":%s}"
+#define CB_CODE "{\"code\":"
+#define CB_DATA ",\"data\":"
+#define CB_ERRMSG ",\"err_msg\":"
 
 /**
  * For !STATUS_OK callbacks. Notice the missing %s}: qev_json_pack is used
@@ -531,17 +533,20 @@ void evs_cb_full(
 	path = qev_buffer_get();
 	jbuff = qev_buffer_get();
 
-	// Substantially faster than g_string_printf()
-	g_string_assign(path, "/qio/callback/");
-	qev_buffer_append_uint(path, server_cb);
+	g_string_append_len(path, CB_PATH, strlen(CB_PATH));
+	qev_buffer_append_uint(path, client_cb);
 
-	if (code == CODE_OK) {
-		g_string_printf(jbuff, CB_OK_JSON_FORMAT, code, json);
-	} else {
-		g_string_printf(jbuff, CB_ERR_JSON_FORMAT, code, json);
+	g_string_append_len(jbuff, CB_CODE, strlen(CB_CODE));
+	qev_buffer_append_uint(jbuff, code);
+	g_string_append_len(jbuff, CB_DATA, strlen(CB_DATA));
+	g_string_append(jbuff, json);
+
+	if (code != CODE_OK) {
+		g_string_append_len(jbuff, CB_ERRMSG, strlen(CB_ERRMSG));
 		qev_json_pack(jbuff, "%s", err_msg);
-		g_string_append_c(jbuff, '}');
 	}
+
+	g_string_append_c(jbuff, '}');
 
 	protocols_send(client, path->str, "", server_cb, jbuff->str);
 	qev_stats_counter_inc(_stat_evs_callbacks_sent);

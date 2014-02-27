@@ -114,7 +114,9 @@ GString* protocol_raw_format(
 {
 	GString *buff = qev_buffer_get();
 
-	g_string_printf(buff, "%s%s:", ev_path, ev_extra);
+	g_string_assign(buff, ev_path);
+	g_string_append(buff, ev_extra);
+	g_string_append_c(buff, ':');
 	qev_buffer_append_uint(buff, server_cb);
 	g_string_append_c(buff, '=');
 	g_string_append(buff, json);

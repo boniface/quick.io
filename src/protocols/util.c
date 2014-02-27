@@ -55,33 +55,41 @@ static gchar* _skip(gchar **start, guchar delims)
 	return val;
 }
 
-GHashTable* protocol_util_parse_headers(GString *buff)
+void protocol_util_headers(
+	const GString *buff,
+	struct protocol_headers *headers)
 {
-	static __thread GHashTable *headers;
-
+	guint i = 0;
 	gchar *head = buff->str;
-
-	if (G_UNLIKELY(headers == NULL)) {
-		headers = g_hash_table_new(qio_stri_hash, qio_stri_equal);
-		qev_cleanup_thlocal(headers, (qev_free_fn)g_hash_table_unref);
-	}
-
-	g_hash_table_remove_all(headers);
 
 	/*
 	 * By this point, GET should already have been verified. So just skip
 	 * the first line and continue with parsing
 	 */
 	_skip(&head, DELIM_NEWLINE);
-	while (TRUE) {
+	while (i < G_N_ELEMENTS(headers->header)) {
 		_skip_past_delim(&head, DELIM_SPACE);
-		gchar *key = _skip(&head, DELIM_COLON | DELIM_SPACE);
-		gchar *val = _skip(&head, DELIM_NEWLINE);
-		if (key == NULL || val == NULL) {
+		headers->header[i].key = _skip(&head, DELIM_COLON | DELIM_SPACE);
+		headers->header[i].val = _skip(&head, DELIM_NEWLINE);
+		if (headers->header[i].key == NULL || headers->header[i].val == NULL) {
 			break;
 		}
-		g_hash_table_insert(headers, key, val);
+		i++;
 	}
 
-	return headers;
+	headers->used = i;
+}
+
+gchar* protocol_util_headers_get(
+	const struct protocol_headers *headers,
+	const gchar *key)
+{
+	guint i;
+	for (i = 0; i < headers->used; i++) {
+		if (strcasecmp(headers->header[i].key, key) == 0) {
+			return headers->header[i].val;
+		}
+	}
+
+	return NULL;
 }

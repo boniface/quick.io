@@ -23,10 +23,10 @@
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
 	"Sec-WebSocket-Protocol: quickio\r\n" \
-	"Sec-WebSocket-Accept: Nf+/kB4wxkn+6EPeanngB3VZNwU=\r\n" \
 	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
 	"Pragma: no-cache\r\n" \
-	"Expires: 0\r\n\r\n"
+	"Expires: 0\r\n" \
+	"Sec-WebSocket-Accept: Nf+/kB4wxkn+6EPeanngB3VZNwU=\r\n\r\n"
 
 #define QIO_HANDSHAKE "\x81\x89""abcd""N""\x13""\n""\x0b""N""\r""\x0b""\x05""\x08"
 #define HANDSHAKE_RESPONSE "\x81\x09/qio/ohai"

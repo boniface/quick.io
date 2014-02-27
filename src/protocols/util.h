@@ -13,6 +13,24 @@
 #include "quickio.h"
 
 /**
+ * For holding HTTP headers.
+ */
+struct protocol_headers {
+	/**
+	 * The number of headers parsed. This is set by protocol_util_headers().
+	 */
+	guint used;
+
+	/**
+	 * All of the known headers.
+	 */
+	struct {
+		gchar *key;
+		gchar *val;
+	} header[16];
+};
+
+/**
  * From the given buffer, parse out HTTP headers, ignoring the first line
  * (which is typically the GET, POST, etc line).
  *
@@ -21,11 +39,27 @@
  *
  * @param buff
  *     The buffer to parse the headers out of.
+ * @param[out] headers
+ *     Where the headers should be placed.
+ */
+void protocol_util_headers(
+	const GString *buff,
+	struct protocol_headers *headers);
+
+/**
+ * From the list of headers, get the specified header, ignoring case.
+ *
+ * @note
+ *     Values might have trailing white space, it's not removed for you.
+ *
+ * @param headers
+ *     All of the known headers.
+ * @param key
+ *     The header you're looking for.
  *
  * @return
- *     A thread-local hash table that MUST NOT be freed. Maps header to value
- *     in a case-insensitive manner. Keys become invalid once `buff` is altered.
- *     Any subsequent calls to this from the same thread return the same
- *     hash table, cleared out and populated with the headers.
+ *     The value of the header; NULL if it doesn't exist.
  */
-GHashTable* protocol_util_parse_headers(GString *buff);
+gchar* protocol_util_headers_get(
+	const struct protocol_headers *headers,
+	const gchar *key);

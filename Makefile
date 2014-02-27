@@ -48,8 +48,7 @@ OBJECTS = \
 	$(SRC_DIR)/protocols/util.o \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
-	$(SRC_DIR)/sub.o \
-	$(SRC_DIR)/str.o
+	$(SRC_DIR)/sub.o
 
 OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
