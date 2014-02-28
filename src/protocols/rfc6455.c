@@ -220,7 +220,7 @@ static enum protocol_status _decode(
 
 	*(msg + len) = '\0';
 
-	if (!g_utf8_validate(msg, len, NULL)) {
+	if (!qio_str_is_utf8((guchar*)msg, len)) {
 		qev_close(client, RFC6455_NOT_UTF8);
 		return PROT_FATAL;
 	}
@@ -238,8 +238,8 @@ static void _handshake_http(
 	GString *buff = qev_buffer_get();
 	GString *b64 = qev_buffer_get();
 
-	g_string_append(buff, key);
-	g_string_append_len(buff, HASH_KEY, strlen(HASH_KEY));
+	qev_buffer_append(buff, key);
+	qev_buffer_append_len(buff, HASH_KEY, strlen(HASH_KEY));
 
 	SHA1((guchar*)buff->str, buff->len, (guchar*)buff->str);
 	g_string_set_size(buff, SHA_DIGEST_LENGTH);
@@ -249,17 +249,17 @@ static void _handshake_http(
 	 * you have to do something but just take their word for it.
 	 * See: https://developer.gnome.org/glib/2.37/glib-Base64-Encoding.html#g-base64-encode-step
 	 */
-	g_string_set_size(b64, (SHA_DIGEST_LENGTH / 3 + 1) * 4 + 4);
+	qev_buffer_ensure(b64, (SHA_DIGEST_LENGTH / 3 + 1) * 4 + 4);
 
 	b64len = g_base64_encode_step((guchar*)buff->str, SHA_DIGEST_LENGTH, FALSE, b64->str,
 									&state, &save);
 	b64len += g_base64_encode_close(FALSE, b64->str + b64len, &state, &save);
 	g_string_set_size(b64, b64len);
 
-	g_string_truncate(buff, 0);
-	g_string_append_len(buff, HTTP_101, strlen(HTTP_101));
-	g_string_append_len(buff, b64->str, b64->len);
-	g_string_append_len(buff, "\r\n\r\n", 4);
+	qev_buffer_clear(buff);
+	qev_buffer_append_len(buff, HTTP_101, strlen(HTTP_101));
+	qev_buffer_append_buff(buff, b64);
+	qev_buffer_append_len(buff, "\r\n\r\n", 4);
 	qev_write(client, buff->str, buff->len);
 
 	qev_buffer_put(buff);
@@ -400,14 +400,14 @@ GString* protocol_rfc6455_frame(
 	} else if (len <= 0xffff) {
 		guint16 belen = GUINT16_TO_BE(len);
 		g_string_append_c(f, (gchar)PAYLOAD_MEDIUM);
-		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
+		qev_buffer_append_len(f, (gchar*)&belen, sizeof(belen));
 	} else {
 		guint64 belen = GUINT64_TO_BE(len);
 		g_string_append_c(f, (gchar)PAYLOAD_LONG);
-		g_string_append_len(f, (gchar*)&belen, sizeof(belen));
+		qev_buffer_append_len(f, (gchar*)&belen, sizeof(belen));
 	}
 
-	g_string_append_len(f, e->str, e->len);
+	qev_buffer_append_len(f, e->str, e->len);
 
 	qev_buffer_put(e);
 

@@ -98,8 +98,8 @@ GString* protocol_raw_frame(
 
 	size = GUINT64_TO_BE(e->len);
 
-	g_string_append_len(buff, (gchar*)&size, sizeof(size));
-	g_string_append_len(buff, e->str, e->len);
+	qev_buffer_append_len(buff, (gchar*)&size, sizeof(size));
+	qev_buffer_append_len(buff, e->str, e->len);
 
 	qev_buffer_put(e);
 
@@ -114,12 +114,12 @@ GString* protocol_raw_format(
 {
 	GString *buff = qev_buffer_get();
 
-	g_string_assign(buff, ev_path);
-	g_string_append(buff, ev_extra);
+	qev_buffer_append(buff, ev_path);
+	qev_buffer_append(buff, ev_extra);
 	g_string_append_c(buff, ':');
 	qev_buffer_append_uint(buff, server_cb);
 	g_string_append_c(buff, '=');
-	g_string_append(buff, json);
+	qev_buffer_append(buff, json);
 
 	return buff;
 }
@@ -167,7 +167,7 @@ enum protocol_status protocol_raw_handle(
 
 	*(str + len) = '\0';
 
-	curr = g_strstr_len(str, len, ":");
+	curr = strstr(str, ":");
 	if (curr == NULL) {
 		goto error;
 	}

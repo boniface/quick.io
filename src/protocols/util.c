@@ -85,6 +85,18 @@ gchar* protocol_util_headers_get(
 	const gchar *key)
 {
 	guint i;
+
+	/*
+	 * As stupid as this looks, it's faster in the best case, but obviously
+	 * worse in the worst case. Considering that most connections are going
+	 * to use case-sensitive headers, this is acceptable.
+	 */
+	for (i = 0; i < headers->used; i++) {
+		if (strcmp(headers->header[i].key, key) == 0) {
+			return headers->header[i].val;
+		}
+	}
+
 	for (i = 0; i < headers->used; i++) {
 		if (strcasecmp(headers->header[i].key, key) == 0) {
 			return headers->header[i].val;
