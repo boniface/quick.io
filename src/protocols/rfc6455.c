@@ -334,6 +334,15 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client)
 		struct protocol_headers headers;
 		protocol_util_headers(client->qev_client.rbuff, &headers);
 
+		/*
+		 * Waste no further CPU time on a proxy. There's really
+		 * no point.
+		 */
+		if (protocol_util_is_proxy(&headers)) {
+			qev_buffer_clear(client->qev_client.rbuff);
+			return PROT_AGAIN;
+		}
+
 		protocol = protocol_util_headers_get(&headers, PROTOCOL_KEY);
 		key = protocol_util_headers_get(&headers, CHALLENGE_KEY);
 		version = protocol_util_headers_get(&headers, VERSION_KEY);
