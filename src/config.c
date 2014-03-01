@@ -217,7 +217,11 @@ static struct qev_cfg _cfg[] = {
 						"(port 843).",
 		.type = QEV_CFG_BOOL,
 		.val.bool = &cfg_support_flash,
-		.defval.bool = TRUE,
+		#ifdef QIO_DEBUG
+			.defval.bool = FALSE,
+		#else
+			.defval.bool = TRUE,
+		#endif
 		.validate = NULL,
 		.cb = NULL,
 		.read_only = TRUE,

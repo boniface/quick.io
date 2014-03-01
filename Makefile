@@ -122,6 +122,7 @@ CFLAGS_TEST = \
 CFLAGS_DEBUG = \
 	-g \
 	-fno-inline \
+	-DQIO_DEBUG \
 	-DQEV_LOG_DEBUG
 
 CFLAGS_PROFILE = \
