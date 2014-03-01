@@ -27,4 +27,4 @@
  * @return
  *     If the string is encoded properly.
  */
-gboolean qio_str_is_utf8(guchar *s, gsize len);
+gboolean qio_str_is_utf8(const guchar *s, const gsize len);

@@ -12,7 +12,7 @@
 /**
  * Modified from: https://github.com/JulienPalard/is_utf8
  */
-gboolean qio_str_is_utf8(guchar *s, gsize len)
+gboolean qio_str_is_utf8(const guchar *s, const gsize len)
 {
 	gsize i = 0;
 	gsize cont_bytes = 0;

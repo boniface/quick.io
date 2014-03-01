@@ -68,6 +68,7 @@ TESTS = \
 	test_protocol_raw \
 	test_protocol_rfc6455 \
 	test_protocol_util \
+	test_str \
 	test_sub
 
 TEST_APPS = \
