@@ -16,17 +16,27 @@
 /**
  * Header key that defines the version of websocket being used
  */
-#define VERSION_KEY "Sec-WebSocket-Version"
+#define HTTP_VERSION_KEY "Sec-WebSocket-Version"
 
 /**
  * The header key that points to the challenge key
  */
-#define CHALLENGE_KEY "Sec-WebSocket-Key"
+#define HTTP_CHALLENGE_KEY "Sec-WebSocket-Key"
 
 /**
  * The header key that points to what subprotocol is being used
  */
-#define PROTOCOL_KEY "Sec-WebSocket-Protocol"
+#define HTTP_PROTOCOL_KEY "Sec-WebSocket-Protocol"
+
+/**
+ * Where HTTP stores its `Connection` header
+ */
+#define HTTP_CONNECTION "Connection"
+
+/**
+ * Where HTTP stores its `Upgrade` header
+ */
+#define HTTP_UPGRADE "Upgrade"
 
 /**
  * Completely disables caching for HTTP requests
@@ -327,29 +337,33 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client)
 	enum protocol_status status;
 
 	if (!(client->protocol_flags & HTTP_HANDSHAKED)) {
-		gchar *protocol;
+		gchar *connection;
 		gchar *key;
+		gchar *protocol;
+		gchar *upgrade;
 		gchar *version;
-
 		struct protocol_headers headers;
+
 		protocol_util_headers(client->qev_client.rbuff, &headers);
+		connection = protocol_util_headers_get(&headers, HTTP_CONNECTION);
+		key = protocol_util_headers_get(&headers, HTTP_CHALLENGE_KEY);
+		protocol = protocol_util_headers_get(&headers, HTTP_PROTOCOL_KEY);
+		upgrade = protocol_util_headers_get(&headers, HTTP_UPGRADE);
+		version = protocol_util_headers_get(&headers, HTTP_VERSION_KEY);
 
-		/*
-		 * Waste no further CPU time on a proxy. There's really
-		 * no point.
-		 */
-		if (protocol_util_is_proxy(&headers)) {
-			qev_buffer_clear(client->qev_client.rbuff);
-			return PROT_AGAIN;
-		}
-
-		protocol = protocol_util_headers_get(&headers, PROTOCOL_KEY);
-		key = protocol_util_headers_get(&headers, CHALLENGE_KEY);
-		version = protocol_util_headers_get(&headers, VERSION_KEY);
-
-		if (key == NULL ||
+		if (upgrade == NULL ||
+			connection == NULL ||
+			key == NULL ||
+			strstr(connection, "Upgrade") == NULL ||
 			g_strcmp0(protocol, "quickio") != 0 ||
 			g_strcmp0(version, "13") != 0) {
+
+			/*
+			 * At this point, the client is either invalid or a proxy that is
+			 * refusing to speak proper WebSocket. If we close the proxy, it
+			 * will just reconnect and continue speaking gibberish. If it's an
+			 * invalid client, it really doesn't matter what we do anyway.
+			 */
 
 			qev_stats_counter_inc(_stat_handshakes_http_invalid);
 			qev_close(client, QIO_CLOSE_NOT_SUPPORTED);

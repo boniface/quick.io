@@ -49,6 +49,11 @@ enum protocol_handles protocol_raw_handles(struct client *client)
 
 enum protocol_status protocol_raw_handshake(struct client *client)
 {
+    /*
+     * The handshake will always succeed: raw_handles() checks
+     * to make sure it exists first.
+     */
+
 	qev_write(client, HANDSHAKE, sizeof(HANDSHAKE) -1);
 	g_string_truncate(client->qev_client.rbuff, 0);
 

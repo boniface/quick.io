@@ -63,14 +63,3 @@ void protocol_util_headers(
 gchar* protocol_util_headers_get(
 	const struct protocol_headers *headers,
 	const gchar *key);
-
-/**
- * Given the headers, attempt to determine if the connection is a proxy.
- *
- * @param headers
- *     The only thing known about the client at this points: its headers.
- *
- * @return
- *     If the client is probably a proxy.
- */
-gboolean protocol_util_is_proxy(const struct protocol_headers *headers);

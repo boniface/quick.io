@@ -105,19 +105,3 @@ gchar* protocol_util_headers_get(
 
 	return NULL;
 }
-
-gboolean protocol_util_is_proxy(const struct protocol_headers *headers)
-{
-	gchar *connection = protocol_util_headers_get(headers, "Connection");
-	gchar *upgrade = protocol_util_headers_get(headers, "Upgrade");
-
-	if (upgrade == NULL) {
-		return TRUE;
-	}
-
-	if (connection == NULL || strstr(connection, "Upgrade") == NULL) {
-		return TRUE;
-	}
-
-	return FALSE;
-}

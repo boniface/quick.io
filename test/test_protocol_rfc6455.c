@@ -9,7 +9,7 @@
 #include "test.h"
 
 #define HEADERS \
- 	"GET ws://localhost HTTP/1.1\r\n" \
+	"GET ws://localhost HTTP/1.1\r\n" \
 	"Host: localhost\r\n" \
 	"Sec-WebSocket-Key: JF+JVs2N4NAX39FAAkkdIA==\r\n" \
 	"Sec-WebSocket-Protocol: quickio\r\n" \
@@ -59,18 +59,33 @@ static qev_fd_t _client()
 	return ts;
 }
 
-START_TEST(test_rfc6455_sane)
+static void _test_ping_response(const qev_fd_t tc)
 {
 	gint err;
-	gchar buff[128];
-	qev_fd_t tc = _client();
+	gchar buff[strlen(_ping_response) + 1];
 
-	ck_assert_int_eq(send(tc, _ping, strlen(_ping), 0), strlen(_ping));
-	err = recv(tc, buff, sizeof(buff), 0);
+	err = recv(tc, buff, strlen(_ping_response), 0);
 	ck_assert_int_eq(err, strlen(_ping_response));
 
 	buff[err] = '\0';
-	ck_assert_str_eq(_ping_response, buff);
+	ck_assert_str_eq(buff, _ping_response);
+}
+
+static void _test_ping(const qev_fd_t tc)
+{
+	gint err;
+
+	err = send(tc, _ping, strlen(_ping), 0);
+	ck_assert_int_eq(err, strlen(_ping));
+
+	_test_ping_response(tc);
+}
+
+START_TEST(test_rfc6455_sane)
+{
+	qev_fd_t tc = _client();
+
+	_test_ping(tc);
 
 	close(tc);
 }
@@ -96,7 +111,6 @@ END_TEST
 START_TEST(test_rfc6455_partial_write_finish)
 {
 	gint64 err;
-	gchar buff[128];
 	qev_fd_t tc = _client();
 	gint64 wlen = strlen(_ping) - 2;
 
@@ -110,10 +124,7 @@ START_TEST(test_rfc6455_partial_write_finish)
 	err = send(tc, _ping + wlen, 2, MSG_NOSIGNAL);
 	ck_assert(err == 2);
 
-	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, strlen(_ping_response));
-	buff[err] = '\0';
-	ck_assert_str_eq(buff, _ping_response);
+	_test_ping_response(tc);
 
 	close(tc);
 }
@@ -262,11 +273,7 @@ START_TEST(test_rfc6455_heartbeats)
 	test_heartbeat();
 
 	// Not expecting a heartbeat on open
-	ck_assert_int_eq(send(tc, _ping, strlen(_ping), 0), strlen(_ping));
-	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, strlen(_ping_response));
-	buff[err] = '\0';
-	ck_assert_str_eq(buff, _ping_response);
+	_test_ping(tc);
 
 	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(51) - QEV_MS_TO_USEC(1000);;
 	test_heartbeat();
@@ -325,8 +332,6 @@ END_TEST
 
 START_TEST(test_rfc6455_decode)
 {
-	gint err;
-	gchar buff[128];
 	qev_fd_t tc = _client();
 
 	ck_assert(send(tc, _ping, 1, 0) == 1);
@@ -334,11 +339,7 @@ START_TEST(test_rfc6455_decode)
 	ck_assert_int_eq(send(tc, _ping + 1, strlen(_ping) - 1, 0),
 					strlen(_ping) - 1);
 
-	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, strlen(_ping_response));
-
-	buff[err] = '\0';
-	ck_assert_str_eq(_ping_response, buff);
+	_test_ping_response(tc);
 
 	close(tc);
 }
@@ -348,7 +349,6 @@ START_TEST(test_rfc6455_decode_multiple)
 {
 	guint i;
 	gint err;
-	gchar buff[128];
 	qev_fd_t tc = _client();
 	GString *ping = qev_buffer_get();
 
@@ -358,11 +358,7 @@ START_TEST(test_rfc6455_decode_multiple)
 	ck_assert_int_eq(err, ping->len);
 
 	for (i = 0; i < 2; i++) {
-		err = recv(tc, buff, strlen(_ping_response), 0);
-		ck_assert_int_eq(err, strlen(_ping_response));
-
-		buff[err] = '\0';
-		ck_assert_str_eq(_ping_response, buff);
+		_test_ping_response(tc);
 	}
 
 	qev_buffer_put(ping);
@@ -424,7 +420,6 @@ START_TEST(test_rfc6455_decode_medium)
 						"\x12""\n""\n""\x06""X""R""Y";
 	const guint ping_len = strlen(ping);
 
-	gint err;
 	gchar buff[ping_len + 0x1ae - 12];
 	qev_fd_t tc = _client();
 
@@ -435,11 +430,7 @@ START_TEST(test_rfc6455_decode_medium)
 	test_wait_for_buff(6);
 	ck_assert_int_eq(send(tc, buff + 6, sizeof(buff) - 6, 0), sizeof(buff) - 6);
 
-	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, strlen(_ping_response));
-
-	buff[err] = '\0';
-	ck_assert_str_eq(_ping_response, buff);
+	_test_ping_response(tc);
 
 	close(tc);
 }
@@ -451,7 +442,6 @@ START_TEST(test_rfc6455_decode_long)
 						"N""\x13""\n""\x0b""N""\x12""\n""\n""\x06""X""R""Y";
 	const guint ping_len = 26;
 
-	gint err;
 	gchar buff[ping_len + 0x11234 - 12];
 	qev_fd_t tc = _client();
 
@@ -462,11 +452,7 @@ START_TEST(test_rfc6455_decode_long)
 	test_wait_for_buff(6);
 	ck_assert_int_eq(send(tc, buff + 6, sizeof(buff) - 6, 0), sizeof(buff) - 6);
 
-	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert_int_eq(err, strlen(_ping_response));
-
-	buff[err] = '\0';
-	ck_assert_str_eq(_ping_response, buff);
+	_test_ping_response(tc);
 
 	close(tc);
 }
