@@ -160,7 +160,7 @@ START_TEST(test_rfc6455_handshake_http_invalid_headers)
 	buff[err] = '\0';
 
 	ck_assert_str_eq(buff,
-		"HTTP/1.1 400 Bad Request\r\n"
+		"HTTP/1.1 426 Upgrade Required\r\n"
 		"Connection: close\r\n"
 		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
 		"Pragma: no-cache\r\n"
@@ -188,7 +188,7 @@ START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 	buff[err] = '\0';
 
 	ck_assert_str_eq(buff,
-		"HTTP/1.1 400 Bad Request\r\n"
+		"HTTP/1.1 426 Upgrade Required\r\n"
 		"Connection: close\r\n"
 		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
 		"Pragma: no-cache\r\n"
