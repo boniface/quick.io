@@ -38,16 +38,13 @@
  */
 #define HTTP_UPGRADE "Upgrade"
 
-/**
- * Completely disables caching for HTTP requests
- */
-#define HTTP_NOCACHE \
-	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
-	"Pragma: no-cache\r\n" \
-	"Expires: 0\r\n"
-
 #define HTTP_400 \
 	"HTTP/1.1 400 Bad Request\r\n" \
+	"Connection: close\r\n" \
+	HTTP_NOCACHE "\r\n"
+
+#define HTTP_426 \
+	"HTTP/1.1 426 Upgrade Required\r\n" \
 	"Connection: close\r\n" \
 	HTTP_NOCACHE "\r\n"
 
@@ -119,6 +116,7 @@ struct _parser_data {
 
 static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
+static qev_stats_counter_t *_stat_handshakes_http_missing_upgrade;
 static qev_stats_counter_t *_stat_handshakes_qio;
 static qev_stats_counter_t *_stat_handshakes_qio_invalid;
 static qev_stats_timer_t *_stat_route_time;
@@ -275,7 +273,7 @@ static void _handshake_http(
 	qev_buffer_put(buff);
 	qev_buffer_put(b64);
 
-	g_string_truncate(client->qev_client.rbuff, 0);
+	qev_buffer_clear(client->qev_client.rbuff);
 }
 
 static enum protocol_status _handshake_qio(struct client *client)
@@ -309,6 +307,8 @@ void protocol_rfc6455_init()
 								"handshakes.http", TRUE);
 	_stat_handshakes_http_invalid = qev_stats_counter("protocol.rfc6455",
 								"handshakes.http_invalid", TRUE);
+	_stat_handshakes_http_missing_upgrade = qev_stats_counter("protocol.rfc6455",
+								"handshakes.http_missing_upgrade", TRUE);
 	_stat_handshakes_qio = qev_stats_counter("protocol.rfc6455",
 								"handshakes.qio", TRUE);
 	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
@@ -351,10 +351,15 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client)
 		upgrade = protocol_util_headers_get(&headers, HTTP_UPGRADE);
 		version = protocol_util_headers_get(&headers, HTTP_VERSION_KEY);
 
+
 		if (upgrade == NULL ||
 			connection == NULL ||
-			key == NULL ||
-			strstr(connection, "Upgrade") == NULL ||
+			strstr(connection, "Upgrade") == NULL) {
+
+			qev_stats_counter_inc(_stat_handshakes_http_missing_upgrade);
+			qev_close(client, RFC6455_MISSING_UPGRADE);
+			status = PROT_FATAL;
+		} else if (key == NULL ||
 			g_strcmp0(protocol, "quickio") != 0 ||
 			g_strcmp0(version, "13") != 0) {
 
@@ -484,6 +489,8 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 				qev_write(client, "\x88\x00", 2);
 				break;
 		}
+	} else if (reason == RFC6455_MISSING_UPGRADE) {
+		qev_write(client, HTTP_426, strlen(HTTP_426));
 	} else {
 		qev_write(client, HTTP_400, strlen(HTTP_400));
 	}

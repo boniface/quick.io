@@ -41,6 +41,7 @@
 #include "sub.h"
 #include "protocols.h"
 #include "protocols/flash.h"
+#include "protocols/post_message.h"
 #include "protocols/raw.h"
 #include "protocols/rfc6455.h"
 #include "protocols/stomp.h"

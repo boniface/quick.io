@@ -13,6 +13,14 @@
 #include "quickio.h"
 
 /**
+ * Completely disables caching for HTTP requests
+ */
+#define HTTP_NOCACHE \
+	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
+	"Pragma: no-cache\r\n" \
+	"Expires: 0\r\n"
+
+/**
  * If a protocol can handle a client
  */
 enum protocol_handles {

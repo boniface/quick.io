@@ -45,12 +45,7 @@ enum protocol_handles protocol_flash_handles(struct client *client)
 
 enum protocol_status protocol_flash_handshake(struct client *client)
 {
-	/*
-	 * While I absolutely abhor closing a client in a handshake, it's pretty
-	 * much what flash requires. So let's just make it happen.
-	 * UGHHHHHH
-	 */
-
+	qev_buffer_clear(client->qev_client.rbuff);
 	qev_write(client, FLASH_POLICY_RESPONSE, sizeof(FLASH_POLICY_RESPONSE) - 1);
 	qev_close(client, QIO_CLOSE_DONE);
 

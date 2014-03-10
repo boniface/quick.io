@@ -17,9 +17,14 @@
  */
 enum rfc6455_close_reasons {
 	/**
+	 * Client didn't ask for upgrade
+	 */
+	RFC6455_MISSING_UPGRADE = 2000,
+
+	/**
 	 * Client didn't mask his message
 	 */
-	RFC6455_NO_MASK = 2000,
+	RFC6455_NO_MASK,
 
 	/**
 	 * Client sent an unsupported opcode
