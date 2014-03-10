@@ -289,7 +289,7 @@ clean:
 	$(MAKE) -C docs clean
 
 $(BINARY): $(BINARY_OBJECTS) $(LIBQEV)
-	@echo '-------- Compiling quickio --------'
+	@echo '-------- Linking quickio --------'
 	@$(CC) $^ -o $@ $(LDFLAGS)
 
 $(BINARY_TESTAPPS): src/quickio-testapps.c
@@ -324,4 +324,4 @@ $(VG_SUPPRESSIONS): $(QEV_DIR)/test/valgrind.supp $(QEV_DIR)/test/valgrind_expec
 	cat $^ > $(VG_SUPPRESSIONS)
 
 $(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/% :
-	cd $(QEV_DIR) && $(MAKE) $*
+	@cd $(QEV_DIR) && $(MAKE) $*
