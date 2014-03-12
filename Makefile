@@ -42,7 +42,7 @@ OBJECTS = \
 	$(SRC_DIR)/evs_query.o \
 	$(SRC_DIR)/protocols.o \
 	$(SRC_DIR)/protocols/flash.o \
-	$(SRC_DIR)/protocols/post_message.o \
+	$(SRC_DIR)/protocols/http_poll.o \
 	$(SRC_DIR)/protocols/raw.o \
 	$(SRC_DIR)/protocols/rfc6455.o \
 	$(SRC_DIR)/protocols/stomp.o \
