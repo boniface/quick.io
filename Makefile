@@ -90,7 +90,9 @@ LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
 CFLAGS = \
 	-Wall \
 	-Wextra \
-	-Werror=format-security \
+	-Wshadow \
+	-Wformat=2 \
+	-Werror \
 	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-D_FORTIFY_SOURCE=2 \
