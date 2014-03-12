@@ -3,7 +3,7 @@
  * @file client.h
  *
  * @author Andrew Stone <andrew@clovar.com>
- * @copyright 2012-2013 iHeartRadio
+ * @copyright 2012-2014 iHeartRadio
  *
  * @internal This file is part of QuickIO and is released under
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -123,6 +123,8 @@ struct client {
 	 * When anything was last received from the client.
 	 */
 	gint64 last_recv;
+
+	gint64 cookie;
 
 	/**
 	 * The only timeout that will be set on a client from QIO.

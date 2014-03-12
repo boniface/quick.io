@@ -3,7 +3,7 @@
  * @file quickio.h
  *
  * @author Andrew Stone <andrew@clovar.com>
- * @copyright 2012-2013 iHeartRadio
+ * @copyright 2012-2014 iHeartRadio
  *
  * @internal This file is part of QuickIO and is released under
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -41,7 +41,7 @@
 #include "sub.h"
 #include "protocols.h"
 #include "protocols/flash.h"
-#include "protocols/post_message.h"
+#include "protocols/http_poll.h"
 #include "protocols/raw.h"
 #include "protocols/rfc6455.h"
 #include "protocols/stomp.h"
