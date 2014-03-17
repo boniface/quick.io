@@ -9,7 +9,7 @@
 #include "test.h"
 
 #define HEADERS \
-	"GET ws://localhost HTTP/1.1\r\n" \
+	"GET / HTTP/1.1\r\n" \
 	"Host: localhost\r\n" \
 	"Sec-WebSocket-Key: JF+JVs2N4NAX39FAAkkdIA==\r\n" \
 	"Sec-WebSocket-Protocol: quickio\r\n" \
@@ -144,37 +144,10 @@ START_TEST(test_rfc6455_handshake_http_partial)
 }
 END_TEST
 
-START_TEST(test_rfc6455_handshake_http_invalid_headers)
-{
-	const gchar *headers =
-		"GET ws://localhost/qio HTTP/1.1\r\n"
-		"herp derp\r\n\r\n";
-
-	gint err;
-	gchar buff[1024];
-	qev_fd_t ts = test_socket();
-
-	ck_assert_int_eq(send(ts, headers, strlen(headers), 0), strlen(headers));
-
-	err = recv(ts, buff, sizeof(buff), 0);
-	buff[err] = '\0';
-
-	ck_assert_str_eq(buff,
-		"HTTP/1.1 426 Upgrade Required\r\n"
-		"Connection: close\r\n"
-		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
-		"Pragma: no-cache\r\n"
-		"Expires: 0\r\n\r\n");
-
-	test_client_dead(ts);
-	close(ts);
-}
-END_TEST
-
 START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 {
 	const gchar *headers =
-		"GET ws://localhost/qio HTTP/1.1\r\n"
+		"GET / HTTP/1.1\r\n"
 		"Sec-WebSocket-Key: JF+JVs2N4NAX39FAAkkdIA==\r\n"
 		"Sec-WebSocket-Version: 13\r\n\r\n";
 
@@ -189,12 +162,12 @@ START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 
 	ck_assert_str_eq(buff,
 		"HTTP/1.1 426 Upgrade Required\r\n"
-		"Connection: close\r\n"
 		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
 		"Pragma: no-cache\r\n"
-		"Expires: 0\r\n\r\n");
+		"Expires: 0\r\n"
+		"Connection: Keep-Alive\r\n"
+		"Keep-Alive: timeout=60\r\n\r\n");
 
-	test_client_dead(ts);
 	close(ts);
 }
 END_TEST
@@ -634,7 +607,6 @@ int main()
 	tcase_add_test(tcase, test_rfc6455_partial_write);
 	tcase_add_test(tcase, test_rfc6455_partial_write_finish);
 	tcase_add_test(tcase, test_rfc6455_handshake_http_partial);
-	tcase_add_test(tcase, test_rfc6455_handshake_http_invalid_headers);
 	tcase_add_test(tcase, test_rfc6455_handshake_http_no_upgrade_header);
 	tcase_add_test(tcase, test_rfc6455_handshake_qio_partial);
 	tcase_add_test(tcase, test_rfc6455_handshake_message_before_ohai);

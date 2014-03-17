@@ -62,25 +62,29 @@ enum protocol_status protocol_raw_handshake(struct client *client)
 	return PROT_OK;
 }
 
-enum protocol_status protocol_raw_route(struct client *client)
+enum protocol_status protocol_raw_route(struct client *client, gsize *used)
 {
 	guint64 len;
 	enum protocol_status status;
 	GString *rbuff = client->qev_client.rbuff;
+	gchar *start = rbuff->str + *used;
+	guint64 rbuff_len = rbuff->len - *used;
 
-	if (rbuff->len < sizeof(guint64)) {
+	if (rbuff_len < sizeof(guint64)) {
 		return PROT_AGAIN;
 	}
 
-	len = GUINT64_FROM_BE(*((guint64*)rbuff->str));
-	if (rbuff->len < (len + sizeof(guint64))) {
+	len = GUINT64_FROM_BE(*((guint64*)start));
+	if (rbuff_len < (len + sizeof(guint64))) {
 		return PROT_AGAIN;
 	}
 
-	memmove(rbuff->str, rbuff->str + sizeof(guint64), len);
+	memmove(start, start + sizeof(guint64), len);
 
 	qev_stats_time(_stat_route_time, {
-		status = protocol_raw_handle(client, len, len + sizeof(guint64));
+		start[len] = '\0';
+		status = protocol_raw_handle(client, start);
+		*used += len + sizeof(guint64);
 	});
 
 	return status;
@@ -135,7 +139,7 @@ gboolean protocol_raw_check_handshake(struct client *client)
 	GString *rbuff = client->qev_client.rbuff;
 
 	good = g_strcmp0(rbuff->str, HANDSHAKE) == 0;
-	g_string_truncate(rbuff, 0);
+	qev_buffer_clear(rbuff);
 
 	return good;
 }
@@ -157,27 +161,20 @@ void protocol_raw_do_heartbeat(
 	}
 }
 
-enum protocol_status protocol_raw_handle(
-	struct client *client,
-	const guint64 len,
-	const guint64 frame_len)
+enum protocol_status protocol_raw_handle(struct client *client, gchar *event)
 {
 	gchar *ev_path;
 	evs_cb_t client_cb;
 	gchar *json;
 	gchar *curr;
 	gchar *end;
-	GString *rbuff = client->qev_client.rbuff;
-	gchar *str = rbuff->str;
 
-	*(str + len) = '\0';
-
-	curr = strstr(str, ":");
+	curr = strstr(event, ":");
 	if (curr == NULL) {
 		goto error;
 	}
 
-	ev_path = str;
+	ev_path = event;
 	*curr = '\0';
 	curr++;
 
@@ -189,8 +186,6 @@ enum protocol_status protocol_raw_handle(
 	json = end + 1;
 
 	evs_route(client, ev_path, client_cb, json);
-
-	g_string_erase(rbuff, 0, frame_len);
 
 	return PROT_OK;
 

@@ -22,6 +22,11 @@ struct protocol_headers {
 	guint used;
 
 	/**
+	 * The length of the parsed headers.
+	 */
+	guint len;
+
+	/**
 	 * All of the known headers.
 	 */
 	struct {

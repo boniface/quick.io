@@ -13,14 +13,6 @@
 #include "quickio.h"
 
 /**
- * Completely disables caching for HTTP requests
- */
-#define HTTP_NOCACHE \
-	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
-	"Pragma: no-cache\r\n" \
-	"Expires: 0\r\n"
-
-/**
  * If a protocol can handle a client
  */
 enum protocol_handles {
@@ -41,7 +33,7 @@ enum protocol_handles {
 };
 
 /**
- * Responses from the routers
+ * Responses from the route() functions
  */
 enum protocol_status {
 	/**
@@ -91,6 +83,11 @@ struct protocol {
 	guint id;
 
 	/**
+	 * Reference to the global variable that references this protocol.
+	 */
+	struct protocol **global;
+
+	/**
 	 * Sets up the protocol to run.
 	 */
 	void (*init)();
@@ -116,7 +113,7 @@ struct protocol {
 	/**
 	 * Reads and routes data available on the client
 	 */
-	enum protocol_status (*route)(struct client *client);
+	enum protocol_status (*route)(struct client *client, gsize *used);
 
 	/**
 	 * Send a heartbeat to a client, if necessary
@@ -212,6 +209,11 @@ void protocols_heartbeat();
  * Determine if a client has completely finished his handshake.
  */
 gboolean protocols_client_handshaked(struct client *client);
+
+/**
+ * Switch a client to a different protocol.
+ */
+void protocols_switch(struct client *client, struct protocol *prot);
 
 /**
  * Setup all protocols and get ready to run.

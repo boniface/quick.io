@@ -9,61 +9,6 @@
 #include "quickio.h"
 
 /**
- * From: http://tools.ietf.org/html/rfc6455#section-1.3
- */
-#define HASH_KEY "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
-/**
- * Header key that defines the version of websocket being used
- */
-#define HTTP_VERSION_KEY "Sec-WebSocket-Version"
-
-/**
- * The header key that points to the challenge key
- */
-#define HTTP_CHALLENGE_KEY "Sec-WebSocket-Key"
-
-/**
- * The header key that points to what subprotocol is being used
- */
-#define HTTP_PROTOCOL_KEY "Sec-WebSocket-Protocol"
-
-/**
- * Where HTTP stores its `Connection` header
- */
-#define HTTP_CONNECTION "Connection"
-
-/**
- * Where HTTP stores its `Upgrade` header
- */
-#define HTTP_UPGRADE "Upgrade"
-
-#define HTTP_400 \
-	"HTTP/1.1 400 Bad Request\r\n" \
-	"Connection: close\r\n" \
-	HTTP_NOCACHE "\r\n"
-
-#define HTTP_426 \
-	"HTTP/1.1 426 Upgrade Required\r\n" \
-	"Connection: close\r\n" \
-	HTTP_NOCACHE "\r\n"
-
-/**
- * Ready for the B64-encoded key to be appended. Must be followed with \r\n\r\n
- */
-#define HTTP_101 \
-	"HTTP/1.1 101 Switching Protocols\r\n" \
-	"Upgrade: websocket\r\n" \
-	"Connection: Upgrade\r\n" \
-	"Access-Control-Allow-Origin: *\r\n" \
-	"Sec-WebSocket-Protocol: quickio\r\n" \
-	HTTP_NOCACHE \
-	"Sec-WebSocket-Accept: "
-
-#define HTTP_HEADER_TERMINATOR "\n\n"
-#define WEB_SOCKET_HEADER_TERMINATOR "\r\n\r\n"
-
-/**
  * Predefined and formatted RFC6455 messages
  */
 #define QIO_HANDSHAKE "\x81\x09/qio/ohai"
@@ -84,45 +29,13 @@
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
-/**
- * Protocol flags
- */
-#define HTTP_HANDSHAKED 0x0001
-
-/**
- * For all the parser callbacks, we need all this junk
- */
-struct _parser_data {
-	/**
-	 * Socket buffer
-	 */
-	GString *buffer;
-
-	/**
-	 * The hash table to insert headers into
-	 */
-	GHashTable *headers;
-
-	/**
-	 * The key that was just found
-	 */
-	gchar *key;
-
-	/**
-	 * The length of the key that was just found
-	 */
-	gsize key_len;
-};
-
-static qev_stats_counter_t *_stat_handshakes_http;
-static qev_stats_counter_t *_stat_handshakes_http_invalid;
-static qev_stats_counter_t *_stat_handshakes_http_missing_upgrade;
 static qev_stats_counter_t *_stat_handshakes_qio;
 static qev_stats_counter_t *_stat_handshakes_qio_invalid;
 static qev_stats_timer_t *_stat_route_time;
 
 static enum protocol_status _decode(
 	struct client *client,
+	const guint64 offset,
 	guint64 *len_,
 	guint64 *frame_len)
 {
@@ -131,10 +44,6 @@ static enum protocol_status _decode(
 	 * going on here
 	 */
 
-	GString *rbuff = client->qev_client.rbuff;
-	gchar *str = rbuff->str;
-	gchar *msg = rbuff->str;
-	guint16 header_len = 0;
 	guint64 i;
 	guint64 len;
 	guint64 max;
@@ -143,13 +52,18 @@ static enum protocol_status _decode(
 		gchar c[sizeof(__uint128_t)];
 		__uint128_t i;
 	} mask128;
+	GString *rbuff = client->qev_client.rbuff;
+	gchar *str = rbuff->str + offset;
+	gchar *msg = rbuff->str + offset;
+	guint64 rbuff_len = rbuff->len - offset;
+	guint16 header_len = 0;
 
 	if ((str[0] & OPCODE) == OPCODE_CLOSE) {
 		qev_close(client, QEV_CLOSE_HUP);
 		return PROT_FATAL;
 	}
 
-	if (rbuff->len < 6) {
+	if (rbuff_len < 6) {
 		return PROT_AGAIN;
 	}
 
@@ -170,7 +84,7 @@ static enum protocol_status _decode(
 		memcpy(mask, str + 2, 4);
 	} else if (len == PAYLOAD_MEDIUM) {
 		header_len = 8;
-		if (rbuff->len < header_len) {
+		if (rbuff_len < header_len) {
 			return PROT_AGAIN;
 		}
 
@@ -178,7 +92,7 @@ static enum protocol_status _decode(
 		memcpy(mask, str + 4, 4);
 	} else {
 		header_len = 14;
-		if (rbuff->len < header_len) {
+		if (rbuff_len < header_len) {
 			return PROT_AGAIN;
 		}
 
@@ -186,10 +100,9 @@ static enum protocol_status _decode(
 		memcpy(mask, str + 10, 4);
 	}
 
-	if (rbuff->len < (header_len + len)) {
+	if (rbuff_len < (header_len + len)) {
 		return PROT_AGAIN;
 	}
-
 
 	*len_ = len;
 	*frame_len = len + header_len;
@@ -236,79 +149,8 @@ static enum protocol_status _decode(
 	return PROT_OK;
 }
 
-static void _handshake_http(
-	struct client *client,
-	const gchar *key)
-{
-	gsize b64len;
-	gint state = 0;
-	gint save = 0;
-	GString *buff = qev_buffer_get();
-	GString *b64 = qev_buffer_get();
-
-	qev_buffer_append(buff, key);
-	qev_buffer_append_len(buff, HASH_KEY, strlen(HASH_KEY));
-
-	SHA1((guchar*)buff->str, buff->len, (guchar*)buff->str);
-	g_string_set_size(buff, SHA_DIGEST_LENGTH);
-
-	/*
-	 * This line brought to your courtesy of "wut". Wut, for when you know
-	 * you have to do something but just take their word for it.
-	 * See: https://developer.gnome.org/glib/2.37/glib-Base64-Encoding.html#g-base64-encode-step
-	 */
-	qev_buffer_ensure(b64, (SHA_DIGEST_LENGTH / 3 + 1) * 4 + 4);
-
-	b64len = g_base64_encode_step((guchar*)buff->str, SHA_DIGEST_LENGTH, FALSE, b64->str,
-									&state, &save);
-	b64len += g_base64_encode_close(FALSE, b64->str + b64len, &state, &save);
-	g_string_set_size(b64, b64len);
-
-	qev_buffer_clear(buff);
-	qev_buffer_append_len(buff, HTTP_101, strlen(HTTP_101));
-	qev_buffer_append_buff(buff, b64);
-	qev_buffer_append_len(buff, "\r\n\r\n", 4);
-	qev_write(client, buff->str, buff->len);
-
-	qev_buffer_put(buff);
-	qev_buffer_put(b64);
-
-	qev_buffer_clear(client->qev_client.rbuff);
-}
-
-static enum protocol_status _handshake_qio(struct client *client)
-{
-	gboolean good;
-	guint64 len;
-	guint64 frame_len;
-	enum protocol_status status;
-
-	status = _decode(client, &len, &frame_len);
-	if (status != PROT_OK) {
-		return status;
-	}
-
-	good = protocol_raw_check_handshake(client);
-	if (good) {
-		qev_stats_counter_inc(_stat_handshakes_qio);
-		qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
-		status = PROT_OK;
-	} else {
-		qev_close(client, QIO_CLOSE_INVALID_HANDSHAKE);
-		status = PROT_FATAL;
-	}
-
-	return status;
-}
-
 void protocol_rfc6455_init()
 {
-	_stat_handshakes_http = qev_stats_counter("protocol.rfc6455",
-								"handshakes.http", TRUE);
-	_stat_handshakes_http_invalid = qev_stats_counter("protocol.rfc6455",
-								"handshakes.http_invalid", TRUE);
-	_stat_handshakes_http_missing_upgrade = qev_stats_counter("protocol.rfc6455",
-								"handshakes.http_missing_upgrade", TRUE);
 	_stat_handshakes_qio = qev_stats_counter("protocol.rfc6455",
 								"handshakes.qio", TRUE);
 	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
@@ -316,89 +158,49 @@ void protocol_rfc6455_init()
 	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
 }
 
-enum protocol_handles protocol_rfc6455_handles(struct client *client)
+enum protocol_handles protocol_rfc6455_handles(struct client *client G_GNUC_UNUSED)
 {
-	GString *rbuff = client->qev_client.rbuff;
-
-	if (!g_str_has_suffix(rbuff->str, WEB_SOCKET_HEADER_TERMINATOR) &&
-		!g_str_has_suffix(rbuff->str, HTTP_HEADER_TERMINATOR)) {
-		return PROT_MAYBE;
-	}
-
-	if (!g_str_has_prefix(rbuff->str, "GET")) {
-		return PROT_NO;
-	}
-
-	return PROT_YES;
+	return PROT_NO;
 }
 
 enum protocol_status protocol_rfc6455_handshake(struct client *client)
 {
+	guint64 len;
+	guint64 frame_len;
+	gboolean good;
 	enum protocol_status status;
 
-	if (!(client->protocol_flags & HTTP_HANDSHAKED)) {
-		gchar *connection;
-		gchar *key;
-		gchar *protocol;
-		gchar *upgrade;
-		gchar *version;
-		struct protocol_headers headers;
-
-		protocol_util_headers(client->qev_client.rbuff, &headers);
-		connection = protocol_util_headers_get(&headers, HTTP_CONNECTION);
-		key = protocol_util_headers_get(&headers, HTTP_CHALLENGE_KEY);
-		protocol = protocol_util_headers_get(&headers, HTTP_PROTOCOL_KEY);
-		upgrade = protocol_util_headers_get(&headers, HTTP_UPGRADE);
-		version = protocol_util_headers_get(&headers, HTTP_VERSION_KEY);
-
-
-		if (upgrade == NULL ||
-			connection == NULL ||
-			strstr(connection, "Upgrade") == NULL) {
-
-			qev_stats_counter_inc(_stat_handshakes_http_missing_upgrade);
-			qev_close(client, RFC6455_MISSING_UPGRADE);
-			status = PROT_FATAL;
-		} else if (key == NULL ||
-			g_strcmp0(protocol, "quickio") != 0 ||
-			g_strcmp0(version, "13") != 0) {
-
-			/*
-			 * At this point, the client is either invalid or a proxy that is
-			 * refusing to speak proper WebSocket. If we close the proxy, it
-			 * will just reconnect and continue speaking gibberish. If it's an
-			 * invalid client, it really doesn't matter what we do anyway.
-			 */
-
-			qev_stats_counter_inc(_stat_handshakes_http_invalid);
-			qev_close(client, QIO_CLOSE_NOT_SUPPORTED);
-			status = PROT_FATAL;
+	status = _decode(client, 0, &len, &frame_len);
+	if (status == PROT_OK) {
+		good = protocol_raw_check_handshake(client);
+		if (good) {
+			qev_stats_counter_inc(_stat_handshakes_qio);
+			qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
+			status = PROT_OK;
 		} else {
-			_handshake_http(client, key);
-			client->protocol_flags |= HTTP_HANDSHAKED;
-			qev_stats_counter_inc(_stat_handshakes_http);
-			status = PROT_AGAIN;
-		}
-	} else {
-		status = _handshake_qio(client);
-		if (status == PROT_FATAL) {
 			qev_stats_counter_inc(_stat_handshakes_qio_invalid);
+			qev_close(client, QIO_CLOSE_INVALID_HANDSHAKE);
+			status = PROT_FATAL;
 		}
 	}
 
 	return status;
 }
 
-enum protocol_status protocol_rfc6455_route(struct client *client)
+enum protocol_status protocol_rfc6455_route(struct client *client, gsize *used)
 {
 	guint64 len;
 	guint64 frame_len;
 	enum protocol_status status;
+	GString *rbuff = client->qev_client.rbuff;
 
 	qev_stats_time(_stat_route_time, {
-		status = _decode(client, &len, &frame_len);
+		status = _decode(client, *used, &len, &frame_len);
 		if (status == PROT_OK) {
-			status = protocol_raw_handle(client, len, frame_len);
+			gchar *start = rbuff->str + *used;
+			start[len] = '\0';
+			status = protocol_raw_handle(client, start);
+			*used += frame_len;
 		}
 	});
 
@@ -444,54 +246,48 @@ GString* protocol_rfc6455_frame(
 
 void protocol_rfc6455_close(struct client *client, guint reason)
 {
-	if (client->protocol_flags & HTTP_HANDSHAKED) {
-		switch (reason) {
-			case QEV_CLOSE_EXITING:
-				// error code: 1001
-				qev_write(client, "\x88\x02\x03\xe9", 4);
-				break;
+	switch (reason) {
+		case QEV_CLOSE_EXITING:
+			// error code: 1001
+			qev_write(client, "\x88\x02\x03\xe9", 4);
+			break;
 
-			case QIO_CLOSE_INVALID_HANDSHAKE:
-				// error code: 1002
-				qev_write(client, "\x88\x13\x03\xea""invalid handshake", 21);
-				break;
+		case QIO_CLOSE_INVALID_HANDSHAKE:
+			// error code: 1002
+			qev_write(client, "\x88\x13\x03\xea""invalid handshake", 21);
+			break;
 
-			case RAW_INVALID_EVENT_FORMAT:
-				// error code: 1002
-				qev_write(client, "\x88\x16\x03\xea""invalid event format", 24);
-				break;
+		case RAW_INVALID_EVENT_FORMAT:
+			// error code: 1002
+			qev_write(client, "\x88\x16\x03\xea""invalid event format", 24);
+			break;
 
-			case RFC6455_NO_MASK:
-				// error code: 1002
-				qev_write(client, "\x88\x17\x03\xea""client must mask data", 25);
-				break;
+		case RFC6455_NO_MASK:
+			// error code: 1002
+			qev_write(client, "\x88\x17\x03\xea""client must mask data", 25);
+			break;
 
-			case RFC6455_UNSUPPORTED_OPCODE:
-				// error code: 1003
-				qev_write(client, "\x88\x02\x03\xeb", 4);
-				break;
+		case RFC6455_UNSUPPORTED_OPCODE:
+			// error code: 1003
+			qev_write(client, "\x88\x02\x03\xeb", 4);
+			break;
 
-			case RFC6455_NOT_UTF8:
-				// error code: 1007
-				qev_write(client, "\x88\x02\x03\xef", 4);
-				break;
+		case RFC6455_NOT_UTF8:
+			// error code: 1007
+			qev_write(client, "\x88\x02\x03\xef", 4);
+			break;
 
-			case QEV_CLOSE_TIMEOUT:
-				qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
-				break;
+		case QEV_CLOSE_TIMEOUT:
+			qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
+			break;
 
-			case QEV_CLOSE_READ_HIGH:
-				// error code: 1009
-				qev_write(client, "\x88\x02\x03\xf1", 4);
-				break;
+		case QEV_CLOSE_READ_HIGH:
+			// error code: 1009
+			qev_write(client, "\x88\x02\x03\xf1", 4);
+			break;
 
-			default:
-				qev_write(client, "\x88\x00", 2);
-				break;
-		}
-	} else if (reason == RFC6455_MISSING_UPGRADE) {
-		qev_write(client, HTTP_426, strlen(HTTP_426));
-	} else {
-		qev_write(client, HTTP_400, strlen(HTTP_400));
+		default:
+			qev_write(client, "\x88\x00", 2);
+			break;
 	}
 }

@@ -30,6 +30,7 @@
 #endif
 
 #include <gmodule.h>
+#include <uuid/uuid.h>
 #include "atomic.h"
 #include "evs.h"
 #include "apps.h"
@@ -41,10 +42,9 @@
 #include "sub.h"
 #include "protocols.h"
 #include "protocols/flash.h"
-#include "protocols/http_poll.h"
+#include "protocols/http.h"
 #include "protocols/raw.h"
 #include "protocols/rfc6455.h"
-#include "protocols/stomp.h"
 #include "protocols/util.h"
 
 /**

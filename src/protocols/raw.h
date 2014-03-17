@@ -1,4 +1,4 @@
-/**
+ /**
  * Allows communication with QIO without any framing. In other words,
  * plain text using the QIO protocol.
  * @file qio.h
@@ -40,6 +40,11 @@ enum protocol_raw_hb {
 };
 
 /**
+ * This protocol's functions.
+ */
+struct protocol *protocol_raw;
+
+/**
  * Sets up everything to run
  */
 void protocol_raw_init();
@@ -57,7 +62,7 @@ enum protocol_status protocol_raw_handshake(struct client *client);
 /**
  * Routes the data received from a client
  */
-enum protocol_status protocol_raw_route(struct client *client);
+enum protocol_status protocol_raw_route(struct client *client, gsize *used);
 
 /**
  * Sends a heartbeat to a client
@@ -114,17 +119,9 @@ void protocol_raw_do_heartbeat(
 /**
  * Handles a raw frame from a client.
  *
- * Assumes that:
- *   1) client->qev_client.rbuff contains data of length `len` that is an
- *      actual message.
- *   2) The message starts at offset 0 in rbuff
- *   3) There is at least 1 byte after the message to put a terminating NULL-
- *      byte at rbuff[len] such that no other messages in the buffer will
- *      be affected.
- *
- * Once the message has been processed, `frame_len` will be erased from rbuff.
+ * @param client
+ *     The client that sent the event
+ * @param event
+ *     The raw event from the client. MUST be NULL-terminated.
  */
-enum protocol_status protocol_raw_handle(
-	struct client *client,
-	const guint64 len,
-	const guint64 frame_len);
+enum protocol_status protocol_raw_handle(struct client *client, gchar *event);

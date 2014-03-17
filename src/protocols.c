@@ -38,25 +38,16 @@
  * most preferred, N being least).
  */
 static struct protocol _protocols[] = {
-	{	.id = 0,
-		.init = protocol_rfc6455_init,
-		.handles = protocol_rfc6455_handles,
-		.handshake = protocol_rfc6455_handshake,
-		.route = protocol_rfc6455_route,
-		.heartbeat = protocol_rfc6455_heartbeat,
-		.frame = protocol_rfc6455_frame,
-		.close = protocol_rfc6455_close,
+	{	.global = &protocol_http,
+		.init = protocol_http_init,
+		.handles = protocol_http_handles,
+		.handshake = NULL,
+		.route = protocol_http_route,
+		.heartbeat = protocol_http_heartbeat,
+		.frame = protocol_http_frame,
+		.close = protocol_http_close,
 	},
-	{	.id = 1,
-		.init = protocol_stomp_init,
-		.handles = protocol_stomp_handles,
-		.handshake = protocol_stomp_handshake,
-		.route = protocol_stomp_route,
-		.heartbeat = protocol_stomp_heartbeat,
-		.frame = protocol_stomp_frame,
-		.close = NULL,
-	},
-	{	.id = 2,
+	{	.global = &protocol_flash,
 		.init = protocol_flash_init,
 		.handles = protocol_flash_handles,
 		.handshake = protocol_flash_handshake,
@@ -65,7 +56,7 @@ static struct protocol _protocols[] = {
 		.frame = NULL,
 		.close = NULL,
 	},
-	{	.id = 3,
+	{	.global = &protocol_raw,
 		.init = protocol_raw_init,
 		.handles = protocol_raw_handles,
 		.handshake = protocol_raw_handshake,
@@ -73,6 +64,15 @@ static struct protocol _protocols[] = {
 		.heartbeat = protocol_raw_heartbeat,
 		.frame = protocol_raw_frame,
 		.close = NULL,
+	},
+	{	.global = &protocol_rfc6455,
+		.init = protocol_rfc6455_init,
+		.handles = protocol_rfc6455_handles,
+		.handshake = protocol_rfc6455_handshake,
+		.route = protocol_rfc6455_route,
+		.heartbeat = protocol_rfc6455_heartbeat,
+		.frame = protocol_rfc6455_frame,
+		.close = protocol_rfc6455_close,
 	},
 };
 
@@ -105,15 +105,20 @@ static gboolean _find_handler(struct client *client)
 	return FALSE;
 }
 
+static void _set_handshaked(struct client *client)
+{
+	client->last_send = qev_monotonic;
+	client->protocol_flags |= HANDSHAKED;
+	qev_timeout_clear(&client->timeout);
+}
+
 static void _handshake(struct client *client)
 {
 	enum protocol_status status = client->protocol->handshake(client);
 
 	switch (status) {
 		case PROT_OK:
-			client->last_send = qev_monotonic;
-			client->protocol_flags |= HANDSHAKED;
-			qev_timeout_clear(&client->timeout);
+			_set_handshaked(client);
 			break;
 
 		case PROT_AGAIN:
@@ -127,11 +132,13 @@ static void _handshake(struct client *client)
 
 static void _route(struct client *client)
 {
+	gsize used = 0;
 	enum protocol_status status = PROT_FATAL;
+	GString *rbuff = client->qev_client.rbuff;
 
 	do {
 		if (client->protocol->route != NULL) {
-			status = client->protocol->route(client);
+			status = client->protocol->route(client, &used);
 		}
 
 		switch (status) {
@@ -150,13 +157,16 @@ static void _route(struct client *client)
 
 			case PROT_AGAIN:
 				qev_timeout(client, &client->timeout);
-				break;
+				goto out;
 
 			case PROT_FATAL:
 				qev_close(client, QIO_CLOSE_UNKNOWN_ERROR);
-				break;
+				goto out;
 		}
-	} while (status == PROT_OK && client->qev_client.rbuff->len > 0);
+	} while (used < rbuff->len);
+
+out:
+	g_string_erase(rbuff, 0, used);
 }
 
 static void _heartbeat_cb(struct client *client, void *hb_)
@@ -179,8 +189,12 @@ void protocols_route(struct client *client)
 	}
 
 	if (!protocols_client_handshaked(client)) {
-		_handshake(client);
-		return;
+		if (client->protocol->handshake == NULL) {
+			_set_handshaked(client);
+		} else {
+			_handshake(client);
+			return;
+		}
 	}
 
 	_route(client);
@@ -267,6 +281,12 @@ gboolean protocols_client_handshaked(struct client *client)
 	return client->protocol_flags & HANDSHAKED;
 }
 
+void protocols_switch(struct client *client, struct protocol *prot)
+{
+	client->protocol = prot;
+	client->protocol_flags = 0;
+}
+
 void protocols_init()
 {
 	guint i;
@@ -275,8 +295,10 @@ void protocols_init()
 
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
 		struct protocol *p = _protocols + i;
+		p->id = i;
+		*p->global = p;
 		if (p->init != NULL) {
-			p->init();
+			p->init(p);
 		}
 	}
 }

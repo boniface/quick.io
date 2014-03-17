@@ -19,7 +19,7 @@ enum rfc6455_close_reasons {
 	/**
 	 * Client didn't ask for upgrade
 	 */
-	RFC6455_MISSING_UPGRADE = 2000,
+	RFC6455_MISSING_UPGRADE = 3000,
 
 	/**
 	 * Client didn't mask his message
@@ -36,6 +36,11 @@ enum rfc6455_close_reasons {
 	 */
 	RFC6455_NOT_UTF8,
 };
+
+/**
+ * This protocol's functions.
+ */
+struct protocol *protocol_rfc6455;
 
 /**
  * Sets up everything to run
@@ -55,7 +60,7 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client);
 /**
  * Routes the data received from a client
  */
-enum protocol_status protocol_rfc6455_route(struct client *client);
+enum protocol_status protocol_rfc6455_route(struct client *client, gsize *used);
 
 /**
  * Sends a heartbeat to a client

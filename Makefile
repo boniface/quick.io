@@ -42,10 +42,9 @@ OBJECTS = \
 	$(SRC_DIR)/evs_query.o \
 	$(SRC_DIR)/protocols.o \
 	$(SRC_DIR)/protocols/flash.o \
-	$(SRC_DIR)/protocols/http_poll.o \
+	$(SRC_DIR)/protocols/http.o \
 	$(SRC_DIR)/protocols/raw.o \
 	$(SRC_DIR)/protocols/rfc6455.o \
-	$(SRC_DIR)/protocols/stomp.o \
 	$(SRC_DIR)/protocols/util.o \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
@@ -66,6 +65,7 @@ TESTS = \
 	test_coverage \
 	test_evs \
 	test_protocol_flash \
+	test_protocol_http \
 	test_protocol_raw \
 	test_protocol_rfc6455 \
 	test_protocol_util \
@@ -82,7 +82,7 @@ BENCHMARKS = \
 	bench_evs_query \
 	bench_protocol_rfc6455
 
-LIBS = glib-2.0 gmodule-2.0 openssl
+LIBS = glib-2.0 gmodule-2.0 openssl uuid
 LIBS_TEST = check
 LIBQEV = $(QEV_DIR)/libqev.a
 LIBQEV_TEST = $(QEV_DIR)/libqev_test.a

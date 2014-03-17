@@ -124,8 +124,6 @@ struct client {
 	 */
 	gint64 last_recv;
 
-	gint64 cookie;
-
 	/**
 	 * The only timeout that will be set on a client from QIO.
 	 *
@@ -139,6 +137,36 @@ struct client {
 	 * Maps: struct subscription -> gint32 (qev_list index)
 	 */
 	GHashTable *subs;
+
+	/**
+	 * For managing the HTTP session for the client
+	 */
+	struct {
+		/**
+		 * The key in http's client table.
+		 * @todo make sure this gets freed
+		 */
+		gchar *sid;
+
+		/**
+		 * Which table the client lives in
+		 */
+		guint tbl;
+
+		/**
+		 * How much data is left to read from the socket
+		 */
+		guint body_len;
+
+		/**
+		 * Can be 1 of 3 things, depending on client type:
+		 *   1) If the client is a surrogate, then points to the client
+		 *      with an open socket that is waiting on data for the surrogate
+		 *   2) If the client has a socket, then points to the surrogate client
+		 *   3) Just a NULL
+		 */
+		struct client *client;
+	} http;
 
 	/**
 	 * The callbacks for the client.
