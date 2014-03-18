@@ -32,7 +32,7 @@ inline static void _skip_past_delim(gchar **curr, guchar delims)
 	}
 }
 
-static gchar* _skip(gchar **start, guchar delims, guint *len)
+static gchar* _skip(gchar **start, guchar delims)
 {
 	gchar *val = *start;
 	gchar *curr = val;
@@ -42,7 +42,6 @@ static gchar* _skip(gchar **start, guchar delims, guint *len)
 	}
 
 	if (*curr == '\0') {
-		*len += curr - val;
 		return NULL;
 	}
 
@@ -52,29 +51,25 @@ static gchar* _skip(gchar **start, guchar delims, guint *len)
 	_skip_past_delim(&curr, delims);
 
 	*start = curr;
-	*len += curr - val;
 
 	return val;
 }
 
 void protocol_util_headers(
-	const GString *buff,
+	gchar *head,
 	struct protocol_headers *headers)
 {
 	guint i = 0;
-	gchar *head = buff->str;
-
-	headers->len = 0;
 
 	/*
 	 * By this point, GET should already have been verified. So just skip
 	 * the first line and continue with parsing
 	 */
-	_skip(&head, DELIM_NEWLINE, &headers->len);
+	_skip(&head, DELIM_NEWLINE);
 	while (i < G_N_ELEMENTS(headers->header)) {
 		_skip_past_delim(&head, DELIM_SPACE);
-		headers->header[i].key = _skip(&head, DELIM_COLON | DELIM_SPACE, &headers->len);
-		headers->header[i].val = _skip(&head, DELIM_NEWLINE, &headers->len);
+		headers->header[i].key = _skip(&head, DELIM_COLON | DELIM_SPACE);
+		headers->header[i].val = _skip(&head, DELIM_NEWLINE);
 		if (headers->header[i].key == NULL || headers->header[i].val == NULL) {
 			break;
 		}

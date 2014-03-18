@@ -56,7 +56,7 @@ enum protocol_status {
 /**
  * Useful information about heartbeat timings.
  */
-struct heartbeat {
+struct protocol_heartbeat {
 	/**
 	 * If client->last_send is less than this, needs a simple heartbeat sent.
 	 */
@@ -71,6 +71,23 @@ struct heartbeat {
 	 * If client->last_recv is less than this, the client is just dead.
 	 */
 	gint64 dead;
+};
+
+/**
+ * Some protocols (HTTP, looking at you) need a few frames types depending
+ * on the type of client they're immediately sending to, so those possiblities
+ * are stored here and exposed to all protocols.
+ */
+struct protocol_frames {
+	/**
+	 * The default frame. If no special handlers are implemented, this is used
+	 */
+	GString *def;
+
+	/**
+	 * A raw frame. Contains whatever raw means to the protocol.
+	 */
+	GString *raw;
 };
 
 /**
@@ -118,23 +135,39 @@ struct protocol {
 	/**
 	 * Send a heartbeat to a client, if necessary
 	 */
-	void (*heartbeat)(struct client *client, struct heartbeat *hb);
+	void (*heartbeat)(struct client *client, const struct protocol_heartbeat *hb);
 
 	/**
 	 * Frames the data in whatever the protocol dictates such that it
 	 * can be directly written via qev_write().
 	 */
-	GString* (*frame)(
+	struct protocol_frames (*frame)(
 		const gchar *ev_path,
 		const gchar *ev_extra,
 		const evs_cb_t server_cb,
 		const gchar *json);
 
 	/**
+	 * Send a frame to a client.
+	 */
+	void (*send)(struct client *client, const struct protocol_frames *frames);
+
+	/**
 	 * Sends a final farewell message to clients before they close.
 	 */
 	void (*close)(struct client *client, guint reason);
 };
+
+/**
+ * Create a new surrogate client bound to the given protocol.
+ *
+ * @param prot
+ *     The protocol to bind the new client to.
+ *
+ * @return
+ *     A quick-event surrogate client bound to the protocol.
+ */
+struct client* protocols_new_surrogate(struct protocol *prot);
 
 /**
  * Route a message from a client to the correct protocol handler
@@ -188,17 +221,19 @@ void protocols_closed(struct client *client, guint reason);
  *     The frames that can be passed to protocols_bcast_write() to send
  *     to a client. Must be freed with protocols_bcast_free() when done.
  */
-GString** protocols_bcast(const gchar *ev_path, const gchar *json);
+struct protocol_frames* protocols_bcast(const gchar *ev_path, const gchar *json);
 
 /**
  * Writes the broadcast to the given client
  */
-void protocols_bcast_write(struct client *client, GString **frames);
+void protocols_bcast_write(
+	struct client *client,
+	const struct protocol_frames *frames);
 
 /**
  * Frees up the frames allocated by protocols_bcast().
  */
-void protocols_bcast_free(GString **frames);
+void protocols_bcast_free(struct protocol_frames *frames);
 
 /**
  * Sends out heartbeats to everyone who needs them right now.

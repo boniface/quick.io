@@ -67,7 +67,9 @@ enum protocol_status protocol_raw_route(struct client *client, gsize *used);
 /**
  * Sends a heartbeat to a client
  */
-void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb);
+void protocol_raw_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb);
 
 /**
  * Frames data to send out to a client.
@@ -75,7 +77,7 @@ void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb);
  * @return
  *     A buffer containing the frame. @args{transfer-full}
  */
-GString* protocol_raw_frame(
+struct protocol_frames protocol_raw_frame(
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const evs_cb_t server_cb,
@@ -112,7 +114,7 @@ gboolean protocol_raw_check_handshake(struct client *client);
  */
 void protocol_raw_do_heartbeat(
 	struct client *client,
-	struct heartbeat *hb,
+	const struct protocol_heartbeat *hb,
 	const gchar *heartbeat,
 	const gsize heartbeat_len);
 

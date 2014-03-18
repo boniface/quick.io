@@ -18,7 +18,9 @@ void qev_on_before_run()
 
 void qev_on_open(struct client *client)
 {
-	qev_timeout(client, &client->timeout);
+	if (!qev_is_surrogate(client)) {
+		qev_timeout(client, &client->timeout);
+	}
 }
 
 void qev_on_close(struct client *client, guint reason)

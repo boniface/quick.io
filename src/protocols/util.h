@@ -22,11 +22,6 @@ struct protocol_headers {
 	guint used;
 
 	/**
-	 * The length of the parsed headers.
-	 */
-	guint len;
-
-	/**
 	 * All of the known headers.
 	 */
 	struct {
@@ -42,13 +37,13 @@ struct protocol_headers {
  * @note
  *     Values might have trailing white space, it's not removed for you.
  *
- * @param buff
- *     The buffer to parse the headers out of.
+ * @param head
+ *     The string to parse the headers out of.
  * @param[out] headers
  *     Where the headers should be placed.
  */
 void protocol_util_headers(
-	const GString *buff,
+	gchar *head,
 	struct protocol_headers *headers);
 
 /**

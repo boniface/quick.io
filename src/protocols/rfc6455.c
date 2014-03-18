@@ -207,41 +207,46 @@ enum protocol_status protocol_rfc6455_route(struct client *client, gsize *used)
 	return status;
 }
 
-void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb)
+void protocol_rfc6455_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb)
 {
 	protocol_raw_do_heartbeat(client, hb,
 					HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
-GString* protocol_rfc6455_frame(
+struct protocol_frames protocol_rfc6455_frame(
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const evs_cb_t server_cb,
 	const gchar *json)
 {
-	GString *f = qev_buffer_get();
-	GString *e = protocol_raw_format(ev_path, ev_extra, server_cb, json);
-	const gsize len = e->len;
+	GString *def = qev_buffer_get();
+	GString *raw = protocol_raw_format(ev_path, ev_extra, server_cb, json);
+	const gsize len = raw->len;
 
-	g_string_append_c(f, '\x81');
+	g_string_append_c(def, '\x81');
 
 	if (len <= PAYLOAD_SHORT) {
-		g_string_append_c(f, (guint8)len);
+		g_string_append_c(def, (guint8)len);
 	} else if (len <= 0xffff) {
 		guint16 belen = GUINT16_TO_BE(len);
-		g_string_append_c(f, (gchar)PAYLOAD_MEDIUM);
-		qev_buffer_append_len(f, (gchar*)&belen, sizeof(belen));
+		g_string_append_c(def, (gchar)PAYLOAD_MEDIUM);
+		qev_buffer_append_len(def, (gchar*)&belen, sizeof(belen));
 	} else {
 		guint64 belen = GUINT64_TO_BE(len);
-		g_string_append_c(f, (gchar)PAYLOAD_LONG);
-		qev_buffer_append_len(f, (gchar*)&belen, sizeof(belen));
+		g_string_append_c(def, (gchar)PAYLOAD_LONG);
+		qev_buffer_append_len(def, (gchar*)&belen, sizeof(belen));
 	}
 
-	qev_buffer_append_len(f, e->str, e->len);
+	qev_buffer_append_len(def, raw->str, raw->len);
 
-	qev_buffer_put(e);
+	qev_buffer_put(raw);
 
-	return f;
+	return (struct protocol_frames){
+		.def = def,
+		.raw = NULL,
+	};
 }
 
 void protocol_rfc6455_close(struct client *client, guint reason)

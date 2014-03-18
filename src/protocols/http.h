@@ -52,7 +52,9 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used);
 /**
  * Sends a heartbeat to a client
  */
-void protocol_http_heartbeat(struct client *client, struct heartbeat *hb);
+void protocol_http_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb);
 
 /**
  * Frames data to send out to a client.
@@ -60,11 +62,19 @@ void protocol_http_heartbeat(struct client *client, struct heartbeat *hb);
  * @return
  *     A buffer containing the frame. @args{transfer-full}
  */
-GString* protocol_http_frame(
+struct protocol_frames protocol_http_frame(
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const evs_cb_t server_cb,
 	const gchar *json);
+
+/**
+ * HTTP uses surrogates, so it has its own sending mechanisms to make
+ * sure messages are routed to the right clients
+ */
+void protocol_http_send(
+	struct client *client,
+	const struct protocol_frames *pframes);
 
 /**
  * Terminates all communications with the client

@@ -45,6 +45,7 @@ static struct protocol _protocols[] = {
 		.route = protocol_http_route,
 		.heartbeat = protocol_http_heartbeat,
 		.frame = protocol_http_frame,
+		.send = protocol_http_send,
 		.close = protocol_http_close,
 	},
 	{	.global = &protocol_flash,
@@ -54,6 +55,7 @@ static struct protocol _protocols[] = {
 		.route = NULL,
 		.heartbeat = NULL,
 		.frame = NULL,
+		.send = NULL,
 		.close = NULL,
 	},
 	{	.global = &protocol_raw,
@@ -63,6 +65,7 @@ static struct protocol _protocols[] = {
 		.route = protocol_raw_route,
 		.heartbeat = protocol_raw_heartbeat,
 		.frame = protocol_raw_frame,
+		.send = NULL,
 		.close = NULL,
 	},
 	{	.global = &protocol_rfc6455,
@@ -72,6 +75,7 @@ static struct protocol _protocols[] = {
 		.route = protocol_rfc6455_route,
 		.heartbeat = protocol_rfc6455_heartbeat,
 		.frame = protocol_rfc6455_frame,
+		.send = NULL,
 		.close = protocol_rfc6455_close,
 	},
 };
@@ -103,6 +107,17 @@ static gboolean _find_handler(struct client *client)
 	}
 
 	return FALSE;
+}
+
+static void _send(struct client *client, const struct protocol_frames *pframes)
+{
+	client->last_send = qev_monotonic;
+
+	if (client->protocol->send) {
+		client->protocol->send(client, pframes);
+	} else if (pframes->def != NULL) {
+		qev_write(client, pframes->def->str, pframes->def->len);
+	}
 }
 
 static void _set_handshaked(struct client *client)
@@ -171,13 +186,23 @@ out:
 
 static void _heartbeat_cb(struct client *client, void *hb_)
 {
-	struct heartbeat *hb = hb_;
+	struct protocol_heartbeat *hb = hb_;
 
 	if (protocols_client_handshaked(client) &&
 		client->protocol->heartbeat != NULL) {
 
 		client->protocol->heartbeat(client, hb);
 	}
+}
+
+struct client* protocols_new_surrogate(struct protocol *prot)
+{
+	struct client *client = qev_surrogate_new();
+
+	client->protocol = prot;
+	_set_handshaked(client);
+
+	return client;
 }
 
 void protocols_route(struct client *client)
@@ -208,13 +233,14 @@ void protocols_send(
 	const gchar *json)
 {
 	if (protocols_client_handshaked(client)) {
-		client->last_send = qev_monotonic;
-
 		ev_extra = ev_extra ? : "";
-		GString *frame = client->protocol->frame(ev_path, ev_extra,
-												server_cb, json);
-		qev_write(client, frame->str, frame->len);
-		qev_buffer_put(frame);
+
+		struct protocol_frames pframes = client->protocol->frame(
+										ev_path, ev_extra, server_cb, json);
+		_send(client, &pframes);
+
+		qev_buffer_put(pframes.def);
+		qev_buffer_put(pframes.raw);
 	}
 }
 
@@ -223,12 +249,14 @@ void protocols_closed(struct client *client, guint reason)
 	if (client->protocol != NULL && client->protocol->close != NULL) {
 		client->protocol->close(client, reason);
 	}
+
+	client->protocol_flags = 0;
 }
 
-GString** protocols_bcast(const gchar *ev_path, const gchar *json)
+struct protocol_frames* protocols_bcast(const gchar *ev_path, const gchar *json)
 {
 	guint i;
-	GString **frames = g_slice_alloc0(sizeof(*frames) * G_N_ELEMENTS(_protocols));
+	struct protocol_frames *frames = g_slice_alloc0(sizeof(*frames) * G_N_ELEMENTS(_protocols));
 
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
 		struct protocol *p = _protocols + i;
@@ -240,23 +268,23 @@ GString** protocols_bcast(const gchar *ev_path, const gchar *json)
 	return frames;
 }
 
-void protocols_bcast_write(struct client *client, GString **frames)
+void protocols_bcast_write(
+	struct client *client,
+	const struct protocol_frames *frames)
 {
-	GString *frame = *(frames + client->protocol->id);
-	if (frame != NULL && protocols_client_handshaked(client)) {
-		client->last_send = qev_monotonic;
-		qev_write(client, frame->str, frame->len);
+	const struct protocol_frames *pframes = frames + client->protocol->id;
+	if (protocols_client_handshaked(client)) {
+		_send(client, pframes);
 	}
 }
 
-void protocols_bcast_free(GString **frames)
+void protocols_bcast_free(struct protocol_frames *frames)
 {
 	guint i;
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
-		GString *f = *(frames + i);
-		if (f != NULL) {
-			qev_buffer_put(f);
-		}
+		struct protocol_frames *frame = frames + i;
+		qev_buffer_put(frame->def);
+		qev_buffer_put(frame->raw);
 	}
 
 	g_slice_free1(sizeof(*frames) * G_N_ELEMENTS(_protocols), frames);
@@ -266,7 +294,7 @@ void protocols_heartbeat()
 {
 	gint64 now = qev_monotonic;
 
-	struct heartbeat hb = {
+	struct protocol_heartbeat hb = {
 		.heartbeat = now - HEARTBEAT_INTERVAL +
 						QEV_SEC_TO_USEC(cfg_heartbeat_interval),
 		.challenge = now - HEARTBEAT_CHALLENGE_INTERVAL,

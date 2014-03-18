@@ -65,15 +65,14 @@ enum protocol_status protocol_rfc6455_route(struct client *client, gsize *used);
 /**
  * Sends a heartbeat to a client
  */
-void protocol_rfc6455_heartbeat(struct client *client, struct heartbeat *hb);
+void protocol_rfc6455_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb);
 
 /**
  * Frames data to send out to a client.
- *
- * @return
- *     A buffer containg the frame. @args{transfer-full}
  */
-GString* protocol_rfc6455_frame(
+struct protocol_frames protocol_rfc6455_frame(
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const evs_cb_t server_cb,

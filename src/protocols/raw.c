@@ -90,29 +90,32 @@ enum protocol_status protocol_raw_route(struct client *client, gsize *used)
 	return status;
 }
 
-void protocol_raw_heartbeat(struct client *client, struct heartbeat *hb)
+void protocol_raw_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb)
 {
 	protocol_raw_do_heartbeat(client, hb, HEARTBEAT, sizeof(HEARTBEAT) - 1);
 }
 
-GString* protocol_raw_frame(
+struct protocol_frames protocol_raw_frame(
 	const gchar *ev_path,
 	const gchar *ev_extra,
 	const evs_cb_t server_cb,
 	const gchar *json)
 {
-	guint64 size;
-	GString *buff = qev_buffer_get();
-	GString *e = protocol_raw_format(ev_path, ev_extra, server_cb, json);
+	union {
+		guint64 i;
+		gchar s[sizeof(guint64)];
+	} size;
+	GString *buff = protocol_raw_format(ev_path, ev_extra, server_cb, json);
 
-	size = GUINT64_TO_BE(e->len);
+	size.i = GUINT64_TO_BE(buff->len);
+	g_string_prepend_len(buff, size.s, sizeof(size));
 
-	qev_buffer_append_len(buff, (gchar*)&size, sizeof(size));
-	qev_buffer_append_len(buff, e->str, e->len);
-
-	qev_buffer_put(e);
-
-	return buff;
+	return (struct protocol_frames){
+		.def = buff,
+		.raw = NULL,
+	};
 }
 
 GString* protocol_raw_format(
@@ -146,7 +149,7 @@ gboolean protocol_raw_check_handshake(struct client *client)
 
 void protocol_raw_do_heartbeat(
 	struct client *client,
-	struct heartbeat *hb,
+	const struct protocol_heartbeat *hb,
 	const gchar *heartbeat,
 	const gsize heartbeat_len)
 {

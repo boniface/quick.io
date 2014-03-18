@@ -78,6 +78,11 @@
 	"Content-Length: 0\r\n" \
 	HTTP_COMMON "\r\n"
 
+#define HTTP_200_BODY \
+	"HTTP/1.1 200 OK\r\n" \
+	HTTP_COMMON \
+	"Content-Length: "
+
 #define HTTP_400 \
 	"HTTP/1.1 400 Bad Request\r\n" \
 	"Content-Length: 0\r\n" \
@@ -124,46 +129,45 @@ static struct client_table _clients[64];
 /**
  * From: http://stackoverflow.com/questions/2673207/c-c-url-decode-library
  */
-// @todo make static
-void _urldecode(gchar *str)
-{
-	const gchar *src = str;
+// static void _urldecode(gchar *str)
+// {
+// 	const gchar *src = str;
 
-	while (*src) {
-		gchar a, b;
+// 	while (*src) {
+// 		gchar a, b;
 
-		if (*src == '%' && (a = src[1]) && (b = src[2]) &&
-			g_ascii_isxdigit(a) && g_ascii_isxdigit(b)) {
+// 		if (*src == '%' && (a = src[1]) && (b = src[2]) &&
+// 			g_ascii_isxdigit(a) && g_ascii_isxdigit(b)) {
 
-			if (a >= 'a') {
-				a -= 'a'-'A';
-			}
+// 			if (a >= 'a') {
+// 				a -= 'a' - 'A';
+// 			}
 
-			if (a >= 'A') {
-				a -= 'A' - 10;
-			} else {
-				a -= '0';
-			}
+// 			if (a >= 'A') {
+// 				a -= 'A' - 10;
+// 			} else {
+// 				a -= '0';
+// 			}
 
-			if (b >= 'a') {
-				b -= 'a'-'A';
-			}
+// 			if (b >= 'a') {
+// 				b -= 'a' - 'A';
+// 			}
 
-			if (b >= 'A') {
-				b -= 'A' - 10;
-			} else {
-				b -= '0';
-			}
+// 			if (b >= 'A') {
+// 				b -= 'A' - 10;
+// 			} else {
+// 				b -= '0';
+// 			}
 
-			*str++ = 16 * a + b;
-			src += 3;
-		} else {
-			*str++ = *src++;
-		}
-	}
+// 			*str++ = 16 * a + b;
+// 			src += 3;
+// 		} else {
+// 			*str++ = *src++;
+// 		}
+// 	}
 
-	*str++ = '\0';
-}
+// 	*str++ = '\0';
+// }
 
 static gboolean _has_complete_header(struct client *client)
 {
@@ -173,39 +177,44 @@ static gboolean _has_complete_header(struct client *client)
 		strstr(rbuff->str, HTTP_HEADER_TERMINATOR) != NULL;
 }
 
-static gchar* _find_header_end(struct client *client)
+static gchar* _find_header_end(gchar *head)
 {
 	gchar *end;
-	GString *rbuff = client->qev_client.rbuff;
 
-	end = strstr(rbuff->str, HTTP_HEADER_TERMINATOR);
+	end = strstr(head, HTTP_HEADER_TERMINATOR);
 	if (end != NULL) {
 		end += strlen(HTTP_HEADER_TERMINATOR);
-		*end = '\0';
+		*(end - 1) = '\0';
 		return end;
 	}
 
-	end = strstr(rbuff->str, HTTP_HEADER_TERMINATOR2);
+	end = strstr(head, HTTP_HEADER_TERMINATOR2);
 	if (end != NULL) {
 		end += strlen(HTTP_HEADER_TERMINATOR2);
-		*end = '\0';
+		*(end - 1) = '\0';
 		return end;
 	}
 
 	return NULL;
 }
 
-static struct client* _get_client(struct client *client)
+static struct client* _get_client(gchar *head_start)
 {
 	union {
 		uuid_t u;
 		__uint128_t i;
 	} uuid;
+	struct client *client;
 	guint which;
-	GString *rbuff = client->qev_client.rbuff;
-	gchar *sid = strstr(rbuff->str, "sid=");
+	gchar *sid = strstr(head_start, "sid=");
 
-	if (sid == NULL || uuid_parse(sid, uuid.u) != 0) {
+	if (sid == NULL) {
+		return NULL;
+	}
+
+	sid += 4;
+	strtok(sid, " ");
+	if (uuid_parse(sid, uuid.u) != 0) {
 		return NULL;
 	}
 
@@ -220,8 +229,7 @@ static struct client* _get_client(struct client *client)
 
 		client = g_hash_table_lookup(_clients[which].tbl, sid);
 		if (client == NULL) {
-			client = qev_surrogate_new();
-			client->protocol = protocol_http;
+			client = protocols_new_surrogate(protocol_http);
 			client->http.sid = g_strdup(sid);
 			client->http.tbl = which;
 			g_hash_table_insert(_clients[which].tbl, client->http.sid, client);
@@ -233,23 +241,30 @@ static struct client* _get_client(struct client *client)
 	return client;
 }
 
-static void _handle_post(struct client *client, gsize *used)
+static void _handle_post(struct client *client, gchar *start)
 {
 	gchar *saveptr = NULL;
-	gchar *start = client->qev_client.rbuff->str + *used;
 
-	while (TRUE) {
-		gchar *msg = strtok_r(start, "\n", &saveptr);
-		start = NULL;
-		if (msg == NULL) {
-			break;
+	if (client->http.client == NULL) {
+		/*
+		 * No surrogate was found, and the body has arrived, so just ignore
+		 * everything (since there's nothing to be done with it), and send
+		 * back an error.
+		 */
+		qev_write(client, HTTP_403, strlen(HTTP_403));
+	} else {
+		while (TRUE) {
+			gchar *msg = strtok_r(start, "\n", &saveptr);
+			start = NULL;
+			if (msg == NULL) {
+				break;
+			}
+
+			protocol_raw_handle(client->http.client, msg);
 		}
 
-		INFO("msg=%s", msg);
-		protocol_raw_handle(client->http.client, msg);
+		qev_write(client, HTTP_200, strlen(HTTP_200));
 	}
-
-	qev_write(client, HTTP_200, strlen(HTTP_200));
 }
 
 static void _do_websocket_upgrade(
@@ -312,15 +327,26 @@ static void _do_websocket_upgrade(
 	}
 }
 
+static GString* _http_200_body(GString *msgs)
+{
+	GString *buff = qev_buffer_get();
+
+	qev_buffer_append_len(buff, HTTP_200_BODY, strlen(HTTP_200_BODY));
+	qev_buffer_append_uint(buff, msgs->len);
+	qev_buffer_append_len(buff, "\r\n\r\n", 4);
+	qev_buffer_append_buff(buff, msgs);
+
+	return buff;
+}
+
 static enum protocol_status _do_http(
 	struct client *client,
-	const struct protocol_headers *headers)
+	const struct protocol_headers *headers,
+	gchar *head_start)
 {
 	guint body_len;
 	gchar *len_end;
 	gchar *content_len;
-	struct client *surrogate;
-	GString *rbuff = client->qev_client.rbuff;
 
 	content_len = protocol_util_headers_get(headers, HTTP_CONTENT_LENGTH);
 	if (content_len == NULL) {
@@ -331,41 +357,45 @@ static enum protocol_status _do_http(
 	body_len = (guint)g_ascii_strtoull(content_len, &len_end, 10);
 	if (body_len == 0 && len_end == content_len) {
 		qev_write(client, HTTP_400, strlen(HTTP_400));
-		goto out;
-	}
-
-	if (body_len == 0) {
-		qev_write(client, HTTP_200, strlen(HTTP_200));
-		goto out;
+		return PROT_FATAL;
 	}
 
 	client->http.body_len = body_len;
 
-	surrogate = _get_client(client);
-	if (surrogate == NULL) {
-		qev_write(client, HTTP_403, strlen(HTTP_403));
-		goto out;
-	}
+	if (g_str_has_prefix(head_start, "POST")) {
+		struct client *surrogate = _get_client(head_start);
 
-	if (g_str_has_prefix(rbuff->str, "POST")) {
-		if (g_str_has_prefix(rbuff->str + 4, " /poll")) {
+		if (g_str_has_prefix(head_start + 4, " /poll")) {
+			GString *msgs;
+
 			qev_lock(surrogate);
 
 			if (surrogate->http.client != NULL) {
 				qev_write(surrogate->http.client, HTTP_200, strlen(HTTP_200));
+				qev_unref(surrogate->http.client);
+				surrogate->http.client = NULL;
 			}
 
-			surrogate->http.client = client;
+			msgs = qev_surrogate_flush(surrogate);
+			if (msgs != NULL) {
+				GString *buff = _http_200_body(msgs);
+
+				qev_write(client, buff->str, buff->len);
+
+				qev_buffer_put(buff);
+				qev_buffer_put(msgs);
+			} else {
+				surrogate->http.client = qev_ref(client);
+			}
 
 			qev_unlock(surrogate);
 		}
 
-		client->http.client = surrogate;
+		client->http.client = qev_ref(surrogate);
 	} else {
 		qev_write(client, HTTP_405, strlen(HTTP_405));
 	}
 
-out:
 	return PROT_OK;
 }
 
@@ -406,8 +436,7 @@ enum protocol_handles protocol_http_handles(struct client *client)
 	}
 
 	if (g_str_has_prefix(rbuff->str, "GET /") ||
-		g_str_has_prefix(rbuff->str, "POST /") ||
-		g_str_has_prefix(rbuff->str, "OPTIONS /")) {
+		g_str_has_prefix(rbuff->str, "POST /")) {
 		return PROT_YES;
 	}
 
@@ -419,63 +448,107 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 	struct protocol_headers headers;
 	enum protocol_status status = PROT_OK;
 	GString *rbuff = client->qev_client.rbuff;
-	gchar *body_start = rbuff->str;
 
 	if (client->http.body_len == 0) {
 		gchar *key;
+		gchar *head_start = rbuff->str + *used;
+		gchar *body_start = NULL;
 
-		body_start = _find_header_end(client);
+		body_start = _find_header_end(head_start);
 		if (body_start == NULL) {
 			return PROT_AGAIN;
 		}
 
-		protocol_util_headers(rbuff, &headers);
+		protocol_util_headers(head_start, &headers);
 		key = protocol_util_headers_get(&headers, HTTP_CHALLENGE_KEY);
 
 		if (key != NULL) {
 			_do_websocket_upgrade(client, &headers, key);
+			*used = rbuff->len;
 			status = PROT_OK;
 		} else {
-			status = _do_http(client, &headers);
+			status = _do_http(client, &headers, head_start);
+			*used += body_start - (rbuff->str + *used);
 		}
-
-		*used += headers.len;
 	}
 
 	if (client->protocol == protocol_http &&
 		status == PROT_OK &&
 		client->http.body_len > 0) {
 
-		if (rbuff->len < client->http.body_len) {
+		if (rbuff->len < (client->http.body_len + *used)) {
 			status = PROT_AGAIN;
 		} else {
-			rbuff->str[headers.len + client->http.body_len] = '\0';
-			_handle_post(client, used);
+			gchar *start = rbuff->str + *used;
+			gchar replaced = start[client->http.body_len];
 
-			client->http.body_len = 0;
+			start[client->http.body_len] = '\0';
+			_handle_post(client, start);
+			start[client->http.body_len] = replaced;
+
+			*used += rbuff->len - *used;
+
+			qev_unref(client->http.client);
 			client->http.client = NULL;
+			client->http.body_len = 0;
 		}
 	}
 
 	return status;
 }
 
-void protocol_http_heartbeat(struct client *client G_GNUC_UNUSED, struct heartbeat *hb G_GNUC_UNUSED)
+void protocol_http_heartbeat(
+	struct client *client G_GNUC_UNUSED,
+	const struct protocol_heartbeat *hb G_GNUC_UNUSED)
 {
 
 }
 
-GString* protocol_http_frame(
-	const gchar *ev_path G_GNUC_UNUSED,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t server_cb G_GNUC_UNUSED,
-	const gchar *json G_GNUC_UNUSED)
+struct protocol_frames protocol_http_frame(
+	const gchar *ev_path,
+	const gchar *ev_extra,
+	const evs_cb_t server_cb,
+	const gchar *json)
 {
-	return NULL;
+	GString *raw;
+	GString *def;
+
+	raw = protocol_raw_format(ev_path, ev_extra, server_cb, json);
+	g_string_append_c(raw, '\n');
+	def = _http_200_body(raw);
+
+	return (struct protocol_frames){
+		.def = def,
+		.raw = raw,
+	};
+}
+
+void protocol_http_send(
+	struct client *client,
+	const struct protocol_frames *pframes)
+{
+	qev_lock(client);
+
+	// @todo remove this after testing
+	ASSERT(qev_is_surrogate(client), "Sending message to client that isn't surrogate");
+
+	if (client->http.client != NULL) {
+		qev_write(client->http.client, pframes->def->str, pframes->def->len);
+
+		qev_unref(client->http.client);
+		client->http.client = NULL;
+	} else {
+		qev_write(client, pframes->raw->str, pframes->raw->len);
+	}
+
+	qev_unlock(client);
 }
 
 void protocol_http_close(struct client *client, guint reason G_GNUC_UNUSED)
 {
+	qev_unref(client->http.client);
+	client->http.client = NULL;
+
 	g_free(client->http.sid);
 	client->http.sid = NULL;
 }

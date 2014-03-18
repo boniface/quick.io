@@ -65,7 +65,7 @@ static GAsyncQueue *_broadcasts = NULL;
 static void _broadcast(void *client_, void *frames_)
 {
 	struct client *client = client_;
-	GString **frames = frames_;
+	struct protocol_frames *frames = frames_;
 
 	protocols_bcast_write(client, frames);
 	qev_stats_counter_inc(_stat_evs_broadcasts_messages);
@@ -582,8 +582,8 @@ void evs_broadcast_path(const gchar *ev_path, const gchar *json)
 
 void evs_broadcast_tick()
 {
-	GString **frames;
 	struct _broadcast *bc;
+	struct protocol_frames *frames;
 	GString *path = qev_buffer_get();
 
 	while ((bc = g_async_queue_try_pop(_broadcasts)) != NULL) {
