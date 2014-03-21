@@ -126,12 +126,12 @@ GString* protocol_raw_format(
 {
 	GString *buff = qev_buffer_get();
 
-	qev_buffer_append(buff, ev_path);
-	qev_buffer_append(buff, ev_extra);
+	g_string_append(buff, ev_path);
+	g_string_append(buff, ev_extra);
 	g_string_append_c(buff, ':');
 	qev_buffer_append_uint(buff, server_cb);
 	g_string_append_c(buff, '=');
-	qev_buffer_append(buff, json);
+	g_string_append(buff, json);
 
 	return buff;
 }

@@ -144,9 +144,8 @@ struct client {
 	struct {
 		/**
 		 * The key in http's client table.
-		 * @todo make sure this gets freed
 		 */
-		gchar *sid;
+		__uint128_t sid;
 
 		/**
 		 * Which table the client lives in
@@ -157,6 +156,46 @@ struct client {
 		 * How much data is left to read from the socket
 		 */
 		guint body_len;
+
+		/**
+		 * If you can't figure out what this is, you should put the magic
+		 * box down.
+		 */
+		struct {
+			/**
+			 * If the client sent a POST
+			 */
+			gboolean is_post:1;
+
+			/**
+			 * If the client requested the iframe
+			 */
+			gboolean iframe_requested:1;
+
+			/**
+			 * If the client is HTTP/1.1
+			 */
+			gboolean http_11:1;
+
+			/**
+			 * If the client is keep-alive
+			 */
+			gboolean keep_alive:1;
+
+			/**
+			 * If a response has been sent to the most recent request
+			 */
+			gboolean responded:1;
+
+			/**
+			 * A new request just came in and is being processed; don't send
+			 * out any updates until the new request's entire body has been
+			 * processed.
+			 *
+			 * This is for surrogates.
+			 */
+			gboolean incoming:1;
+		} flags;
 
 		/**
 		 * Can be 1 of 3 things, depending on client type:

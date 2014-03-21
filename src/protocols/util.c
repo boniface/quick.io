@@ -61,6 +61,9 @@ void protocol_util_headers(
 {
 	guint i = 0;
 
+	// @todo add to docs and change code: assumes entire given string is headers, doesn't stop at two empty lines
+	// @todo strtok?
+
 	/*
 	 * By this point, GET should already have been verified. So just skip
 	 * the first line and continue with parsing

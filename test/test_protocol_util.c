@@ -18,7 +18,7 @@ START_TEST(test_protocol_util_headers_0)
 		"   	key: 						value \n\r"
 		"     \r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 1);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "key"), "value ");
@@ -43,7 +43,7 @@ START_TEST(test_protocol_util_headers_1)
 		"   	key2: 						me         		 \n\r"
 		"     \r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 7);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "key"), "value1 ");
@@ -62,7 +62,7 @@ START_TEST(test_protocol_util_headers_2)
 		"lol \n"
 		"     \r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 0);
 
@@ -77,7 +77,7 @@ START_TEST(test_protocol_util_headers_3)
 
 	g_string_assign(buff, "lol \n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 0);
 
@@ -92,7 +92,7 @@ START_TEST(test_protocol_util_headers_4)
 
 	g_string_assign(buff, "lol");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 0);
 
@@ -109,7 +109,7 @@ START_TEST(test_protocol_util_headers_5)
 		"GET ws://localhost HTTP/1.1\r\n"
 		"null: \0localhost\r\n\r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 0);
 
@@ -126,7 +126,7 @@ START_TEST(test_protocol_util_headers_6)
 		"GET ws://localhost HTTP/1.1\r\n"
 		"one: \1localhost\r\n\r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 1);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "one"), "\1localhost");
@@ -149,7 +149,7 @@ START_TEST(test_protocol_util_headers_7)
 		"Connection: Upgrade\n"
 		"Sec-WebSocket-Version: 13\n\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 6);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "connection"), "Upgrade");
@@ -178,7 +178,7 @@ START_TEST(test_protocol_util_headers_8)
 		"Connection: Upgrade\r"
 		"Sec-WebSocket-Version: 13\r\r");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 6);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "connection"), "Upgrade");
@@ -210,7 +210,7 @@ START_TEST(test_protocol_util_headers_9)
 		"User-Agent: Mozilla/5.0 and other stuff\r\n"
 		"Sec-WebSocket-Protocol: quickio\r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 9);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "connection"), "Upgrade");
@@ -242,7 +242,7 @@ START_TEST(test_protocol_util_headers_10)
 		"User-Agent: Mozilla/5.0 and other stuff\r\n"
 		"Sec-WebSocket-Protocol: quickio\r\n");
 
-	protocol_util_headers(buff, &headers);
+	protocol_util_headers(buff->str, &headers);
 
 	ck_assert_uint_eq(headers.used, 9);
 	ck_assert_str_eq(protocol_util_headers_get(&headers, "connection"), "Upgrade");

@@ -111,7 +111,7 @@ void test_config()
 
 	g_string_printf(c, CONFIG,
 			rl.rlim_cur,
-			FATAL_SIGNAL == 5 ? 100 : 2000,
+			FATAL_SIGNAL == 5 ? 100 : 3000,
 			PORT, PORT + 1, PORT, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	ASSERT(configed, "Could not create test config file");
@@ -203,7 +203,7 @@ qev_fd_t test_client()
 	err = send(tc, "/qio/ohai", 9, MSG_NOSIGNAL);
 	ck_assert(err == 9);
 	err = recv(tc, buff, sizeof(buff), 0);
-	ck_assert(err == 9);
+	ck_assert_int_eq(err, 9);
 
 	buff[9] = '\0';
 	ck_assert(g_strcmp0(buff, "/qio/ohai") == 0);
@@ -230,9 +230,9 @@ void test_send_len(
 	*((guint64*)size) = GUINT64_TO_BE(wlen);
 
 	err = send(tc, size, sizeof(size), MSG_NOSIGNAL);
-	ck_assert(err == sizeof(size));
+	ck_assert_int_eq(err, sizeof(size));
 	err = send(tc, data, wlen, MSG_NOSIGNAL);
-	ck_assert(err == (gint64)wlen);
+	ck_assert_int_eq(err, wlen);
 }
 
 guint64 test_recv(

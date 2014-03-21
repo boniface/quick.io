@@ -82,3 +82,13 @@ struct protocol_frames protocol_rfc6455_frame(
  * Terminates all communications with the client
  */
 void protocol_rfc6455_close(struct client *client, guint reason);
+
+/**
+ * Upgrade a client to RFC6455, sending out all necessary headers.
+ *
+ * @param client
+ *     The client to upgrade
+ * @param key
+ *     Sec-WebSocket-Key from the HTTP Headers
+ */
+void protocol_rfc6455_upgrade(struct client *client, const gchar *key);

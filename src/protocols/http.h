@@ -13,20 +13,40 @@
 #include "quickio.h"
 
 /**
+ * Completely disables caching for HTTP requests
+ */
+#define HTTP_NOCACHE \
+	"Cache-Control: private, max-age=0\r\n" \
+	"Expires: -1\r\n"
+
+#define HTTP_COMMON \
+	HTTP_NOCACHE \
+	"Connection: Keep-Alive\r\n" \
+	"Keep-Alive: timeout=60\r\n"
+
+/**
  * Extends the reasons for closing a client
  */
 enum http_close_reasons {
 	/**
-	 * Client looked like it wanted to upgrade to WebSocket but was missing
-	 * the proper upgrade headers.
+	 * Client closed according to the HTTP standard.
 	 */
-	HTTP_FAILED_UPGRADE = 2000,
+	HTTP_DONE = 2000,
 
 	/**
-	 * Client had proper upgrade headers but isn't ready to speak our
-	 * dialect/protocol of WebSocket.
+	 * No surrogate was found for the client. That's a 403.
 	 */
-	HTTP_FAILED_WEBSOCKET_UPGRADE,
+	HTTP_NO_SURROGATE,
+
+	/**
+	 * Sometimes was woefully wrong with the request
+	 */
+	HTTP_BAD_REQUEST,
+
+	/**
+	 * Client didn't send length
+	 */
+	HTTP_LENGTH_REQUIRED,
 };
 
 /**

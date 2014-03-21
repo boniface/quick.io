@@ -533,12 +533,11 @@ void evs_cb_full(
 	path = qev_buffer_get();
 	jbuff = qev_buffer_get();
 
-	qev_buffer_append_len(path, CB_PATH, strlen(CB_PATH));
+	g_string_append(path, CB_PATH);
 	qev_buffer_append_uint(path, client_cb);
-
-	qev_buffer_append_len(jbuff, CB_CODE, strlen(CB_CODE));
+	g_string_append(jbuff, CB_CODE);
 	qev_buffer_append_uint(jbuff, code);
-	qev_buffer_append_len(jbuff, CB_DATA, strlen(CB_DATA));
+	g_string_append(jbuff, CB_DATA);
 	g_string_append(jbuff, json);
 
 	if (code != CODE_OK) {

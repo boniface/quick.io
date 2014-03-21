@@ -109,10 +109,6 @@ CFLAGS = \
 	-msse2 \
 	$(shell pkg-config --cflags $(LIBS))
 
-ifeq ($(CC),gcc)
-	CFLAGS += -flto
-endif
-
 CFLAGS_TEST = \
 	-g \
 	--coverage \
@@ -134,6 +130,7 @@ CFLAGS_PROFILE = \
 	-pg
 
 CFLAGS_RELEASE = \
+	-flto \
 	-fPIE \
 	-O3
 
@@ -160,6 +157,7 @@ LDFLAGS_PROFILE = \
 	$(LIBQEV)
 
 LDFLAGS_RELEASE = \
+	-flto \
 	-pie \
 	$(LIBQEV)
 

@@ -9,6 +9,23 @@
 #include "quickio.h"
 
 /**
+ * Ready for the B64-encoded key to be appended. Must be followed with \r\n\r\n
+ */
+#define HTTP_101 \
+	"HTTP/1.1 101 Switching Protocols\r\n" \
+	"Upgrade: websocket\r\n" \
+	"Connection: Upgrade\r\n" \
+	"Access-Control-Allow-Origin: *\r\n" \
+	"Sec-WebSocket-Protocol: quickio\r\n" \
+	HTTP_NOCACHE \
+	"Sec-WebSocket-Accept: "
+
+/**
+ * From: http://tools.ietf.org/html/rfc6455#section-1.3
+ */
+#define HASH_KEY "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+/**
  * Predefined and formatted RFC6455 messages
  */
 #define QIO_HANDSHAKE "\x81\x09/qio/ohai"
@@ -239,7 +256,7 @@ struct protocol_frames protocol_rfc6455_frame(
 		qev_buffer_append_len(def, (gchar*)&belen, sizeof(belen));
 	}
 
-	qev_buffer_append_len(def, raw->str, raw->len);
+	qev_buffer_append_buff(def, raw);
 
 	qev_buffer_put(raw);
 
@@ -295,4 +312,42 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 			qev_write(client, "\x88\x00", 2);
 			break;
 	}
+}
+
+void protocol_rfc6455_upgrade(struct client *client, const gchar *key)
+{
+	gsize b64len;
+	gint state = 0;
+	gint save = 0;
+	GString *buff = qev_buffer_get();
+	GString *b64 = qev_buffer_get();
+
+	g_string_append(buff, key);
+	g_string_append(buff, HASH_KEY);
+
+	SHA1((guchar*)buff->str, buff->len, (guchar*)buff->str);
+	g_string_set_size(buff, SHA_DIGEST_LENGTH);
+
+	/*
+	 * This line brought to your courtesy of "wut". Wut, for when you know
+	 * you have to do something but just take their word for it.
+	 * See: https://developer.gnome.org/glib/2.37/glib-Base64-Encoding.html#g-base64-encode-step
+	 */
+	qev_buffer_ensure(b64, (SHA_DIGEST_LENGTH / 3 + 1) * 4 + 4);
+
+	b64len = g_base64_encode_step((guchar*)buff->str, SHA_DIGEST_LENGTH,
+					FALSE, b64->str, &state, &save);
+	b64len += g_base64_encode_close(FALSE, b64->str + b64len, &state, &save);
+	g_string_set_size(b64, b64len);
+
+	qev_buffer_clear(buff);
+	g_string_append(buff, HTTP_101);
+	qev_buffer_append_buff(buff, b64);
+	g_string_append(buff, "\r\n\r\n");
+	qev_write(client, buff->str, buff->len);
+
+	qev_buffer_put(buff);
+	qev_buffer_put(b64);
+
+	protocols_switch(client, protocol_rfc6455);
 }

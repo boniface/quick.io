@@ -6,9 +6,8 @@
  * the MIT License: http://www.opensource.org/licenses/mit-license.php
  */
 
+#include <poll.h>
 #include "test.h"
-
-#define SID "550e8400-e29b-41d4-a716-446655440000"
 
 // START_TEST(test_rfc6455_handshake_http_invalid_headers)
 // {
@@ -38,143 +37,278 @@
 // }
 // END_TEST
 
-#define CONT_HEADERS \
-	"POST /?sid=" SID " HTTP/1.1\r\n" \
+#define INIT_HEADERS \
+	"POST /?sid=%s&connect=true HTTP/1.1\r\n" \
+	"Content-Length: 0\r\n\r\n"
+
+#define MSG_HEADERS \
+	"POST /?sid=%s HTTP/1.1\r\n" \
 	"Content-Length: %lu\r\n\r\n" \
 	"%s"
 
-#define POLL_HEADERS \
-	"POST /poll?sid=" SID " HTTP/1.1\r\n" \
-	"Content-Length: 0\r\n\r\n"
-
-#define _poll_hc() _poll(&_hc)
-#define _send_hc(...) _send(&_hc, ##__VA_ARGS__)
-#define _recv_hc(...) _recv(&_hc, ##__VA_ARGS__)
-
 struct httpc {
-	// Control socket
-	qev_fd_t cont;
+	/**
+	 * The socket currently polling on the server
+	 */
+	qev_fd_t polling;
 
-	// Polling socket
-	qev_fd_t poll;
+	/**
+	 * The idle socket, both on client and server
+	 */
+	qev_fd_t waiting;
 
-	// If the polling socket has already been set to poll
-	gboolean is_polling;
+	/**
+	 * Buffered messages from the server
+	 */
+	GAsyncQueue *aq;
+
+	/**
+	 * Session Id
+	 */
+	gchar *sid;
+
+	/**
+	 * The thread the client is running in
+	 */
+	GThread *th;
+
+	/**
+	 * If the thread should keep running
+	 */
+	gboolean th_run;
+
+	/**
+	 * Mutex for sending
+	 */
+	GMutex lock;
 };
 
-static struct httpc _hc;
+static void* _httpc_thread(void *hc);
 
-static void _httpc_close(struct httpc *hc)
+static struct httpc *_hc = NULL;
+
+static struct httpc* _httpc_new()
 {
-	close(hc->cont);
-	hc->cont = -1;
+	gint err;
+	uuid_t uuid;
+	gchar sid[37];
+	GString *buff = qev_buffer_get();
+	struct httpc *hc = g_slice_alloc0(sizeof(*hc));
 
-	close(hc->poll);
-	hc->poll = -1;
+	uuid_generate_random(uuid);
+	uuid_unparse(uuid, sid);
 
-	hc->is_polling = FALSE;
+	hc->polling = test_socket();
+	hc->waiting = test_socket();
+	hc->aq = g_async_queue_new();
+	hc->sid = g_strdup(sid);
+	hc->th_run = TRUE;
+	g_mutex_init(&hc->lock);
+
+	g_string_printf(buff, INIT_HEADERS, hc->sid);
+	err = send(hc->polling, buff->str, buff->len, 0);
+	ck_assert_int_eq(err, buff->len);
+
+	hc->th = g_thread_new("httpc", _httpc_thread, hc);
+
+	qev_buffer_put(buff);
+
+	return hc;
 }
 
-static void _httpc_init(struct httpc *hc)
+static void _httpc_free(struct httpc *hc)
 {
-	_httpc_close(hc);
-	hc->cont = test_socket();
-	hc->poll = test_socket();
-	hc->is_polling = FALSE;
+	hc->th_run = FALSE;
+	g_thread_join(hc->th);
+	hc->th = NULL;
+
+	close(hc->polling);
+	hc->polling = -1;
+
+	close(hc->waiting);
+	hc->waiting = -1;
+
+	if (g_async_queue_length(hc->aq) != 0) {
+		guint i;
+		guint len = g_async_queue_length(hc->aq);
+		GString *buff = qev_buffer_get();
+
+		for (i = 0; i < len; i++) {
+			gchar *msg = g_async_queue_pop(hc->aq);
+			g_string_append_printf(buff, "\t* %s\n", msg);
+		}
+
+		CRITICAL("Async Queue was not emptied; %u messages remain:\n%s",
+			len, buff->str);
+
+		qev_buffer_put(buff);
+
+		ck_abort();
+	}
+
+	g_async_queue_unref(hc->aq);
+	hc->aq = NULL;
+
+	g_free(hc->sid);
+	hc->sid = NULL;
+
+	g_mutex_clear(&hc->lock);
+
+	g_slice_free1(sizeof(*hc), hc);
 }
 
 static void _setup()
 {
 	test_setup();
-	_httpc_init(&_hc);
+	_hc = _httpc_new();
 }
 
 static void _teardown()
 {
-	_httpc_close(&_hc);
+	_httpc_free(_hc);
+	_hc = NULL;
+
 	test_teardown();
 }
 
-static void _poll(struct httpc *hc)
+static void _drain(struct httpc *hc, qev_fd_t sock)
 {
-	gint err;
+	GString *buff = qev_buffer_get();
 
-	if (!hc->is_polling) {
-		err = send(hc->poll, POLL_HEADERS, strlen(POLL_HEADERS), 0);
-		ck_assert_uint_eq(err, strlen(POLL_HEADERS));
-	}
-}
-
-static void _drain(qev_fd_t sock, GString *into)
-{
-	gint err;
-
-	qev_buffer_ensure(into, 2048);
+	qev_buffer_ensure(buff, buff->len + 2048);
 
 	while (TRUE) {
-		gssize to_read = into->allocated_len - into->len;
-		err = recv(sock, into->str + into->len, to_read, 0);
+		gssize to_read = buff->allocated_len - buff->len;
+		gint err = recv(sock, buff->str + buff->len, to_read, 0);
 
 		if (err > 0) {
-			g_string_set_size(into, into->len + err);
+			g_string_set_size(buff, buff->len + err);
 		}
 
 		if (err != to_read) {
-			return;
+			break;
 		}
 	}
-}
 
-static void _send(struct httpc *hc, gchar *msg, const gchar *code)
-{
-	gint err;
-	GString *buff = qev_buffer_get();
-	GString *resp = qev_buffer_get();
+	while (buff->len > 0) {
+		gchar *cl;
+		gchar *body;
+		guint64 head_len;
+		guint64 body_len;
+		struct protocol_headers headers;
 
-	g_string_printf(buff, CONT_HEADERS, strlen(msg), msg);
+		body = strstr(buff->str, "\r\n\r\n");
+		ASSERT(body != NULL, "No body found in response: %s", buff->str);
+		body[3] = '\0';
+		body += 4;
 
-	err = send(hc->cont, buff->str, buff->len, 0);
-	ck_assert_int_eq(err, buff->len);
+		head_len = strlen(buff->str) + 1;
 
-	qev_buffer_clear(buff);
-	_drain(hc->cont, buff);
+		protocol_util_headers(buff->str, &headers);
+		cl = protocol_util_headers_get(&headers, "Content-Length");
+		body_len = g_ascii_strtoull(cl, NULL, 10);
 
-	g_string_printf(resp, "HTTP/1.1 %s", code);
-	ck_assert(g_str_has_prefix(buff->str, resp->str));
+		ASSERT(buff->len >= (head_len + body_len),
+			"Incomplete read from server: exepected at least %lu, got %lu",
+			head_len + body_len, buff->len);
+
+		ASSERT(strstr(buff->str, "200 OK") != NULL,
+			"Didn't get 200, got: %s", buff->str);
+
+		if (body_len > 0) {
+			gchar replacement = body[body_len];
+			body[body_len] = '\0';
+
+			gchar **msgs = g_strsplit(body, "\n", -1);
+			gchar **tmp = msgs;
+
+			while (*tmp != NULL) {
+				if (strlen(*tmp) > 0) {
+					g_async_queue_push(hc->aq, *tmp);
+				} else {
+					g_free(*tmp);
+				}
+				tmp++;
+			}
+
+			g_free(msgs);
+
+			body[body_len] = replacement;
+		}
+
+		g_string_erase(buff, 0, head_len + body_len);
+	}
 
 	qev_buffer_put(buff);
-	qev_buffer_put(resp);
 }
 
-static void _recv(struct httpc *hc, gchar *msg)
+static void _send(struct httpc *hc, const gchar *msg)
 {
-	gsize len;
-	gchar *cl;
-	gchar *body;
-	struct protocol_headers headers;
+	gint err;
+	qev_fd_t tmp;
 	GString *buff = qev_buffer_get();
 
-	_poll(hc);
-	_drain(hc->poll, buff);
+	g_mutex_lock(&hc->lock);
 
-	body = strstr(buff->str, "\r\n\r\n");
-	ck_assert(body != NULL);
-	body[3] = '\0';
-	body += 4;
+	msg = msg ? : "";
+	g_string_printf(buff, MSG_HEADERS, hc->sid, strlen(msg), msg);
 
-	protocol_util_headers(buff->str, &headers);
-	cl = protocol_util_headers_get(&headers, "Content-Length");
-	len = g_ascii_strtoull(cl, NULL, 10);
+	err = send(hc->waiting, buff->str, buff->len, 0);
+	ck_assert_int_eq(err, buff->len);
 
-	ck_assert_uint_eq(strlen(msg), len);
-	ck_assert_str_eq(body, msg);
+	tmp = hc->waiting;
+	hc->waiting = hc->polling;
+	hc->polling = tmp;
+
+	g_mutex_unlock(&hc->lock);
+
+	qev_buffer_put(buff);
+}
+
+static void* _httpc_thread(void *hc_)
+{
+	guint i;
+	struct httpc *hc = hc_;
+
+	while (hc->th_run) {
+		struct pollfd p[] = {
+			{	.fd = hc->polling,
+				.events = POLLIN,
+			},
+			{	.fd = hc->waiting,
+				.events = POLLIN,
+			},
+		};
+
+		poll(p, G_N_ELEMENTS(p), 1);
+		for (i = 0; i < G_N_ELEMENTS(p); i++) {
+			if (p[i].revents == 0) {
+				continue;
+			}
+
+			_drain(hc, p[i].fd);
+		}
+	}
+
+	return NULL;
+}
+
+static gchar* _next_msg(struct httpc *hc)
+{
+	return g_async_queue_pop(hc->aq);
+}
+
+static void _next(struct httpc *hc, const gchar *msg)
+{
+	gchar *next = _next_msg(hc);
+	ck_assert_str_eq(msg, next);
+	g_free(next);
 }
 
 START_TEST(test_http_sane)
 {
-	_send_hc("/qio/on:1=\"/test\"\n", "200");
-	_recv_hc("/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}\n");
-
+	_send(_hc, "/qio/on:1=\"/test\"\n");
+	_next(_hc, "/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
 }
 END_TEST
 
@@ -187,8 +321,12 @@ int main()
 
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
+	tcase_set_timeout(tcase, 10);
 	tcase_add_checked_fixture(tcase, _setup, _teardown);
 	tcase_add_test(tcase, test_http_sane);
+
+	// @todo implement HTTP/1.0 support
+	// tcase_add_test(tcase, test_http_10);
 
 	return test_do(sr);
 }

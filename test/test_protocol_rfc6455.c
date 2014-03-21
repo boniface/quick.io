@@ -23,9 +23,8 @@
 	"Connection: Upgrade\r\n" \
 	"Access-Control-Allow-Origin: *\r\n" \
 	"Sec-WebSocket-Protocol: quickio\r\n" \
-	"Cache-Control: no-cache, no-store, must-revalidate\r\n" \
-	"Pragma: no-cache\r\n" \
-	"Expires: 0\r\n" \
+	"Cache-Control: private, max-age=0\r\n" \
+	"Expires: -1\r\n" \
 	"Sec-WebSocket-Accept: Nf+/kB4wxkn+6EPeanngB3VZNwU=\r\n\r\n"
 
 #define QIO_HANDSHAKE "\x81\x89""abcd""N""\x13""\n""\x0b""N""\r""\x0b""\x05""\x08"
@@ -162,11 +161,11 @@ START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 
 	ck_assert_str_eq(buff,
 		"HTTP/1.1 426 Upgrade Required\r\n"
-		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
-		"Pragma: no-cache\r\n"
-		"Expires: 0\r\n"
+		"Cache-Control: private, max-age=0\r\n"
+		"Expires: -1\r\n"
 		"Connection: Keep-Alive\r\n"
-		"Keep-Alive: timeout=60\r\n\r\n");
+		"Keep-Alive: timeout=60\r\n"
+		"Content-Length: 0\r\n\r\n");
 
 	close(ts);
 }
