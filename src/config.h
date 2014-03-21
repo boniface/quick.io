@@ -67,6 +67,11 @@ guint64 cfg_heartbeat_threads;
 guint64 cfg_heartbeat_interval;
 
 /**
+ * The hostname of this server on the internet
+ */
+gchar *cfg_public_address;
+
+/**
  * If the server should run app tests and exit.
  */
 gboolean cfg_run_app_tests;

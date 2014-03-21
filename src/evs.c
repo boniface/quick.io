@@ -601,24 +601,19 @@ void evs_broadcast_tick()
 	qev_buffer_put(path);
 }
 
-/*
- * There are two init calls here because events
- * need to persist for the life of the server. If events aren't the
- * _LAST_ things torn down, QEV might close clients after events have
- * been freed, thus causing invalid accesses to freed events.
- */
-void evs_init()
+void evs_pre_init()
 {
 	_broadcasts = g_async_queue_new_full(_broadcast_free);
 	qev_cleanup_and_null((void**)&_broadcasts,
 						(qev_free_fn)g_async_queue_unref);
 
 	evs_query_init();
-	evs_qio_init();
 }
 
-void evs_stats_init()
+void evs_init()
 {
+	evs_qio_init();
+
 	_stat_evs_sent = qev_stats_counter("evs", "sent", TRUE);
 	_stat_evs_callbacks_sent = qev_stats_counter("evs", "callbacks_sent", TRUE);
 	_stat_evs_received = qev_stats_counter("evs", "received", TRUE);

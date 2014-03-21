@@ -39,7 +39,8 @@
 
 #define INIT_HEADERS \
 	"POST /?sid=%s&connect=true HTTP/1.1\r\n" \
-	"Content-Length: 0\r\n\r\n"
+	"Content-Length: 21\r\n\r\n" \
+	"/qio/hostname:1=null\n"
 
 #define MSG_HEADERS \
 	"POST /?sid=%s HTTP/1.1\r\n" \
@@ -84,8 +85,7 @@ struct httpc {
 };
 
 static void* _httpc_thread(void *hc);
-
-static struct httpc *_hc = NULL;
+static void _next(struct httpc *hc, const gchar *msg);
 
 static struct httpc* _httpc_new()
 {
@@ -105,13 +105,15 @@ static struct httpc* _httpc_new()
 	hc->th_run = TRUE;
 	g_mutex_init(&hc->lock);
 
+	hc->th = g_thread_new("httpc", _httpc_thread, hc);
+
 	g_string_printf(buff, INIT_HEADERS, hc->sid);
 	err = send(hc->polling, buff->str, buff->len, 0);
 	ck_assert_int_eq(err, buff->len);
 
-	hc->th = g_thread_new("httpc", _httpc_thread, hc);
-
 	qev_buffer_put(buff);
+
+	_next(hc, "/qio/callback/1:0={\"code\":200,\"data\":\"localhost\"}");
 
 	return hc;
 }
@@ -155,20 +157,6 @@ static void _httpc_free(struct httpc *hc)
 	g_mutex_clear(&hc->lock);
 
 	g_slice_free1(sizeof(*hc), hc);
-}
-
-static void _setup()
-{
-	test_setup();
-	_hc = _httpc_new();
-}
-
-static void _teardown()
-{
-	_httpc_free(_hc);
-	_hc = NULL;
-
-	test_teardown();
 }
 
 static void _drain(struct httpc *hc, qev_fd_t sock)
@@ -250,7 +238,6 @@ static void _send(struct httpc *hc, const gchar *msg)
 
 	g_mutex_lock(&hc->lock);
 
-	msg = msg ? : "";
 	g_string_printf(buff, MSG_HEADERS, hc->sid, strlen(msg), msg);
 
 	err = send(hc->waiting, buff->str, buff->len, 0);
@@ -307,8 +294,27 @@ static void _next(struct httpc *hc, const gchar *msg)
 
 START_TEST(test_http_sane)
 {
-	_send(_hc, "/qio/on:1=\"/test\"\n");
-	_next(_hc, "/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+	struct httpc *_hc = _httpc_new();
+
+	_send(_hc, "/qio/on:1=\"/test/good\"\n");
+	_next(_hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+	_send(_hc, "/qio/off:2=\"/test/good\"");
+	_next(_hc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	_httpc_free(_hc);
+}
+END_TEST
+
+START_TEST(test_replace_poller)
+{
+	struct httpc *_hc = _httpc_new();
+
+	_send(_hc, "/qio/ping:0=null");
+	_send(_hc, "/qio/ping:0=null");
+	_send(_hc, "/qio/ping:0=null");
+	_send(_hc, "/qio/ping:0=null");
+
+	_httpc_free(_hc);
 }
 END_TEST
 
@@ -322,8 +328,9 @@ int main()
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
 	tcase_set_timeout(tcase, 10);
-	tcase_add_checked_fixture(tcase, _setup, _teardown);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_http_sane);
+	tcase_add_test(tcase, test_replace_poller);
 
 	// @todo implement HTTP/1.0 support
 	// tcase_add_test(tcase, test_http_10);

@@ -167,17 +167,22 @@ static struct client* _get_surrogate(gchar *url)
 	struct client_table *tbl;
 	guint which;
 	gchar *sid = strstr(url, "sid=");
+	GString *buff = qev_buffer_get();
+
+	g_string_assign(buff, url);
 
 	// @todo test case for /connect=true/?sid= <- even worth caring about?
 	gboolean new_client = strstr(url, "connect=true") != NULL;
 
 	if (sid == NULL) {
+		INFO("Failed to find sid: %s", url);
 		return NULL;
 	}
 
 	sid += 4;
 	strtok(sid, " &");
 	if (uuid_parse(sid, uuid.u) != 0) {
+		INFO("Failed to parse sid: %s", sid);
 		return NULL;
 	}
 
@@ -201,6 +206,13 @@ static struct client* _get_surrogate(gchar *url)
 
 		qev_lock_write_unlock(&tbl->lock);
 	}
+
+	INFO("Url: %s (which=%u)", buff->str, which);
+	if (surrogate == NULL) {
+		FATAL("Got NULL surrogate");
+	}
+
+	qev_buffer_put(buff);
 
 	return surrogate;
 }
@@ -276,6 +288,7 @@ static void _handle_body(struct client *client, gchar *start)
 		 * everything (since there's nothing to be done with it), and send
 		 * back an error.
 		 */
+		FATAL("SENDING 403");
 		_send(client, STATUS_403, NULL);
 	} else {
 		GString *msgs;
@@ -556,6 +569,7 @@ void protocol_http_close(struct client *client, guint reason)
 		// During shutdown, the hash tables are freed before clients; it's
 		// not a big deal as no important references are maintained in them
 		if (tbl->tbl != NULL) {
+			INFO("Removing surrogate");
 			g_hash_table_remove(tbl->tbl, &client->http.sid);
 		}
 

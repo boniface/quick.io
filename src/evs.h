@@ -697,9 +697,9 @@ void evs_broadcast_tick();
  * _LAST_ things torn down, QEV might close clients after events have
  * been freed, thus causing invalid accesses to freed events.
  */
-void evs_init();
+void evs_pre_init();
 
 /**
  * Initialize the stats in events
  */
-void evs_stats_init();
+void evs_init();

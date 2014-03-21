@@ -8,6 +8,8 @@
 
 #include "quickio.h"
 
+static gchar *_json_hostname = NULL;
+
 static enum evs_status _callback(
 	struct client *client,
 	const gchar *ev_extra,
@@ -27,6 +29,16 @@ static enum evs_status _callback(
 	}
 
 	return client_cb_fire(client, server_cb, client_cb, json);
+}
+
+static enum evs_status _hostname(
+	struct client *client,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb,
+	gchar *json G_GNUC_UNUSED)
+{
+	evs_cb(client, client_cb, _json_hostname);
+	return EVS_STATUS_HANDLED;
 }
 
 static enum evs_status _on(
@@ -99,7 +111,18 @@ static enum evs_status _ping(
 
 void evs_qio_init()
 {
+	if (cfg_public_address != NULL) {
+		GString *buff = qev_buffer_get();
+
+		ASSERT(qev_json_pack(buff, "%s", cfg_public_address) == QEV_JSON_OK,
+			"Failed to create JSON for public address.");
+		_json_hostname = g_strdup(buff->str);
+
+		qev_buffer_put(buff);
+	}
+
 	evs_add_handler("/qio", "/callback", _callback, evs_no_on, NULL, TRUE);
+	evs_add_handler("/qio", "/hostname", _hostname, evs_no_on, NULL, FALSE);
 	evs_add_handler("/qio", "/off", _off, evs_no_on, NULL, FALSE);
 	evs_add_handler("/qio", "/on", _on, evs_no_on, NULL, FALSE);
 	evs_add_handler("/qio", "/ping", _ping, evs_no_on, NULL, FALSE);

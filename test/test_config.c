@@ -28,6 +28,10 @@
 	"[quick.io]\n" \
 	"clients-subs-fairness = 4294967295\n"
 
+#define PUBLIC_ADDRESS \
+	"[quick.io]\n" \
+	"public-address = http://what is this?\n"
+
 static void _do(const gchar *cfg)
 {
 	gboolean die = FALSE;
@@ -87,6 +91,16 @@ START_TEST(test_config_invalid_client_subs_fairness)
 }
 END_TEST
 
+START_TEST(test_config_invalid_public_address)
+{
+	// Don't make this depend on the network
+	qev_mock_add("_validate_public_address", "getaddrinfo", EAI_NONAME, NULL, EINVAL);
+
+	_do(PUBLIC_ADDRESS);
+	ck_assert_ptr_eq(cfg_public_address, NULL);
+}
+END_TEST
+
 START_TEST(test_config_coverage_support_flash)
 {
 	gchar *args[] = {"test"};
@@ -110,6 +124,7 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 	tcase_add_test(tcase, test_config_invalid_client_subs_fairness);
+	tcase_add_test(tcase, test_config_invalid_public_address);
 
 	tcase = tcase_create("Coverage");
 	suite_add_tcase(s, tcase);

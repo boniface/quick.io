@@ -29,6 +29,7 @@
 	"tcp-nodelay = true\n" \
 	"timeout = %d\n" \
 	"[quick.io]\n" \
+	"public-address = localhost\n" \
 	"bind-address = localhost\n" \
 	"bind-port = %d\n" \
 	"bind-address-ssl = localhost\n" \
@@ -156,6 +157,7 @@ void test_setup_with_config(gchar *config)
 
 void test_teardown()
 {
+	qev_mock_done();
 	qev_exit();
 }
 

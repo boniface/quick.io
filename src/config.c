@@ -32,6 +32,28 @@ static void _validate_heartbeat_interval(
 	}
 }
 
+static void _validate_public_address(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
+{
+	gint err;
+	struct addrinfo *res = NULL;
+
+	if (val->str == NULL) {
+		return;
+	}
+
+	err = QEV_MOCK(gint, getaddrinfo, val->str, NULL, NULL, &res);
+	if (err != 0 || res == NULL) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Could not resolve public address %s: %s",
+					val->str, gai_strerror(err));
+	}
+
+	freeaddrinfo(res);
+}
+
 static void _validate_sub_min_size(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
@@ -144,6 +166,15 @@ static struct qev_cfg _cfg[] = {
 		.val.ui64 = &cfg_heartbeat_interval,
 		.defval.ui64 = 10,
 		.validate = _validate_heartbeat_interval,
+		.cb = NULL,
+		.read_only = TRUE,
+	},
+	{	.name = "public-address",
+		.description = "Where the server lives on the internet.",
+		.type = QEV_CFG_STR,
+		.val.str = &cfg_public_address,
+		.defval.str = NULL,
+		.validate = _validate_public_address,
 		.cb = NULL,
 		.read_only = TRUE,
 	},

@@ -210,6 +210,7 @@ static gboolean _app_init()
 									NULL, NULL, NULL,
 									NULL, NULL, NULL);
 
+	_is_running = TRUE;
 	_aq = g_async_queue_new();
 	_th = g_thread_new("test_app_sane", _run, NULL);
 
