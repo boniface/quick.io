@@ -267,7 +267,7 @@ static void* _httpc_thread(void *hc_)
 			_drain(hc, fds[i]);
 		}
 
-		g_usleep(QEV_MS_TO_USEC(1));
+		g_usleep(100);
 	}
 
 	return NULL;

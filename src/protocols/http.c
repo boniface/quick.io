@@ -226,6 +226,10 @@ static void _surr_release_client(
  *     The client to get a message. Not a surrogate.
  * @param resp
  *     The full HTTP response to send
+ *
+ * @return
+ *     If the response was successfully sent. Might fail if another thread
+ *     already sent a response out on this client.
  */
 static gboolean _send_response(struct client *client, GString *resp)
 {
@@ -273,6 +277,7 @@ static gboolean _send_error(struct client *client, enum status status) {
 static void _surr_replace(struct client *surrogate, struct client *new_poller)
 {
 	struct client *old_poller;
+
 	qev_lock(surrogate);
 
 	old_poller = surrogate->http.client;
@@ -293,12 +298,7 @@ static void _surr_send(
 {
 	gboolean sent = FALSE;
 	GString *resp = _build_response(STATUS_200, msgs);
-	struct client *poller = _steal_client(surrogate);
-
-	if (poller == new_poller) {
-		INFO("in_request=%d", poller->http.flags.in_request);
-		FATAL("Client already set on surrogate.");
-	}
+	struct client *poller =  _steal_client(surrogate);
 
 	if (poller != NULL) {
 		sent = _send_response(poller, resp);
@@ -308,6 +308,7 @@ static void _surr_send(
 	if (sent) {
 		_surr_replace(surrogate, new_poller);
 	} else {
+		// @todo remove ASSERT after all testing is complete -- maybe just turn it into a critical that closes surrogate and client and logs it?
 		ASSERT(_send_response(new_poller, resp),
 			"Failed to send response on new_poller");
 	}
@@ -335,15 +336,18 @@ static void _surr_route(
 		protocol_raw_handle(surrogate, msg);
 	}
 
+	qev_lock(surrogate);
+
 	surrogate->http.flags.incoming = FALSE;
 
 	msgs = qev_surrogate_flush(surrogate);
-
 	if (msgs == NULL) {
 		_surr_replace(surrogate, from);
 	} else {
 		_surr_send(surrogate, from, msgs);
 	}
+
+	qev_unlock(surrogate);
 
 	qev_buffer_put(msgs);
 }
@@ -416,6 +420,11 @@ static void _do_body(struct client *client, gchar *start)
 	} else if (!client->http.flags.is_post) {
 		_send_error(client, STATUS_405);
 	} else {
+		/*
+		 * Safe to access without a lock: at this point, only this thread
+		 * will have a reference to the client, so it's safe to go and molest
+		 * the surrogate.
+		 */
 		struct client *surrogate = client->http.client;
 
 		if (surrogate == NULL) {
@@ -666,6 +675,8 @@ void protocol_http_send(
 {
 	gboolean sent = FALSE;
 
+	qev_lock(surrogate);
+
 	if (!surrogate->http.flags.incoming) {
 		struct client *client = _steal_client(surrogate);
 		sent = _send_response(client, pframes->def);
@@ -675,6 +686,8 @@ void protocol_http_send(
 	if (!sent) {
 		qev_write(surrogate, pframes->raw->str, pframes->raw->len);
 	}
+
+	qev_unlock(surrogate);
 }
 
 void protocol_http_close(struct client *client, guint reason)
