@@ -9,10 +9,10 @@
 #include "quickio.h"
 
 /**
- * Determines if the client has completed his handshake with a supported
- * protocol.
+ * For protocols that poll, the maximum amount of time a socket may
+ * be left idle
  */
-#define HANDSHAKED 0x8000
+#define HEARTBEAT_POLL QEV_SEC_TO_USEC(55)
 
 /**
  * Standard heartbeat interval for QIO + 1 seconds. There's a race condition
@@ -90,7 +90,7 @@ static gboolean _find_handler(struct client *client)
 
 		switch (handles) {
 			case PROT_YES:
-				client->protocol = _protocols + i;
+				client->protocol.prot = _protocols + i;
 				return TRUE;
 
 			case PROT_MAYBE:
@@ -113,8 +113,8 @@ static void _send(struct client *client, const struct protocol_frames *pframes)
 {
 	client->last_send = qev_monotonic;
 
-	if (client->protocol->send) {
-		client->protocol->send(client, pframes);
+	if (client->protocol.prot->send) {
+		client->protocol.prot->send(client, pframes);
 	} else if (pframes->def != NULL) {
 		qev_write(client, pframes->def->str, pframes->def->len);
 	}
@@ -123,13 +123,13 @@ static void _send(struct client *client, const struct protocol_frames *pframes)
 static void _set_handshaked(struct client *client)
 {
 	client->last_send = qev_monotonic;
-	client->protocol_flags |= HANDSHAKED;
+	client->protocol.handshaked = TRUE;
 	qev_timeout_clear(&client->timeout);
 }
 
 static void _handshake(struct client *client)
 {
-	enum protocol_status status = client->protocol->handshake(client);
+	enum protocol_status status = client->protocol.prot->handshake(client);
 
 	switch (status) {
 		case PROT_OK:
@@ -152,8 +152,8 @@ static void _route(struct client *client)
 	GString *rbuff = client->qev_client.rbuff;
 
 	do {
-		if (client->protocol->route != NULL) {
-			status = client->protocol->route(client, &used);
+		if (client->protocol.prot->route != NULL) {
+			status = client->protocol.prot->route(client, &used);
 		}
 
 		switch (status) {
@@ -188,10 +188,10 @@ static void _heartbeat_cb(struct client *client, void *hb_)
 {
 	struct protocol_heartbeat *hb = hb_;
 
-	if (protocols_client_handshaked(client) &&
-		client->protocol->heartbeat != NULL) {
+	if (client->protocol.handshaked &&
+		client->protocol.prot->heartbeat != NULL) {
 
-		client->protocol->heartbeat(client, hb);
+		client->protocol.prot->heartbeat(client, hb);
 	}
 }
 
@@ -199,7 +199,7 @@ struct client* protocols_new_surrogate(struct protocol *prot)
 {
 	struct client *client = qev_surrogate_new();
 
-	client->protocol = prot;
+	client->protocol.prot = prot;
 	_set_handshaked(client);
 
 	return client;
@@ -209,12 +209,12 @@ void protocols_route(struct client *client)
 {
 	client->last_recv = qev_monotonic;
 
-	if (client->protocol == NULL && !_find_handler(client)) {
+	if (client->protocol.prot == NULL && !_find_handler(client)) {
 		return;
 	}
 
-	if (!protocols_client_handshaked(client)) {
-		if (client->protocol->handshake == NULL) {
+	if (!client->protocol.handshaked) {
+		if (client->protocol.prot->handshake == NULL) {
 			_set_handshaked(client);
 		} else {
 			_handshake(client);
@@ -232,10 +232,10 @@ void protocols_send(
 	const evs_cb_t server_cb,
 	const gchar *json)
 {
-	if (protocols_client_handshaked(client)) {
+	if (client->protocol.handshaked) {
 		ev_extra = ev_extra ? : "";
 
-		struct protocol_frames pframes = client->protocol->frame(
+		struct protocol_frames pframes = client->protocol.prot->frame(
 										ev_path, ev_extra, server_cb, json);
 		_send(client, &pframes);
 
@@ -246,8 +246,8 @@ void protocols_send(
 
 void protocols_closed(struct client *client, guint reason)
 {
-	if (client->protocol != NULL && client->protocol->close != NULL) {
-		client->protocol->close(client, reason);
+	if (client->protocol.prot != NULL && client->protocol.prot->close != NULL) {
+		client->protocol.prot->close(client, reason);
 	}
 
 	client->protocol_flags = 0;
@@ -272,8 +272,8 @@ void protocols_bcast_write(
 	struct client *client,
 	const struct protocol_frames *frames)
 {
-	const struct protocol_frames *pframes = frames + client->protocol->id;
-	if (protocols_client_handshaked(client)) {
+	const struct protocol_frames *pframes = frames + client->protocol.prot->id;
+	if (client->protocol.handshaked) {
 		_send(client, pframes);
 	}
 }
@@ -295,6 +295,8 @@ void protocols_heartbeat()
 	gint64 now = qev_monotonic;
 
 	struct protocol_heartbeat hb = {
+		.timeout = now - qev_cfg_get_timeout(),
+		.poll = now - HEARTBEAT_POLL,
 		.heartbeat = now - HEARTBEAT_INTERVAL +
 						QEV_SEC_TO_USEC(cfg_heartbeat_interval),
 		.challenge = now - HEARTBEAT_CHALLENGE_INTERVAL,
@@ -304,15 +306,10 @@ void protocols_heartbeat()
 	qev_foreach(_heartbeat_cb, cfg_heartbeat_threads, &hb);
 }
 
-gboolean protocols_client_handshaked(struct client *client)
-{
-	return client->protocol_flags & HANDSHAKED;
-}
-
 void protocols_switch(struct client *client, struct protocol *prot)
 {
-	client->protocol = prot;
-	client->protocol_flags = 0;
+	client->protocol.prot = prot;
+	memset(&client->protocol.flags, 0, sizeof(client->protocol.flags));
 }
 
 void protocols_init()

@@ -58,6 +58,19 @@ enum protocol_status {
  */
 struct protocol_heartbeat {
 	/**
+	 * If client->last_send is less than this, then the client can be
+	 * considered as timed out of the protocol chose to implement timeouts
+	 * using heartbeats instead of qev_timeout().
+	 */
+	gint64 timeout;
+
+	/**
+	 * If client->last_send is less than this, the poll should be completed
+	 * so that a new iteration can be started.
+	 */
+	gint64 poll;
+
+	/**
 	 * If client->last_send is less than this, needs a simple heartbeat sent.
 	 */
 	gint64 heartbeat;
@@ -239,11 +252,6 @@ void protocols_bcast_free(struct protocol_frames *frames);
  * Sends out heartbeats to everyone who needs them right now.
  */
 void protocols_heartbeat();
-
-/**
- * Determine if a client has completely finished his handshake.
- */
-gboolean protocols_client_handshaked(struct client *client);
 
 /**
  * Switch a client to a different protocol.

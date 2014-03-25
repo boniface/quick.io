@@ -38,35 +38,44 @@
  */
 #define HTTP_CONTENT_LENGTH "Content-Length"
 
-/**
- * What the client says its ID is
- */
-#define HTTP_CONN_ID "X-QIO-Conn-Id"
-
-#define STATUS_200 "200 OK"
-#define STATUS_400 "400 Bad Request"
-#define STATUS_403 "403 Forbidden"
-#define STATUS_405 "405 Method Not Allowed"
-#define STATUS_411 "411 Length Required"
-#define STATUS_413 "413 Request Entity Too Large"
-#define STATUS_426 "426 Upgrade Required"
-
 #define HTTP_RESPONSE \
-	"HTTP/1.1 %s\r\n" \
+	"HTTP/1.0 %s\r\n" \
 	HTTP_COMMON \
 	"Content-Length: "
 
 #define HTTP_HEADER_TERMINATOR "\r\n\r\n"
 #define HTTP_HEADER_TERMINATOR2 "\n\n"
 
+enum status {
+	STATUS_200,
+	STATUS_400,
+	STATUS_403,
+	STATUS_405,
+	STATUS_411,
+	STATUS_413,
+	STATUS_426,
+};
+
 struct client_table {
 	GHashTable *tbl;
 	qev_lock_t lock;
 };
 
+static gchar *_status_lines[] = {
+	"200 OK",
+	"400 Bad Request",
+	"403 Forbidden",
+	"405 Method Not Allowed",
+	"411 Length Required",
+	"413 Request Entity Too Large",
+	"426 Upgrade Required",
+};
+
 static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_http_missing_upgrade;
+
+static GString *_status_responses[G_N_ELEMENTS(_status_lines)];
 
 static struct client_table _clients[64];
 
@@ -157,70 +166,10 @@ static gchar* _find_header_end(gchar *head)
 	return NULL;
 }
 
-static struct client* _get_surrogate(gchar *url)
-{
-	union {
-		uuid_t u;
-		__uint128_t i;
-	} uuid;
-	struct client *surrogate;
-	struct client_table *tbl;
-	guint which;
-	gchar *sid = strstr(url, "sid=");
-	GString *buff = qev_buffer_get();
-
-	g_string_assign(buff, url);
-
-	// @todo test case for /connect=true/?sid= <- even worth caring about?
-	gboolean new_client = strstr(url, "connect=true") != NULL;
-
-	if (sid == NULL) {
-		INFO("Failed to find sid: %s", url);
-		return NULL;
-	}
-
-	sid += 4;
-	strtok(sid, " &");
-	if (uuid_parse(sid, uuid.u) != 0) {
-		INFO("Failed to parse sid: %s", sid);
-		return NULL;
-	}
-
-	which = uuid.i % G_N_ELEMENTS(_clients);
-	tbl = _clients + which;
-
-	qev_lock_read_lock(&tbl->lock);
-	surrogate = g_hash_table_lookup(tbl->tbl, &uuid.i);
-	qev_lock_read_unlock(&tbl->lock);
-
-	if (surrogate == NULL && new_client) {
-		qev_lock_write_lock(&tbl->lock);
-
-		surrogate = g_hash_table_lookup(tbl->tbl, &uuid.i);
-		if (surrogate == NULL) {
-			surrogate = protocols_new_surrogate(protocol_http);
-			surrogate->http.sid = uuid.i;
-			surrogate->http.tbl = which;
-			g_hash_table_insert(tbl->tbl, &surrogate->http.sid, surrogate);
-		}
-
-		qev_lock_write_unlock(&tbl->lock);
-	}
-
-	INFO("Url: %s (which=%u)", buff->str, which);
-	if (surrogate == NULL) {
-		FATAL("Got NULL surrogate");
-	}
-
-	qev_buffer_put(buff);
-
-	return surrogate;
-}
-
-static GString* _build_response(const gchar *status, const GString *body)
+static GString* _build_response(enum status status, const GString *body)
 {
 	GString *buff = qev_buffer_get();
-	g_string_printf(buff, HTTP_RESPONSE, status);
+	g_string_printf(buff, HTTP_RESPONSE, _status_lines[status]);
 
 	if (body == NULL || body->len == 0) {
 		qev_buffer_append_uint(buff, 0);
@@ -234,106 +183,255 @@ static GString* _build_response(const gchar *status, const GString *body)
 	return buff;
 }
 
-/**
- * Sends a full HTTP response to the client (not a surrogate).
- */
-static void _send_response(struct client *client, GString *resp)
+static struct client* _steal_client(struct client *c)
 {
+	struct client *ret;
+
+	qev_lock(c);
+	ret = c->http.client;
+	c->http.client = NULL;
+	qev_unlock(c);
+
+	return ret;
+}
+
+static void _surr_release_client(
+	struct client *surrogate,
+	struct client *client)
+{
+	gboolean unref = FALSE;
+
+	if (surrogate == NULL) {
+		return;
+	}
+
+	qev_lock(surrogate);
+
+	if (surrogate->http.client == client) {
+		unref = TRUE;
+		surrogate->http.client = NULL;
+	}
+
+	qev_unlock(surrogate);
+
+	if (unref) {
+		qev_unref(client);
+	}
+}
+
+/**
+ * Sends a full HTTP response to the client.
+ *
+ * @param client
+ *     The client to get a message. Not a surrogate.
+ * @param resp
+ *     The full HTTP response to send
+ */
+static gboolean _send_response(struct client *client, GString *resp)
+{
+	struct client *surrogate = NULL;
+	gboolean may_send = FALSE;
+
+	if (client == NULL) {
+		goto out;
+	}
+
 	qev_lock(client);
 
-	if (!client->http.flags.responded) {
-		client->http.flags.responded = TRUE;
+	surrogate = _steal_client(client);
 
-		resp->str[strlen("HTTP/1.")] = client->http.flags.http_11 ? '1' : '0';
+	if (client->http.flags.in_request) {
+		client->http.flags.in_request = FALSE;
+		may_send = TRUE;
+	}
+
+	qev_unlock(client);
+
+	_surr_release_client(surrogate, client);
+	qev_unref(surrogate);
+
+	if (may_send) {
 		qev_write(client, resp->str, resp->len);
+		client->last_send = qev_monotonic;
 
 		if (!client->http.flags.keep_alive) {
 			qev_close(client, HTTP_DONE);
 		}
-
-		client->http.client = NULL;
 	}
 
-	qev_unlock(client);
+out:
+	return may_send;
 }
 
 /**
- * A shortcut for sending a response to a client, not a surrogate
+ * Sends a pre-prepared HTTP response with length 0.
  */
-static void _send(
-	struct client *client,
-	const gchar *status,
-	const GString *body)
-{
-	if (client->http.flags.responded) {
-		return;
-	}
-
-	GString *buff = _build_response(status, body);
-	_send_response(client, buff);
-	qev_buffer_put(buff);
+static gboolean _send_error(struct client *client, enum status status) {
+	return _send_response(client, _status_responses[status]);
 }
 
-static void _handle_body(struct client *client, gchar *start)
+static void _surr_replace(struct client *surrogate, struct client *new_poller)
 {
+	struct client *old_poller;
+	qev_lock(surrogate);
+
+	old_poller = surrogate->http.client;
+	surrogate->http.client = qev_ref(new_poller);
+
+	qev_unlock(surrogate);
+
+	if (old_poller != NULL) {
+		_send_error(old_poller, STATUS_200);
+		qev_unref(old_poller);
+	}
+}
+
+static void _surr_send(
+	struct client *surrogate,
+	struct client *new_poller,
+	const GString *msgs)
+{
+	gboolean sent = FALSE;
+	GString *resp = _build_response(STATUS_200, msgs);
+	struct client *poller = _steal_client(surrogate);
+
+	if (poller == new_poller) {
+		INFO("in_request=%d", poller->http.flags.in_request);
+		FATAL("Client already set on surrogate.");
+	}
+
+	if (poller != NULL) {
+		sent = _send_response(poller, resp);
+		qev_unref(poller);
+	}
+
+	if (sent) {
+		_surr_replace(surrogate, new_poller);
+	} else {
+		ASSERT(_send_response(new_poller, resp),
+			"Failed to send response on new_poller");
+	}
+
+	qev_buffer_put(resp);
+}
+
+static void _surr_route(
+	struct client *surrogate,
+	struct client *from,
+	gchar *body)
+{
+	GString *msgs;
 	gchar *saveptr = NULL;
+
+	surrogate->http.flags.incoming = TRUE;
+
+	while (TRUE) {
+		gchar *msg = strtok_r(body, "\n", &saveptr);
+		body = NULL;
+		if (msg == NULL) {
+			break;
+		}
+
+		protocol_raw_handle(surrogate, msg);
+	}
+
+	surrogate->http.flags.incoming = FALSE;
+
+	msgs = qev_surrogate_flush(surrogate);
+
+	if (msgs == NULL) {
+		_surr_replace(surrogate, from);
+	} else {
+		_surr_send(surrogate, from, msgs);
+	}
+
+	qev_buffer_put(msgs);
+}
+
+static struct client* _surr_find(
+	const __uint128_t sid,
+	const gboolean or_create)
+{
+	struct client *surrogate;
+	guint which = sid % G_N_ELEMENTS(_clients);
+	struct client_table *tbl = _clients + which;
+
+	qev_lock_read_lock(&tbl->lock);
+	surrogate = g_hash_table_lookup(tbl->tbl, &sid);
+	qev_lock_read_unlock(&tbl->lock);
+
+	if (surrogate == NULL && or_create) {
+		qev_lock_write_lock(&tbl->lock);
+
+		surrogate = g_hash_table_lookup(tbl->tbl, &sid);
+		if (surrogate == NULL) {
+			surrogate = protocols_new_surrogate(protocol_http);
+			surrogate->last_send = qev_monotonic;
+			surrogate->http.sid = sid;
+			surrogate->http.tbl = which;
+			g_hash_table_insert(tbl->tbl, &surrogate->http.sid, surrogate);
+		}
+
+		qev_lock_write_unlock(&tbl->lock);
+	}
+
+	if (surrogate != NULL) {
+		qev_ref(surrogate);
+	}
+
+	return surrogate;
+}
+
+static struct client* _get_surrogate(gchar *url)
+{
+	union {
+		uuid_t u;
+		__uint128_t i;
+	} uuid;
+	gboolean new_client;
+	gchar *sid = strstr(url, "sid=");
+
+	// @todo test case for /connect=true/?sid= <- even worth caring about?
+
+	if (sid == NULL) {
+		return NULL;
+	}
+
+	new_client = strstr(url, "connect=true") != NULL;
+	sid += 4;
+	strtok(sid, " &");
+
+	if (uuid_parse(sid, uuid.u) != 0) {
+		return NULL;
+	}
+
+	return _surr_find(uuid.i, new_client);
+}
+
+static void _do_body(struct client *client, gchar *start)
+{
 
 	if (client->http.flags.iframe_requested) {
 
 	} else if (!client->http.flags.is_post) {
-		_send(client, STATUS_405, NULL);
-	} else if (client->http.client == NULL) {
-		/*
-		 * No surrogate was found, and the body has arrived, so just ignore
-		 * everything (since there's nothing to be done with it), and send
-		 * back an error.
-		 */
-		FATAL("SENDING 403");
-		_send(client, STATUS_403, NULL);
+		_send_error(client, STATUS_405);
 	} else {
-		GString *msgs;
 		struct client *surrogate = client->http.client;
 
-		surrogate->http.flags.incoming = TRUE;
-
-		while (TRUE) {
-			gchar *msg = strtok_r(start, "\n", &saveptr);
-			start = NULL;
-			if (msg == NULL) {
-				break;
-			}
-
-			protocol_raw_handle(surrogate, msg);
-		}
-
-		qev_lock(surrogate);
-
-		surrogate->http.flags.incoming = FALSE;
-
-		msgs = qev_surrogate_flush(surrogate);
-
-		if (surrogate->http.client == NULL) {
-			// If nothing is ready, just let the client wait for messages
-			// rather than responding immediately, thus causing another poll
-			if (msgs == NULL) {
-				surrogate->http.client = client;
-			} else {
-				_send(client, STATUS_200, msgs);
-			}
+		if (surrogate == NULL) {
+			/*
+			 * No surrogate was found, and the body has arrived, so just ignore
+			 * everything (since there's nothing to be done with it), and send
+			 * back an error.
+			 */
+			_send_error(client, STATUS_403);
 		} else {
-			// Even if nothing is ready, this connection is replacing a previous
-			// one, so flush out whatever was gotten and set the new client
-			_send(surrogate->http.client, STATUS_200, msgs);
-			surrogate->http.client = client;
+			_surr_route(surrogate, client, start);
 		}
-
-		qev_unlock(surrogate);
-
-		qev_buffer_put(msgs);
 	}
 }
 
-static void _do_websocket_upgrade(
+static void _do_headers_websocket(
 	struct client *client,
 	const struct protocol_headers *headers,
 	const gchar *connection,
@@ -348,19 +446,19 @@ static void _do_websocket_upgrade(
 		strcasestr(connection, "Upgrade") == NULL) {
 
 		qev_stats_counter_inc(_stat_handshakes_http_missing_upgrade);
-		_send(client, STATUS_426, 0);
+		_send_error(client, STATUS_426);
 	} else if (key == NULL ||
 		g_strcmp0(protocol, "quickio") != 0 ||
 		g_strcmp0(version, "13") != 0) {
 
 		qev_stats_counter_inc(_stat_handshakes_http_invalid);
-		_send(client, STATUS_400, 0);
+		_send_error(client, STATUS_400);
 	} else {
 		protocol_rfc6455_upgrade(client, key);
 	}
 }
 
-static enum protocol_status _do_http(
+static enum protocol_status _do_headers_http(
 	struct client *client,
 	const struct protocol_headers *headers,
 	gchar *head_start)
@@ -390,7 +488,6 @@ static enum protocol_status _do_http(
 	client->http.body_len = body_len;
 	client->http.flags.is_post = is_post;
 	client->http.flags.iframe_requested = g_str_has_prefix(url, "/iframe");
-	client->http.flags.responded = FALSE;
 
 	return PROT_OK;
 
@@ -415,6 +512,10 @@ void protocol_http_init()
 
 	for (i = 0; i < G_N_ELEMENTS(_clients); i++) {
 		_clients[i].tbl = g_hash_table_new(_uint128_hash, _uint128_equal);
+	}
+
+	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
+		_status_responses[i] = _build_response(i, NULL);
 	}
 
 	qev_cleanup_fn(_cleanup);
@@ -449,7 +550,6 @@ enum protocol_handles protocol_http_handles(struct client *client)
 
 enum protocol_status protocol_http_route(struct client *client, gsize *used)
 {
-	struct protocol_headers headers;
 	enum protocol_status status = PROT_OK;
 	GString *rbuff = client->qev_client.rbuff;
 
@@ -458,6 +558,7 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 		gchar *connection;
 		gboolean is_http_11;
 		gboolean keep_alive;
+		struct protocol_headers headers;
 		gchar *head_start = rbuff->str + *used;
 		gchar *body_start = NULL;
 
@@ -466,13 +567,15 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 			return PROT_AGAIN;
 		}
 
+		_send_error(client, STATUS_200);
+
 		protocol_util_headers(head_start, &headers);
 		key = protocol_util_headers_get(&headers, HTTP_CHALLENGE_KEY);
 		connection = protocol_util_headers_get(&headers, HTTP_CONNECTION);
 
 		is_http_11 = strstr(head_start, "HTTP/1.1") != NULL;
-
 		keep_alive = is_http_11;
+
 		if (connection != NULL) {
 			if (is_http_11) {
 				keep_alive = strcasestr(connection, "close") == NULL;
@@ -481,20 +584,20 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 			}
 		}
 
-		client->http.flags.http_11 = is_http_11;
+		client->http.flags.in_request = TRUE;
 		client->http.flags.keep_alive = keep_alive;
 
 		if (key != NULL) {
-			_do_websocket_upgrade(client, &headers, connection, key);
+			_do_headers_websocket(client, &headers, connection, key);
 			*used = rbuff->len;
 			status = PROT_OK;
 		} else {
-			status = _do_http(client, &headers, head_start);
+			status = _do_headers_http(client, &headers, head_start);
 			*used += body_start - (rbuff->str + *used);
 		}
 	}
 
-	if (client->protocol == protocol_http && status == PROT_OK) {
+	if (client->protocol.prot == protocol_http && status == PROT_OK) {
 		if (rbuff->len < (client->http.body_len + *used)) {
 			status = PROT_AGAIN;
 		} else {
@@ -502,7 +605,7 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 			gchar replaced = start[client->http.body_len];
 
 			start[client->http.body_len] = '\0';
-			_handle_body(client, start);
+			_do_body(client, start);
 			start[client->http.body_len] = replaced;
 
 			*used += client->http.body_len;
@@ -514,10 +617,28 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 }
 
 void protocol_http_heartbeat(
-	struct client *client G_GNUC_UNUSED,
-	const struct protocol_heartbeat *hb G_GNUC_UNUSED)
+	struct client *client,
+	const struct protocol_heartbeat *hb)
 {
+	if (qev_is_surrogate(client)) {
+		struct client *surrogate = client;
 
+		if (surrogate->http.client == NULL &&
+			surrogate->last_send < hb->poll) {
+
+			qev_close(surrogate, RAW_HEARTATTACK);
+		}
+	} else {
+		if (client->http.client == NULL) {
+			if (client->last_send < hb->heartbeat) {
+				qev_close(client, RAW_HEARTATTACK);
+			}
+		} else {
+			if (client->last_send < hb->poll) {
+				_send_error(client, STATUS_200);
+			}
+		}
+	}
 }
 
 struct protocol_frames protocol_http_frame(
@@ -543,19 +664,17 @@ void protocol_http_send(
 	struct client *surrogate,
 	const struct protocol_frames *pframes)
 {
-	qev_lock(surrogate);
+	gboolean sent = FALSE;
 
-	// @todo remove this after testing
-	ASSERT(qev_is_surrogate(surrogate), "Sending message to client that isn't surrogate");
-
-	if (surrogate->http.flags.incoming || surrogate->http.client == NULL) {
-		qev_write(surrogate, pframes->raw->str, pframes->raw->len);
-	} else {
-		_send_response(surrogate->http.client, pframes->def);
-		surrogate->http.client = NULL;
+	if (!surrogate->http.flags.incoming) {
+		struct client *client = _steal_client(surrogate);
+		sent = _send_response(client, pframes->def);
+		qev_unref(client);
 	}
 
-	qev_unlock(surrogate);
+	if (!sent) {
+		qev_write(surrogate, pframes->raw->str, pframes->raw->len);
+	}
 }
 
 void protocol_http_close(struct client *client, guint reason)
@@ -569,37 +688,30 @@ void protocol_http_close(struct client *client, guint reason)
 		// During shutdown, the hash tables are freed before clients; it's
 		// not a big deal as no important references are maintained in them
 		if (tbl->tbl != NULL) {
-			INFO("Removing surrogate");
 			g_hash_table_remove(tbl->tbl, &client->http.sid);
 		}
 
-		client = surrogate->http.client;
-		if (client == NULL) {
-			return;
+		qev_lock_write_unlock(&tbl->lock);
+
+		_send_error(surrogate->http.client, STATUS_403);
+	} else {
+		struct client *surrogate = client->http.client;
+		if (surrogate != NULL) {
+			qev_close(surrogate, HTTP_DONE);
+		} else {
+			switch (reason) {
+				case HTTP_BAD_REQUEST:
+					_send_error(client, STATUS_400);
+					break;
+
+				case HTTP_LENGTH_REQUIRED:
+					_send_error(client, STATUS_411);
+					break;
+
+				case QEV_CLOSE_READ_HIGH:
+					_send_error(client, STATUS_413);
+					break;
+			}
 		}
-
-		reason = HTTP_NO_SURROGATE;
-	}
-
-	switch (reason) {
-		case HTTP_BAD_REQUEST:
-			_send(client, STATUS_400, NULL);
-			break;
-
-		case HTTP_NO_SURROGATE:
-			_send(client, STATUS_403, NULL);
-			break;
-
-		case HTTP_LENGTH_REQUIRED:
-			_send(client, STATUS_411, NULL);
-			break;
-
-		case QEV_CLOSE_READ_HIGH:
-			_send(client, STATUS_413, NULL);
-			break;
-
-		default:
-			client->http.client = NULL;
-			break;
 	}
 }

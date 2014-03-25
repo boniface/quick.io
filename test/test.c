@@ -302,7 +302,7 @@ struct client* test_get_client()
 	struct client *client = NULL;
 
 	qev_foreach(_get_client_cb, 1, &client);
-	QEV_WAIT_FOR(protocols_client_handshaked(client));
+	QEV_WAIT_FOR(client->protocol.handshaked);
 
 	return client;
 }

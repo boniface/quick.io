@@ -167,7 +167,7 @@ static void _drain(struct httpc *hc, qev_fd_t sock)
 
 	while (TRUE) {
 		gssize to_read = buff->allocated_len - buff->len;
-		gint err = recv(sock, buff->str + buff->len, to_read, 0);
+		gssize err = recv(sock, buff->str + buff->len, to_read, MSG_DONTWAIT);
 
 		if (err > 0) {
 			g_string_set_size(buff, buff->len + err);
@@ -258,23 +258,16 @@ static void* _httpc_thread(void *hc_)
 	struct httpc *hc = hc_;
 
 	while (hc->th_run) {
-		struct pollfd p[] = {
-			{	.fd = hc->polling,
-				.events = POLLIN,
-			},
-			{	.fd = hc->waiting,
-				.events = POLLIN,
-			},
+		qev_fd_t fds[] = {
+			hc->polling,
+			hc->waiting,
 		};
 
-		poll(p, G_N_ELEMENTS(p), 1);
-		for (i = 0; i < G_N_ELEMENTS(p); i++) {
-			if (p[i].revents == 0) {
-				continue;
-			}
-
-			_drain(hc, p[i].fd);
+		for (i = 0; i < G_N_ELEMENTS(fds); i++) {
+			_drain(hc, fds[i]);
 		}
+
+		g_usleep(QEV_MS_TO_USEC(1));
 	}
 
 	return NULL;
@@ -305,16 +298,25 @@ START_TEST(test_http_sane)
 }
 END_TEST
 
-START_TEST(test_replace_poller)
+START_TEST(test_http_replace_poller)
 {
+	guint i;
 	struct httpc *_hc = _httpc_new();
 
-	_send(_hc, "/qio/ping:0=null");
-	_send(_hc, "/qio/ping:0=null");
-	_send(_hc, "/qio/ping:0=null");
-	_send(_hc, "/qio/ping:0=null");
+	for (i = 0; i < 10; i++) {
+		_send(_hc, "/qio/ping:0=null");
+	}
+
+	_send(_hc, "/qio/ping:1=null");
+	_next(_hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
 
 	_httpc_free(_hc);
+}
+END_TEST
+
+START_TEST(test_http_heartbeat)
+{
+	// struct httpc *_hc = _httpc_new();
 }
 END_TEST
 
@@ -330,10 +332,8 @@ int main()
 	tcase_set_timeout(tcase, 10);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_http_sane);
-	tcase_add_test(tcase, test_replace_poller);
-
-	// @todo implement HTTP/1.0 support
-	// tcase_add_test(tcase, test_http_10);
+	tcase_add_test(tcase, test_http_replace_poller);
+	tcase_add_test(tcase, test_http_heartbeat);
 
 	return test_do(sr);
 }

@@ -99,6 +99,30 @@ struct client {
 	struct qev_client qev_client;
 
 	/**
+	 * What's needed to handle protocol support in the client
+	 */
+	struct {
+		/**
+		 * If the client has handshaked with its protocol.
+		 */
+		gboolean handshaked:1;
+
+		/**
+		 * Once a protocol has accepted the client, this will point to the
+		 * protocol-level functions that can be used.
+		 */
+		struct protocol *prot;
+
+		/**
+		 * Any protocol-level flags should be created here as a union of
+		 * bit-field structs.
+		 */
+		union {
+
+		} flags;
+	} protocol;
+
+	/**
 	 * The state of the client at the protocol level. Protocols may only
 	 * touch this once they have signaled that they handle the client.
 	 *
@@ -107,12 +131,6 @@ struct client {
 	 *     reserved for the protocol router.
 	 */
 	guint16 protocol_flags;
-
-	/**
-	 * Once a protocol has accepted the client, this will point to the protocol-
-	 * level functions that can be used.
-	 */
-	struct protocol *protocol;
 
 	/**
 	 * When anything was last sent to the client
@@ -173,19 +191,15 @@ struct client {
 			gboolean iframe_requested:1;
 
 			/**
-			 * If the client is HTTP/1.1
-			 */
-			gboolean http_11:1;
-
-			/**
 			 * If the client is keep-alive
 			 */
 			gboolean keep_alive:1;
 
 			/**
-			 * If a response has been sent to the most recent request
+			 * If headers have been received and the client currently processing
+			 * a request.
 			 */
-			gboolean responded:1;
+			gboolean in_request:1;
 
 			/**
 			 * A new request just came in and is being processed; don't send
@@ -203,6 +217,8 @@ struct client {
 		 *      with an open socket that is waiting on data for the surrogate
 		 *   2) If the client has a socket, then points to the surrogate client
 		 *   3) Just a NULL
+		 *
+		 * Must be free'd with qev_unref().
 		 */
 		struct client *client;
 	} http;
