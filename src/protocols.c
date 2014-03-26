@@ -309,6 +309,7 @@ void protocols_heartbeat()
 void protocols_switch(struct client *client, struct protocol *prot)
 {
 	client->protocol.prot = prot;
+	client->protocol.handshaked = FALSE;
 	memset(&client->protocol.flags, 0, sizeof(client->protocol.flags));
 }
 

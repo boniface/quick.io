@@ -160,7 +160,7 @@ START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 	buff[err] = '\0';
 
 	ck_assert_str_eq(buff,
-		"HTTP/1.1 426 Upgrade Required\r\n"
+		"HTTP/1.0 426 Upgrade Required\r\n"
 		"Cache-Control: private, max-age=0\r\n"
 		"Expires: -1\r\n"
 		"Connection: Keep-Alive\r\n"

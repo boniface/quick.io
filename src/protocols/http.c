@@ -250,6 +250,10 @@ static gboolean _send_response(struct client *client, GString *resp)
 		qev_write(client, resp->str, resp->len);
 		client->last_send = qev_monotonic;
 
+		if (surrogate != NULL) {
+			surrogate->last_send = qev_monotonic;
+		}
+
 		if (!client->http.flags.keep_alive) {
 			qev_close(client, HTTP_DONE);
 		}
