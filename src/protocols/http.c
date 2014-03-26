@@ -234,7 +234,7 @@ static void _surr_release_client(
 static gboolean _send_response(struct client *client, GString *resp)
 {
 	struct client *surrogate = NULL;
-	gboolean may_send = FALSE;
+	gboolean sent = FALSE;
 
 	if (client == NULL) {
 		goto out;
@@ -246,7 +246,15 @@ static gboolean _send_response(struct client *client, GString *resp)
 
 	if (client->http.flags.in_request) {
 		client->http.flags.in_request = FALSE;
-		may_send = TRUE;
+
+		qev_write(client, resp->str, resp->len);
+		client->last_send = qev_monotonic;
+
+		if (!client->http.flags.keep_alive) {
+			qev_close(client, HTTP_DONE);
+		}
+
+		sent = TRUE;
 	}
 
 	qev_unlock(client);
@@ -254,17 +262,8 @@ static gboolean _send_response(struct client *client, GString *resp)
 	_surr_release_client(surrogate, client);
 	qev_unref(surrogate);
 
-	if (may_send) {
-		qev_write(client, resp->str, resp->len);
-		client->last_send = qev_monotonic;
-
-		if (!client->http.flags.keep_alive) {
-			qev_close(client, HTTP_DONE);
-		}
-	}
-
 out:
-	return may_send;
+	return sent;
 }
 
 /**
@@ -708,9 +707,10 @@ void protocol_http_close(struct client *client, guint reason)
 
 		_send_error(surrogate->http.client, STATUS_403);
 	} else {
-		struct client *surrogate = client->http.client;
+		struct client *surrogate = _steal_client(client);
 		if (surrogate != NULL) {
 			qev_close(surrogate, HTTP_DONE);
+			qev_unref(surrogate);
 		} else {
 			switch (reason) {
 				case HTTP_BAD_REQUEST:
