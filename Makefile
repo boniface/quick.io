@@ -130,7 +130,6 @@ CFLAGS_PROFILE = \
 	-pg
 
 CFLAGS_RELEASE = \
-	-flto \
 	-fPIE \
 	-O3
 
@@ -157,9 +156,16 @@ LDFLAGS_PROFILE = \
 	$(LIBQEV)
 
 LDFLAGS_RELEASE = \
-	-flto \
 	-pie \
 	$(LIBQEV)
+
+ifneq ($(CC),clang)
+	CFLAGS_RELEASE += \
+		-flto
+
+	LDFLAGS_RELEASE += \
+		-flto
+endif
 
 ifdef USE_VALGRIND
 	CFLAGS += -DFATAL_SIGNAL=9
