@@ -321,14 +321,10 @@ static void _http_heartbeat_foreach(struct client *client, void *clients_)
 	clients[i++] = qev_ref(client);
 }
 
-static struct client* _http_heartbeat_get_poller(
-	struct httpc *hc,
-	struct client *clients[3])
+static struct client* _http_heartbeat_get_poller(struct client *clients[3])
 {
 	guint i;
 	struct client *poller = NULL;
-
-	_send(hc, "/qio/ping:0=null");
 
 	while (poller == NULL) {
 		g_usleep(100);
@@ -351,45 +347,70 @@ START_TEST(test_http_heartbeat)
 	struct client *clients[3];
 	struct httpc *hc = _httpc_new();
 
-	qev_foreach(_http_heartbeat_foreach, 1, clients);
+	// Flush out all the connections so they're active and associated with HTTP
+	for (i = 0; i < 10; i++) {
+		_send(hc, "/qio/ping:0=null");
+	}
 
 	// Clients iterated in reverse: surrogate is always first
+	qev_foreach(_http_heartbeat_foreach, 1, clients);
 	ck_assert(qev_is_surrogate(clients[0]));
 	ck_assert(!qev_is_surrogate(clients[1]));
 	ck_assert(!qev_is_surrogate(clients[2]));
 
+	for (i = 1; i < G_N_ELEMENTS(clients); i++) {
+		QEV_WAIT_FOR(clients[i]->protocol.prot == protocol_http);
+		QEV_WAIT_FOR(clients[i]->qev_client.rbuff == NULL);
+	}
+
 	test_heartbeat();
 
 	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
 		ck_assert(!clients[i]->qev_client._flags.closed);
 	}
 
-	poller = _http_heartbeat_get_poller(hc, clients);
+	poller = _http_heartbeat_get_poller(clients);
 
-	// Surrogate should be left alone whenever it has a client attached
+	/*
+	 * Surrogates should be left alone whenever they have a client attached
+	 */
 	clients[0]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
 	test_heartbeat();
+	ck_assert_ptr_eq(clients[0]->http.client, poller);
 
 	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
 		ck_assert(!clients[i]->qev_client._flags.closed);
 	}
 
-	// Poller should be flushed after polling for too long
-	poller->last_send = qev_monotonic - QEV_SEC_TO_USEC(60);
+	/*
+	 * Pollers should be flushed after polling for too long
+	 */
+	poller->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
 	test_heartbeat();
 	ck_assert_ptr_eq(poller->http.client, NULL);
+	ck_assert_ptr_eq(clients[0]->http.client, NULL);
 
-	// Surrogate should be closed after not having a client attached for too long
+	/*
+	 * Surrogates should be closed after not having a client attached for
+	 * too long
+	 */
 	clients[0]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
 	test_heartbeat();
 	ck_assert(clients[0]->qev_client._flags.closed);
 
-	// Pollers should be closed after not clients and no sending for too long
-	clients[1]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
-	clients[2]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
-	test_heartbeat();
-	ck_assert(clients[1]->qev_client._flags.closed);
-	ck_assert(clients[2]->qev_client._flags.closed);
+	/*
+	 * Pollers should be closed after no clients and no sending for too long
+	 */
+	for (i = 1; i < G_N_ELEMENTS(clients); i++) {
+		ck_assert(!clients[i]->qev_client._flags.closed);
+		ck_assert_ptr_eq(clients[i]->http.client, NULL);
+		clients[i]->last_send = qev_monotonic - QEV_SEC_TO_USEC(240);
+		test_heartbeat();
+	}
+
+	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
+		ck_assert(clients[i]->qev_client._flags.closed);
+	}
 
 	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
 		qev_unref0(&clients[i]);
@@ -573,27 +594,24 @@ END_TEST
 
 START_TEST(test_http_oversized_request)
 {
-	guint i;
-	GString *req = qev_buffer_get();
-	GString *buff = qev_buffer_get();
+	const gchar *headers =
+		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
 	qev_fd_t s = test_socket();
+	struct client *client = test_get_client_raw();
 
-	g_string_assign(buff, "/qio/ping:0=null\n");
-	for (i = 0; buff->len < 131072; i++) {
-		g_string_append_len(buff, buff->str, buff->len);
-	}
+	ck_assert(!qev_is_surrogate(client));
 
-	g_string_printf(req,
-		"POST / HTTP/1.1\n"
-		"Content-Length: %lu\n\n%s", buff->len, buff->str);
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
 
-	send(s, req->str, req->len, 0);
+	QEV_WAIT_FOR(client->http.flags.in_request);
 
+	qev_close(client, QEV_CLOSE_READ_HIGH);
 	_edge_assert_status_code(s, 413);
-	test_client_dead(s);
 
-	qev_buffer_put(req);
-	qev_buffer_put(buff);
 	close(s);
 }
 END_TEST
@@ -691,6 +709,27 @@ START_TEST(test_http_error_no_content_length)
 }
 END_TEST
 
+START_TEST(test_http_error_invalid_upgrade)
+{
+	const gchar *headers =
+		"GET / HTTP/1.1\r\n" \
+		"Host: localhost\r\n" \
+		"Sec-WebSocket-Key: JF+JVs2N4NAX39FAAkkdIA==\r\n" \
+		"Upgrade: websocket\r\n" \
+		"Connection: Upgrade\r\n\r\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 400);
+
+	close(s);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -725,6 +764,7 @@ int main()
 	tcase_add_test(tcase, test_http_error_not_http);
 	tcase_add_test(tcase, test_http_error_invalid_content_length);
 	tcase_add_test(tcase, test_http_error_no_content_length);
+	tcase_add_test(tcase, test_http_error_invalid_upgrade);
 
 	return test_do(sr);
 }

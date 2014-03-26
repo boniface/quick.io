@@ -712,23 +712,24 @@ void protocol_http_close(struct client *client, guint reason)
 		_send_error(surrogate->http.client, STATUS_403);
 	} else {
 		struct client *surrogate = _steal_client(client);
+
+		switch (reason) {
+			case HTTP_BAD_REQUEST:
+				_send_error(client, STATUS_400);
+				break;
+
+			case HTTP_LENGTH_REQUIRED:
+				_send_error(client, STATUS_411);
+				break;
+
+			case QEV_CLOSE_READ_HIGH:
+				_send_error(client, STATUS_413);
+				break;
+		}
+
 		if (surrogate != NULL) {
 			qev_close(surrogate, HTTP_DONE);
 			qev_unref(surrogate);
-		} else {
-			switch (reason) {
-				case HTTP_BAD_REQUEST:
-					_send_error(client, STATUS_400);
-					break;
-
-				case HTTP_LENGTH_REQUIRED:
-					_send_error(client, STATUS_411);
-					break;
-
-				case QEV_CLOSE_READ_HIGH:
-					_send_error(client, STATUS_413);
-					break;
-			}
 		}
 	}
 }

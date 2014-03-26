@@ -176,7 +176,7 @@ ifdef USE_VALGRIND
 			--track-origins=yes
 else
 	CFLAGS += -DFATAL_SIGNAL=5
-	MEMTEST =
+	MEMTEST = G_SLICE=debug-blocks
 endif
 
 VG_SUPPRESSIONS = valgrind.supp
