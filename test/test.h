@@ -147,6 +147,12 @@ void test_wait_for_buff(const guint len);
 struct client* test_get_client();
 
 /**
+ * Get the last client in the clients list, not waiting for it to be handshaked
+ * or anything.
+ */
+struct client* test_get_client_raw();
+
+/**
  * Force send out heartbeats
  */
 void test_heartbeat();

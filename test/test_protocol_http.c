@@ -287,36 +287,407 @@ static void _next(struct httpc *hc, const gchar *msg)
 
 START_TEST(test_http_sane)
 {
-	struct httpc *_hc = _httpc_new();
+	struct httpc *hc = _httpc_new();
 
-	_send(_hc, "/qio/on:1=\"/test/good\"\n");
-	_next(_hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
-	_send(_hc, "/qio/off:2=\"/test/good\"");
-	_next(_hc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
+	_send(hc, "/qio/on:1=\"/test/good\"\n");
+	_next(hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+	_send(hc, "/qio/off:2=\"/test/good\"");
+	_next(hc, "/qio/callback/2:0={\"code\":200,\"data\":null}");
 
-	_httpc_free(_hc);
+	_httpc_free(hc);
 }
 END_TEST
 
 START_TEST(test_http_replace_poller)
 {
 	guint i;
-	struct httpc *_hc = _httpc_new();
+	struct httpc *hc = _httpc_new();
 
 	for (i = 0; i < 10; i++) {
-		_send(_hc, "/qio/ping:0=null");
+		_send(hc, "/qio/ping:0=null");
 	}
 
-	_send(_hc, "/qio/ping:1=null");
-	_next(_hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+	_send(hc, "/qio/ping:1=null");
+	_next(hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
 
-	_httpc_free(_hc);
+	_httpc_free(hc);
 }
 END_TEST
 
+static void _http_heartbeat_foreach(struct client *client, void *clients_)
+{
+	static guint i = 0;
+	struct client **clients = clients_;
+	clients[i++] = qev_ref(client);
+}
+
+static struct client* _http_heartbeat_get_poller(
+	struct httpc *hc,
+	struct client *clients[3])
+{
+	guint i;
+	struct client *poller = NULL;
+
+	_send(hc, "/qio/ping:0=null");
+
+	while (poller == NULL) {
+		g_usleep(100);
+
+		for (i = 1; i < 3; i++) {
+			if (clients[i]->http.client != NULL) {
+				poller = clients[i];
+				break;
+			}
+		}
+	}
+
+	return poller;
+}
+
 START_TEST(test_http_heartbeat)
 {
-	// struct httpc *_hc = _httpc_new();
+	guint i;
+	struct client *poller;
+	struct client *clients[3];
+	struct httpc *hc = _httpc_new();
+
+	qev_foreach(_http_heartbeat_foreach, 1, clients);
+
+	// Clients iterated in reverse: surrogate is always first
+	ck_assert(qev_is_surrogate(clients[0]));
+	ck_assert(!qev_is_surrogate(clients[1]));
+	ck_assert(!qev_is_surrogate(clients[2]));
+
+	test_heartbeat();
+
+	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
+		ck_assert(!clients[i]->qev_client._flags.closed);
+	}
+
+	poller = _http_heartbeat_get_poller(hc, clients);
+
+	// Surrogate should be left alone whenever it has a client attached
+	clients[0]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
+	test_heartbeat();
+
+	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
+		ck_assert(!clients[i]->qev_client._flags.closed);
+	}
+
+	// Poller should be flushed after polling for too long
+	poller->last_send = qev_monotonic - QEV_SEC_TO_USEC(60);
+	test_heartbeat();
+	ck_assert_ptr_eq(poller->http.client, NULL);
+
+	// Surrogate should be closed after not having a client attached for too long
+	clients[0]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
+	test_heartbeat();
+	ck_assert(clients[0]->qev_client._flags.closed);
+
+	// Pollers should be closed after not clients and no sending for too long
+	clients[1]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
+	clients[2]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
+	test_heartbeat();
+	ck_assert(clients[1]->qev_client._flags.closed);
+	ck_assert(clients[2]->qev_client._flags.closed);
+
+	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
+		qev_unref0(&clients[i]);
+	}
+
+	_httpc_free(hc);
+}
+END_TEST
+
+static void _edge_assert_status_code(qev_fd_t s, const guint status)
+{
+	gint err;
+	GString *resp = qev_buffer_get();
+	gchar buff[1024];
+
+	g_string_printf(resp, "HTTP/1.0 %u", status);
+
+	err = recv(s, buff, sizeof(buff), 0);
+	err[buff] = '\0';
+
+	if (!g_str_has_prefix(buff, resp->str)) {
+		INFO("Got: %s", buff);
+	}
+
+	ck_assert(g_str_has_prefix(buff, resp->str));
+
+	qev_buffer_put(resp);
+}
+
+static void _edge_send_opening_headers(qev_fd_t s)
+{
+	const gchar *header =
+		"POST / HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+
+	err = send(s, header, strlen(header), 0);
+	ck_assert_int_eq(strlen(header), err);
+
+	_edge_assert_status_code(s, 403);
+}
+
+START_TEST(test_http_edge_invalid_header_newlines)
+{
+	qev_fd_t s = test_socket();
+	_edge_send_opening_headers(s);
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_edge_partial_headers_0)
+{
+	gint err;
+	struct client *client;
+	qev_fd_t s = test_socket();
+
+	_edge_send_opening_headers(s);
+
+	client = test_get_client();
+	err = send(s, "POST", 4, 0);
+	ck_assert_int_eq(err, 4);
+
+	QEV_WAIT_FOR(client->timeout != NULL);
+
+	err = send(s, " / HTTP/1.1\nContent-Length: 0\n\n", 31, 0);
+	ck_assert_int_eq(err, 31);
+
+	_edge_assert_status_code(s, 403);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_edge_partial_headers_1)
+{
+	gint err;
+	qev_fd_t s = test_socket();
+	struct client *client = test_get_client_raw();
+
+	err = send(s, "POST", 4, 0);
+	ck_assert_int_eq(err, 4);
+
+	QEV_WAIT_FOR(client->timeout != NULL);
+
+	err = send(s, " / HTTP/1.1\nContent-Length: 0\n\n", 31, 0);
+	ck_assert_int_eq(err, 31);
+
+	_edge_assert_status_code(s, 403);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_10)
+{
+	const gchar *headers =
+		"POST / HTTP/1.0\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 403);
+	test_client_dead(s);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_10_keepalive)
+{
+	const gchar *headers =
+		"POST / HTTP/1.0\n"
+		"Connection: keep-alive\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+	struct client *client = test_get_client_raw();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 403);
+
+	ck_assert(!client->qev_client._flags.closed);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_11_connection_close)
+{
+	const gchar *headers =
+		"POST / HTTP/1.1\n"
+		"Connection: close\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 403);
+	test_client_dead(s);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_partial_body)
+{
+	const gchar *headers =
+		"POST / HTTP/1.1\n"
+		"Content-Length: 16\n\n";
+	const gchar *body = "/qio/ping:0=null";
+
+	gint err;
+	qev_fd_t s = test_socket();
+	struct client *client = test_get_client_raw();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	QEV_WAIT_FOR(client->timeout != NULL);
+
+	err = send(s, body, strlen(body), 0);
+	ck_assert_int_eq(err, strlen(body));
+
+	_edge_assert_status_code(s, 403);
+	ck_assert(!client->qev_client._flags.closed);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_oversized_request)
+{
+	guint i;
+	GString *req = qev_buffer_get();
+	GString *buff = qev_buffer_get();
+	qev_fd_t s = test_socket();
+
+	g_string_assign(buff, "/qio/ping:0=null\n");
+	for (i = 0; buff->len < 131072; i++) {
+		g_string_append_len(buff, buff->str, buff->len);
+	}
+
+	g_string_printf(req,
+		"POST / HTTP/1.1\n"
+		"Content-Length: %lu\n\n%s", buff->len, buff->str);
+
+	send(s, req->str, req->len, 0);
+
+	_edge_assert_status_code(s, 413);
+	test_client_dead(s);
+
+	qev_buffer_put(req);
+	qev_buffer_put(buff);
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_error_uuid)
+{
+	const gchar *headers =
+		"POST /?sid=abcd1234 HTTP/1.0\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 403);
+	test_client_dead(s);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_error_not_post)
+{
+	const gchar *headers =
+		"GET / HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 405);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_error_not_http)
+{
+	const gchar *headers = "I'm too drunk to HTTP. Just figure it out.\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	_edge_send_opening_headers(s);
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 400);
+
+	test_client_dead(s);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_error_invalid_content_length)
+{
+	const gchar *headers =
+		"POST / HTTP/1.1\n"
+		"Content-Length: af09\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 400);
+	test_client_dead(s);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_error_no_content_length)
+{
+	const gchar *headers = "POST / HTTP/1.1\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	_edge_assert_status_code(s, 411);
+	test_client_dead(s);
+
+	close(s);
 }
 END_TEST
 
@@ -329,11 +700,31 @@ int main()
 
 	tcase = tcase_create("Sane");
 	suite_add_tcase(s, tcase);
-	tcase_set_timeout(tcase, 10);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_http_sane);
 	tcase_add_test(tcase, test_http_replace_poller);
 	tcase_add_test(tcase, test_http_heartbeat);
+
+	tcase = tcase_create("Edges");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_http_edge_invalid_header_newlines);
+	tcase_add_test(tcase, test_http_edge_partial_headers_0);
+	tcase_add_test(tcase, test_http_edge_partial_headers_1);
+	tcase_add_test(tcase, test_http_10);
+	tcase_add_test(tcase, test_http_10_keepalive);
+	tcase_add_test(tcase, test_http_11_connection_close);
+	tcase_add_test(tcase, test_http_partial_body);
+	tcase_add_test(tcase, test_http_oversized_request);
+
+	tcase = tcase_create("Errors");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_http_error_uuid);
+	tcase_add_test(tcase, test_http_error_not_post);
+	tcase_add_test(tcase, test_http_error_not_http);
+	tcase_add_test(tcase, test_http_error_invalid_content_length);
+	tcase_add_test(tcase, test_http_error_no_content_length);
 
 	return test_do(sr);
 }

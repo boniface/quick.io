@@ -299,10 +299,21 @@ void test_wait_for_buff(const guint len)
 
 struct client* test_get_client()
 {
+	struct client *client = test_get_client_raw();
+
+	QEV_WAIT_FOR(client->protocol.handshaked);
+
+	return client;
+}
+
+struct client* test_get_client_raw()
+{
 	struct client *client = NULL;
 
-	qev_foreach(_get_client_cb, 1, &client);
-	QEV_WAIT_FOR(client->protocol.handshaked);
+	while (client == NULL) {
+		g_usleep(100);
+		qev_foreach(_get_client_cb, 1, &client);
+	}
 
 	return client;
 }

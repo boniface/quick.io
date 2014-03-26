@@ -142,7 +142,7 @@ static gboolean _has_complete_header(struct client *client)
 	GString *rbuff = client->qev_client.rbuff;
 
 	return strstr(rbuff->str, HTTP_HEADER_TERMINATOR) != NULL ||
-		strstr(rbuff->str, HTTP_HEADER_TERMINATOR) != NULL;
+		strstr(rbuff->str, HTTP_HEADER_TERMINATOR2) != NULL;
 }
 
 static gchar* _find_header_end(gchar *head)
