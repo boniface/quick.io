@@ -431,10 +431,6 @@ static void _edge_assert_status_code(qev_fd_t s, const guint status)
 	err = recv(s, buff, sizeof(buff), 0);
 	err[buff] = '\0';
 
-	if (!g_str_has_prefix(buff, resp->str)) {
-		INFO("Got: %s", buff);
-	}
-
 	ck_assert(g_str_has_prefix(buff, resp->str));
 
 	qev_buffer_put(resp);
@@ -616,6 +612,78 @@ START_TEST(test_http_oversized_request)
 }
 END_TEST
 
+START_TEST(test_http_close_with_surrogate)
+{
+	const gchar *headers =
+		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+	struct client *client = test_get_client_raw();
+
+	ck_assert(!qev_is_surrogate(client));
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+
+	QEV_WAIT_FOR(client->http.client != NULL);
+
+	qev_close(client, HTTP_DONE);
+	_edge_assert_status_code(s, 403);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_incoming_wait)
+{
+	struct httpc *hc = _httpc_new();
+	struct client *surrogate = test_get_client();
+	struct protocol_frames pframes = protocol_http_frame("/test", "", 0, "null");
+
+	ck_assert(qev_is_surrogate(surrogate));
+
+	_send(hc, "/qio/ping:0=null");
+	QEV_WAIT_FOR(surrogate->http.client != NULL);
+	surrogate->http.flags.incoming = TRUE;
+
+	protocol_http_send(surrogate, &pframes);
+
+	_send(hc, "/qio/ping:1=null");
+	_next(hc, "/test:0=null");
+	_next(hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	qev_buffer_put(pframes.def);
+	qev_buffer_put(pframes.raw);
+
+	_httpc_free(hc);
+}
+END_TEST
+
+START_TEST(test_http_incoming_no_wait)
+{
+	struct httpc *hc = _httpc_new();
+	struct client *surrogate = test_get_client();
+	struct protocol_frames pframes = protocol_http_frame("/test", "", 0, "null");
+
+	ck_assert(qev_is_surrogate(surrogate));
+
+	_send(hc, "/qio/ping:0=null");
+	QEV_WAIT_FOR(surrogate->http.client != NULL);
+	QEV_WAIT_FOR(!surrogate->http.flags.incoming);
+
+	protocol_http_send(surrogate, &pframes);
+
+	_next(hc, "/test:0=null");
+
+	qev_buffer_put(pframes.def);
+	qev_buffer_put(pframes.raw);
+
+	_httpc_free(hc);
+}
+END_TEST
+
 START_TEST(test_http_error_uuid)
 {
 	const gchar *headers =
@@ -755,6 +823,9 @@ int main()
 	tcase_add_test(tcase, test_http_11_connection_close);
 	tcase_add_test(tcase, test_http_partial_body);
 	tcase_add_test(tcase, test_http_oversized_request);
+	tcase_add_test(tcase, test_http_close_with_surrogate);
+	tcase_add_test(tcase, test_http_incoming_wait);
+	tcase_add_test(tcase, test_http_incoming_no_wait);
 
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
