@@ -199,8 +199,10 @@ struct client* protocols_new_surrogate(struct protocol *prot)
 {
 	struct client *client = qev_surrogate_new();
 
-	client->protocol.prot = prot;
-	_set_handshaked(client);
+	if (client != NULL) {
+		client->protocol.prot = prot;
+		_set_handshaked(client);
+	}
 
 	return client;
 }
@@ -295,7 +297,7 @@ void protocols_heartbeat()
 	gint64 now = qev_monotonic;
 
 	struct protocol_heartbeat hb = {
-		.timeout = now - qev_cfg_get_timeout(),
+		.timeout = now - QEV_MS_TO_USEC(qev_cfg_get_timeout()),
 		.poll = now - HEARTBEAT_POLL,
 		.heartbeat = now - HEARTBEAT_INTERVAL +
 						QEV_SEC_TO_USEC(cfg_heartbeat_interval),

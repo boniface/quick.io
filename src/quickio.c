@@ -44,7 +44,5 @@ void qio_main(int argc, char **argv)
 		qev_chuser(cfg_user);
 	}
 
-	// @todo stomp address + port?
-
 	qev_run();
 }

@@ -280,11 +280,17 @@ static gboolean _send_error(struct client *client, enum status status) {
 static void _surr_replace(struct client *surrogate, struct client *new_poller)
 {
 	struct client *old_poller;
+	gboolean closing = qev_is_closing(new_poller);
 
 	qev_lock(surrogate);
 
 	old_poller = surrogate->http.client;
-	surrogate->http.client = qev_ref(new_poller);
+
+	if (!closing) {
+		surrogate->http.client = qev_ref(new_poller);
+	} else {
+		surrogate->http.client = NULL;
+	}
 
 	qev_unlock(surrogate);
 
@@ -373,10 +379,12 @@ static struct client* _surr_find(
 		surrogate = g_hash_table_lookup(tbl->tbl, &sid);
 		if (surrogate == NULL) {
 			surrogate = protocols_new_surrogate(protocol_http);
-			surrogate->last_send = qev_monotonic;
-			surrogate->http.sid = sid;
-			surrogate->http.tbl = which;
-			g_hash_table_insert(tbl->tbl, &surrogate->http.sid, surrogate);
+			if (surrogate != NULL) {
+				surrogate->last_send = qev_monotonic;
+				surrogate->http.sid = sid;
+				surrogate->http.tbl = which;
+				g_hash_table_insert(tbl->tbl, &surrogate->http.sid, surrogate);
+			}
 		}
 
 		qev_lock_write_unlock(&tbl->lock);
@@ -636,7 +644,7 @@ void protocol_http_heartbeat(
 		struct client *surrogate = client;
 
 		if (surrogate->http.client == NULL &&
-			surrogate->last_send < hb->poll) {
+			surrogate->last_send < hb->timeout) {
 
 			qev_close(surrogate, RAW_HEARTATTACK);
 		}
