@@ -64,9 +64,12 @@ static enum protocol_status _decode(
 	guint64 i;
 	guint64 len;
 	guint64 max;
-	gchar mask[4];
 	union {
-		gchar c[sizeof(__uint128_t)];
+		guint32 i;
+		gchar c[4];
+	} mask;
+	union {
+		guint32 is[4];
 		__uint128_t i;
 	} mask128;
 	GString *rbuff = client->qev_client.rbuff;
@@ -98,7 +101,7 @@ static enum protocol_status _decode(
 
 	if (len <= PAYLOAD_SHORT) {
 		header_len = 6;
-		memcpy(mask, str + 2, 4);
+		memcpy(mask.c, str + 2, 4);
 	} else if (len == PAYLOAD_MEDIUM) {
 		header_len = 8;
 		if (rbuff_len < header_len) {
@@ -106,7 +109,7 @@ static enum protocol_status _decode(
 		}
 
 		len = GUINT16_FROM_BE(*((guint16*)(str + 2)));
-		memcpy(mask, str + 4, 4);
+		memcpy(mask.c, str + 4, 4);
 	} else {
 		header_len = 14;
 		if (rbuff_len < header_len) {
@@ -114,7 +117,7 @@ static enum protocol_status _decode(
 		}
 
 		len = GUINT64_FROM_BE(*((guint64*)(str + 2)));
-		memcpy(mask, str + 10, 4);
+		memcpy(mask.c, str + 10, 4);
 	}
 
 	if (rbuff_len < (header_len + len)) {
@@ -137,7 +140,7 @@ static enum protocol_status _decode(
 	 *   3) Finish off going through any last characters.
 	 */
 	for (i = 0; i < sizeof(mask128) / sizeof(mask); i++) {
-		memcpy(mask128.c + (i * sizeof(mask)), mask, sizeof(mask));
+		mask128.is[i] = mask.i;
 	}
 
 	max = len - (len & (sizeof(__uint128_t) - 1));
@@ -153,7 +156,7 @@ static enum protocol_status _decode(
 	}
 
 	for (; i < len; i++) {
-		msg[i] = str[i] ^ mask[i & 3];
+		msg[i] = str[i] ^ mask.c[i & 3];
 	}
 
 	*(msg + len) = '\0';
