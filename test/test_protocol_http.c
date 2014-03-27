@@ -9,34 +9,6 @@
 #include <poll.h>
 #include "test.h"
 
-// START_TEST(test_rfc6455_handshake_http_invalid_headers)
-// {
-// 	const gchar *headers =
-// 		"GET / HTTP/1.1\r\n"
-// 		"herp derp\r\n\r\n";
-
-// 	gint err;
-// 	gchar buff[1024];
-// 	qev_fd_t ts = test_socket();
-
-// 	ck_assert_int_eq(send(ts, headers, strlen(headers), 0), strlen(headers));
-
-// 	err = recv(ts, buff, sizeof(buff), 0);
-// 	buff[err] = '\0';
-
-// 	ck_assert_str_eq(buff,
-// 		"HTTP/1.1 426 Upgrade Required\r\n"
-// 		"Connection: keep-alive\r\n"
-// 		"Keep-Alive: timeout=60\r\n"
-// 		"Cache-Control: no-cache, no-store, must-revalidate\r\n"
-// 		"Pragma: no-cache\r\n"
-// 		"Expires: 0\r\n\r\n");
-
-// 	test_client_dead(ts);
-// 	close(ts);
-// }
-// END_TEST
-
 #define INIT_HEADERS \
 	"POST /?sid=%s&connect=true HTTP/1.1\r\n" \
 	"Content-Length: 21\r\n\r\n" \
@@ -87,16 +59,21 @@ struct httpc {
 static void* _httpc_thread(void *hc);
 static void _next(struct httpc *hc, const gchar *msg);
 
+static void _uuid(gchar sid[37])
+{
+	uuid_t uuid;
+	uuid_generate_random(uuid);
+	uuid_unparse(uuid, sid);
+}
+
 static struct httpc* _httpc_new()
 {
 	gint err;
-	uuid_t uuid;
 	gchar sid[37];
 	GString *buff = qev_buffer_get();
 	struct httpc *hc = g_slice_alloc0(sizeof(*hc));
 
-	uuid_generate_random(uuid);
-	uuid_unparse(uuid, sid);
+	_uuid(sid);
 
 	hc->polling = test_socket();
 	hc->waiting = test_socket();
@@ -684,6 +661,56 @@ START_TEST(test_http_incoming_no_wait)
 }
 END_TEST
 
+START_TEST(test_http_requests_on_same_socket)
+{
+	guint i;
+	gint err;
+	gchar sid[37];
+	GString *buff = qev_buffer_get();
+	GString *msg = qev_buffer_get();
+	qev_fd_t s = test_socket();
+
+	_uuid(sid);
+
+	// Opening handshake
+	g_string_printf(buff, INIT_HEADERS, sid);
+	err = send(s, buff->str, buff->len, 0);
+	ck_assert_int_eq(err, buff->len);
+
+	err = recv(s, buff->str, buff->allocated_len, 0);
+	ck_assert(err > 0);
+	g_string_set_size(buff, err);
+	ck_assert(strstr(buff->str, "/qio/callback/1") != NULL);
+
+	// First poll, sending nothing
+	g_string_printf(buff, MSG_HEADERS, sid, msg->len, msg->str);
+	err = send(s, buff->str, buff->len, 0);
+	ck_assert_int_eq(err, buff->len);
+
+	// Send a ping with an expected callback: the first request should bring
+	// back the ping's callback
+	g_string_assign(msg, "/qio/ping:2=null");
+	g_string_printf(buff, MSG_HEADERS, sid, msg->len, msg->str);
+	err = send(s, buff->str, buff->len, 0);
+	ck_assert_int_eq(err, buff->len);
+
+	for (i = 0; i < 2; i++) {
+		err = recv(s, buff->str, buff->allocated_len, 0);
+		ck_assert(err > 0);
+		g_string_set_size(buff, err);
+		if (strstr(buff->str, "/qio/callback/2") != NULL) {
+			break;
+		}
+	}
+
+	ck_assert(strstr(buff->str, "/qio/callback/2") != NULL);
+
+	qev_buffer_put(msg);
+	qev_buffer_put(buff);
+	close(s);
+}
+END_TEST
+
 START_TEST(test_http_error_uuid)
 {
 	const gchar *headers =
@@ -826,6 +853,7 @@ int main()
 	tcase_add_test(tcase, test_http_close_with_surrogate);
 	tcase_add_test(tcase, test_http_incoming_wait);
 	tcase_add_test(tcase, test_http_incoming_no_wait);
+	tcase_add_test(tcase, test_http_requests_on_same_socket);
 
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
