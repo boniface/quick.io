@@ -188,8 +188,10 @@ static struct client* _steal_client(struct client *c)
 	struct client *ret;
 
 	qev_lock(c);
+
 	ret = c->http.client;
 	c->http.client = NULL;
+
 	qev_unlock(c);
 
 	return ret;
@@ -199,8 +201,6 @@ static void _surr_release_client(
 	struct client *surrogate,
 	struct client *client)
 {
-	gboolean unref = FALSE;
-
 	if (surrogate == NULL) {
 		return;
 	}
@@ -208,15 +208,10 @@ static void _surr_release_client(
 	qev_lock(surrogate);
 
 	if (surrogate->http.client == client) {
-		unref = TRUE;
 		surrogate->http.client = NULL;
 	}
 
 	qev_unlock(surrogate);
-
-	if (unref) {
-		qev_unref(client);
-	}
 }
 
 /**
@@ -264,7 +259,6 @@ static gboolean _send_response(struct client *client, GString *resp)
 	qev_unlock(client);
 
 	_surr_release_client(surrogate, client);
-	qev_unref(surrogate);
 
 out:
 	return sent;
@@ -279,24 +273,30 @@ static gboolean _send_error(struct client *client, enum status status) {
 
 static void _surr_replace(struct client *surrogate, struct client *new_poller)
 {
+	/*
+	 * For pipelined requests, old_poller will never be new_poller:
+	 * the request is responded to, and the poller released, before replacement
+	 * is ever attempted. So no need to worry about that case here.
+	 */
+
 	struct client *old_poller;
-	gboolean closing = qev_is_closing(new_poller);
 
 	qev_lock(surrogate);
+	qev_lock(new_poller);
 
 	old_poller = surrogate->http.client;
 
-	if (!closing) {
-		surrogate->http.client = qev_ref(new_poller);
-	} else {
+	if (qev_is_closing(new_poller)) {
 		surrogate->http.client = NULL;
+	} else {
+		surrogate->http.client = new_poller;
 	}
 
+	qev_unlock(new_poller);
 	qev_unlock(surrogate);
 
 	if (old_poller != NULL) {
 		_send_error(old_poller, STATUS_200);
-		qev_unref(old_poller);
 	}
 }
 
@@ -311,7 +311,6 @@ static void _surr_send(
 
 	if (poller != NULL) {
 		sent = _send_response(poller, resp);
-		qev_unref(poller);
 	}
 
 	if (sent) {
@@ -342,7 +341,10 @@ static void _surr_route(
 			break;
 		}
 
-		protocol_raw_handle(surrogate, msg);
+		if (protocol_raw_handle(surrogate, msg) != PROT_OK) {
+			_send_error(from, STATUS_400);
+			return;
+		}
 	}
 
 	qev_lock(surrogate);
@@ -390,10 +392,6 @@ static struct client* _surr_find(
 		qev_lock_write_unlock(&tbl->lock);
 	}
 
-	if (surrogate != NULL) {
-		qev_ref(surrogate);
-	}
-
 	return surrogate;
 }
 
@@ -425,7 +423,6 @@ static struct client* _get_surrogate(gchar *url)
 
 static void _do_body(struct client *client, gchar *start)
 {
-
 	if (client->http.flags.iframe_requested) {
 
 	} else if (!client->http.flags.is_post) {
@@ -484,6 +481,7 @@ static enum protocol_status _do_headers_http(
 	gchar *head_start)
 {
 	gchar *content_len;
+	struct client *surrogate;
 	guint64 body_len = 0;
 	gboolean is_post = g_str_has_prefix(head_start, "POST");
 	gchar *url = strstr(head_start, "/");
@@ -504,7 +502,20 @@ static enum protocol_status _do_headers_http(
 		return PROT_FATAL;
 	}
 
-	client->http.client = _get_surrogate(url);
+	surrogate = _get_surrogate(url);
+
+	if (surrogate != NULL) {
+		qev_lock(surrogate);
+		qev_lock(client);
+
+		if (!qev_is_closing(surrogate) && !qev_is_closing(client)) {
+			client->http.client = surrogate;
+		}
+
+		qev_unlock(client);
+		qev_unlock(surrogate);
+	}
+
 	client->http.body_len = body_len;
 	client->http.flags.is_post = is_post;
 	client->http.flags.iframe_requested = g_str_has_prefix(url, "/iframe");
@@ -691,7 +702,6 @@ void protocol_http_send(
 	if (!surrogate->http.flags.incoming) {
 		struct client *client = _steal_client(surrogate);
 		sent = _send_response(client, pframes->def);
-		qev_unref(client);
 	}
 
 	if (!sent) {
@@ -717,7 +727,8 @@ void protocol_http_close(struct client *client, guint reason)
 
 		qev_lock_write_unlock(&tbl->lock);
 
-		_send_error(surrogate->http.client, STATUS_403);
+		client = _steal_client(surrogate);
+		_send_error(client, STATUS_403);
 	} else {
 		struct client *surrogate = _steal_client(client);
 
@@ -737,7 +748,6 @@ void protocol_http_close(struct client *client, guint reason)
 
 		if (surrogate != NULL) {
 			qev_close(surrogate, HTTP_DONE);
-			qev_unref(surrogate);
 		}
 	}
 }

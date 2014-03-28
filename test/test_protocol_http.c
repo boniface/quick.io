@@ -605,6 +605,7 @@ START_TEST(test_http_close_with_surrogate)
 	ck_assert_int_eq(err, strlen(headers));
 
 	QEV_WAIT_FOR(client->http.client != NULL);
+	QEV_WAIT_FOR(client->http.client->http.client != NULL);
 
 	qev_close(client, HTTP_DONE);
 	_edge_assert_status_code(s, 403);
@@ -825,6 +826,32 @@ START_TEST(test_http_error_invalid_upgrade)
 }
 END_TEST
 
+START_TEST(test_http_error_invalid_events)
+{
+	const gchar *headers =
+		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n" \
+		"Content-Length: 19\n\n" \
+		"im an event\n" \
+		"/test:0";
+	const gchar *headers_after =
+		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9 HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+	_edge_assert_status_code(s, 400);
+
+	err = send(s, headers_after, strlen(headers_after), 0);
+	ck_assert_int_eq(err, strlen(headers_after));
+	_edge_assert_status_code(s, 403);
+
+	close(s);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -864,6 +891,7 @@ int main()
 	tcase_add_test(tcase, test_http_error_invalid_content_length);
 	tcase_add_test(tcase, test_http_error_no_content_length);
 	tcase_add_test(tcase, test_http_error_invalid_upgrade);
+	tcase_add_test(tcase, test_http_error_invalid_events);
 
 	return test_do(sr);
 }
