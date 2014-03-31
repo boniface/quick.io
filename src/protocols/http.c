@@ -201,6 +201,8 @@ static void _surr_release_client(
 	struct client *surrogate,
 	struct client *client)
 {
+	gboolean unref = FALSE;
+
 	if (surrogate == NULL) {
 		return;
 	}
@@ -208,10 +210,15 @@ static void _surr_release_client(
 	qev_lock(surrogate);
 
 	if (surrogate->http.client == client) {
+		unref = TRUE;
 		surrogate->http.client = NULL;
 	}
 
 	qev_unlock(surrogate);
+
+	if (unref) {
+		qev_unref(client);
+	}
 }
 
 /**
@@ -259,6 +266,7 @@ static gboolean _send_response(struct client *client, GString *resp)
 	qev_unlock(client);
 
 	_surr_release_client(surrogate, client);
+	qev_unref(surrogate);
 
 out:
 	return sent;
@@ -289,7 +297,7 @@ static void _surr_replace(struct client *surrogate, struct client *new_poller)
 	if (qev_is_closing(new_poller)) {
 		surrogate->http.client = NULL;
 	} else {
-		surrogate->http.client = new_poller;
+		surrogate->http.client = qev_ref(new_poller);
 	}
 
 	qev_unlock(new_poller);
@@ -297,6 +305,7 @@ static void _surr_replace(struct client *surrogate, struct client *new_poller)
 
 	if (old_poller != NULL) {
 		_send_error(old_poller, STATUS_200);
+		qev_unref(old_poller);
 	}
 }
 
@@ -311,6 +320,7 @@ static void _surr_send(
 
 	if (poller != NULL) {
 		sent = _send_response(poller, resp);
+		qev_unref(poller);
 	}
 
 	if (sent) {
@@ -509,7 +519,7 @@ static enum protocol_status _do_headers_http(
 		qev_lock(client);
 
 		if (!qev_is_closing(surrogate) && !qev_is_closing(client)) {
-			client->http.client = surrogate;
+			client->http.client = qev_ref(surrogate);
 		}
 
 		qev_unlock(client);
@@ -702,6 +712,7 @@ void protocol_http_send(
 	if (!surrogate->http.flags.incoming) {
 		struct client *client = _steal_client(surrogate);
 		sent = _send_response(client, pframes->def);
+		qev_unref(client);
 	}
 
 	if (!sent) {
@@ -729,6 +740,7 @@ void protocol_http_close(struct client *client, guint reason)
 
 		client = _steal_client(surrogate);
 		_send_error(client, STATUS_403);
+		qev_unref(client);
 	} else {
 		struct client *surrogate = _steal_client(client);
 
@@ -748,6 +760,7 @@ void protocol_http_close(struct client *client, guint reason)
 
 		if (surrogate != NULL) {
 			qev_close(surrogate, HTTP_DONE);
+			qev_unref(surrogate);
 		}
 	}
 }
