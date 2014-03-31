@@ -262,6 +262,22 @@ static void _next(struct httpc *hc, const gchar *msg)
 	g_free(next);
 }
 
+static void _assert_status_code(qev_fd_t s, const guint status)
+{
+	gint err;
+	GString *resp = qev_buffer_get();
+	gchar buff[1024];
+
+	g_string_printf(resp, "HTTP/1.0 %u", status);
+
+	err = recv(s, buff, sizeof(buff), 0);
+	err[buff] = '\0';
+
+	ck_assert(g_str_has_prefix(buff, resp->str));
+
+	qev_buffer_put(resp);
+}
+
 START_TEST(test_http_sane)
 {
 	struct httpc *hc = _httpc_new();
@@ -397,21 +413,46 @@ START_TEST(test_http_heartbeat)
 }
 END_TEST
 
-static void _edge_assert_status_code(qev_fd_t s, const guint status)
+START_TEST(test_http_surrogate)
 {
+	const gchar *headers =
+		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+	const gchar *ping =
+		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9 HTTP/1.1\n"
+		"Content-Length: 16\n\n"
+		"/qio/ping:1=null";
+
 	gint err;
-	GString *resp = qev_buffer_get();
-	gchar buff[1024];
+	struct client *surrogate;
+	qev_fd_t s = test_socket();
+	struct client *client = test_get_client_raw();
 
-	g_string_printf(resp, "HTTP/1.0 %u", status);
+	ck_assert(!qev_is_surrogate(client));
 
-	err = recv(s, buff, sizeof(buff), 0);
-	err[buff] = '\0';
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
 
-	ck_assert(g_str_has_prefix(buff, resp->str));
+	QEV_WAIT_FOR(client->http.client != NULL);
+	surrogate = test_get_client_raw();
+	ck_assert(qev_is_surrogate(surrogate));
 
-	qev_buffer_put(resp);
+	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(60);
+
+	test_heartbeat();
+
+	ck_assert(client->http.client == NULL);
+	_assert_status_code(s, 200);
+
+	ck_assert_int_gt(surrogate->last_send, qev_monotonic - QEV_SEC_TO_USEC(1));
+
+	err = send(s, ping, strlen(ping), 0);
+	ck_assert_int_eq(err, strlen(ping));
+	_assert_status_code(s, 200);
+
+	close(s);
 }
+END_TEST
 
 static void _edge_send_opening_headers(qev_fd_t s)
 {
@@ -424,7 +465,7 @@ static void _edge_send_opening_headers(qev_fd_t s)
 	err = send(s, header, strlen(header), 0);
 	ck_assert_int_eq(strlen(header), err);
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 }
 
 START_TEST(test_http_edge_invalid_header_newlines)
@@ -452,7 +493,7 @@ START_TEST(test_http_edge_partial_headers_0)
 	err = send(s, " / HTTP/1.1\nContent-Length: 0\n\n", 31, 0);
 	ck_assert_int_eq(err, 31);
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 
 	close(s);
 }
@@ -472,7 +513,7 @@ START_TEST(test_http_edge_partial_headers_1)
 	err = send(s, " / HTTP/1.1\nContent-Length: 0\n\n", 31, 0);
 	ck_assert_int_eq(err, 31);
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 
 	close(s);
 }
@@ -490,7 +531,7 @@ START_TEST(test_http_10)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 	test_client_dead(s);
 
 	close(s);
@@ -511,7 +552,7 @@ START_TEST(test_http_10_keepalive)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 
 	ck_assert(!client->qev_client._flags.closed);
 
@@ -532,7 +573,7 @@ START_TEST(test_http_11_connection_close)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 	test_client_dead(s);
 
 	close(s);
@@ -558,7 +599,7 @@ START_TEST(test_http_partial_body)
 	err = send(s, body, strlen(body), 0);
 	ck_assert_int_eq(err, strlen(body));
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 	ck_assert(!client->qev_client._flags.closed);
 
 	close(s);
@@ -583,7 +624,7 @@ START_TEST(test_http_oversized_request)
 	QEV_WAIT_FOR(client->http.flags.in_request);
 
 	qev_close(client, QEV_CLOSE_READ_HIGH);
-	_edge_assert_status_code(s, 413);
+	_assert_status_code(s, 413);
 
 	close(s);
 }
@@ -608,7 +649,7 @@ START_TEST(test_http_close_with_surrogate)
 	QEV_WAIT_FOR(client->http.client->http.client != NULL);
 
 	qev_close(client, HTTP_DONE);
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 
 	close(s);
 }
@@ -724,7 +765,7 @@ START_TEST(test_http_error_uuid)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 	test_client_dead(s);
 
 	close(s);
@@ -743,7 +784,7 @@ START_TEST(test_http_error_not_post)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 405);
+	_assert_status_code(s, 405);
 
 	close(s);
 }
@@ -761,7 +802,7 @@ START_TEST(test_http_error_not_http)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 400);
+	_assert_status_code(s, 400);
 
 	test_client_dead(s);
 
@@ -781,7 +822,7 @@ START_TEST(test_http_error_invalid_content_length)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 400);
+	_assert_status_code(s, 400);
 	test_client_dead(s);
 
 	close(s);
@@ -798,7 +839,7 @@ START_TEST(test_http_error_no_content_length)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 411);
+	_assert_status_code(s, 411);
 	test_client_dead(s);
 
 	close(s);
@@ -820,7 +861,7 @@ START_TEST(test_http_error_invalid_upgrade)
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
 
-	_edge_assert_status_code(s, 400);
+	_assert_status_code(s, 400);
 
 	close(s);
 }
@@ -842,11 +883,11 @@ START_TEST(test_http_error_invalid_events)
 
 	err = send(s, headers, strlen(headers), 0);
 	ck_assert_int_eq(err, strlen(headers));
-	_edge_assert_status_code(s, 400);
+	_assert_status_code(s, 400);
 
 	err = send(s, headers_after, strlen(headers_after), 0);
 	ck_assert_int_eq(err, strlen(headers_after));
-	_edge_assert_status_code(s, 403);
+	_assert_status_code(s, 403);
 
 	close(s);
 }
@@ -865,6 +906,7 @@ int main()
 	tcase_add_test(tcase, test_http_sane);
 	tcase_add_test(tcase, test_http_replace_poller);
 	tcase_add_test(tcase, test_http_heartbeat);
+	tcase_add_test(tcase, test_http_surrogate);
 
 	tcase = tcase_create("Edges");
 	suite_add_tcase(s, tcase);
