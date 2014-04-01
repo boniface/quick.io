@@ -137,17 +137,16 @@ LDFLAGS = \
 	-Wl,-z,relro \
 	-Wl,-z,now \
 	-lm \
+	-rdynamic \
 	$(shell pkg-config --libs $(LIBS))
 
 LDFLAGS_DEBUG = \
 	$(LIBQEV) \
-	-g \
-	-rdynamic
+	-g
 
 LDFLAGS_TEST = \
 	$(LIBQEV_TEST) \
 	-g \
-	-rdynamic \
 	--coverage \
 	$(shell pkg-config --libs $(LIBS_TEST))
 

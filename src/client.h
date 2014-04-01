@@ -361,9 +361,26 @@ void client_sub_reject(
 gboolean client_sub_remove(struct client *client, struct subscription *sub);
 
 /**
- * A client has closed and should be completely cleaned up
+ * For configuration values: update the maximum number of subscriptions
+ * allowed on the server.
+ *
+ * @param total
+ *     The new total to use
  */
-void client_close(struct client *client);
+void client_update_max_subs(const guint64 total);
+
+/**
+ * For configuration values: update the subscription fairness value
+ *
+ * @param fairness
+ *     The new fairness value to use
+ */
+void client_update_subs_fairness(const guint64 fairness);
+
+/**
+ * A client is being freed and should be completely cleaned up
+ */
+void client_free_all(struct client *client);
 
 /**
  * Initialize clients data

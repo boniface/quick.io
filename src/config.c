@@ -20,6 +20,33 @@ static void _validate_client_subs_fairness(
 	}
 }
 
+static void _validate_client_max_subs(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
+{
+	if (val->ui64 < 100) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Allowing fewer than 100 subscriptions is a bad idea.");
+	}
+}
+
+static void _update_client_max_subs(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
+	union qev_cfg_val new_val)
+{
+	client_update_max_subs(new_val.ui64);
+}
+
+static void _update_client_subs_fairness(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
+	union qev_cfg_val new_val)
+{
+	client_update_subs_fairness(new_val.ui64);
+}
+
 static void _validate_heartbeat_interval(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
@@ -132,8 +159,8 @@ static struct qev_cfg _cfg[] = {
 		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_clients_max_subs,
 		.defval.ui64 = 4194304,
-		.validate = NULL,
-		.cb = NULL,
+		.validate = _validate_client_max_subs,
+		.cb = _update_client_max_subs,
 		.read_only = FALSE,
 	},
 	{	.name = "clients-subs-fairness",
@@ -147,7 +174,7 @@ static struct qev_cfg _cfg[] = {
 		.val.ui64 = &cfg_clients_subs_fairness,
 		.defval.ui64 = 80,
 		.validate = _validate_client_subs_fairness,
-		.cb = NULL,
+		.cb = _update_client_subs_fairness,
 		.read_only = FALSE,
 	},
 	{	.name = "heartbeat-threads",

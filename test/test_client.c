@@ -29,7 +29,7 @@ START_TEST(test_client_shutdown_while_subscribing)
 	test_send(tc, "/qio/on:1=\"/test/delayed\"");
 	QEV_WAIT_FOR(client->subs != NULL && g_hash_table_size(client->subs) > 0);
 
-	client_close(client);
+	client_free_all(client);
 
 	test_msg(tc, "/qio/callback/1:0={\"code\":420,\"data\":null,\"err_msg\":null}");
 

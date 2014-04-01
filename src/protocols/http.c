@@ -545,6 +545,10 @@ static void _cleanup()
 		g_hash_table_unref(_clients[i].tbl);
 		_clients[i].tbl = NULL;
 	}
+
+	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
+		qev_buffer_put0(&_status_responses[i]);
+	}
 }
 
 void protocol_http_init()
@@ -559,7 +563,7 @@ void protocol_http_init()
 		_status_responses[i] = _build_response(i, NULL);
 	}
 
-	qev_cleanup_fn(_cleanup);
+	qev_cleanup_fn_full(_cleanup, TRUE);
 
 	_stat_handshakes_http = qev_stats_counter("protocol.http",
 								"handshakes.http", TRUE);
@@ -730,11 +734,7 @@ void protocol_http_close(struct client *client, guint reason)
 
 		qev_lock_write_lock(&tbl->lock);
 
-		// During shutdown, the hash tables are freed before clients; it's
-		// not a big deal as no important references are maintained in them
-		if (tbl->tbl != NULL) {
-			g_hash_table_remove(tbl->tbl, &client->http.sid);
-		}
+		g_hash_table_remove(tbl->tbl, &client->http.sid);
 
 		qev_lock_write_unlock(&tbl->lock);
 

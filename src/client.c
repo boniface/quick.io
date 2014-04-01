@@ -8,6 +8,8 @@
 
 #include "quickio.h"
 
+static qev_fair_t *_fair_subs;
+
 static qev_stats_counter_t *_stat_subs_total;
 static qev_stats_counter_t *_stat_subs_added;
 static qev_stats_counter_t *_stat_subs_removed;
@@ -22,31 +24,10 @@ static qev_stats_counter_t *_stat_callbacks_evicted;
  */
 static struct client_sub* _sub_alloc(struct client *client)
 {
-	guint pressure;
-	guint64 used;
 	struct client_sub *csub = NULL;
-	gboolean allocate = FALSE;
+	guint client_used = client->subs == NULL ? 0 : g_hash_table_size(client->subs);
 
-	used = qev_stats_counter_get(_stat_subs_total);
-
-	if (used >= cfg_clients_max_subs) {
-		; // No allocations allowed
-	} else if (cfg_clients_subs_fairness == 0) {
-		allocate = TRUE;
-	} else {
-		pressure = ((100 - cfg_clients_subs_fairness) / 100.0) * cfg_clients_max_subs;
-
-		if (used >= pressure) {
-			guint client_used = client->subs == NULL ? 0 : g_hash_table_size(client->subs);
-			guint max_per = MAX(1, cfg_clients_max_subs / qev_cfg_get_max_clients()) *
-							((20 / (.05 * cfg_clients_subs_fairness)) - 3);
-			allocate = max_per > client_used;
-		} else {
-			allocate = TRUE;
-		}
-	}
-
-	if (allocate) {
+	if (qev_fair_use(_fair_subs, client_used, 1)) {
 		qev_stats_counter_inc(_stat_subs_total);
 		qev_stats_counter_inc(_stat_subs_added);
 
@@ -58,6 +39,7 @@ static struct client_sub* _sub_alloc(struct client *client)
 
 static void _sub_free(struct client_sub *csub)
 {
+	qev_fair_return(_fair_subs, 1);
 	qev_stats_counter_dec(_stat_subs_total);
 	qev_stats_counter_inc(_stat_subs_removed);
 	g_slice_free1(sizeof(*csub), csub);
@@ -121,30 +103,6 @@ out:
 	return removed;
 }
 
-/**
- * Assumes lock on client is held
- */
-static void _sub_remove_all(struct client *client)
-{
-	GHashTableIter iter;
-	struct subscription *sub;
-	struct client_sub *csub;
-
-	if (client->subs != NULL) {
-		g_hash_table_iter_init(&iter, client->subs);
-
-		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&csub)) {
-			g_hash_table_iter_remove(&iter);
-			qev_list_remove(sub->subscribers, &csub->idx);
-			_sub_free(csub);
-			sub_unref(sub);
-		}
-
-		g_hash_table_unref(client->subs);
-		client->subs = NULL;
-	}
-}
-
 static void _cb_data_free(void *cb_data, const qev_free_fn free_fn)
 {
 	if (cb_data != NULL && free_fn != NULL) {
@@ -163,19 +121,6 @@ static void _cb_free(struct client *client, const guint i)
 {
 	_cb_data_free(client->cbs[i]->cb_data, client->cbs[i]->free_fn);
 	_cb_remove(client, i);
-}
-
-/**
- * Assumes lock on client is held
- */
-static void _cb_remove_all(struct client *client)
-{
-	guint i;
-	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
-		if (client->cbs[i] != NULL) {
-			_cb_free(client, i);
-		}
-	}
 }
 
 evs_cb_t client_cb_new(
@@ -377,18 +322,55 @@ gboolean client_sub_remove(
 	return _sub_remove(client, sub, FALSE);
 }
 
-void client_close(struct client *client)
+void client_update_max_subs(const guint64 total)
 {
-	qev_lock(client);
+	if (_fair_subs != NULL) {
+		qev_fair_set_total(_fair_subs, total);
+	}
+}
 
-	_cb_remove_all(client);
-	_sub_remove_all(client);
+void client_update_subs_fairness(const guint64 fairness)
+{
+	if (_fair_subs != NULL) {
+		qev_fair_set_fairness(_fair_subs, fairness);
+	}
+}
 
-	qev_unlock(client);
+void client_free_all(struct client *client)
+{
+	guint i;
+	GHashTableIter iter;
+	struct subscription *sub;
+	struct client_sub *csub;
+
+	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
+		if (client->cbs[i] != NULL) {
+			_cb_free(client, i);
+		}
+	}
+
+	if (client->subs != NULL) {
+		g_hash_table_iter_init(&iter, client->subs);
+
+		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&csub)) {
+			g_hash_table_iter_remove(&iter);
+			qev_list_remove(sub->subscribers, &csub->idx);
+			_sub_free(csub);
+			sub_unref(sub);
+		}
+
+		g_hash_table_unref(client->subs);
+		client->subs = NULL;
+	}
 }
 
 void client_init()
 {
+	_fair_subs = qev_fair_new("subs",
+		cfg_clients_subs_fairness,
+		qev_cfg_get_max_clients(),
+		cfg_clients_max_subs);
+
 	_stat_subs_total = qev_stats_counter("clients.subs", "total", FALSE);
 	_stat_subs_added = qev_stats_counter("clients.subs", "added", TRUE);
 	_stat_subs_removed = qev_stats_counter("clients.subs", "removed", TRUE);
@@ -401,4 +383,7 @@ void client_init()
 									"fired", TRUE);
 	_stat_callbacks_evicted = qev_stats_counter("clients.callbacks",
 									"evicted", TRUE);
+
+	qev_cleanup_and_null_full((void**)&_fair_subs,
+					(qev_free_fn)qev_fair_free, TRUE);
 }

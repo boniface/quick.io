@@ -125,13 +125,13 @@ int main(int argc, char **argv)
 
 		g_free(fill);
 
-		gchar *argv[] = {
+		gchar *spawn_argv[] = {
 			_quickio_path,
 			"--config-file=" INI_FILE,
 			NULL,
 		};
 
-		ok = g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+		ok = g_spawn_sync(NULL, spawn_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
 								NULL, NULL, &exit_status, &error);
 		g_unlink(INI_FILE);
 

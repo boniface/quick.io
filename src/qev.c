@@ -27,9 +27,6 @@ void qev_on_close(struct client *client, guint reason)
 {
 	qev_timeout_clear(&client->timeout);
 	protocols_closed(client, reason);
-
-	// @todo consider moving this to qev_client_free?
-	client_close(client);
 }
 
 void qev_on_read(struct client *client)
@@ -56,5 +53,6 @@ struct client* qev_client_new()
 
 void qev_client_free(struct client *client)
 {
+	client_free_all(client);
 	g_slice_free1(sizeof(*client), client);
 }
