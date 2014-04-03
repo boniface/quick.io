@@ -65,6 +65,7 @@ enum protocol_status protocol_raw_handshake(struct client *client)
 enum protocol_status protocol_raw_route(struct client *client, gsize *used)
 {
 	guint64 len;
+	guint64 total_len;
 	enum protocol_status status;
 	GString *rbuff = client->qev_client.rbuff;
 	gchar *start = rbuff->str + *used;
@@ -75,7 +76,11 @@ enum protocol_status protocol_raw_route(struct client *client, gsize *used)
 	}
 
 	len = GUINT64_FROM_BE(*((guint64*)start));
-	if (rbuff_len < (len + sizeof(guint64))) {
+	if (!qev_safe_uadd(len, sizeof(guint64), &total_len)) {
+		return PROT_FATAL;
+	}
+
+	if (rbuff_len < total_len) {
 		return PROT_AGAIN;
 	}
 
@@ -84,7 +89,7 @@ enum protocol_status protocol_raw_route(struct client *client, gsize *used)
 	qev_stats_time(_stat_route_time, {
 		start[len] = '\0';
 		status = protocol_raw_handle(client, start);
-		*used += len + sizeof(guint64);
+		*used += total_len;
 	});
 
 	return status;

@@ -44,6 +44,12 @@ gchar *cfg_bind_path;
 guint64 cfg_broadcast_threads;
 
 /**
+ * How long a callback should be allowed to live on the server before
+ * being killed.
+ */
+guint64 cfg_clients_cb_max_age;
+
+/**
  * The maximum number of event subscriptions that may exist on a server.
  */
 guint64 cfg_clients_max_subs;
@@ -55,16 +61,17 @@ guint64 cfg_clients_max_subs;
 guint64 cfg_clients_subs_fairness;
 
 /**
- * Number of threads to use to pump out heartbeats
+ * Number of threads to use to run periodic tasks
  */
-guint64 cfg_heartbeat_threads;
+guint64 cfg_periodic_threads;
 
 /**
- * How often the heartbeat sender should run. This should be set low (~10
- * seconds) to spread out the network traffic and system interrupts over
- * 1 minute, the time each clfient expects to see a heartbeat.
+ * How often periodic tasks should be polled (heartbeats, callback cleanup,
+ * etc). This should be set low (~10 seconds) to spread out the network traffic
+ * and system interrupts over 1 minute, the time each clfient expects to
+ * see a heartbeat.
  */
-guint64 cfg_heartbeat_interval;
+guint64 cfg_periodic_interval;
 
 /**
  * The hostname of this server on the internet

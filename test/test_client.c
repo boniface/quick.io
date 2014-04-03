@@ -212,6 +212,44 @@ START_TEST(test_client_callbacks_overflow)
 }
 END_TEST
 
+static enum evs_status _test_client_callbacks_prune_cb(
+	struct client *client G_GNUC_UNUSED,
+	const void *data G_GNUC_UNUSED,
+	const evs_cb_t client_cb G_GNUC_UNUSED,
+	gchar *json G_GNUC_UNUSED)
+{
+	return EVS_STATUS_OK;
+}
+
+static void _test_client_callbacks_prune_free(void *i_)
+{
+	guint *i = i_;
+	*i = 100;
+}
+
+START_TEST(test_client_callbacks_prune)
+{
+	guint i = 0;
+	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
+
+	client_cb_new(client,
+		_test_client_callbacks_prune_cb,
+		&i,
+		_test_client_callbacks_prune_free);
+
+	ck_assert(client->cbs[0] != NULL);
+	client->cbs[0]->created = qev_monotonic - QEV_SEC_TO_USEC(cfg_clients_cb_max_age * 100);
+
+	periodic_run();
+
+	ck_assert(client->cbs[0] == NULL);
+	ck_assert_uint_eq(i, 100);
+
+	close(tc);
+}
+END_TEST
+
 static void _setup_subs()
 {
 	test_setup();
@@ -325,6 +363,7 @@ int main()
 	tcase_add_test(tcase, test_client_callbacks_all);
 	tcase_add_test(tcase, test_client_callbacks_limits);
 	tcase_add_test(tcase, test_client_callbacks_overflow);
+	tcase_add_test(tcase, test_client_callbacks_prune);
 
 	tcase = tcase_create("Subs");
 	suite_add_tcase(s, tcase);

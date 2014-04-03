@@ -87,6 +87,11 @@ struct client_cb {
 	 * Function used to free the cb_data
 	 */
 	qev_free_fn free_fn;
+
+	/**
+	 * When the callback was created (monotonic time)
+	 */
+	gint64 created;
 };
 
 /**
@@ -173,7 +178,7 @@ struct client {
 		/**
 		 * How much data is left to read from the socket
 		 */
-		guint body_len;
+		guint64 body_len;
 
 		/**
 		 * If you can't figure out what this is, you should put the magic
@@ -226,7 +231,7 @@ struct client {
 	/**
 	 * The callbacks for the client.
 	 */
-	struct client_cb *cbs[8];
+	struct client_cb *cbs[4];
 
 	/**
 	 * The ID of the most recent callback
@@ -275,6 +280,16 @@ enum evs_status client_cb_fire(
 	const evs_cb_t server_cb,
 	const evs_cb_t client_cb,
 	gchar *json);
+
+/**
+ * Prune any client callbacks that have been hanging around too long.
+ */
+void client_cb_prune(struct client *client, const gint64 before);
+
+/**
+ * Get the time before which callbacks should be pruned.
+ */
+gint64 client_cb_prune_get_before();
 
 /**
  * Checks if a client is subscribed to the given susbcription.
@@ -361,21 +376,14 @@ void client_sub_reject(
 gboolean client_sub_remove(struct client *client, struct subscription *sub);
 
 /**
- * For configuration values: update the maximum number of subscriptions
- * allowed on the server.
+ * For configuration values: update the fair pool for subs
  *
  * @param total
  *     The new total to use
- */
-void client_update_max_subs(const guint64 total);
-
-/**
- * For configuration values: update the subscription fairness value
- *
  * @param fairness
  *     The new fairness value to use
  */
-void client_update_subs_fairness(const guint64 fairness);
+void client_update_subs_config(const guint64 total, const guint64 fairness);
 
 /**
  * A client is being freed and should be completely cleaned up

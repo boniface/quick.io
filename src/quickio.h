@@ -38,6 +38,7 @@
 #include "config.h"
 #include "evs_qio.h"
 #include "evs_query.h"
+#include "periodic.h"
 #include "str.h"
 #include "sub.h"
 #include "protocols.h"

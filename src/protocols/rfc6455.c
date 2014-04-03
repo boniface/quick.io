@@ -64,6 +64,7 @@ static enum protocol_status _decode(
 	guint64 i;
 	guint64 len;
 	guint64 max;
+	guint64 total_len;
 	union {
 		guint32 i;
 		gchar c[4];
@@ -120,12 +121,16 @@ static enum protocol_status _decode(
 		memcpy(mask.c, str + 10, 4);
 	}
 
-	if (rbuff_len < (header_len + len)) {
+	if (!qev_safe_uadd(header_len, len, &total_len)) {
+		return PROT_FATAL;
+	}
+
+	if (rbuff_len < total_len) {
 		return PROT_AGAIN;
 	}
 
 	*len_ = len;
-	*frame_len = len + header_len;
+	*frame_len = total_len;
 	str += header_len;
 
 	/*
@@ -306,7 +311,7 @@ void protocol_rfc6455_close(struct client *client, guint reason)
 			qev_write(client, "\x88\x10\x03\xf0""client timeout", 18);
 			break;
 
-		case QEV_CLOSE_READ_HIGH:
+		case QEV_CLOSE_OUT_OF_MEM:
 			// error code: 1009
 			qev_write(client, "\x88\x02\x03\xf1", 4);
 			break;

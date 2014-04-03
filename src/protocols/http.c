@@ -643,7 +643,11 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 	}
 
 	if (client->protocol.prot == protocol_http && status == PROT_OK) {
-		if (rbuff->len < (client->http.body_len + *used)) {
+		guint64 len;
+
+		if (!qev_safe_uadd(client->http.body_len, *used, &len)) {
+			status = PROT_FATAL;
+		} else if (rbuff->len < len) {
 			status = PROT_AGAIN;
 		} else {
 			gchar *start = rbuff->str + *used;
@@ -753,7 +757,7 @@ void protocol_http_close(struct client *client, guint reason)
 				_send_error(client, STATUS_411);
 				break;
 
-			case QEV_CLOSE_READ_HIGH:
+			case QEV_CLOSE_OUT_OF_MEM:
 				_send_error(client, STATUS_413);
 				break;
 		}

@@ -159,6 +159,7 @@ evs_cb_t client_cb_new(
 		.cb_fn = cb_fn,
 		.cb_data = cb_data,
 		.free_fn = free_fn,
+		.created = qev_monotonic,
 	};
 
 	client->cbs[i] = g_slice_copy(sizeof(cb), &cb);
@@ -210,6 +211,27 @@ error:
 	evs_err_cb(client, client_cb, CODE_NOT_FOUND,
 				"callback doesn't exist", NULL);
 	return EVS_STATUS_HANDLED;
+}
+
+void client_cb_prune(struct client *client, const gint64 before)
+{
+	guint i;
+
+	qev_lock(client);
+
+	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
+		struct client_cb *cb = client->cbs[i];
+		if (cb != NULL && cb->created < before) {
+			_cb_free(client, i);
+		}
+	}
+
+	qev_unlock(client);
+}
+
+gint64 client_cb_prune_get_before()
+{
+	return qev_monotonic - QEV_SEC_TO_USEC(cfg_clients_cb_max_age);
 }
 
 gboolean client_sub_active(struct client *client, struct subscription *sub)
@@ -322,16 +344,10 @@ gboolean client_sub_remove(
 	return _sub_remove(client, sub, FALSE);
 }
 
-void client_update_max_subs(const guint64 total)
+void client_update_subs_config(const guint64 total, const guint64 fairness)
 {
 	if (_fair_subs != NULL) {
 		qev_fair_set_total(_fair_subs, total);
-	}
-}
-
-void client_update_subs_fairness(const guint64 fairness)
-{
-	if (_fair_subs != NULL) {
 		qev_fair_set_fairness(_fair_subs, fairness);
 	}
 }

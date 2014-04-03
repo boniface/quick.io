@@ -184,17 +184,6 @@ out:
 	g_string_erase(rbuff, 0, used);
 }
 
-static void _heartbeat_cb(struct client *client, void *hb_)
-{
-	struct protocol_heartbeat *hb = hb_;
-
-	if (client->protocol.handshaked &&
-		client->protocol.prot->heartbeat != NULL) {
-
-		client->protocol.prot->heartbeat(client, hb);
-	}
-}
-
 struct client* protocols_new_surrogate(struct protocol *prot)
 {
 	struct client *client = qev_surrogate_new();
@@ -292,20 +281,29 @@ void protocols_bcast_free(struct protocol_frames *frames)
 	g_slice_free1(sizeof(*frames) * G_N_ELEMENTS(_protocols), frames);
 }
 
-void protocols_heartbeat()
+void protocols_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb)
+{
+	if (client->protocol.handshaked &&
+		client->protocol.prot->heartbeat != NULL) {
+
+		client->protocol.prot->heartbeat(client, hb);
+	}
+}
+
+struct protocol_heartbeat protocols_heartbeat_get_intervals()
 {
 	gint64 now = qev_monotonic;
 
-	struct protocol_heartbeat hb = {
+	return (struct protocol_heartbeat){
 		.timeout = now - QEV_MS_TO_USEC(qev_cfg_get_timeout()),
 		.poll = now - HEARTBEAT_POLL,
 		.heartbeat = now - HEARTBEAT_INTERVAL +
-						QEV_SEC_TO_USEC(cfg_heartbeat_interval),
+						QEV_SEC_TO_USEC(cfg_periodic_interval),
 		.challenge = now - HEARTBEAT_CHALLENGE_INTERVAL,
 		.dead = now - HEARTBEAT_DEAD,
 	};
-
-	qev_foreach(_heartbeat_cb, cfg_heartbeat_threads, &hb);
 }
 
 void protocols_switch(struct client *client, struct protocol *prot)
@@ -318,8 +316,6 @@ void protocols_switch(struct client *client, struct protocol *prot)
 void protocols_init()
 {
 	guint i;
-
-	qev_timer(protocols_heartbeat, cfg_heartbeat_interval, 0);
 
 	for (i = 0; i < G_N_ELEMENTS(_protocols); i++) {
 		struct protocol *p = _protocols + i;

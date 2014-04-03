@@ -17,6 +17,7 @@ void qio_main(int argc, char **argv)
 	sub_init();
 	protocols_init();
 	client_init();
+	periodic_init();
 
 	if (cfg_bind_address != NULL) {
 		guint16 port = cfg_bind_port;

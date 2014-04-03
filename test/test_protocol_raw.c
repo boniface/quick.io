@@ -147,6 +147,19 @@ START_TEST(test_raw_multiple_messages)
 }
 END_TEST
 
+START_TEST(test_raw_size_overflow)
+{
+	gint64 err;
+	qev_fd_t tc = test_client();
+
+	err = send(tc, "\xff\xff\xff\xff\xff\xff\xff\xff/qio/ping:1=null", 24, 0);
+	ck_assert(err == 24);
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -164,6 +177,7 @@ int main()
 	tcase_add_test(tcase, test_raw_heartbeats);
 	tcase_add_test(tcase, test_raw_heartbeat_challenge);
 	tcase_add_test(tcase, test_raw_multiple_messages);
+	tcase_add_test(tcase, test_raw_size_overflow);
 
 	return test_do(sr);
 }

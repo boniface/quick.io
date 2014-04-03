@@ -40,6 +40,7 @@ OBJECTS = \
 	$(SRC_DIR)/evs.o \
 	$(SRC_DIR)/evs_qio.o \
 	$(SRC_DIR)/evs_query.o \
+	$(SRC_DIR)/periodic.o \
 	$(SRC_DIR)/protocols.o \
 	$(SRC_DIR)/protocols/flash.o \
 	$(SRC_DIR)/protocols/http.o \

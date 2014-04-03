@@ -430,6 +430,19 @@ START_TEST(test_rfc6455_decode_long)
 }
 END_TEST
 
+START_TEST(test_rfc6455_decode_long_overflow)
+{
+	const gchar *msg = "\x81\xff\xff\xff\xff\xff\xff\xff\xff\xff""abcd";
+
+	qev_fd_t tc = _client();
+
+	ck_assert_int_eq(send(tc, msg, strlen(msg), 0), strlen(msg));
+
+	test_client_dead(tc);
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_rfc6455_decode_invalid_utf8)
 {
 	const gchar *inval = "\x81\x82""abcd""\xe1""\xe2";
@@ -554,21 +567,25 @@ END_TEST
 
 START_TEST(test_rfc6455_close_read_high)
 {
-	const gchar *msg = "\x81\xa2""abcd""N""\x16""\x06""\x17""\x15""X""S""Y"
-						"\x00""\x00""\x00""\x00""\x04""\x04""\x04""\x0c""\x08"
-						"\x08""\x08""\x08""\x0c""\x0c""\x0c""\x14""\x10""\x10"
-						"\x10""\x10""\x14""\x14""\x14""\x1c""\x18""\x18";
+	const gchar *msg = "\x81\xff""\x01\xff\xff\xff\xff\xff\xff\xff""abcd";
 
 	gint err;
-	gchar buff[8];
+	gchar buff[2048];
+	union qev_cfg_val val;
 	qev_fd_t tc = _client();
 
-	union qev_cfg_val val = { .ui64 = 10 };
-	qev_cfg_set("quick-event", "read-high", val, NULL);
+	val.ui64 = 100;
+	qev_cfg_set("quick-event", "userspace-buff-fairness", val, NULL);
 
 	ck_assert_int_eq(send(tc, msg, strlen(msg), 0), strlen(msg));
 
+	memset(buff, 0, sizeof(buff));
+	do {
+		err = send(tc, buff, sizeof(buff), 0);
+	} while (err > 0);
+
 	err = recv(tc, buff, sizeof(buff), 0);
+	buff[err] = '\0';
 	ck_assert(memcmp(buff, "\x88\x02\x03\xf1", err) == 0);
 
 	test_client_dead(tc);
@@ -623,6 +640,7 @@ int main()
 	tcase_add_test(tcase, test_rfc6455_decode_unmasked);
 	tcase_add_test(tcase, test_rfc6455_decode_medium);
 	tcase_add_test(tcase, test_rfc6455_decode_long);
+	tcase_add_test(tcase, test_rfc6455_decode_long_overflow);
 	tcase_add_test(tcase, test_rfc6455_decode_invalid_utf8);
 	tcase_add_test(tcase, test_rfc6455_decode_invalid_qio_handshake);
 

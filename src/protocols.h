@@ -249,9 +249,17 @@ void protocols_bcast_write(
 void protocols_bcast_free(struct protocol_frames *frames);
 
 /**
- * Sends out heartbeats to everyone who needs them right now.
+ * Run any necessary heartbeating on the given client.
  */
-void protocols_heartbeat();
+void protocols_heartbeat(
+	struct client *client,
+	const struct protocol_heartbeat *hb);
+
+/**
+ * Get the heartbeat intervals that should be used in this round of periodic
+ * tasks.
+ */
+struct protocol_heartbeat protocols_heartbeat_get_intervals();
 
 /**
  * Switch a client to a different protocol.

@@ -623,7 +623,7 @@ START_TEST(test_http_oversized_request)
 
 	QEV_WAIT_FOR(client->http.flags.in_request);
 
-	qev_close(client, QEV_CLOSE_READ_HIGH);
+	qev_close(client, QEV_CLOSE_OUT_OF_MEM);
 	_assert_status_code(s, 413);
 
 	close(s);
@@ -829,6 +829,29 @@ START_TEST(test_http_error_invalid_content_length)
 }
 END_TEST
 
+START_TEST(test_http_error_content_length_too_big)
+{
+	gint err;
+	qev_fd_t s = test_socket();
+	GString *buff = qev_buffer_get();
+
+	g_string_printf(buff,
+		"POST / HTTP/1.1\n"
+		"Content-Length: 0\n\n"
+		"POST / HTTP/1.1\n"
+		"Content-Length: %lu\n\n",
+		G_MAXUINT64);
+
+	err = send(s, buff->str, buff->len, 0);
+	ck_assert_int_eq(err, buff->len);
+
+	test_client_dead(s);
+
+	qev_buffer_put(buff);
+	close(s);
+}
+END_TEST
+
 START_TEST(test_http_error_no_content_length)
 {
 	const gchar *headers = "POST / HTTP/1.1\n\n";
@@ -931,6 +954,7 @@ int main()
 	tcase_add_test(tcase, test_http_error_not_post);
 	tcase_add_test(tcase, test_http_error_not_http);
 	tcase_add_test(tcase, test_http_error_invalid_content_length);
+	tcase_add_test(tcase, test_http_error_content_length_too_big);
 	tcase_add_test(tcase, test_http_error_no_content_length);
 	tcase_add_test(tcase, test_http_error_invalid_upgrade);
 	tcase_add_test(tcase, test_http_error_invalid_events);

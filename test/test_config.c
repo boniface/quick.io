@@ -8,13 +8,13 @@
 
 #include "test.h"
 
-#define HEARTBEAT_0 \
+#define PERIODIC_0 \
 	"[quick.io]\n" \
-	"heartbeat-interval = 3\n"
+	"periodic-interval = 3\n"
 
-#define HEARTBEAT_1 \
+#define PERIODIC_1 \
 	"[quick.io]\n" \
-	"heartbeat-interval = 180\n"
+	"periodic-interval = 180\n"
 
 #define SUB_MIN_SIZE_0 \
 	"[quick.io]\n" \
@@ -28,9 +28,9 @@
 	"[quick.io]\n" \
 	"clients-max-subs = 10\n"
 
-#define SUB_FAIRNESS \
+#define CBS_MAX \
 	"[quick.io]\n" \
-	"clients-subs-fairness = 4294967295\n"
+	"clients-cb-max-age = 0\n"
 
 #define PUBLIC_ADDRESS \
 	"[quick.io]\n" \
@@ -60,17 +60,17 @@ abort:
 	goto out;
 }
 
-START_TEST(test_config_invalid_heartbeat_interval_0)
+START_TEST(test_config_invalid_periodic_interval_0)
 {
-	_do(HEARTBEAT_0);
-	ck_assert_uint_eq(cfg_heartbeat_interval, 10);
+	_do(PERIODIC_0);
+	ck_assert_uint_eq(cfg_periodic_interval, 10);
 }
 END_TEST
 
-START_TEST(test_config_invalid_heartbeat_interval_1)
+START_TEST(test_config_invalid_periodic_interval_1)
 {
-	_do(HEARTBEAT_1);
-	ck_assert_uint_eq(cfg_heartbeat_interval, 10);
+	_do(PERIODIC_1);
+	ck_assert_uint_eq(cfg_periodic_interval, 10);
 }
 END_TEST
 
@@ -95,10 +95,10 @@ START_TEST(test_config_invalid_subs_max)
 }
 END_TEST
 
-START_TEST(test_config_invalid_client_subs_fairness)
+START_TEST(test_config_invalid_cbs_max_age)
 {
-	_do(SUB_FAIRNESS);
-	ck_assert_uint_eq(cfg_clients_subs_fairness, 80);
+	_do(CBS_MAX);
+	ck_assert_uint_eq(cfg_clients_cb_max_age, 15);
 }
 END_TEST
 
@@ -130,12 +130,12 @@ int main()
 	tcase = tcase_create("Options");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, NULL, test_teardown);
-	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_0);
-	tcase_add_test(tcase, test_config_invalid_heartbeat_interval_1);
+	tcase_add_test(tcase, test_config_invalid_periodic_interval_0);
+	tcase_add_test(tcase, test_config_invalid_periodic_interval_1);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 	tcase_add_test(tcase, test_config_invalid_subs_max);
-	tcase_add_test(tcase, test_config_invalid_client_subs_fairness);
+	tcase_add_test(tcase, test_config_invalid_cbs_max_age);
 	tcase_add_test(tcase, test_config_invalid_public_address);
 
 	tcase = tcase_create("Coverage");

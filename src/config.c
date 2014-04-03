@@ -8,18 +8,6 @@
 
 #include "quickio.h"
 
-static void _validate_client_subs_fairness(
-	const gchar *name G_GNUC_UNUSED,
-	union qev_cfg_val *val,
-	GError **error)
-{
-	if (val->ui64 > 100) {
-		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Invalid subs fairness: must be between 0 and 100. "
-					"%" G_GUINT64_FORMAT " is invalid.", val->ui64);
-	}
-}
-
 static void _validate_client_max_subs(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
@@ -31,12 +19,24 @@ static void _validate_client_max_subs(
 	}
 }
 
+static void _validate_client_cb_max_age(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
+{
+	if (val->ui64 == 0) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Setting callback max age to 0 will result in callbacks "
+					"being freed on every run. That's a bad idea.");
+	}
+}
+
 static void _update_client_max_subs(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
 	union qev_cfg_val new_val)
 {
-	client_update_max_subs(new_val.ui64);
+	client_update_subs_config(new_val.ui64, cfg_clients_subs_fairness);
 }
 
 static void _update_client_subs_fairness(
@@ -44,10 +44,10 @@ static void _update_client_subs_fairness(
 	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
 	union qev_cfg_val new_val)
 {
-	client_update_subs_fairness(new_val.ui64);
+	client_update_subs_config(cfg_clients_max_subs, new_val.ui64);
 }
 
-static void _validate_heartbeat_interval(
+static void _validate_periodic_interval(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
 	GError **error)
@@ -142,12 +142,13 @@ static struct qev_cfg _cfg[] = {
 		.cb = NULL,
 		.read_only = TRUE,
 	},
-	{	.name = "broadcast-threads",
-		.description = "Number of threads used to pump out each broadcasted message.",
+	{	.name = "clients-cb-max-age",
+		.description = "How long a callback should be allowed to live on the "
+						"server before being killed (measured in seconds).",
 		.type = QEV_CFG_UINT64,
-		.val.ui64 = &cfg_broadcast_threads,
-		.defval.ui64 = 2,
-		.validate = NULL,
+		.val.ui64 = &cfg_clients_cb_max_age,
+		.defval.ui64 = 15,
+		.validate = _validate_client_cb_max_age,
 		.cb = NULL,
 		.read_only = FALSE,
 	},
@@ -173,28 +174,28 @@ static struct qev_cfg _cfg[] = {
 		.type = QEV_CFG_UINT64,
 		.val.ui64 = &cfg_clients_subs_fairness,
 		.defval.ui64 = 80,
-		.validate = _validate_client_subs_fairness,
+		.validate = NULL,
 		.cb = _update_client_subs_fairness,
 		.read_only = FALSE,
 	},
-	{	.name = "heartbeat-threads",
-		.description = "Number of threads used to pump out heartbeats.",
+	{	.name = "periodic-interval",
+		.description = "How often periodic tasks should be polled (heartbeats, "
+						"callback cleanup, etc). Measured in seconds.",
 		.type = QEV_CFG_UINT64,
-		.val.ui64 = &cfg_heartbeat_threads,
+		.val.ui64 = &cfg_periodic_interval,
+		.defval.ui64 = 10,
+		.validate = _validate_periodic_interval,
+		.cb = NULL,
+		.read_only = TRUE,
+	},
+	{	.name = "periodic-threads",
+		.description = "Number of threads used to run periodic tasks.",
+		.type = QEV_CFG_UINT64,
+		.val.ui64 = &cfg_periodic_threads,
 		.defval.ui64 = 8,
 		.validate = NULL,
 		.cb = NULL,
 		.read_only = FALSE,
-	},
-	{	.name = "heartbeat-interval",
-		.description = "How often the clients should be polled to see if "
-						"they need heartbeats, in seconds.",
-		.type = QEV_CFG_UINT64,
-		.val.ui64 = &cfg_heartbeat_interval,
-		.defval.ui64 = 10,
-		.validate = _validate_heartbeat_interval,
-		.cb = NULL,
-		.read_only = TRUE,
 	},
 	{	.name = "public-address",
 		.description = "Where the server lives on the internet.",

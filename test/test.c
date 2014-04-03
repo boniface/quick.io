@@ -22,10 +22,7 @@
  */
 #define CONFIG \
 	"[quick-event]\n" \
-	"max-clients = %lu\n" \
 	"poll-wait = 1\n" \
-	"read-high = 131072\n" \
-	"read-high-burst = 131072\n" \
 	"tcp-nodelay = true\n" \
 	"timeout = %d\n" \
 	"[quick.io]\n" \
@@ -83,7 +80,7 @@ static void _get_client_cb(struct client *client, void *ptr_)
 static void _heartbeat_timer()
 {
 	if (_do_heartbeat) {
-		protocols_heartbeat();
+		periodic_run();
 		_do_heartbeat = FALSE;
 	}
 }
@@ -111,7 +108,6 @@ void test_config()
 	ASSERT(err == 0, "Could not get file limits");
 
 	g_string_printf(c, CONFIG,
-			rl.rlim_cur,
 			FATAL_SIGNAL == 5 ? 100 : 3000,
 			PORT, PORT + 1, PORT, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
