@@ -13,6 +13,11 @@
 #include "quickio.h"
 
 /**
+ * Full heartbeat event that is fired to clients
+ */
+#define PROTOCOLS_HEARTBEAT "/qio/heartbeat:0=null"
+
+/**
  * If a protocol can handle a client
  */
 enum protocol_handles {

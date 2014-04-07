@@ -29,7 +29,7 @@
  * Predefined and formatted RFC6455 messages
  */
 #define QIO_HANDSHAKE "\x81\x09/qio/ohai"
-#define HEARTBEAT "\x81""\x15""/qio/heartbeat:0=null"
+#define HEARTBEAT "\x81""\x15" PROTOCOLS_HEARTBEAT
 
 /**
  * RFC6455 byte locations

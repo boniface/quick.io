@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<head>
+	<meta charset="UTF-8">
+	<script>
+		var pendingPoll,
+			publicAddress = '{PUBLIC_ADDRESS}', // Added at runtime
+			requests = 0,
+			instanceId = -1,
+			pendingEvents = [],
+			uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+				var r = Math.random() * 16 | 0,
+					v = c == 'x' ? r : (r & 0x3 | 0x8);
+				return v.toString(16);
+			});
+
+		// From: http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
+		function getParameterByName(name) {
+			name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+			var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+			results = regex.exec(location.search);
+			return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+		}
+
+		function send(type, d) {
+			window.parent.postMessage({
+				from: 'QuickIO',
+				type: type,
+				instanceId: instanceId,
+				data: d
+			}, '*');
+		}
+
+		function requestDone() {
+			requests--;
+			if (requests == 0) {
+				requestPoll();
+			}
+		}
+
+		function sendError() {
+			send('error', null);
+			requestDone();
+		}
+
+		function poll(data, create) {
+			var request = new XMLHttpRequest(),
+				url = '/?sid=' + uuid + (create ? '&connect=true' : '');
+
+			request.onerror = sendError;
+			request.onload = function() {
+				var i,
+					events,
+					evs = [];
+
+				if (request.status != 200) {
+					sendError();
+					return;
+				}
+
+				events = this.responseText.split('\n');
+				for (i = 0; i < events.length; i++) {
+					if (events[i]) {
+						evs.push(events[i]);
+					}
+				}
+
+				if (evs.length > 0) {
+					send('events', evs);
+				}
+
+				requestDone();
+			};
+
+			request.open('POST', url, true);
+			request.send(data);
+
+			requests++;
+		}
+
+		function requestPoll() {
+			if (!pendingPoll) {
+				pendingPoll = setTimeout(function() {
+					var evs = pendingEvents.join('\n');
+
+					pendingEvents = [];
+					poll(evs);
+
+					pendingPoll = null;
+				}, Math.ceil(Math.random() * 2000));
+			}
+		}
+
+		function onPostMessage(e) {
+			pendingEvents.push(e.data);
+			requestPoll();
+		}
+
+		function sendServerUrl() {
+			send('ready', {
+				serverUrl: publicAddress
+			});
+		}
+
+		function startClient() {
+			if (window.addEventListener) {
+				window.addEventListener('message', onPostMessage, false);
+			} else if (window.attachEvent) {
+				window.attachEvent('onmessage', onPostMessage);
+			}
+
+			poll('', true);
+
+			send('ready', null);
+		}
+
+		function run() {
+			document.removeEventListener('DOMContentLoaded', run, false);
+			window.removeEventListener('load', run, false);
+
+			instanceId = parseInt(getParameterByName('instanceId'));
+
+			if (getParameterByName('connectionTest')) {
+				sendServerUrl();
+			} else {
+				startClient();
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', run, false);
+		window.addEventListener('load', run, false);
+	</script>
+</head>
+
+<body>
+</body>

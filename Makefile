@@ -87,6 +87,7 @@ LIBS = glib-2.0 gmodule-2.0 openssl uuid
 LIBS_TEST = check
 LIBQEV = $(QEV_DIR)/libqev.a
 LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
+HTML_COMPRESSOR = $(LIB_DIR)/htmlcompressor-1.5.3.jar
 
 CFLAGS = \
 	-Wall \
@@ -283,6 +284,7 @@ clean:
 	find -name '*.gcda' -exec rm {} \;
 	find -name '*.xml' -exec rm {} \;
 	find test -name 'test_*.ini' -exec rm {} \;
+	rm -f $(SRC_DIR)/protocols/http_iframe.c*
 	rm -f $(BINARY_OBJECTS)
 	rm -f $(TEST_APPS)
 	$(MAKE) -C lib/quick-event/ clean
@@ -311,6 +313,12 @@ $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/% $(VG_SUPPRESSIONS)
 $(BENCHMARKS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && ./$@
 
+$(SRC_DIR)/protocols/http_iframe.c: $(SRC_DIR)/protocols/http_iframe.html
+	@echo '-------- Generating $@ --------'
+	@java -jar $(HTML_COMPRESSOR) --compress-js $< > $@.html
+	@xxd -i $@.html > $@
+
+$(SRC_DIR)/protocols/http.o: $(SRC_DIR)/protocols/http_iframe.c
 %.o: %.c $(HEADERS)
 	@echo '-------- Compiling $@ --------'
 	@$(CC) -c $(CFLAGS) $< -o $@

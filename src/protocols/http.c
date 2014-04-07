@@ -71,10 +71,13 @@ static gchar *_status_lines[] = {
 	"426 Upgrade Required",
 };
 
+#include "http_iframe.c"
+
 static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
 static qev_stats_counter_t *_stat_handshakes_http_missing_upgrade;
 
+static GString *_iframe_source;
 static GString *_status_responses[G_N_ELEMENTS(_status_lines)];
 
 static struct client_table _clients[64];
@@ -294,7 +297,7 @@ static void _surr_replace(struct client *surrogate, struct client *new_poller)
 
 	old_poller = surrogate->http.client;
 
-	if (qev_is_closing(new_poller)) {
+	if (qev_is_closing(surrogate) || qev_is_closing(new_poller)) {
 		surrogate->http.client = NULL;
 	} else {
 		surrogate->http.client = qev_ref(new_poller);
@@ -434,7 +437,7 @@ static struct client* _get_surrogate(gchar *url)
 static void _do_body(struct client *client, gchar *start)
 {
 	if (client->http.flags.iframe_requested) {
-
+		_send_response(client, _iframe_source);
 	} else if (!client->http.flags.is_post) {
 		_send_error(client, STATUS_405);
 	} else {
@@ -458,7 +461,7 @@ static void _do_body(struct client *client, gchar *start)
 	}
 }
 
-static void _do_headers_websocket(
+static enum protocol_status _do_headers_websocket(
 	struct client *client,
 	const struct protocol_headers *headers,
 	const gchar *connection,
@@ -482,7 +485,10 @@ static void _do_headers_websocket(
 		_send_error(client, STATUS_400);
 	} else {
 		protocol_rfc6455_upgrade(client, key);
+		return PROT_AGAIN;
 	}
+
+	return PROT_OK;
 }
 
 static enum protocol_status _do_headers_http(
@@ -549,19 +555,31 @@ static void _cleanup()
 	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
 		qev_buffer_put0(&_status_responses[i]);
 	}
+
+	qev_buffer_put0(&_iframe_source);
 }
 
 void protocol_http_init()
 {
 	guint i;
+	GString *buff = qev_buffer_get();
 
 	for (i = 0; i < G_N_ELEMENTS(_clients); i++) {
 		_clients[i].tbl = g_hash_table_new(_uint128_hash, _uint128_equal);
 	}
 
-	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
+	g_string_append(buff, PROTOCOLS_HEARTBEAT);
+	_status_responses[STATUS_200] = _build_response(STATUS_200, buff);
+	for (i = 1; i < G_N_ELEMENTS(_status_responses); i++) {
 		_status_responses[i] = _build_response(i, NULL);
 	}
+
+	qev_buffer_clear(buff);
+	g_string_append_len(buff,
+		(char*)src_protocols_http_iframe_c_html,
+		src_protocols_http_iframe_c_html_len);
+	qev_buffer_replace_str(buff, "{PUBLIC_ADDRESS}", cfg_public_address);
+	_iframe_source = _build_response(STATUS_200, buff);
 
 	qev_cleanup_fn_full(_cleanup, TRUE);
 
@@ -571,6 +589,8 @@ void protocol_http_init()
 								"handshakes.http_invalid", TRUE);
 	_stat_handshakes_http_missing_upgrade = qev_stats_counter("protocol.http",
 								"handshakes.http_missing_upgrade", TRUE);
+
+	qev_buffer_put(buff);
 }
 
 enum protocol_handles protocol_http_handles(struct client *client)
@@ -633,9 +653,8 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 		client->http.flags.keep_alive = keep_alive;
 
 		if (key != NULL) {
-			_do_headers_websocket(client, &headers, connection, key);
+			status = _do_headers_websocket(client, &headers, connection, key);
 			*used = rbuff->len;
-			status = PROT_OK;
 		} else {
 			status = _do_headers_http(client, &headers, head_start);
 			*used += body_start - (rbuff->str + *used);

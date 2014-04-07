@@ -99,13 +99,8 @@ void test_new(
 
 void test_config()
 {
-	gint err;
 	gboolean configed;
-	struct rlimit rl;
 	GString *c = qev_buffer_get();
-
-	err = getrlimit(RLIMIT_NOFILE, &rl);
-	ASSERT(err == 0, "Could not get file limits");
 
 	g_string_printf(c, CONFIG,
 			FATAL_SIGNAL == 5 ? 100 : 3000,

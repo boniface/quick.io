@@ -13,6 +13,7 @@ bench_*
 !bench_*.c
 quickio
 quickio-testapps
+src/protocols/http_iframe.c*
 test/test_*.ini
 valgrind.supp
 

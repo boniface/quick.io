@@ -12,7 +12,7 @@
 
 #define HANDSHAKE "/qio/ohai"
 
-#define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x15""/qio/heartbeat:0=null"
+#define HEARTBEAT "\x00\x00\x00\x00\x00\x00\x00\x15" PROTOCOLS_HEARTBEAT
 
 static qev_stats_counter_t *_stat_handshakes;
 static qev_stats_timer_t *_stat_route_time;

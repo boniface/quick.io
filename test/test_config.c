@@ -36,6 +36,10 @@
 	"[quick.io]\n" \
 	"public-address = http://what is this?\n"
 
+#define FLASH_SUPPORT \
+	"[quick.io]\n" \
+	"support-flash = true\n"
+
 static void _do(const gchar *cfg)
 {
 	gboolean die = FALSE;
@@ -114,9 +118,7 @@ END_TEST
 
 START_TEST(test_config_coverage_support_flash)
 {
-	gchar *args[] = {"test"};
-	cfg_support_flash = TRUE;
-	qio_main(1, args);
+	_do(FLASH_SUPPORT);
 }
 END_TEST
 
@@ -136,7 +138,7 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 	tcase_add_test(tcase, test_config_invalid_subs_max);
 	tcase_add_test(tcase, test_config_invalid_cbs_max_age);
-	tcase_add_test(tcase, test_config_invalid_public_address);
+	tcase_add_test_raise_signal(tcase, test_config_invalid_public_address, FATAL_SIGNAL);
 
 	tcase = tcase_create("Coverage");
 	suite_add_tcase(s, tcase);

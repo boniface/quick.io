@@ -216,17 +216,22 @@ error:
 void client_cb_prune(struct client *client, const gint64 before)
 {
 	guint i;
-
-	qev_lock(client);
+	gboolean has_lock = FALSE;
 
 	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
-		struct client_cb *cb = client->cbs[i];
-		if (cb != NULL && cb->created < before) {
+		if (client->cbs[i] != NULL && !has_lock) {
+			has_lock = TRUE;
+			qev_lock(client);
+		}
+
+		if (client->cbs[i] != NULL && client->cbs[i]->created < before) {
 			_cb_free(client, i);
 		}
 	}
 
-	qev_unlock(client);
+	if (has_lock) {
+		qev_unlock(client);
+	}
 }
 
 gint64 client_cb_prune_get_before()
