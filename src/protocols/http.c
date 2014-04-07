@@ -82,49 +82,6 @@ static GString *_status_responses[G_N_ELEMENTS(_status_lines)];
 
 static struct client_table _clients[64];
 
-/**
- * From: http://stackoverflow.com/questions/2673207/c-c-url-decode-library
- */
-// static void _urldecode(gchar *str)
-// {
-// 	const gchar *src = str;
-
-// 	while (*src) {
-// 		gchar a, b;
-
-// 		if (*src == '%' && (a = src[1]) && (b = src[2]) &&
-// 			g_ascii_isxdigit(a) && g_ascii_isxdigit(b)) {
-
-// 			if (a >= 'a') {
-// 				a -= 'a' - 'A';
-// 			}
-
-// 			if (a >= 'A') {
-// 				a -= 'A' - 10;
-// 			} else {
-// 				a -= '0';
-// 			}
-
-// 			if (b >= 'a') {
-// 				b -= 'a' - 'A';
-// 			}
-
-// 			if (b >= 'A') {
-// 				b -= 'A' - 10;
-// 			} else {
-// 				b -= '0';
-// 			}
-
-// 			*str++ = 16 * a + b;
-// 			src += 3;
-// 		} else {
-// 			*str++ = *src++;
-// 		}
-// 	}
-
-// 	*str++ = '\0';
-// }
-
 static guint _uint128_hash(const void *i_)
 {
 	__uint128_t i = *(__uint128_t*)i_;
@@ -618,6 +575,9 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 	enum protocol_status status = PROT_OK;
 	GString *rbuff = client->qev_client.rbuff;
 
+	// Proxies reset their timers based on data going in either direction
+	client->last_send = qev_monotonic;
+
 	if (client->http.body_len == 0) {
 		gchar *key;
 		gchar *connection;
@@ -697,15 +657,24 @@ void protocol_http_heartbeat(
 			qev_close(surrogate, RAW_HEARTATTACK);
 		}
 	} else {
-		if (client->http.client == NULL) {
-			if (client->last_send < hb->heartbeat) {
+		if (client->last_send < hb->heartbeat) {
+			if (client->http.client == NULL) {
 				qev_close(client, RAW_HEARTATTACK);
-			}
-		} else {
-			if (client->last_send < hb->poll) {
+			} else {
 				_send_error(client, STATUS_200);
 			}
 		}
+
+		// @todo test this against above, see if it lowers number of reconnects
+		// if (client->http.client == NULL) {
+		// 	if (client->last_send < hb->heartbeat) {
+		// 		qev_close(client, RAW_HEARTATTACK);
+		// 	}
+		// } else {
+		// 	if (client->last_send < hb->poll) {
+		// 		_send_error(client, STATUS_200);
+		// 	}
+		// }
 	}
 }
 

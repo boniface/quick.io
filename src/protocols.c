@@ -298,7 +298,7 @@ struct protocol_heartbeat protocols_heartbeat_get_intervals()
 
 	return (struct protocol_heartbeat){
 		.timeout = now - QEV_MS_TO_USEC(qev_cfg_get_timeout()),
-		.poll = now - HEARTBEAT_POLL,
+		.poll = now - HEARTBEAT_POLL + QEV_SEC_TO_USEC(cfg_periodic_interval),
 		.heartbeat = now - HEARTBEAT_INTERVAL +
 						QEV_SEC_TO_USEC(cfg_periodic_interval),
 		.challenge = now - HEARTBEAT_CHALLENGE_INTERVAL,
