@@ -1,9 +1,8 @@
 #!/usr/bin/make -f
 
-#export DH_VERBOSE=1
-
-DESTDIR = $(CURDIR)/debian/tmp
 export CC = gcc
+unexport CFLAGS
+unexport LDFLAGS
 
 %:
 	dh $@
@@ -12,7 +11,4 @@ override_dh_auto_test:
 	dh_auto_test -- -j8
 
 override_dh_auto_install:
-	$(MAKE) clean
-	dh_auto_install -- \
-		-j8 \
-		INSTALL_ROOT=$(DESTDIR)
+	dh_auto_install -- -j8

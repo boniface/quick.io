@@ -74,7 +74,7 @@ max-clients = $MAX_CLIENTS
 #
 # userspace-buff-fairness = 35
 
-include = /etc/quickio/apps/*.ini
+include = $INCLUDE
 
 [quick-event-monitor]
 

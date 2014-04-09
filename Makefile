@@ -17,12 +17,16 @@ SRC_DIR = src
 TEST_DIR = test
 QEV_DIR = $(LIB_DIR)/quick-event
 
+INSTALL_BIN = install
+INSTALL = $(INSTALL_BIN) -m 644
+
 LIBS = glib-2.0 gmodule-2.0 openssl uuid
 LIBS_TEST = check
 LIBS_QEV = $(QEV_DIR)/libqev.a
 LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
 
 BINARY = quickio
+BINARY_HELPERS = quickio-clienttest quickio-testapps
 
 #
 # Base flags used everywhere
@@ -131,7 +135,7 @@ OBJECTS = \
 	$(SRC_DIR)/sub.o
 
 APPS = \
-	$(SRC_DIR)/app_client_test.so
+	$(SRC_DIR)/quickio-clienttest.so
 
 OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
@@ -175,6 +179,7 @@ all:
 	@echo "    make docs        build all documentation"
 	@echo "    make docs-watch  rebuild all documentation any time something changes"
 	@echo "    make install     install the binaries locally"
+	@echo "    make release     build a release-ready version of QuickIO"
 	@echo "    make run         run quickio in debug mode"
 	@echo "    make test        run the test suite"
 	@echo "    make uninstall   remove all installed files"
@@ -193,7 +198,41 @@ clean:
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f test/*.sock
 
-install: _release
+deb:
+	debuild -tc -b
+
+deb-stable:
+	sbuild -d wheezy
+
+docs:
+	$(MAKE) -C docs html
+	doxygen
+
+docs-watch:
+	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
+
+install: release
+	mkdir -p \
+		$(DESTDIR)/etc/quickio \
+		$(DESTDIR)/etc/security/limits.d \
+		$(DESTDIR)/etc/sysctl.d \
+		$(DESTDIR)/usr/bin \
+		$(DESTDIR)/usr/include/quickio \
+		$(DESTDIR)/usr/include/quickio/quick-event \
+		$(DESTDIR)/usr/lib/pkgconfig \
+		$(DESTDIR)/usr/lib/quickio
+	$(INSTALL_BIN) $(BINARY) $(patsubst %,$(SRC_DIR)/%,$(BINARY_HELPERS)) \
+		$(DESTDIR)/usr/bin/
+	$(INSTALL) quickio.ini $(DESTDIR)/etc/quickio
+	$(INSTALL) src/*.h $(DESTDIR)/usr/include/quickio
+	$(INSTALL) lib/quick-event/src/*.h $(DESTDIR)/usr/include/quickio/quick-event
+	$(INSTALL) quickio.pc $(DESTDIR)/usr/lib/pkgconfig
+	$(INSTALL) $(APPS) $(DESTDIR)/usr/lib/quickio
+	$(INSTALL) limits.conf $(DESTDIR)/etc/security/limits.d/quickio.conf
+	$(INSTALL) sysctl.conf $(DESTDIR)/etc/sysctl.d/quickio.conf
+
+release: _release
+	@strip -s $(BINARY)
 
 run: _debug
 	./$(BINARY) -f quickio.ini
@@ -204,6 +243,15 @@ test: _test
 		--exclude=test \
 		--exclude=lib \
 		--exclude='.*\.h'
+
+uninstall:
+	rm -rf $(DESTDIR)/usr/bin/quickio
+	$(foreach h,$(BINARY_HELPERS),rm -rf $(DESTDIR)/usr/bin/$h;)
+	rm -rf $(DESTDIR)/etc/quickio
+	rm -rf $(DESTDIR)/usr/include/quickio
+	rm -rf $(DESTDIR)/usr/lib/pkgconfig/quickio.pc
+	rm -rf $(DESTDIR)/etc/security/limits.d/quickio.conf
+	rm -rf $(DESTDIR)/etc/sysctl.d/quickio.conf
 
 #
 # Used internally for changing build type
@@ -218,11 +266,11 @@ test: _test
 _debug: export CFLAGS += $(CFLAGS_DEBUG)
 _debug: export LDFLAGS += $(LDLAGS_DEBUG)
 _debug: .build_debug
-	MAX_CLIENTS=65536 \
-	PUBLIC_ADDRESS=localhost \
+	BIND_PATH=/tmp/quickio.sock \
 	BIND_PORT=8080 \
 	BIND_PORT_SSL=4433 \
-	BIND_PATH=/tmp/quickio.sock \
+	MAX_CLIENTS=65536 \
+	PUBLIC_ADDRESS=localhost \
 	SUPPORT_FLASH=false \
 		./quickio.ini.sh > quickio.ini
 	$(MAKE) $(BINARY) $(APPS)
@@ -233,10 +281,11 @@ _test: .build_test
 _release _bench: export CFLAGS += $(CFLAGS_RELEASE)
 _release _bench: export LDFLAGS += $(LDLAGS_RELEASE)
 _release _bench: .build_release
-	MAX_CLIENTS=4194304 \
 	BIND_PORT=80 \
 	BIND_PORT_SSL=443 \
+	INCLUDE=/etc/quickio/apps/*.ini \
 	LOG_FILE=/var/log/quickio.log \
+	MAX_CLIENTS=4194304 \
 	SUPPORT_FLASH=true \
 	USER=quickio \
 		./quickio.ini.sh > quickio.ini
@@ -279,7 +328,7 @@ $(SRC_DIR)/protocols_http.o: $(SRC_DIR)/protocols_http_iframe.c
 
 %.so: %.c
 	@echo '-------- Compiling app $@ --------'
-	@cd $(shell dirname $@) && $(CC) -shared -fPIC $(CFLAGS) $(<F) -o $(@F)
+	@$(CC) -shared -fPIE $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 $(LIBS_QEV) $(LIBS_QEV_TEST): $(QEV_DIR)/% :
 	@cd $(QEV_DIR) && $(MAKE) $*

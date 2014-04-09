@@ -31,6 +31,7 @@ Depends:
 	libglib2.0-dev (>= 2.32),
 	libssl-dev (>= 1.0.0),
 	pkg-config (>= 0.16.0),
+	python,
 	quickio (= ${binary:Version})
 Description: Development files for building QuickIO apps
 	Provides development files and helper binaries for building and testing

@@ -1,3 +1,4 @@
-usr/bin/quickio-testapps
+usr/bin/quickio-*
 usr/include/quickio
 usr/lib/pkgconfig/quickio.pc
+usr/lib/quickio/quickio-clienttest.so
