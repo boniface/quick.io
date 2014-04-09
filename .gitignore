@@ -8,12 +8,13 @@
 *.so
 test_*
 bench_*
-!test_*.c
-!bench_*.c
-quickio
-src/protocols/http_iframe.c*
+src/protocols_http_iframe.c*
 test/test_*.ini
 .build_*
+quickio
 quickio.ini
 
 /*.sublime*
+
+!test_*.c
+!bench_*.c

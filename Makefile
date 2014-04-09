@@ -190,13 +190,15 @@ clean:
 	find -name '*.gcno' -exec rm {} \;
 	find -name '*.gcda' -exec rm {} \;
 	find -name '*.xml' -exec rm {} \;
+	find test/ -name 'test_*.ini' -exec rm {} \;
 	rm -f .build_*
 	rm -f $(BINARY)
 	rm -f $(OBJECTS)
 	rm -f $(APPS) $(TEST_APPS)
-	$(MAKE) -C $(QEV_DIR) clean
+	rm -f $(SRC_DIR)/protocols_http_iframe.c*
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
 	rm -f test/*.sock
+	$(MAKE) -C $(QEV_DIR) clean
 
 deb:
 	debuild -tc -b
@@ -311,7 +313,7 @@ $(BENCHMARKS): % : $(TEST_APPS) $(TEST_DIR)/%
 
 $(SRC_DIR)/protocols_http_iframe.c: $(SRC_DIR)/protocols_http_iframe.html
 	@echo '-------- Generating $@ --------'
-	@java -jar $(HTML_COMPRESSOR) --compress-js $< > $@.html
+	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
 $(TEST_DIR)/test_%: export CFLAGS += $(CFLAGS_TEST)
