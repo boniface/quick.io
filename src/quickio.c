@@ -35,7 +35,7 @@ void qio_main(int argc, char **argv)
 					cfg_ssl_cert_path_1, cfg_ssl_key_path_1);
 	}
 
-	if (cfg_bind_path != NULL) {
+	if (cfg_bind_path != NULL && strlen(cfg_bind_path) > 0) {
 		qev_listen_unix(cfg_bind_path);
 	}
 

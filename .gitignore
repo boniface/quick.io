@@ -6,15 +6,14 @@
 *.gcno
 *.o
 *.so
-gmon.out
 test_*
 bench_*
 !test_*.c
 !bench_*.c
 quickio
-quickio-testapps
 src/protocols/http_iframe.c*
 test/test_*.ini
-valgrind.supp
+.build_*
+quickio.ini
 
 /*.sublime*

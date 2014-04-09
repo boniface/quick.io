@@ -1,7 +1,20 @@
+#!/bin/bash
+cat <<EOF
 [quick-event]
 
 #
-# What this host is called. It's typically safe just to use the default
+# Size for buffers obtained from the pool (optimal: 2^n - 1).
+#
+# buffer-size = 4095
+
+#
+# Maximum number of times a buffer may be used before being recycled
+#
+# buffer-max-uses = 32768
+
+#
+# What this host is called. It's typically safe just to use the default.
+# This is used for naming the host in nagios, graphite, etc.
 #
 # hostname =
 
@@ -13,39 +26,13 @@
 #
 # Where the server logs should be written
 #
-log-file = /var/log/quickio.log
+log-file = $LOG_FILE
 
 #
 # The maximum number of clients that are allowed to connect. Should be a power
 # of 2.
 #
-# max-clients = 65536
-
-#
-# The total number of bytes that all read and write buffers may use before
-# pressure is applied to bring memory usage back down (measured in bytes).
-#
-# max-userspace-buffer = 536870912
-
-#
-# High watermark for userspace read buffers for clients (optimal: 2^n - 1,
-# measured in bytes).
-#
-# read-high = 1023
-
-#
-# The maximum amount of data client _may ever_ have in its read buffer. If this
-# is less than read-high, then read-high will never be hit. When data is being
-# read from the client, it may burst up to this value before being forcibly
-# closed (optimal: 2^n - 1, measured in bytes).
-#
-# read-high-burst = 1023
-
-#
-# High-watermark for user space write buffer for clients (optimal: 2^n - 1,
-# measured in bytes).
-#
-# write-high = 1023
+max-clients = $MAX_CLIENTS
 
 #
 # How often stats should be flushed to their sinks (in seconds).
@@ -76,6 +63,16 @@ log-file = /var/log/quickio.log
 # The number of milliseconds a client is closed after a timeout is requested
 #
 # timeout = 10000
+
+#
+# The total number of bytes that may be used for client read and write buffers
+#
+# userspace-buff-max = 536870912
+
+#
+# How fairly userspace bytes should be given to users (0-100)
+#
+# userspace-buff-fairness = 35
 
 include = /etc/quickio/apps/*.ini
 
@@ -296,7 +293,7 @@ include = /etc/quickio/apps/*.ini
 #
 # This value should be a DNS-resolvable name, not an IP address.
 #
-public-address =
+public-address = $PUBLIC_ADDRESS
 
 #
 # The address the main server should listen on
@@ -314,19 +311,19 @@ bind-address = 0.0.0.0
 
 # The port that the server processes will start listening on.
 #
-bind-port = 8080
-bind-port-ssl = 4433
+bind-port = $BIND_PORT
+bind-port-ssl = $BIND_PORT_SSL
 
 #
 # For debugging and stuff, sometimes you want a Unix Domain socket.
 # Put the path for it here if you need it.
 #
-# bind-path = /tmp/quickio.sock
+bind-path = $BIND_PATH
 
 #
 # If flash should be supported (listen on port 843 for policy requests).
 #
-# support-flash = true
+support-flash = $SUPPORT_FLASH
 
 #
 # The paths to the server's SSL certificate chain and private key.
@@ -345,6 +342,12 @@ bind-port-ssl = 4433
 # broadcast-threads = 2
 
 #
+# How long a callback should be allowed to live on the server before being
+# killed (measured in seconds)
+#
+# clients-cb-max-age = 15
+
+#
 # Maximum number of subscriptions that may exist on the server.
 #
 # clients-max-subs = 4194304
@@ -358,15 +361,15 @@ bind-port-ssl = 4433
 # clients-subs-fairness = 80
 
 #
-# Number of threads used to run periodic tasks.
-#
-# periodic-threads = 8
-
-#
 # How often periodic tasks should be polled (heartbeats, callback cleanup, etc).
 # Measured in seconds.
 #
 # periodic-interval = 10
+
+#
+# Number of threads used to run periodic tasks.
+#
+# periodic-threads = 8
 
 #
 # The minimum size for subscription arrays. Should be a power of 2. Any changes
@@ -377,7 +380,7 @@ bind-port-ssl = 4433
 #
 # The user the server should run as
 #
-user = quickio
+user = $USER
 
 [quick.io-apps]
 
@@ -386,3 +389,4 @@ user = quickio
 #
 # app_name = /path/to/app
 #
+EOF

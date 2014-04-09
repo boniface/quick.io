@@ -39,7 +39,7 @@
 	"support-flash = false\n" \
 	"user = %s\n" \
 	"[quick.io-apps]\n" \
-	"/test = ./apps/test_app_sane\n"
+	"/test = ./app_test_sane\n"
 
 struct _wait_for_buff {
 	gboolean good;
@@ -103,7 +103,7 @@ void test_config()
 	GString *c = qev_buffer_get();
 
 	g_string_printf(c, CONFIG,
-			FATAL_SIGNAL == 5 ? 100 : 3000,
+			100,
 			PORT, PORT + 1, PORT, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	ASSERT(configed, "Could not create test config file");

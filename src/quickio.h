@@ -42,11 +42,11 @@
 #include "str.h"
 #include "sub.h"
 #include "protocols.h"
-#include "protocols/flash.h"
-#include "protocols/http.h"
-#include "protocols/raw.h"
-#include "protocols/rfc6455.h"
-#include "protocols/util.h"
+#include "protocols_flash.h"
+#include "protocols_http.h"
+#include "protocols_raw.h"
+#include "protocols_rfc6455.h"
+#include "protocols_util.h"
 
 /**
  * Extends the reasons for closing a client

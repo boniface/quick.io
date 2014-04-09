@@ -220,6 +220,7 @@ void evs_route(
 	DEBUG("Got event: client=%p, ev_path=%s, ev_extra=%s, "
 			"callback=%" G_GUINT64_FORMAT ", json=%s",
 			client, ev_path, ev_extra, client_cb, json);
+
 	qev_stats_counter_inc(_stat_evs_received);
 
 	if (ev->handler_fn != NULL) {

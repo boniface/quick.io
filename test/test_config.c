@@ -138,7 +138,7 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 	tcase_add_test(tcase, test_config_invalid_subs_max);
 	tcase_add_test(tcase, test_config_invalid_cbs_max_age);
-	tcase_add_test_raise_signal(tcase, test_config_invalid_public_address, FATAL_SIGNAL);
+	tcase_add_test_raise_signal(tcase, test_config_invalid_public_address, 5);
 
 	tcase = tcase_create("Coverage");
 	suite_add_tcase(s, tcase);

@@ -111,19 +111,18 @@ static enum evs_status _ping(
 
 void evs_qio_init()
 {
-	if (cfg_public_address != NULL) {
-		GString *buff = qev_buffer_get();
+	GString *buff = qev_buffer_get();
 
-		ASSERT(qev_json_pack(buff, "%s", cfg_public_address) == QEV_JSON_OK,
-			"Failed to create JSON for public address.");
-		_json_hostname = g_strdup(buff->str);
-
-		qev_buffer_put(buff);
-	}
+	ASSERT(qev_json_pack(buff, "%s", cfg_public_address) == QEV_JSON_OK,
+		"Failed to create JSON for public address.");
+	_json_hostname = g_strdup(buff->str);
 
 	evs_add_handler("/qio", "/callback", _callback, evs_no_on, NULL, TRUE);
 	evs_add_handler("/qio", "/hostname", _hostname, evs_no_on, NULL, FALSE);
 	evs_add_handler("/qio", "/off", _off, evs_no_on, NULL, FALSE);
 	evs_add_handler("/qio", "/on", _on, evs_no_on, NULL, FALSE);
 	evs_add_handler("/qio", "/ping", _ping, evs_no_on, NULL, FALSE);
+
+	qev_cleanup_and_null((void**)&_json_hostname, g_free);
+	qev_buffer_put(buff);
 }

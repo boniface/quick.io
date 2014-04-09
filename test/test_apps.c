@@ -61,7 +61,7 @@ END_TEST
 START_TEST(test_apps_error_path)
 {
 	GString *buff = qev_buffer_get();
-	g_string_printf(buff, "/app = %s", "test/apps/test_app_sane");
+	g_string_printf(buff, "/app = %s", "test/apps/test_app_test_sane");
 
 	_set(buff->str);
 
@@ -73,7 +73,7 @@ START_TEST(test_apps_error_invalid_app)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
-	g_string_printf(buff, "/app = %s/%s", cwd, "apps/test_app_invalid");
+	g_string_printf(buff, "/app = %s/%s", cwd, "app_test_invalid");
 
 	_set(buff->str);
 
@@ -86,7 +86,7 @@ START_TEST(test_apps_error_init)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
-	g_string_printf(buff, "/app = %s/%s", cwd, "apps/test_app_fatal_init");
+	g_string_printf(buff, "/app = %s/%s", cwd, "app_test_fatal_init");
 
 	_set(buff->str);
 
@@ -99,7 +99,7 @@ START_TEST(test_apps_error_duplicate)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
-	g_string_printf(buff, "/test = %s/%s\n", cwd, "apps/test_app_sane");
+	g_string_printf(buff, "/test = %s/%s\n", cwd, "app_test_sane");
 
 	_set(buff->str);
 
@@ -112,7 +112,7 @@ START_TEST(test_apps_error_exit)
 {
 	GString *buff = qev_buffer_get();
 	gchar *cwd = g_get_current_dir();
-	g_string_printf(buff, "/app = %s/%s", cwd, "apps/test_app_fatal_exit");
+	g_string_printf(buff, "/app = %s/%s", cwd, "app_test_fatal_exit");
 
 	_set(buff->str);
 
@@ -137,11 +137,11 @@ int main()
 	tcase = tcase_create("Errors");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, NULL, test_teardown);
-	tcase_add_test_raise_signal(tcase, test_apps_error_path, FATAL_SIGNAL);
-	tcase_add_test_raise_signal(tcase, test_apps_error_invalid_app, FATAL_SIGNAL);
-	tcase_add_test_raise_signal(tcase, test_apps_error_init, FATAL_SIGNAL);
-	tcase_add_test_raise_signal(tcase, test_apps_error_duplicate, FATAL_SIGNAL);
-	tcase_add_test_raise_signal(tcase, test_apps_error_exit, FATAL_SIGNAL);
+	tcase_add_test_raise_signal(tcase, test_apps_error_path, 5);
+	tcase_add_test_raise_signal(tcase, test_apps_error_invalid_app, 5);
+	tcase_add_test_raise_signal(tcase, test_apps_error_init, 5);
+	tcase_add_test_raise_signal(tcase, test_apps_error_duplicate, 5);
+	tcase_add_test_raise_signal(tcase, test_apps_error_exit, 5);
 
 	return test_do(sr);
 }

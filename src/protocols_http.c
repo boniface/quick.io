@@ -71,7 +71,7 @@ static gchar *_status_lines[] = {
 	"426 Upgrade Required",
 };
 
-#include "http_iframe.c"
+#include "protocols_http_iframe.c"
 
 static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;

@@ -1,5 +1,3 @@
-.PHONY: clean docs test
-
 #
 # Hide annoying messages
 #
@@ -10,28 +8,108 @@ VERSION_MAJOR = 0
 VERSION_MINOR = 2
 VERSION_MICRO = 0
 
-#
-# If the test cases should be run in valgrind. Comment this out to disable
-#
-# export USE_VALGRIND = 1
-
 ifeq ($(CC),cc)
 	export CC = clang
 endif
 
-INSTALL_BIN = install
-INSTALL = $(INSTALL_BIN) -m 644
-
 LIB_DIR = lib
 SRC_DIR = src
 TEST_DIR = test
-TEST_APPS_DIR = $(TEST_DIR)/apps
-QEV_DIR = $(CURDIR)/lib/quick-event
+QEV_DIR = $(LIB_DIR)/quick-event
+
+LIBS = glib-2.0 gmodule-2.0 openssl uuid
+LIBS_TEST = check
+LIBS_QEV = $(QEV_DIR)/libqev.a
+LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
 
 BINARY = quickio
-BINARY_TESTAPPS = quickio-testapps
 
-HEADERS = $(shell find $(SRC_DIR) -name '*.h')
+#
+# Base flags used everywhere
+#
+# ==============================================================================
+#
+
+CFLAGS ?= \
+	-g \
+	-Wall \
+	-Wextra \
+	-Wshadow \
+	-Wformat=2 \
+	-Werror \
+	-fstack-protector \
+	--param=ssp-buffer-size=4 \
+	-D_FORTIFY_SOURCE=2 \
+	-std=gnu99 \
+	-DQIO_SERVER \
+	-DVERSION_NAME="$(VERSION_NAME)" \
+	-DVERSION_MAJOR=$(VERSION_MAJOR) \
+	-DVERSION_MINOR=$(VERSION_MINOR) \
+	-DVERSION_MICRO=$(VERSION_MICRO) \
+	-I$(CURDIR)/$(LIB_DIR) \
+	-I$(CURDIR)/$(SRC_DIR) \
+	-mfpmath=sse \
+	-msse \
+	-msse2 \
+	$(shell pkg-config --cflags $(LIBS))
+
+LDFLAGS ?= \
+	-rdynamic \
+	-Wl,-z,now \
+	-Wl,-z,relro \
+	-Wl,--as-needed \
+	-lm \
+	$(shell pkg-config --libs $(LIBS))
+
+#
+# Extra flags for debug
+#
+# ==============================================================================
+#
+
+CFLAGS_DEBUG = \
+	-fno-inline \
+	-DQIO_DEBUG \
+	-DQEV_LOG_DEBUG
+
+LDFLAGS_DEBUG =
+
+#
+# Extra flags for testing
+#
+# ==============================================================================
+#
+
+CFLAGS_TEST = \
+	--coverage \
+	-fno-inline \
+	-I../$(SRC_DIR) \
+	-DQEV_ENABLE_MOCK \
+	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
+	$(shell pkg-config --cflags $(LIBS_TEST))
+
+LDFLAGS_TEST = \
+	--coverage \
+	$(shell pkg-config --libs $(LIBS_TEST))
+
+#
+# Extra flags for release
+#
+# ==============================================================================
+#
+
+CFLAGS_RELEASE = \
+	-fPIE \
+	-O3
+
+LDFLAGS_RELEASE = \
+	-pie
+
+#
+# What actually gets built
+#
+# ==============================================================================
+#
 
 OBJECTS = \
 	$(SRC_DIR)/apps.o \
@@ -42,15 +120,18 @@ OBJECTS = \
 	$(SRC_DIR)/evs_query.o \
 	$(SRC_DIR)/periodic.o \
 	$(SRC_DIR)/protocols.o \
-	$(SRC_DIR)/protocols/flash.o \
-	$(SRC_DIR)/protocols/http.o \
-	$(SRC_DIR)/protocols/raw.o \
-	$(SRC_DIR)/protocols/rfc6455.o \
-	$(SRC_DIR)/protocols/util.o \
+	$(SRC_DIR)/protocols_flash.o \
+	$(SRC_DIR)/protocols_http.o \
+	$(SRC_DIR)/protocols_raw.o \
+	$(SRC_DIR)/protocols_rfc6455.o \
+	$(SRC_DIR)/protocols_util.o \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
 	$(SRC_DIR)/str.o \
 	$(SRC_DIR)/sub.o
+
+APPS = \
+	$(SRC_DIR)/app_client_test.so
 
 OBJECTS_TEST = \
 	$(patsubst %,../%,$(OBJECTS))
@@ -74,268 +155,131 @@ TESTS = \
 	test_sub
 
 TEST_APPS = \
-	$(TEST_APPS_DIR)/test_app_fatal_init.so \
-	$(TEST_APPS_DIR)/test_app_fatal_exit.so \
-	$(TEST_APPS_DIR)/test_app_invalid.so \
-	$(TEST_APPS_DIR)/test_app_sane.so
+	$(TEST_DIR)/app_test_fatal_init.so \
+	$(TEST_DIR)/app_test_fatal_exit.so \
+	$(TEST_DIR)/app_test_invalid.so \
+	$(TEST_DIR)/app_test_sane.so
 
-BENCHMARKS = \
-	bench_evs_query \
-	bench_protocol_rfc6455
-
-LIBS = glib-2.0 gmodule-2.0 openssl uuid
-LIBS_TEST = check
-LIBQEV = $(QEV_DIR)/libqev.a
-LIBQEV_TEST = $(QEV_DIR)/libqev_test.a
-HTML_COMPRESSOR = $(LIB_DIR)/htmlcompressor-1.5.3.jar
-
-CFLAGS = \
-	-Wall \
-	-Wextra \
-	-Wshadow \
-	-Wformat=2 \
-	-Werror \
-	-fstack-protector \
-	--param=ssp-buffer-size=4 \
-	-D_FORTIFY_SOURCE=2 \
-	-std=gnu99 \
-	-DQIO_SERVER \
-	-DVERSION_NAME="$(VERSION_NAME)" \
-	-DVERSION_MAJOR=$(VERSION_MAJOR) \
-	-DVERSION_MINOR=$(VERSION_MINOR) \
-	-DVERSION_MICRO=$(VERSION_MICRO) \
-	-I$(CURDIR)/$(LIB_DIR) \
-	-I$(CURDIR)/$(SRC_DIR) \
-	-mfpmath=sse \
-	-msse \
-	-msse2 \
-	$(shell pkg-config --cflags $(LIBS))
-
-CFLAGS_TEST = \
-	-g \
-	--coverage \
-	-fno-inline \
-	-I../$(SRC_DIR) \
-	-DQEV_ENABLE_MOCK \
-	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
-	$(shell pkg-config --cflags $(LIBS_TEST))
-
-CFLAGS_DEBUG = \
-	-g \
-	-fno-inline \
-	-DQIO_DEBUG \
-	-DQEV_LOG_DEBUG
-
-CFLAGS_PROFILE = \
-	-O3 \
-	-g \
-	-pg
-
-CFLAGS_RELEASE = \
-	-fPIE \
-	-O3
-
-LDFLAGS = \
-	-Wl,-z,relro \
-	-Wl,-z,now \
-	-lm \
-	-rdynamic \
-	$(shell pkg-config --libs $(LIBS))
-
-LDFLAGS_DEBUG = \
-	$(LIBQEV) \
-	-g
-
-LDFLAGS_TEST = \
-	$(LIBQEV_TEST) \
-	-g \
-	--coverage \
-	$(shell pkg-config --libs $(LIBS_TEST))
-
-LDFLAGS_PROFILE = \
-	-pg \
-	$(LIBQEV)
-
-LDFLAGS_RELEASE = \
-	-pie \
-	$(LIBQEV)
-
-ifneq ($(CC),clang)
-	CFLAGS_RELEASE += \
-		-flto
-
-	LDFLAGS_RELEASE += \
-		-flto
-endif
-
-ifdef USE_VALGRIND
-	CFLAGS += -DFATAL_SIGNAL=9
-	MEMTEST = \
-		G_SLICE=always-malloc \
-		G_DEBUG=gc-friendly \
-		valgrind \
-			--quiet \
-			--suppressions=$(CURDIR)/$(VG_SUPPRESSIONS) \
-			--tool=memcheck \
-			--leak-check=full \
-			--leak-resolution=high \
-			--num-callers=20 \
-			--track-origins=yes
-else
-	CFLAGS += -DFATAL_SIGNAL=5
-	MEMTEST = G_SLICE=debug-blocks
-endif
-
-VG_SUPPRESSIONS = valgrind.supp
-
-INSTALL_ROOT ?=
-INSTALL_PREFIX ?= $(INSTALL_ROOT)/usr
-INSTALL_BIN_DIR ?= $(INSTALL_PREFIX)/bin
-INSTALL_ETC_DIR ?= $(INSTALL_ROOT)/etc/quickio
-INSTALL_APP_LIB_DIR ?= $(INSTALL_ROOT)/usr/lib/quickio
-INSTALL_INCLUDE_DIR ?= $(INSTALL_PREFIX)/include/quickio
-INSTALL_INCLUDE_PROT_DIR ?= $(INSTALL_PREFIX)/include/quickio/protocols
-INSTALL_INCLUDE_QEV_DIR ?= $(INSTALL_PREFIX)/include/quickio/quick-event
-INSTALL_INIT_DIR = $(INSTALL_ROOT)/etc/init.d
-INSTALL_LIMITS_DIR = $(INSTALL_ROOT)/etc/security/limits.d
-INSTALL_PKGCFG_DIR ?= $(INSTALL_PREFIX)/lib/pkgconfig
-INSTALL_SYSCTL_DIR = $(INSTALL_ROOT)/etc/sysctl.d
-
-DEBUILD_ARGS = \
-	-tc \
-	-b
+#
+# Human-friendly rules
+#
+# ==============================================================================
+#
 
 all:
 	@echo "Choose one of the following:"
-	@echo "    make run - run quickio in debug mode"
-	@echo "    make clean - clean up everything"
+	@echo "    make bench       run any builtin benchmarks"
+	@echo "    make clean       clean up everything"
+	@echo "    make deb         make QuickIO debs for the current release"
+	@echo "    make deb-stable  make QuickIO debs for stable"
+	@echo "    make docs        build all documentation"
+	@echo "    make docs-watch  rebuild all documentation any time something changes"
+	@echo "    make install     install the binaries locally"
+	@echo "    make run         run quickio in debug mode"
+	@echo "    make test        run the test suite"
+	@echo "    make uninstall   remove all installed files"
 
-debug: export CFLAGS += $(CFLAGS_DEBUG)
-debug: export LDFLAGS += $(LDFLAGS_DEBUG)
-debug: $(BINARY)
+bench: _bench
 
-profile: export CFLAGS += $(CFLAGS_PROFILE)
-profile: export LDFLAGS += $(LDFLAGS_PROFILE)
-profile: $(BINARY)
+clean:
+	find -name '*.gcno' -exec rm {} \;
+	find -name '*.gcda' -exec rm {} \;
+	find -name '*.xml' -exec rm {} \;
+	rm -f .build_*
+	rm -f $(BINARY)
+	rm -f $(OBJECTS)
+	rm -f $(APPS) $(TEST_APPS)
+	$(MAKE) -C $(QEV_DIR) clean
+	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
+	rm -f test/*.sock
 
+install: _release
 
-release: export CFLAGS += $(CFLAGS_RELEASE)
-release: export LDFLAGS += $(LDFLAGS_RELEASE)
-release: $(BINARY)
+run: _debug
+	./$(BINARY) -f quickio.ini
 
-run: debug
-	./$(BINARY)
-
-deb:
-	debuild $(DEBUILD_ARGS)
-
-deb-stable:
-	sbuild -d wheezy
-
-test: $(TESTS)
+test: _test
 	./lib/quick-event/ext/gcovr \
 		--root=. \
 		--exclude=test \
 		--exclude=lib \
 		--exclude='.*\.h'
 
-docs:
-	$(MAKE) -C docs html
-	doxygen
+#
+# Used internally for changing build type
+#
+# ==============================================================================
+#
 
-docs-watch:
-	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
+.build_%:
+	$(MAKE) clean
+	touch $@
 
-install: release $(BINARY_TESTAPPS) $(VG_SUPPRESSIONS)
-	mkdir -p \
-		$(INSTALL_APP_LIB_DIR) \
-		$(INSTALL_BIN_DIR) \
-		$(INSTALL_ETC_DIR) \
-		$(INSTALL_INCLUDE_DIR) \
-		$(INSTALL_INCLUDE_PROT_DIR) \
-		$(INSTALL_INCLUDE_QEV_DIR) \
-		$(INSTALL_LIMITS_DIR) \
-		$(INSTALL_PKGCFG_DIR) \
-		$(INSTALL_SYSCTL_DIR)
-	$(INSTALL_BIN) $(BINARY) $(INSTALL_BIN_DIR)
-	$(INSTALL_BIN) $(BINARY_TESTAPPS) $(INSTALL_BIN_DIR)
-	$(INSTALL) src/*.h $(INSTALL_INCLUDE_DIR)
-	$(INSTALL) src/protocols/*.h $(INSTALL_INCLUDE_PROT_DIR)
-	$(INSTALL) lib/quick-event/src/*.h $(INSTALL_INCLUDE_QEV_DIR)
-	$(INSTALL) $(VG_SUPPRESSIONS) $(INSTALL_INCLUDE_DIR)
-	$(INSTALL) quickio.ini $(INSTALL_ETC_DIR)
-	$(INSTALL) quickio.pc $(INSTALL_PKGCFG_DIR)
-	$(INSTALL) -D limits.conf $(INSTALL_LIMITS_DIR)/quickio.conf
-	$(INSTALL) -D sysctl.conf $(INSTALL_SYSCTL_DIR)/quickio.conf
-	$(INSTALL) debian/quickio.init $(INSTALL_INIT_DIR)
+_debug: export CFLAGS += $(CFLAGS_DEBUG)
+_debug: export LDFLAGS += $(LDLAGS_DEBUG)
+_debug: .build_debug
+	MAX_CLIENTS=65536 \
+	PUBLIC_ADDRESS=localhost \
+	BIND_PORT=8080 \
+	BIND_PORT_SSL=4433 \
+	BIND_PATH=/tmp/quickio.sock \
+	SUPPORT_FLASH=false \
+		./quickio.ini.sh > quickio.ini
+	$(MAKE) $(BINARY) $(APPS)
 
-uninstall:
-	rm -f $(INSTALL_BIN_DIR)/$(BINARY)
-	rm -f $(INSTALL_BIN_DIR)/$(BINARY_TESTAPPS)
-	rm -rf $(INSTALL_APP_LIB_DIR)
-	rm -rf $(INSTALL_ETC_DIR)
-	rm -rf $(INSTALL_INCLUDE_DIR)
-	rm -f $(INSTALL_LIMITS_DIR)/quickio.conf
-	rm -f $(INSTALL_PKGCFG_DIR)/quickio.pc
-	rm -f $(INSTALL_SYSCTL_DIR)/quickio.conf
+_test: .build_test
+	$(MAKE) $(TESTS)
 
-clean:
-	find -name '*.gcno' -exec rm {} \;
-	find -name '*.gcda' -exec rm {} \;
-	find -name '*.xml' -exec rm {} \;
-	find test -name 'test_*.ini' -exec rm {} \;
-	rm -f $(SRC_DIR)/protocols/http_iframe.c*
-	rm -f $(BINARY_OBJECTS)
-	rm -f $(TEST_APPS)
-	$(MAKE) -C lib/quick-event/ clean
-	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
-	rm -f $(BINARY)
-	rm -f $(BINARY_TESTAPPS)
-	rm -f $(VG_SUPPRESSIONS)
-	rm -f gmon.out
-	rm -f test/*.sock
-	$(MAKE) -C docs clean
+_release _bench: export CFLAGS += $(CFLAGS_RELEASE)
+_release _bench: export LDFLAGS += $(LDLAGS_RELEASE)
+_release _bench: .build_release
+	MAX_CLIENTS=4194304 \
+	BIND_PORT=80 \
+	BIND_PORT_SSL=443 \
+	LOG_FILE=/var/log/quickio.log \
+	SUPPORT_FLASH=true \
+	USER=quickio \
+		./quickio.ini.sh > quickio.ini
+	$(MAKE) $(BINARY) $(APPS)
 
-$(BINARY): $(BINARY_OBJECTS) $(LIBQEV)
+#
+# Rules to build all the files
+#
+# ==============================================================================
+#
+
+$(BINARY): $(BINARY_OBJECTS) $(LIBS_QEV)
 	@echo '-------- Linking quickio --------'
-	@$(CC) $^ -o $@ $(LDFLAGS)
-
-$(BINARY_TESTAPPS): src/quickio-testapps.c
-	@echo '-------- Compiling quickio-testapps --------'
-	@$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-	@strip -s $@
+	@$(CC) $^ -o $@ $(LIBS_QEV) $(LDFLAGS)
 
 .PHONY: $(TESTS)
-$(TESTS): % : $(TEST_APPS) $(TEST_DIR)/% $(VG_SUPPRESSIONS)
-	@cd $(TEST_DIR) && $(MEMTEST) ./$@
+$(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
+	@cd $(TEST_DIR) && ./$@
 
 .PHONY: $(BENCHMARKS)
 $(BENCHMARKS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && ./$@
 
-$(SRC_DIR)/protocols/http_iframe.c: $(SRC_DIR)/protocols/http_iframe.html
+$(SRC_DIR)/protocols_http_iframe.c: $(SRC_DIR)/protocols_http_iframe.html
 	@echo '-------- Generating $@ --------'
 	@java -jar $(HTML_COMPRESSOR) --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
-$(SRC_DIR)/protocols/http.o: $(SRC_DIR)/protocols/http_iframe.c
-%.o: %.c $(HEADERS)
-	@echo '-------- Compiling $@ --------'
-	@$(CC) -c $(CFLAGS) $< -o $@
-
-$(TEST_APPS_DIR)/%.so: $(TEST_APPS_DIR)/%.c $(HEADERS)
-	@echo '-------- Compiling app $@ --------'
-	@cd $(TEST_APPS_DIR) && $(CC) -shared -fPIC $(CFLAGS) $*.c -o $*.so
-
 $(TEST_DIR)/test_%: export CFLAGS += $(CFLAGS_TEST)
 $(TEST_DIR)/bench_%: export CFLAGS += $(CFLAGS_RELEASE)
 $(TEST_DIR)/%: export LDFLAGS += $(LDFLAGS_TEST)
-$(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBQEV_TEST)
+$(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBS_QEV_TEST)
 	@echo '-------- Compiling $@ --------'
-	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* $(LDFLAGS)
+	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS)
 
-$(VG_SUPPRESSIONS): $(QEV_DIR)/test/valgrind.supp $(QEV_DIR)/test/valgrind_expected.supp
-	cat $^ > $(VG_SUPPRESSIONS)
+$(SRC_DIR)/protocols_http.o: $(SRC_DIR)/protocols_http_iframe.c
+%.o: %.c
+	@echo '-------- Compiling $@ --------'
+	@$(CC) -c $(CFLAGS) $< -o $@
 
-$(LIBQEV) $(LIBQEV_TEST): $(QEV_DIR)/% :
+%.so: %.c
+	@echo '-------- Compiling app $@ --------'
+	@cd $(shell dirname $@) && $(CC) -shared -fPIC $(CFLAGS) $(<F) -o $(@F)
+
+$(LIBS_QEV) $(LIBS_QEV_TEST): $(QEV_DIR)/% :
 	@cd $(QEV_DIR) && $(MAKE) $*

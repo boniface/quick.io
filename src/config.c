@@ -201,11 +201,7 @@ static struct qev_cfg _cfg[] = {
 		.description = "Where the server lives on the internet.",
 		.type = QEV_CFG_STR,
 		.val.str = &cfg_public_address,
-		#ifdef QIO_DEBUG
-			.defval.str = "localhost",
-		#else
-			.defval.str = NULL,
-		#endif
+		.defval.str = NULL,
 		.validate = _validate_public_address,
 		.cb = NULL,
 		.read_only = TRUE,
@@ -280,11 +276,7 @@ static struct qev_cfg _cfg[] = {
 						"(port 843).",
 		.type = QEV_CFG_BOOL,
 		.val.bool = &cfg_support_flash,
-		#ifdef QIO_DEBUG
-			.defval.bool = FALSE,
-		#else
-			.defval.bool = TRUE,
-		#endif
+		.defval.bool = FALSE,
 		.validate = NULL,
 		.cb = NULL,
 		.read_only = TRUE,

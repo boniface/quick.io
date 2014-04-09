@@ -188,7 +188,7 @@ static void _drain(struct httpc *hc, qev_fd_t sock)
 			gchar **tmp = msgs;
 
 			while (*tmp != NULL) {
-				if (strlen(*tmp) > 0) {
+				if (strlen(*tmp) > 0 && g_strcmp0(*tmp, "/qio/heartbeat:0=null") != 0) {
 					g_async_queue_push(hc->aq, *tmp);
 				} else {
 					g_free(*tmp);
