@@ -172,16 +172,17 @@ TEST_APPS = \
 
 all:
 	@echo "Choose one of the following:"
-	@echo "    make clean       clean up everything"
-	@echo "    make deb         make QuickIO debs for the current release"
-	@echo "    make deb-stable  make QuickIO debs for stable"
-	@echo "    make docs        build all documentation"
-	@echo "    make docs-watch  rebuild all documentation any time something changes"
-	@echo "    make install     install the binaries locally"
-	@echo "    make release     build a release-ready version of QuickIO"
-	@echo "    make run         run quickio in debug mode"
-	@echo "    make test        run the test suite"
-	@echo "    make uninstall   remove all installed files"
+	@echo "    make clean              clean up everything"
+	@echo "    make deb                make QuickIO debs for the current release"
+	@echo "    make deb-stable         make QuickIO debs for stable"
+	@echo "    make docs               build all documentation"
+	@echo "    make docs-watch         rebuild all documentation any time something changes"
+	@echo "    make helper-clienttest  clean up everything"
+	@echo "    make install            install the binaries locally"
+	@echo "    make release            build a release-ready version of QuickIO"
+	@echo "    make run                run quickio in debug mode"
+	@echo "    make test               run the test suite"
+	@echo "    make uninstall          remove all installed files"
 
 clean:
 	find -name '*.gcno' -exec rm {} \;
@@ -209,6 +210,9 @@ docs:
 
 docs-watch:
 	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
+
+helper-clienttest: _debug
+	$(SRC_DIR)/quickio-clienttest
 
 install: release
 	mkdir -p \
@@ -274,8 +278,6 @@ _debug: .build_debug
 		./quickio.ini.sh > quickio.ini
 	$(MAKE) $(BINARY) $(APPS)
 
-_test: export CFLAGS += $(CFLAGS_TEST)
-_test: export LDFLAGS += $(LDFLAGS_TEST)
 _test: .build_test
 	$(MAKE) $(TESTS)
 
@@ -304,13 +306,15 @@ $(BINARY): $(BINARY_OBJECTS) $(LIBS_QEV)
 
 .PHONY: $(TESTS)
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
-	@cd $(TEST_DIR) && ./$@
+	@cd $(TEST_DIR) && G_SLICE=debug-blocks ./$@
 
 $(SRC_DIR)/protocols_http_iframe.c: $(SRC_DIR)/protocols_http_iframe.html
 	@echo '-------- Generating $@ --------'
 	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
+$(TEST_DIR)/%: CFLAGS += $(CFLAGS_TEST)
+$(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBS_QEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS)

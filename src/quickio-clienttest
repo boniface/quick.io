@@ -1,1 +1,48 @@
 #!/usr/bin/env python
+
+import argparse
+import exceptions
+import os
+import subprocess
+import sys
+
+INI_FILE = '/tmp/quickio_clienttest.%d.ini' % os.getpid()
+INI = '''[quick-event]
+threads = 2
+[quick.io]
+bind-address = 0.0.0.0
+bind-port = 55440
+public-address = localhost
+[quick.io-apps]
+app = %s
+'''
+
+# Try to locate quickio-clienttest.so: might be either in directory of
+# this script (if running from source), or in /usr/lib/quickio, if running
+# from /usr/bin.
+so = '%s.so' % os.path.abspath(__file__)
+if os.path.isfile(so):
+	qio_path = "./quickio"
+	app_path = so
+else:
+	# Just let QuickIO load the app from its default location
+	qio_path = "quickio"
+	app_path = os.path.basename(__file__)
+
+with open(INI_FILE, 'w') as f:
+	f.write(INI % app_path)
+
+try:
+	ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])
+	if ret != 0:
+		raise Exception('QuickIO exited with status %d' % ret)
+except exceptions.KeyboardInterrupt:
+	pass
+except OSError as e:
+	print >> sys.stderr, 'Error executing quickio: %s' % e
+	sys.exit(1)
+except:
+	print >> sys.stderr, 'Error: %s' % sys.exc_info()[1]
+	sys.exit(1)
+finally:
+	os.remove(INI_FILE)

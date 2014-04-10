@@ -342,6 +342,33 @@ START_TEST(test_client_subs_list_add_fail)
 }
 END_TEST
 
+START_TEST(test_client_data_sane)
+{
+	GVariant *v;
+	struct client *client = qev_surrogate_new();
+	const GQuark q = g_quark_from_static_string("test");
+
+	client_set(client, q, g_variant_new_boolean(FALSE));
+
+	ck_assert(client_has(client, q));
+
+	v = client_get(client, q);
+	ck_assert(g_variant_type_equal(g_variant_get_type(v), G_VARIANT_TYPE_BOOLEAN));
+	ck_assert(g_variant_get_boolean(v) == FALSE);
+	g_variant_unref(v);
+
+	client_del(client, q);
+	ck_assert(!client_has(client, q));
+
+	client_set(client, q, NULL);
+	ck_assert(!client_has(client, q));
+
+	client_set(client, q, g_variant_new_boolean(FALSE));
+
+	qev_close(client, 0);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -371,6 +398,11 @@ int main()
 	tcase_add_test(tcase, test_client_subs_sane);
 	tcase_add_test(tcase, test_client_subs_unfair);
 	tcase_add_test(tcase, test_client_subs_list_add_fail);
+
+	tcase = tcase_create("Data");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_client_data_sane);
 
 	return test_do(sr);
 }

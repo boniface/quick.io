@@ -357,8 +357,91 @@ void client_update_subs_config(const guint64 total, const guint64 fairness)
 	}
 }
 
+void client_set(struct client *client, const GQuark key, GVariant *val)
+{
+	if (val == NULL) {
+		WARN("Attempted to set NULL value on client for key \"%s\"",
+			g_quark_to_string(key));
+		return;
+	}
+
+	g_variant_ref_sink(val);
+
+	qev_lock(client);
+
+	if (client->data == NULL) {
+		client->data = g_hash_table_new_full(NULL, NULL,
+									NULL, (GDestroyNotify)g_variant_unref);
+	}
+
+	g_hash_table_insert(client->data, GINT_TO_POINTER(key), val);
+
+	qev_unlock(client);
+}
+
+GVariant* client_get(struct client *client, const GQuark key)
+{
+	GVariant *ret = NULL;
+
+	qev_lock(client);
+
+	if (client->data != NULL) {
+		ret = g_hash_table_lookup(client->data, GINT_TO_POINTER(key));
+	}
+
+	qev_unlock(client);
+
+	if (ret != NULL) {
+		g_variant_ref(ret);
+	}
+
+	return ret;
+}
+
+gboolean client_has(struct client *client, const GQuark key)
+{
+	gboolean has = FALSE;
+
+	qev_lock(client);
+
+	if (client->data != NULL) {
+		has = g_hash_table_contains(client->data, GINT_TO_POINTER(key));
+	}
+
+	qev_unlock(client);
+
+	return has;
+}
+
+void client_del(struct client *client, const GQuark key)
+{
+	GHashTable *tbl = NULL;
+
+	qev_lock(client);
+
+	if (client->data != NULL) {
+		g_hash_table_remove(client->data, GINT_TO_POINTER(key));
+
+		if (g_hash_table_size(client->data) == 0) {
+			tbl = client->data;
+			client->data = NULL;
+		}
+	}
+
+	qev_unlock(client);
+
+	if (tbl != NULL) {
+		g_hash_table_unref(tbl);
+	}
+}
+
 void client_free_all(struct client *client)
 {
+	/**
+	 * At this point, the client is being freed, so no one can have a reference
+	 * to him and everything can be done without locks.
+	 */
+
 	guint i;
 	GHashTableIter iter;
 	struct subscription *sub;
@@ -382,6 +465,11 @@ void client_free_all(struct client *client)
 
 		g_hash_table_unref(client->subs);
 		client->subs = NULL;
+	}
+
+	if (client->data != NULL) {
+		g_hash_table_unref(client->data);
+		client->data = NULL;
 	}
 }
 

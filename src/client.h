@@ -162,6 +162,12 @@ struct client {
 	GHashTable *subs;
 
 	/**
+	 * Any extra data that can be attached to a client using
+	 * client_{get,set,del,has}().
+	 */
+	GHashTable *data;
+
+	/**
 	 * For managing the HTTP session for the client
 	 */
 	struct {
@@ -384,6 +390,55 @@ gboolean client_sub_remove(struct client *client, struct subscription *sub);
  *     The new fairness value to use
  */
 void client_update_subs_config(const guint64 total, const guint64 fairness);
+
+/**
+ * Sets a piece of data on a client.
+ *
+ * @param client
+ *     The client to set the data on
+ * @param key
+ *     The name of the value to set
+ * @param val
+ *     The value for the key. Assumes full ownership over any floating
+ *     reference. May not be NULL.
+ */
+void client_set(struct client *client, const GQuark key, GVariant *val);
+
+/**
+ * Gets some data from a client.
+ *
+ * @param client
+ *     The client to get the data from
+ * @param key
+ *     The key to lookup
+ *
+ * @return
+ *     A reference to the data. g_variant_unref() when done with it.
+ */
+GVariant* client_get(struct client *client, const GQuark key);
+
+/**
+ * Check if the client has anything set for the given key
+ *
+ * @param client
+ *     The client to get the data from
+ * @param key
+ *     The key to lookup
+ *
+ * @return
+ *     If the key exists on the client
+ */
+gboolean client_has(struct client *client, const GQuark key);
+
+/**
+ * Remove the key from the client.
+ *
+ * @param client
+ *     The client to get the data from
+ * @param key
+ *     The key to remove
+ */
+void client_del(struct client *client, const GQuark key);
 
 /**
  * A client is being freed and should be completely cleaned up

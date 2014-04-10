@@ -22,57 +22,48 @@ app = %s
 
 _apps = []
 _qio_path = 'quickio'
+max_clients = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
-def args():
-	global _apps, _qio_path
+parser = argparse.ArgumentParser(description='run each app\'s test suite')
+parser.add_argument('-a', '--app', nargs='*', type=file,
+	help='which app to run the tests on')
+parser.add_argument('-p', '--quickio-path', type=file,
+	help='absolute path to the quickio binary, if not found on the path')
+args = parser.parse_args()
 
-	parser = argparse.ArgumentParser(description='run each app\'s test suite')
-	parser.add_argument('-a', '--app', nargs='*', type=file,
-		help='which app to run the tests on')
-	parser.add_argument('-p', '--quickio-path', type=file,
-		help='absolute path to the quickio binary, if not found on the path')
-	args = parser.parse_args()
+if args.quickio_path:
+	_qio_path = args.quickio_path.name
 
-	if args.quickio_path:
-		_qio_path = args.quickio_path.name
+if args.app:
+	for app in args.app:
+		_apps.append(app.name)
+else:
+	_apps = glob.glob('test_*.so')
 
-	if args.app:
-		for app in args.app:
-			_apps.append(app.name)
-	else:
-		_apps = glob.glob('test_*.so')
+if not _apps:
+	print >> sys.stderr, 'No apps found to test. We\'re done here.'
+	sys.exit(0)
 
-def main():
-	args()
+for app in _apps:
+	with open(INI_FILE, 'w') as f:
+		f.write(INI % (max_clients, os.path.abspath(app)))
 
-	if not _apps:
-		print >> sys.stderr, 'No apps found to test. We\'re done here.'
-		return
+	status = "Running app tests on: %s" % app
+	print
+	print '*' * (len(status) + 4)
+	print '  %s' % status
+	print '*' * (len(status) + 4)
+	print
 
-	max_clients = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
-
-	for app in _apps:
-		with open(INI_FILE, 'w') as f:
-			f.write(INI % (max_clients, os.path.abspath(app)))
-
-		status = "Running app tests on: %s" % app
-		print
-		print '*' * (len(status) + 4)
-		print '  %s' % status
-		print '*' * (len(status) + 4)
-		print
-
-		try:
-			ret = subprocess.call([_qio_path, '--config-file=%s' % INI_FILE])
-			if ret != 0:
-				print >> sys.stderr, 'Error: tests failed on \"%s\" ' \
-					'(exit status %d). Exiting.' % (app, ret)
-		except OSError as e:
-			print >> sys.stderr, 'Error executing quickio binary: %s' % e
-		except e:
-			print >> sys.stderr, 'Unknown error: %s' % e
-		finally:
-			os.remove(INI_FILE)
-
-if __name__ == '__main__':
-	main()
+	try:
+		ret = subprocess.call([_qio_path, '--config-file=%s' % INI_FILE])
+		if ret != 0:
+			raise Exception('Test failed on "%s" (exit status %d)' % (app, ret))
+	except OSError as e:
+		print >> sys.stderr, 'Error executing quickio binary: %s' % e
+		sys.exit(1)
+	except:
+		print >> sys.stderr, 'Error: %s' % sys.exc_info()[1]
+		sys.exit(1)
+	finally:
+		os.remove(INI_FILE)
