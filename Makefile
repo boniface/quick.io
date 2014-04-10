@@ -172,7 +172,6 @@ TEST_APPS = \
 
 all:
 	@echo "Choose one of the following:"
-	@echo "    make bench       run any builtin benchmarks"
 	@echo "    make clean       clean up everything"
 	@echo "    make deb         make QuickIO debs for the current release"
 	@echo "    make deb-stable  make QuickIO debs for stable"
@@ -184,8 +183,6 @@ all:
 	@echo "    make test        run the test suite"
 	@echo "    make uninstall   remove all installed files"
 
-bench: _bench
-
 clean:
 	find -name '*.gcno' -exec rm {} \;
 	find -name '*.gcda' -exec rm {} \;
@@ -196,7 +193,7 @@ clean:
 	rm -f $(OBJECTS)
 	rm -f $(APPS) $(TEST_APPS)
 	rm -f $(SRC_DIR)/protocols_http_iframe.c*
-	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS) $(BENCHMARKS))
+	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
 	rm -f test/*.sock
 	$(MAKE) -C $(QEV_DIR) clean
 
@@ -266,7 +263,7 @@ uninstall:
 	touch $@
 
 _debug: export CFLAGS += $(CFLAGS_DEBUG)
-_debug: export LDFLAGS += $(LDLAGS_DEBUG)
+_debug: export LDFLAGS += $(LDFLAGS_DEBUG)
 _debug: .build_debug
 	BIND_PATH=/tmp/quickio.sock \
 	BIND_PORT=8080 \
@@ -277,12 +274,14 @@ _debug: .build_debug
 		./quickio.ini.sh > quickio.ini
 	$(MAKE) $(BINARY) $(APPS)
 
+_test: export CFLAGS += $(CFLAGS_TEST)
+_test: export LDFLAGS += $(LDFLAGS_TEST)
 _test: .build_test
 	$(MAKE) $(TESTS)
 
-_release _bench: export CFLAGS += $(CFLAGS_RELEASE)
-_release _bench: export LDFLAGS += $(LDLAGS_RELEASE)
-_release _bench: .build_release
+_release: export CFLAGS += $(CFLAGS_RELEASE)
+_release: export LDFLAGS += $(LDFLAGS_RELEASE)
+_release: .build_release
 	BIND_PORT=80 \
 	BIND_PORT_SSL=443 \
 	INCLUDE=/etc/quickio/apps/*.ini \
@@ -307,18 +306,11 @@ $(BINARY): $(BINARY_OBJECTS) $(LIBS_QEV)
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && ./$@
 
-.PHONY: $(BENCHMARKS)
-$(BENCHMARKS): % : $(TEST_APPS) $(TEST_DIR)/%
-	@cd $(TEST_DIR) && ./$@
-
 $(SRC_DIR)/protocols_http_iframe.c: $(SRC_DIR)/protocols_http_iframe.html
 	@echo '-------- Generating $@ --------'
 	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
-$(TEST_DIR)/test_%: export CFLAGS += $(CFLAGS_TEST)
-$(TEST_DIR)/bench_%: export CFLAGS += $(CFLAGS_RELEASE)
-$(TEST_DIR)/%: export LDFLAGS += $(LDFLAGS_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBS_QEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS)
