@@ -1,11 +1,11 @@
 .\" Manpage for Quick.IO
-.TH man 1 "17 July 2013" "0.1" "quickio man page"
+.TH man 1 "11 April 2014" "0.2.0" "quickio"
 
 .SH NAME
-quickio \- run the quickio server
+quickio
 
 .SH SYNOPSIS
-quickio
+quickio [-c /etc/quickio/quickio.ini] [-v]
 
 .SH DESCRIPTION
 QuickIO is a simple, fast, and difficult WebSocket server that focuses on being as fast as possible.
@@ -13,12 +13,13 @@ QuickIO is a simple, fast, and difficult WebSocket server that focuses on being 
 .SH OPTIONS
 
 .TP
-\fB\--config-file, \-c\fR
-Configuration file to load; if not specified, will look in the current directory. This option may be given multiple times to load multiple files.
+\fB\--config-file, \-f\fR
+Configuration file to load. This option may be given multiple times to load
+multiple files; it understands most common globbing patterns.
 
 .TP
-\fB\--config-dir, \-d\fR
-Configuration directory to scan for other config files. Looks for "*.ini".
+\fB\--version, \-v\fR
+Get the server version
 
 .SH BUGS
 Report bugs at: https://github.com/iheartradio/quick.io/issues

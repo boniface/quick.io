@@ -1,24 +1,15 @@
 .\" Manpage for Quick.IO
-.TH man 1 "17 July 2013" "0.1" "quickio man page"
+.TH man 1 "11 April 2014" "0.2.0" "quickio-clienttest"
 
 .SH NAME
-quickio-testapps \- test apps against QuickIO
+quickio-clienttest \- test client implementations against a QuickIO server
 
 .SH SYNOPSIS
-quickio-testapps
+quickio-clienttest
 
 .SH DESCRIPTION
-Runs the application test suite against all QuickIO apps found. By default, searches in the current directory for anything with the pattern test_*.so.
-
-.SH OPTIONS
-
-.TP
-\fB\--quickio-path, \-p\fR
-An absolute path to the quickio server binary. If not given, uses the system quickio binary.
-
-.TP
-\fB\--app, \-a\fR
-Which app(s) to run the test on. May be given multiple times. If not given, globs for test_*.so, and runs whatever is found as a test app.
+Runs a QuickIO server with the quickio-clienttest application loaded. Makes
+integration testing with clients a rather simple affair.
 
 .SH BUGS
 Report bugs at: https://github.com/iheartradio/quick.io/issues
