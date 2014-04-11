@@ -343,7 +343,7 @@ void evs_send_info_full(
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
-	const GDestroyNotify free_fn)
+	const qev_free_fn free_fn)
 {
 	evs_send_sub_full(info->client, info->sub, json, cb_fn, cb_data, free_fn);
 }

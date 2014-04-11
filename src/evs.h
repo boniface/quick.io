@@ -412,7 +412,7 @@ void evs_send_full(
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
-	const GDestroyNotify free_fn);
+	const qev_free_fn free_fn);
 
 /**
  * Sends an event to a specific client, requesting a callback from the client.
@@ -433,7 +433,7 @@ void evs_send_info_full(
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
-	const GDestroyNotify free_fn);
+	const qev_free_fn free_fn);
 
 /**
  * Sends an event to a specific client, requesting a callback from the client.
@@ -587,7 +587,7 @@ void evs_cb_with_cb(
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
-	const GDestroyNotify free_fn);
+	const qev_free_fn free_fn);
 
 /**
  * Sends a callback to a client with an error code and message.
@@ -649,7 +649,7 @@ void evs_cb_full(
 	const gchar *json,
 	const evs_cb_fn cb_fn,
 	void *cb_data,
-	const GDestroyNotify free_fn);
+	const qev_free_fn free_fn);
 
 /**
  * Broadcast a message to all clients listening on the event

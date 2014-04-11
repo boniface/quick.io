@@ -28,7 +28,6 @@ void periodic_run()
 		.cb = client_cb_prune_get_before(),
 	};
 
-
 	qev_foreach(_foreach_cb, cfg_periodic_threads, &is);
 }
 
