@@ -8,6 +8,7 @@
 			instanceId = -1,
 			pendingEvents = [],
 			pollFrequency = 2000,
+			timeout = 60 * 1000,
 			uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
 				var r = Math.random() * 16 | 0,
 					v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -47,7 +48,7 @@
 			var request = new XMLHttpRequest(),
 				url = '/?sid=' + uuid + (create ? '&connect=true' : '');
 
-			request.onerror = sendError;
+			request.onerror = request.ontimeout = sendError;
 			request.onload = function() {
 				var i,
 					events,
@@ -72,6 +73,7 @@
 				requestDone();
 			};
 
+			request.timeout = timeout;
 			request.open('POST', url, true);
 			request.send(data);
 
@@ -120,6 +122,7 @@
 
 			instanceId = parseInt(getParameterByName('instanceId'));
 			pollFrequency = parseInt(getParameterByName('pollFrequency')) || pollFrequency;
+			timeout = parseInt(getParameterByName('timeout')) || timeout;
 
 			if (getParameterByName('connectionTest')) {
 				sendServerUrl();
