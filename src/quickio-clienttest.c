@@ -185,6 +185,16 @@ static enum evs_status _send_invalid_handler(
 	return EVS_STATUS_HANDLED;
 }
 
+static enum evs_status _send_unsubscribed_handler(
+	struct client *client,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb G_GNUC_UNUSED,
+	gchar *json G_GNUC_UNUSED)
+{
+	evs_send_bruteforce(client, "/you/didnt/subscribe/to/this", NULL, NULL, NULL, NULL, NULL, NULL);
+	return EVS_STATUS_HANDLED;
+}
+
 static void _broadcast()
 {
 	evs_broadcast(_ev_broadcast, NULL, "\"broadcast event\"");
@@ -214,6 +224,8 @@ static gboolean _app_init()
 					_ping_handler, evs_no_on, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/send-invalid",
 					_send_invalid_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(EV_PREFIX, "/send-unsubscribed",
+					_send_unsubscribed_handler, evs_no_on, NULL, FALSE);
 
 	qev_timer(_broadcast, 0, 10);
 
