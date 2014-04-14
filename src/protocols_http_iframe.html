@@ -7,6 +7,7 @@
 			requests = 0,
 			instanceId = -1,
 			pendingEvents = [],
+			pollFrequency = 2000,
 			uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
 				var r = Math.random() * 16 | 0,
 					v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -86,7 +87,7 @@
 					poll(evs);
 
 					pendingPoll = null;
-				}, Math.ceil(Math.random() * 2000));
+				}, Math.ceil(Math.random() * pollFrequency));
 			}
 		}
 
@@ -118,6 +119,7 @@
 			window.removeEventListener('load', run, false);
 
 			instanceId = parseInt(getParameterByName('instanceId'));
+			pollFrequency = parseInt(getParameterByName('pollFrequency')) || pollFrequency;
 
 			if (getParameterByName('connectionTest')) {
 				sendServerUrl();

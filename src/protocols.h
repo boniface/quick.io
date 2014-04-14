@@ -197,7 +197,9 @@ void protocols_route(struct client *client);
 
 /**
  * Write data out to a client, properly framing it as the protocol
- * requires.
+ * requires. No data validation is done; anything that is passed is
+ * assumed to be valid. Use evs_* functions for friendlier, validated,
+ * and more idomatic ways of sending messages.
  *
  * @param client
  *     The client to write to
@@ -208,7 +210,8 @@ void protocols_route(struct client *client);
  * @param server_cb
  *     The callback expected on the server
  * @param json
- *     Data to send with the event
+ *     Data to send with the event. MUST be a properly-formatted JSON string.
+ *     @args{not-null}
  */
 void protocols_send(
 	struct client *client,

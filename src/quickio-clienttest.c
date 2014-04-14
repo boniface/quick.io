@@ -181,8 +181,7 @@ static enum evs_status _send_invalid_handler(
 	const evs_cb_t client_cb G_GNUC_UNUSED,
 	gchar *json G_GNUC_UNUSED)
 {
-	const gchar *resp = "unicorns, ponies, princesses, and magic!";
-	qev_write(client, resp, strlen(resp));
+	protocols_send(client, "unicorns, ponies, princesses, and magic!:good times", NULL, 0, "");
 	return EVS_STATUS_HANDLED;
 }
 
