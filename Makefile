@@ -26,7 +26,7 @@ LIBS_QEV = $(QEV_DIR)/libqev.a
 LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
 
 BINARY = quickio
-BINARY_HELPERS = quickio-clienttest quickio-testapps
+BINARY_HELPERS = quickio-clienttest quickio-fuzzer quickio-testapps
 
 #
 # Base flags used everywhere
@@ -57,6 +57,13 @@ CFLAGS ?= \
 	-msse2 \
 	$(shell pkg-config --cflags $(LIBS))
 
+CFLAGS_BIN ?= $(CFLAGS)
+
+CFLAGS_SO ?= \
+	$(CFLAGS) \
+	-shared \
+	-fPIC
+
 LDFLAGS ?= \
 	-rdynamic \
 	-Wl,-z,now \
@@ -65,18 +72,24 @@ LDFLAGS ?= \
 	-lm \
 	$(shell pkg-config --libs $(LIBS))
 
+LDFLAGS_BIN ?= \
+	$(LDFLAGS)
+
+LDFLAGS_SO ?= \
+	$(LDFLAGS)
+
 #
 # Extra flags for debug
 #
 # ==============================================================================
 #
 
-CFLAGS_DEBUG = \
+CFLAGS_BIN_DEBUG = \
 	-fno-inline \
 	-DQIO_DEBUG \
 	-DQEV_LOG_DEBUG
 
-LDFLAGS_DEBUG =
+LDFLAGS_BIN_DEBUG =
 
 #
 # Extra flags for testing
@@ -84,7 +97,7 @@ LDFLAGS_DEBUG =
 # ==============================================================================
 #
 
-CFLAGS_TEST = \
+CFLAGS_BIN_TEST = \
 	--coverage \
 	-fno-inline \
 	-I../$(SRC_DIR) \
@@ -92,7 +105,7 @@ CFLAGS_TEST = \
 	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
 	$(shell pkg-config --cflags $(LIBS_TEST))
 
-LDFLAGS_TEST = \
+LDFLAGS_BIN_TEST = \
 	--coverage \
 	$(shell pkg-config --libs $(LIBS_TEST))
 
@@ -102,12 +115,17 @@ LDFLAGS_TEST = \
 # ==============================================================================
 #
 
-CFLAGS_RELEASE = \
+CFLAGS_BIN_RELEASE = \
 	-fPIE \
 	-O3
 
-LDFLAGS_RELEASE = \
+CFLAGS_SO_RELEASE = \
+	-O3
+
+LDFLAGS_BIN_RELEASE = \
 	-pie
+
+LDFLAGS_SO_RELEASE =
 
 #
 # What actually gets built
@@ -177,7 +195,8 @@ all:
 	@echo "    make deb-stable         make QuickIO debs for stable"
 	@echo "    make docs               build all documentation"
 	@echo "    make docs-watch         rebuild all documentation any time something changes"
-	@echo "    make helper-clienttest  clean up everything"
+	@echo "    make helper-clienttest  run QuickIO for client testing"
+	@echo "    make helper-fuzzer      run QuickIO for fuzzing"
 	@echo "    make install            install the binaries locally"
 	@echo "    make release            build a release-ready version of QuickIO"
 	@echo "    make run                run quickio in debug mode"
@@ -190,6 +209,7 @@ clean:
 	find -name '*.xml' -exec rm {} \;
 	find test/ -name 'test_*.ini' -exec rm {} \;
 	rm -f .build_*
+	rm -f quickio.ini
 	rm -f $(BINARY)
 	rm -f $(OBJECTS)
 	rm -f $(APPS) $(TEST_APPS)
@@ -213,6 +233,9 @@ docs-watch:
 
 helper-clienttest: _debug
 	$(SRC_DIR)/quickio-clienttest
+
+helper-fuzzer: _release
+	$(SRC_DIR)/quickio-fuzzer
 
 install: release
 	mkdir -p \
@@ -266,8 +289,8 @@ uninstall:
 	$(MAKE) clean
 	touch $@
 
-_debug: export CFLAGS += $(CFLAGS_DEBUG)
-_debug: export LDFLAGS += $(LDFLAGS_DEBUG)
+_debug: export CFLAGS_BIN += $(CFLAGS_BIN_DEBUG)
+_debug: export LDFLAGS_BIN += $(LDFLAGS_BIN_DEBUG)
 _debug: .build_debug
 	BIND_PATH=/tmp/quickio.sock \
 	BIND_PORT=8080 \
@@ -281,8 +304,10 @@ _debug: .build_debug
 _test: .build_test
 	$(MAKE) $(TESTS)
 
-_release: export CFLAGS += $(CFLAGS_RELEASE)
-_release: export LDFLAGS += $(LDFLAGS_RELEASE)
+_release: export CFLAGS_SO += $(CFLAGS_SO_RELEASE)
+_release: export CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
+_release: export LDFLAGS_SO += $(LDFLAGS_SO_RELEASE)
+_release: export LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
 _release: .build_release
 	BIND_PORT=80 \
 	BIND_PORT_SSL=443 \
@@ -302,7 +327,7 @@ _release: .build_release
 
 $(BINARY): $(BINARY_OBJECTS) $(LIBS_QEV)
 	@echo '-------- Linking quickio --------'
-	@$(CC) $^ -o $@ $(LIBS_QEV) $(LDFLAGS)
+	@$(CC) $^ -o $@ $(LDFLAGS_BIN)
 
 .PHONY: $(TESTS)
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
@@ -313,20 +338,21 @@ $(SRC_DIR)/protocols_http_iframe.c: $(SRC_DIR)/protocols_http_iframe.html
 	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
-$(TEST_DIR)/%: CFLAGS += $(CFLAGS_TEST)
-$(TEST_DIR)/%: LDFLAGS += $(LDFLAGS_TEST)
+$(TEST_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_TEST)
+$(TEST_DIR)/%: LDFLAGS_BIN += $(LDFLAGS_BIN_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBS_QEV_TEST)
 	@echo '-------- Compiling $@ --------'
-	@cd $(TEST_DIR) && $(CC) $(CFLAGS) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS)
+	@cd $(TEST_DIR) && $(CC) $(CFLAGS_BIN) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS_BIN)
 
 $(SRC_DIR)/protocols_http.o: $(SRC_DIR)/protocols_http_iframe.c
 %.o: %.c
 	@echo '-------- Compiling $@ --------'
-	@$(CC) -c $(CFLAGS) $< -o $@
+	@$(CC) -c $(CFLAGS_BIN) $< -o $@
 
 %.so: %.c
 	@echo '-------- Compiling app $@ --------'
-	@$(CC) -shared -fPIE $(CFLAGS) $< -o $@ $(LDFLAGS)
+	@$(CC) $(CFLAGS_SO) $< -o $@ $(LDFLAGS_SO)
 
+$(LIBS_QEV) $(LIBS_QEV_TEST): export CFLAGS = $(CFLAGS_BIN)
 $(LIBS_QEV) $(LIBS_QEV_TEST): $(QEV_DIR)/% :
 	@cd $(QEV_DIR) && $(MAKE) $*

@@ -7,7 +7,7 @@ import resource
 import subprocess
 import sys
 
-INI_FILE = '/tmp/quickio_testapps.%d.ini' % os.getpid()
+INI_FILE = '/tmp/quickio-testapps.%d.ini' % os.getpid()
 INI = '''[quick-event]
 max-clients = %d
 threads = 2

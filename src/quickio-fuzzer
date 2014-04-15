@@ -1,37 +1,35 @@
 #!/usr/bin/env python
 #
-# Run QuickIO to test client implementations against it.
+# Run QuickIO so that the fuzzer can hit it.
 
 import exceptions
 import os
+import multiprocessing
+import resource
 import subprocess
 import sys
 
-INI_FILE = '/tmp/quickio-clienttest.%d.ini' % os.getpid()
+INI_FILE = '/tmp/quickio-fuzzer.%d.ini' % os.getpid()
 INI = '''[quick-event]
-threads = 2
+max-clients = %d
+threads = %d
 [quick.io]
 bind-address = 0.0.0.0
-bind-port = 55440
+bind-port = 8080
+bind-path = /tmp/quickio.sock
 public-address = localhost
-[quick.io-apps]
-app = %s
 '''
 
-# Try to locate quickio-clienttest.so: might be either in directory of
-# this script (if running from source), or in /usr/lib/quickio, if running
-# from /usr/bin.
-so = '%s.so' % os.path.abspath(__file__)
-if os.path.isfile(so):
-	qio_path = "./quickio"
-	app_path = so
-else:
-	# Just let QuickIO load the app from its default location
+if "/usr/bin" in os.path.abspath(__file__):
 	qio_path = "quickio"
-	app_path = os.path.basename(__file__)
+else:
+	qio_path = "./quickio"
 
 with open(INI_FILE, 'w') as f:
-	f.write(INI % app_path)
+	f.write(INI % (
+		resource.getrlimit(resource.RLIMIT_NOFILE)[0],
+		multiprocessing.cpu_count(),
+	))
 
 try:
 	ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])
