@@ -349,11 +349,15 @@ gboolean client_sub_remove(
 	return _sub_remove(client, sub, FALSE);
 }
 
-void client_update_subs_config(const guint64 total, const guint64 fairness)
+void client_update_subs_config(
+	const guint64 total,
+	const guint64 pressure,
+	const guint64 min)
 {
 	if (_fair_subs != NULL) {
 		qev_fair_set_total(_fair_subs, total);
-		qev_fair_set_fairness(_fair_subs, fairness);
+		qev_fair_set_pressure(_fair_subs, pressure);
+		qev_fair_set_min(_fair_subs, min);
 	}
 }
 
@@ -476,9 +480,9 @@ void client_free_all(struct client *client)
 void client_init()
 {
 	_fair_subs = qev_fair_new("subs",
-		cfg_clients_subs_fairness,
-		qev_cfg_get_max_clients(),
-		cfg_clients_max_subs);
+		cfg_clients_subs_total,
+		cfg_clients_subs_pressure,
+		cfg_clients_subs_min);
 
 	_stat_subs_total = qev_stats_counter("clients.subs", "total", FALSE);
 	_stat_subs_added = qev_stats_counter("clients.subs", "added", TRUE);

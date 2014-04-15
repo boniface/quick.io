@@ -50,15 +50,21 @@ guint64 cfg_broadcast_threads;
 guint64 cfg_clients_cb_max_age;
 
 /**
- * The maximum number of event subscriptions that may exist on a server.
+ * The total number of event subscriptions that may exist on a server.
  */
-guint64 cfg_clients_max_subs;
+guint64 cfg_clients_subs_total;
 
 /**
- * How subscriptions are distributed to clients as they're starting to run
- * low on the server.
+ * After what percent of `cfg_clients_subs_total` memory pressure should be
+ * applied.
  */
-guint64 cfg_clients_subs_fairness;
+guint64 cfg_clients_subs_pressure;
+
+/**
+ * How many subscriptions each client is entitled to, even when under
+ * pressure.
+ */
+guint64 cfg_clients_subs_min;
 
 /**
  * Number of threads to use to run periodic tasks

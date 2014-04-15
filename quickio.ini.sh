@@ -67,12 +67,13 @@ max-clients = $MAX_CLIENTS
 #
 # The total number of bytes that may be used for client read and write buffers
 #
-# userspace-buff-max = 536870912
+# userspace-buff-total = 536870912
 
 #
-# How fairly userspace bytes should be given to users (0-100)
+# At what percent of userspace-buff-max memory pressure should be applied
+# (0-100)
 #
-# userspace-buff-fairness = 35
+# userspace-buff-pressure = 40
 
 include = $INCLUDE
 
@@ -348,17 +349,23 @@ support-flash = $SUPPORT_FLASH
 # clients-cb-max-age = 15
 
 #
-# Maximum number of subscriptions that may exist on the server.
+# Total number of event subscriptions that may exist. This is used to control
+# memory limits on the server. As an approximation, every 2^21 subscriptions
+# use 1GB of RAM.
 #
-# clients-max-subs = 4194304
+# clients-subs-total = 4194304
 
 #
-# How fairly subscriptions are allocated to clients. 100 indicates that
-# subscriptions should be completely evenly distributed amongst clients
-# (MAX(1, num_subscriptions / num_clients)), whereas 0 is first-come,
-# first-serve. A value in the middle balances the two extremes.
+# At what percent of clients-subs-total memory pressure should be applied.
+# (0-100)
 #
-# clients-subs-fairness = 80
+# clients-subs-pressure = 80
+
+#
+# How many subscriptions each client may have, even when under memory pressure,
+# until client-subs-total is reached.
+#
+# clients-subs-min = 128
 
 #
 # How often periodic tasks should be polled (heartbeats, callback cleanup, etc).

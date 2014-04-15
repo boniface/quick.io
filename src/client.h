@@ -386,10 +386,15 @@ gboolean client_sub_remove(struct client *client, struct subscription *sub);
  *
  * @param total
  *     The new total to use
- * @param fairness
- *     The new fairness value to use
+ * @param pressure
+ *     The new pressure value to use
+ * @param min
+ *     The new min value to use
  */
-void client_update_subs_config(const guint64 total, const guint64 fairness);
+void client_update_subs_config(
+	const guint64 total,
+	const guint64 pressure,
+	const guint64 min);
 
 /**
  * Sets a piece of data on a client.

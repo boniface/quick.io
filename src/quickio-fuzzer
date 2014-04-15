@@ -18,6 +18,8 @@ bind-address = 0.0.0.0
 bind-port = 8080
 bind-path = /tmp/quickio.sock
 public-address = localhost
+[quick.io-apps]
+quick-fuzz = quick-fuzz
 '''
 
 if "/usr/bin" in os.path.abspath(__file__):
