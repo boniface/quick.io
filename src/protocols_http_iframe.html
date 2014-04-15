@@ -32,13 +32,6 @@
 			}, '*');
 		}
 
-		function requestDone() {
-			requests--;
-			if (requests == 0) {
-				requestPoll();
-			}
-		}
-
 		function sendError() {
 			send('error', null);
 		}
@@ -69,7 +62,9 @@
 					send('events', evs);
 				}
 
-				requestDone();
+				if ((--requests) == 0) {
+					requestPoll();
+				}
 			};
 
 			request.timeout = timeout;
@@ -97,12 +92,6 @@
 			requestPoll();
 		}
 
-		function sendServerUrl() {
-			send('ready', {
-				serverUrl: publicAddress
-			});
-		}
-
 		function startClient() {
 			if (window.addEventListener) {
 				window.addEventListener('message', onPostMessage, false);
@@ -123,8 +112,8 @@
 			pollFrequency = parseInt(getParameterByName('pollFrequency')) || pollFrequency;
 			timeout = parseInt(getParameterByName('timeout')) || timeout;
 
-			if (getParameterByName('connectionTest')) {
-				sendServerUrl();
+			if (window.location.hostname != publicAddress) {
+				window.location.hostname = publicAddress;
 			} else {
 				startClient();
 			}
