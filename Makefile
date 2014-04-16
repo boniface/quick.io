@@ -209,7 +209,7 @@ clean:
 	rm -f .build_*
 	rm -f quickio.ini
 	rm -f $(BINARY)
-	rm -f $(OBJECTS)
+	rm -f $(BINARY_OBJECTS)
 	rm -f $(APPS) $(TEST_APPS)
 	rm -f $(SRC_DIR)/protocols_http_iframe.c*
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
