@@ -24,10 +24,6 @@
 	"[quick.io]\n" \
 	"sub-min-size = 4294967295\n"
 
-#define SUBS_MAX \
-	"[quick.io]\n" \
-	"clients-max-subs = 10\n"
-
 #define CBS_MAX \
 	"[quick.io]\n" \
 	"clients-cb-max-age = 0\n"
@@ -92,13 +88,6 @@ START_TEST(test_config_invalid_sub_min_size_1)
 }
 END_TEST
 
-START_TEST(test_config_invalid_subs_max)
-{
-	_do(SUBS_MAX);
-	ck_assert_uint_eq(cfg_clients_max_subs, 4194304);
-}
-END_TEST
-
 START_TEST(test_config_invalid_cbs_max_age)
 {
 	_do(CBS_MAX);
@@ -136,7 +125,6 @@ int main()
 	tcase_add_test(tcase, test_config_invalid_periodic_interval_1);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
-	tcase_add_test(tcase, test_config_invalid_subs_max);
 	tcase_add_test(tcase, test_config_invalid_cbs_max_age);
 	tcase_add_test_raise_signal(tcase, test_config_invalid_public_address, 5);
 

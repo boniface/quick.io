@@ -149,7 +149,6 @@ OBJECTS = \
 	$(SRC_DIR)/protocols_util.o \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
-	$(SRC_DIR)/str.o \
 	$(SRC_DIR)/sub.o
 
 APPS = \
@@ -173,7 +172,6 @@ TESTS = \
 	test_protocol_raw \
 	test_protocol_rfc6455 \
 	test_protocol_util \
-	test_str \
 	test_sub
 
 TEST_APPS = \
@@ -353,6 +351,6 @@ $(SRC_DIR)/protocols_http.o: $(SRC_DIR)/protocols_http_iframe.c
 	@echo '-------- Compiling app $@ --------'
 	@$(CC) $(CFLAGS_SO) $< -o $@ $(LDFLAGS_SO)
 
-$(LIBS_QEV) $(LIBS_QEV_TEST): export CFLAGS = $(CFLAGS_BIN)
+$(LIBS_QEV) $(LIBS_QEV_TEST): export CFLAGS := $(CFLAGS_BIN)
 $(LIBS_QEV) $(LIBS_QEV_TEST): $(QEV_DIR)/% :
 	@cd $(QEV_DIR) && $(MAKE) $*

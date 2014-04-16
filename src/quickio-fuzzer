@@ -2,6 +2,7 @@
 #
 # Run QuickIO so that the fuzzer can hit it.
 
+import argparse
 import exceptions
 import os
 import multiprocessing
@@ -27,6 +28,16 @@ if "/usr/bin" in os.path.abspath(__file__):
 else:
 	qio_path = "./quickio"
 
+cmd = [qio_path, '--config-file=%s' % INI_FILE]
+
+parser = argparse.ArgumentParser(description='run the server for fuzzing or profiling')
+parser.add_argument('-p', '--profile', action='store_true',
+	help='run inside of valgrind\'s callgrind')
+args = parser.parse_args()
+
+if args.profile:
+	cmd = ['valgrind', '--tool=callgrind'] + cmd
+
 with open(INI_FILE, 'w') as f:
 	f.write(INI % (
 		resource.getrlimit(resource.RLIMIT_NOFILE)[0],
@@ -34,7 +45,7 @@ with open(INI_FILE, 'w') as f:
 	))
 
 try:
-	ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])
+	ret = subprocess.call(cmd)
 	if ret != 0:
 		raise Exception('QuickIO exited with status %d' % ret)
 except exceptions.KeyboardInterrupt:

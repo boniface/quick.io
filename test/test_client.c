@@ -255,7 +255,7 @@ static void _setup_subs()
 	test_setup();
 
 	union qev_cfg_val val = { .ui64 = 100 };
-	qev_cfg_set("quick.io", "clients-max-subs", val, NULL);
+	qev_cfg_set("quick.io", "clients-subs-total", val, NULL);
 }
 
 START_TEST(test_client_subs_sane)
@@ -309,7 +309,7 @@ START_TEST(test_client_subs_unfair)
 	qev_fd_t tc2 = test_client();
 	GString *buff = qev_buffer_get();
 
-	for (i = 0; i < cfg_clients_max_subs; i++) {
+	for (i = 0; i < cfg_clients_subs_total; i++) {
 		g_string_printf(buff, "/qio/on:1=\"/test/good-childs/%d\"", i);
 		test_cb(tc,
 			buff->str,

@@ -166,7 +166,7 @@ static enum protocol_status _decode(
 
 	*(msg + len) = '\0';
 
-	if (!qio_str_is_utf8((guchar*)msg, len)) {
+	if (!g_utf8_validate(msg, len, NULL)) {
 		qev_close(client, RFC6455_NOT_UTF8);
 		return PROT_FATAL;
 	}
