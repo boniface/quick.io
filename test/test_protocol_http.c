@@ -606,6 +606,17 @@ START_TEST(test_http_partial_body)
 }
 END_TEST
 
+START_TEST(test_http_tons_of_newlines)
+{
+	struct httpc *hc = _httpc_new();
+
+	_send(hc, "\n\n\n\n\n\n\n\n\n\n/qio/ping:1=null\n\n\n\n\n\n\n\n");
+	_next(hc, "/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	_httpc_free(hc);
+}
+END_TEST
+
 START_TEST(test_http_oversized_request)
 {
 	const gchar *headers =
@@ -941,6 +952,7 @@ int main()
 	tcase_add_test(tcase, test_http_10_keepalive);
 	tcase_add_test(tcase, test_http_11_connection_close);
 	tcase_add_test(tcase, test_http_partial_body);
+	tcase_add_test(tcase, test_http_tons_of_newlines);
 	tcase_add_test(tcase, test_http_oversized_request);
 	tcase_add_test(tcase, test_http_close_with_surrogate);
 	tcase_add_test(tcase, test_http_incoming_wait);

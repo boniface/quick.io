@@ -8,51 +8,17 @@
 
 #include "quickio.h"
 
-/**
- * HTTP header delimiters
- */
-#define DELIM_COLON 0x01
-#define DELIM_SPACE 0x02
-#define DELIM_NEWLINE 0x04
+static gchar*_skip(char **start, const gchar *delims) {
+	gchar *key;
+	gchar *key_end;
 
-static gchar _http_delims[256] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	DELIM_SPACE, DELIM_NEWLINE, 0x00, 0x00, DELIM_NEWLINE, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, DELIM_SPACE, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, DELIM_COLON,
-};
+	key = *start;
+	key_end = key + strcspn(key, delims);
+	*start = key_end + strspn(key_end, delims);
 
-inline static void _skip_past_delim(gchar **curr, guchar delims)
-{
-	while (**curr != '\0' && _http_delims[(guchar)**curr] & delims) {
-		(*curr)++;
-	}
-}
+	*key_end = '\0';
 
-static gchar* _skip(gchar **start, guchar delims)
-{
-	gchar *val = *start;
-	gchar *curr = val;
-
-	while (*curr != '\0' && !(_http_delims[(guchar)*curr] & delims)) {
-		curr++;
-	}
-
-	if (*curr == '\0') {
-		return NULL;
-	}
-
-	*curr = '\0';
-	curr++;
-
-	_skip_past_delim(&curr, delims);
-
-	*start = curr;
-
-	return val;
+	return key;
 }
 
 void protocol_util_headers(
@@ -61,19 +27,15 @@ void protocol_util_headers(
 {
 	guint i = 0;
 
-	// @todo add to docs and change code: assumes entire given string is headers, doesn't stop at two empty lines
-	// @todo strtok?
-
 	/*
 	 * By this point, GET should already have been verified. So just skip
 	 * the first line and continue with parsing
 	 */
-	_skip(&head, DELIM_NEWLINE);
+	_skip(&head, "\r\n");
 	while (i < G_N_ELEMENTS(headers->header)) {
-		_skip_past_delim(&head, DELIM_SPACE);
-		headers->header[i].key = _skip(&head, DELIM_COLON | DELIM_SPACE);
-		headers->header[i].val = _skip(&head, DELIM_NEWLINE);
-		if (headers->header[i].key == NULL || headers->header[i].val == NULL) {
+		headers->header[i].key = _skip(&head, ": \t");
+		headers->header[i].val = _skip(&head, "\r\n");
+		if (*headers->header[i].key == '\0') {
 			break;
 		}
 		i++;

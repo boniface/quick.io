@@ -15,32 +15,13 @@ START_TEST(test_protocol_util_headers_0)
 
 	g_string_assign(buff,
 		"lol \n"
-		"   	key: 						value \n\r"
-		"     \r\n");
-
-	protocol_util_headers(buff->str, &headers);
-
-	ck_assert_uint_eq(headers.used, 1);
-	ck_assert_str_eq(protocol_util_headers_get(&headers, "key"), "value ");
-
-	qev_buffer_put(buff);
-}
-END_TEST
-
-START_TEST(test_protocol_util_headers_1)
-{
-	struct protocol_headers headers;
-	GString *buff = qev_buffer_get();
-
-	g_string_assign(buff,
-		"lol \n"
-		"   	key: 						value1 \n\r"
-		"   	key: 						value2 \n\r"
-		"   	key: 						value3 \n\r"
-		"   	key: 						value4 \n\r"
-		"   	key: 						value5 \n\r"
-		"   	key: 						value6 \n\r"
-		"   	key2: 						me         		 \n\r"
+		"key: 						value1 \n\r"
+		"key: 						value2 \n\r"
+		"key: 						value3 \n\r"
+		"key: 						value4 \n\r"
+		"key: 						value5 \n\r"
+		"key: 						value6 \n\r"
+		"key2: 						me         		 \n\r"
 		"     \r\n");
 
 	protocol_util_headers(buff->str, &headers);
@@ -53,7 +34,7 @@ START_TEST(test_protocol_util_headers_1)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_2)
+START_TEST(test_protocol_util_headers_1)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -70,7 +51,7 @@ START_TEST(test_protocol_util_headers_2)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_3)
+START_TEST(test_protocol_util_headers_2)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -85,7 +66,7 @@ START_TEST(test_protocol_util_headers_3)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_4)
+START_TEST(test_protocol_util_headers_3)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -100,7 +81,7 @@ START_TEST(test_protocol_util_headers_4)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_5)
+START_TEST(test_protocol_util_headers_4)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -111,13 +92,14 @@ START_TEST(test_protocol_util_headers_5)
 
 	protocol_util_headers(buff->str, &headers);
 
-	ck_assert_uint_eq(headers.used, 0);
+	ck_assert_uint_eq(headers.used, 1);
+	ck_assert_str_eq(protocol_util_headers_get(&headers, "null"), "");
 
 	qev_buffer_put(buff);
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_6)
+START_TEST(test_protocol_util_headers_5)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -135,7 +117,7 @@ START_TEST(test_protocol_util_headers_6)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_7)
+START_TEST(test_protocol_util_headers_6)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -164,7 +146,7 @@ START_TEST(test_protocol_util_headers_7)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_8)
+START_TEST(test_protocol_util_headers_7)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -193,7 +175,7 @@ START_TEST(test_protocol_util_headers_8)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_9)
+START_TEST(test_protocol_util_headers_8)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -225,7 +207,7 @@ START_TEST(test_protocol_util_headers_9)
 }
 END_TEST
 
-START_TEST(test_protocol_util_headers_10)
+START_TEST(test_protocol_util_headers_9)
 {
 	struct protocol_headers headers;
 	GString *buff = qev_buffer_get();
@@ -277,7 +259,6 @@ int main()
 	tcase_add_test(tcase, test_protocol_util_headers_7);
 	tcase_add_test(tcase, test_protocol_util_headers_8);
 	tcase_add_test(tcase, test_protocol_util_headers_9);
-	tcase_add_test(tcase, test_protocol_util_headers_10);
 
 	return test_do(sr);
 }
