@@ -367,11 +367,9 @@ static struct client* _surr_find(
 
 static struct client* _get_surrogate(gchar *url)
 {
-	union {
-		uuid_t u;
-		__uint128_t i;
-	} uuid;
+	guint i;
 	gboolean new_client;
+	__uint128_t uuid = 0;
 	gchar *sid = strstr(url, "sid=");
 
 	// @todo test case for /connect=true/?sid= <- even worth caring about?
@@ -384,11 +382,22 @@ static struct client* _get_surrogate(gchar *url)
 	sid += 4;
 	strtok(sid, " &");
 
-	if (uuid_parse(sid, uuid.u) != 0) {
+	/*
+	 * 0) Each character is 4 bits of data (0-15, 0x0-0xf)
+	 * 1) If it's not 32 bytes long, that's automatically an error
+	 * 2) Each character is interpreted directly into the 128bit number
+	 *    as its 4 bits
+	 */
+	for (i = 0; i < 32 && g_ascii_isxdigit(sid[i]); i++) {
+		__uint128_t n = g_ascii_xdigit_value(sid[i]);
+		uuid |= n << (i * 4);
+	}
+
+	if (i != 32) {
 		return NULL;
 	}
 
-	return _surr_find(uuid.i, new_client);
+	return _surr_find(uuid, new_client);
 }
 
 static void _do_body(struct client *client, gchar *start)

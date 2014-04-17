@@ -1,7 +1,7 @@
 #
 # Hide annoying messages
 #
-MAKEFLAGS += --no-print-directory
+MAKEFLAGS += -j8 --no-print-directory
 
 VERSION_NAME = banished bongo
 VERSION_MAJOR = 0
