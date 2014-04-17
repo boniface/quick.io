@@ -38,11 +38,6 @@
  */
 #define HTTP_CONTENT_LENGTH "Content-Length"
 
-#define HTTP_RESPONSE \
-	"HTTP/1.0 %s\r\n" \
-	HTTP_COMMON \
-	"Content-Length: "
-
 #define HTTP_HEADER_TERMINATOR "\r\n\r\n"
 #define HTTP_HEADER_TERMINATOR2 "\n\n"
 
@@ -62,13 +57,13 @@ struct client_table {
 };
 
 static gchar *_status_lines[] = {
-	"200 OK",
-	"400 Bad Request",
-	"403 Forbidden",
-	"405 Method Not Allowed",
-	"411 Length Required",
-	"413 Request Entity Too Large",
-	"426 Upgrade Required",
+	"200 OK\r\n",
+	"400 Bad Request\r\n",
+	"403 Forbidden\r\n",
+	"405 Method Not Allowed\r\n",
+	"411 Length Required\r\n",
+	"413 Request Entity Too Large\r\n",
+	"426 Upgrade Required\r\n",
 };
 
 #include "protocols_http_iframe.c"
@@ -129,7 +124,12 @@ static gchar* _find_header_end(gchar *head)
 static GString* _build_response(enum status status, const GString *body)
 {
 	GString *buff = qev_buffer_get();
-	g_string_printf(buff, HTTP_RESPONSE, _status_lines[status]);
+
+	g_string_append(buff, "HTTP/1.0 ");
+	g_string_append(buff, _status_lines[status]);
+	g_string_append(buff,
+		HTTP_COMMON
+		"Content-Length: ");
 
 	if (body == NULL || body->len == 0) {
 		qev_buffer_append_uint(buff, 0);
