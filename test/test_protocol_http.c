@@ -19,6 +19,8 @@
 	"Content-Length: %lu\r\n\r\n" \
 	"%s"
 
+const gchar *uuid_chars = "abcdef123456790";
+
 struct httpc {
 	/**
 	 * The socket currently polling on the server
@@ -59,17 +61,18 @@ struct httpc {
 static void* _httpc_thread(void *hc);
 static void _next(struct httpc *hc, const gchar *msg);
 
-static void _uuid(gchar sid[37])
+static void _uuid(gchar sid[32])
 {
-	uuid_t uuid;
-	uuid_generate_random(uuid);
-	uuid_unparse(uuid, sid);
+	guint i;
+	for (i = 0; i < 32; i++) {
+		sid[i] = uuid_chars[g_random_int_range(0, strlen(uuid_chars))];
+	}
 }
 
 static struct httpc* _httpc_new()
 {
 	gint err;
-	gchar sid[37];
+	gchar sid[32];
 	GString *buff = qev_buffer_get();
 	struct httpc *hc = g_slice_alloc0(sizeof(*hc));
 
@@ -416,10 +419,10 @@ END_TEST
 START_TEST(test_http_surrogate)
 {
 	const gchar *headers =
-		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1\n"
 		"Content-Length: 0\n\n";
 	const gchar *ping =
-		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9 HTTP/1.1\n"
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9 HTTP/1.1\n"
 		"Content-Length: 16\n\n"
 		"/qio/ping:1=null";
 
@@ -449,6 +452,27 @@ START_TEST(test_http_surrogate)
 	err = send(s, ping, strlen(ping), 0);
 	ck_assert_int_eq(err, strlen(ping));
 	_assert_status_code(s, 200);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_iframe)
+{
+	const gchar *header = "GET /iframe HTTP/1.1\n\n";
+
+	gint err;
+	gchar buff[0xffff];
+	qev_fd_t s = test_socket();
+
+	err = send(s, header, strlen(header), 0);
+	ck_assert_int_eq(strlen(header), err);
+
+	err = recv(s, buff, sizeof(buff), 0);
+	ck_assert_int_gt(err, 0);
+	buff[err] = '\0';
+
+	ck_assert(strstr(buff, "<!DOCTYPE html>") != NULL);
 
 	close(s);
 }
@@ -620,7 +644,7 @@ END_TEST
 START_TEST(test_http_oversized_request)
 {
 	const gchar *headers =
-		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1\n"
 		"Content-Length: 0\n\n";
 
 	gint err;
@@ -644,7 +668,7 @@ END_TEST
 START_TEST(test_http_close_with_surrogate)
 {
 	const gchar *headers =
-		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1\n"
 		"Content-Length: 0\n\n";
 
 	gint err;
@@ -718,7 +742,7 @@ START_TEST(test_http_requests_on_same_socket)
 {
 	guint i;
 	gint err;
-	gchar sid[37];
+	gchar sid[32];
 	GString *buff = qev_buffer_get();
 	GString *msg = qev_buffer_get();
 	qev_fd_t s = test_socket();
@@ -904,12 +928,12 @@ END_TEST
 START_TEST(test_http_error_invalid_events)
 {
 	const gchar *headers =
-		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9&connect=true HTTP/1.1\n" \
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1\n" \
 		"Content-Length: 19\n\n" \
 		"im an event\n" \
 		"/test:0";
 	const gchar *headers_after =
-		"POST /?sid=16a0dd9a-4e55-4a9f-9452-0c8bfa59e1b9 HTTP/1.1\n"
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9 HTTP/1.1\n"
 		"Content-Length: 0\n\n";
 
 	gint err;
@@ -941,6 +965,7 @@ int main()
 	tcase_add_test(tcase, test_http_replace_poller);
 	tcase_add_test(tcase, test_http_heartbeat);
 	tcase_add_test(tcase, test_http_surrogate);
+	tcase_add_test(tcase, test_http_iframe);
 
 	tcase = tcase_create("Edges");
 	suite_add_tcase(s, tcase);

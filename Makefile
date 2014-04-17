@@ -1,7 +1,7 @@
 #
 # Hide annoying messages
 #
-MAKEFLAGS += -j8 --no-print-directory
+MAKEFLAGS += --no-print-directory
 
 VERSION_NAME = banished bongo
 VERSION_MAJOR = 0
@@ -20,7 +20,7 @@ QEV_DIR = $(LIB_DIR)/quick-event
 INSTALL_BIN = install
 INSTALL = $(INSTALL_BIN) -m 644
 
-LIBS = glib-2.0 gmodule-2.0 openssl uuid
+LIBS = glib-2.0 gmodule-2.0 openssl
 LIBS_TEST = check
 LIBS_QEV = $(QEV_DIR)/libqev.a
 LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
@@ -68,7 +68,6 @@ LDFLAGS ?= \
 	-rdynamic \
 	-Wl,-z,now \
 	-Wl,-z,relro \
-	-Wl,--as-needed \
 	-lm \
 	$(shell pkg-config --libs $(LIBS))
 
@@ -116,16 +115,35 @@ LDFLAGS_BIN_TEST = \
 #
 
 CFLAGS_BIN_RELEASE = \
-	-fPIE \
 	-O3
 
 CFLAGS_SO_RELEASE = \
 	-O3
 
-LDFLAGS_BIN_RELEASE = \
-	-pie
+LDFLAGS_BIN_RELEASE =
 
 LDFLAGS_SO_RELEASE =
+
+ifdef TCMALLOC_PROFILE
+	export HEAPPROFILE=tcmalloc
+	export HEAP_PROFILE_INUSE_INTERVAL=10485760
+	export TCMALLOC_RELEASE_RATE=10
+
+	LDFLAGS_BIN_RELEASE += \
+		-ltcmalloc
+else
+	CFLAGS_BIN_RELEASE += \
+		-fPIE
+
+	LDFLAGS_BIN_RELEASE += \
+		-pie \
+		-ltcmalloc_minimal
+endif
+
+ifeq ($(CC),gcc)
+	CFLAGS_BIN_RELEASE += -flto -fPIC
+	LDFLAGS_BIN_RELEASE += -flto
+endif
 
 #
 # What actually gets built
@@ -214,6 +232,7 @@ clean:
 	rm -f $(SRC_DIR)/protocols_http_iframe.c*
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
 	rm -f test/*.sock
+	rm -f tcmalloc.*
 	$(MAKE) -C $(QEV_DIR) clean
 
 deb:

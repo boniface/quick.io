@@ -30,7 +30,6 @@
 #endif
 
 #include <gmodule.h>
-#include <uuid/uuid.h>
 #include "atomic.h"
 #include "evs.h"
 #include "apps.h"

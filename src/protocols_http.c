@@ -253,10 +253,9 @@ static void _surr_replace(struct client *surrogate, struct client *new_poller)
 	qev_lock(new_poller);
 
 	old_poller = surrogate->http.client;
+	surrogate->http.client = NULL;
 
-	if (qev_is_closing(surrogate) || qev_is_closing(new_poller)) {
-		surrogate->http.client = NULL;
-	} else {
+	if (!qev_is_closing(surrogate) && !qev_is_closing(new_poller)) {
 		surrogate->http.client = qev_ref(new_poller);
 	}
 
