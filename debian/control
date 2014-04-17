@@ -10,7 +10,9 @@ Build-Depends:
 	libglib2.0-dev (>= 2.32),
 	libgoogle-perftools-dev,
 	libssl-dev (>= 1.0.0),
-	python
+	openjdk-7-jre-headless,
+	python,
+	vim-common
 
 Package: quickio
 Architecture: i386 amd64

@@ -30,6 +30,7 @@
 #endif
 
 #include <gmodule.h>
+#include "compat.h"
 #include "atomic.h"
 #include "evs.h"
 #include "apps.h"

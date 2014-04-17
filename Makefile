@@ -122,7 +122,10 @@ CFLAGS_SO_RELEASE = \
 
 LDFLAGS_BIN_RELEASE =
 
-LDFLAGS_SO_RELEASE =
+# In order to ensure that as-needed is used, it has to come BEFORE all the
+# libraries, so the define for this one is a bit different (see _release)
+LDFLAGS_SO_RELEASE = \
+	-Wl,--as-needed
 
 ifdef TCMALLOC_PROFILE
 	export HEAPPROFILE=tcmalloc
@@ -323,7 +326,7 @@ _test: .build_test
 
 _release: export CFLAGS_SO += $(CFLAGS_SO_RELEASE)
 _release: export CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
-_release: export LDFLAGS_SO += $(LDFLAGS_SO_RELEASE)
+_release: export LDFLAGS_SO := $(LDFLAGS_SO_RELEASE) $(LDFLAGS_SO)
 _release: export LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
 _release: .build_release
 	BIND_PORT=80 \
