@@ -12,7 +12,7 @@
  * For protocols that poll, the maximum amount of time a socket may
  * be left idle
  */
-#define HEARTBEAT_POLL QEV_SEC_TO_USEC(55)
+#define HEARTBEAT_POLL QEV_SEC_TO_USEC(56)
 
 /**
  * Standard heartbeat interval for QIO + 1 seconds. There's a race condition
@@ -298,9 +298,8 @@ struct protocol_heartbeat protocols_heartbeat_get_intervals()
 
 	return (struct protocol_heartbeat){
 		.timeout = now - QEV_MS_TO_USEC(qev_cfg_get_timeout()),
-		.poll = now - HEARTBEAT_POLL + QEV_SEC_TO_USEC(cfg_periodic_interval),
-		.heartbeat = now - HEARTBEAT_INTERVAL +
-						QEV_SEC_TO_USEC(cfg_periodic_interval),
+		.poll = now - HEARTBEAT_POLL + PERIODIC_INTERVAL_USEC,
+		.heartbeat = now - HEARTBEAT_INTERVAL + PERIODIC_INTERVAL_USEC,
 		.challenge = now - HEARTBEAT_CHALLENGE_INTERVAL,
 		.dead = now - HEARTBEAT_DEAD,
 	};

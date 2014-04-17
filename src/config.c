@@ -53,18 +53,6 @@ static void _update_client_subs_min(
 		new_val.ui64);
 }
 
-static void _validate_periodic_interval(
-	const gchar *name G_GNUC_UNUSED,
-	union qev_cfg_val *val,
-	GError **error)
-{
-	if (val->ui64 < 5 || val->ui64 > 60) {
-		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Invalid heartbeat time: must be between 5 and 60. "
-					"%" G_GUINT64_FORMAT " is invalid.", val->ui64);
-	}
-}
-
 static void _validate_public_address(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
@@ -189,16 +177,6 @@ static struct qev_cfg _cfg[] = {
 		.validate = NULL,
 		.cb = _update_client_subs_min,
 		.read_only = FALSE,
-	},
-	{	.name = "periodic-interval",
-		.description = "How often periodic tasks should be polled (heartbeats, "
-						"callback cleanup, etc). Measured in seconds.",
-		.type = QEV_CFG_UINT64,
-		.val.ui64 = &cfg_periodic_interval,
-		.defval.ui64 = 10,
-		.validate = _validate_periodic_interval,
-		.cb = NULL,
-		.read_only = TRUE,
 	},
 	{	.name = "periodic-threads",
 		.description = "Number of threads used to run periodic tasks.",

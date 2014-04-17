@@ -368,12 +368,6 @@ support-flash = $SUPPORT_FLASH
 # clients-subs-min = 128
 
 #
-# How often periodic tasks should be polled (heartbeats, callback cleanup, etc).
-# Measured in seconds.
-#
-# periodic-interval = 10
-
-#
 # Number of threads used to run periodic tasks.
 #
 # periodic-threads = 8

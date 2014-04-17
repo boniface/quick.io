@@ -13,6 +13,16 @@
 #include "quickio.h"
 
 /**
+ * How often periodic jobs run
+ */
+#define PERIODIC_INTERVAL 10
+
+/**
+ * The periodic interval in usec
+ */
+#define PERIODIC_INTERVAL_USEC QEV_SEC_TO_USEC(PERIODIC_INTERVAL)
+
+/**
  * Run periodic tasks immediately.
  */
 void periodic_run();

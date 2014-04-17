@@ -665,24 +665,15 @@ void protocol_http_heartbeat(
 			qev_close(surrogate, RAW_HEARTATTACK);
 		}
 	} else {
-		if (client->last_send < hb->heartbeat) {
-			if (client->http.client == NULL) {
+		if (client->http.client == NULL) {
+			if (client->last_send < hb->heartbeat) {
 				qev_close(client, RAW_HEARTATTACK);
-			} else {
+			}
+		} else {
+			if (client->last_send < hb->poll) {
 				_send_error(client, STATUS_200);
 			}
 		}
-
-		// @todo test this against above, see if it lowers number of reconnects
-		// if (client->http.client == NULL) {
-		// 	if (client->last_send < hb->heartbeat) {
-		// 		qev_close(client, RAW_HEARTATTACK);
-		// 	}
-		// } else {
-		// 	if (client->last_send < hb->poll) {
-		// 		_send_error(client, STATUS_200);
-		// 	}
-		// }
 	}
 }
 

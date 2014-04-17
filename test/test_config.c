@@ -8,14 +8,6 @@
 
 #include "test.h"
 
-#define PERIODIC_0 \
-	"[quick.io]\n" \
-	"periodic-interval = 3\n"
-
-#define PERIODIC_1 \
-	"[quick.io]\n" \
-	"periodic-interval = 180\n"
-
 #define SUB_MIN_SIZE_0 \
 	"[quick.io]\n" \
 	"sub-min-size = 0\n"
@@ -59,20 +51,6 @@ abort:
 	die = TRUE;
 	goto out;
 }
-
-START_TEST(test_config_invalid_periodic_interval_0)
-{
-	_do(PERIODIC_0);
-	ck_assert_uint_eq(cfg_periodic_interval, 10);
-}
-END_TEST
-
-START_TEST(test_config_invalid_periodic_interval_1)
-{
-	_do(PERIODIC_1);
-	ck_assert_uint_eq(cfg_periodic_interval, 10);
-}
-END_TEST
 
 START_TEST(test_config_invalid_sub_min_size_0)
 {
@@ -121,8 +99,6 @@ int main()
 	tcase = tcase_create("Options");
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, NULL, test_teardown);
-	tcase_add_test(tcase, test_config_invalid_periodic_interval_0);
-	tcase_add_test(tcase, test_config_invalid_periodic_interval_1);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_0);
 	tcase_add_test(tcase, test_config_invalid_sub_min_size_1);
 	tcase_add_test(tcase, test_config_invalid_cbs_max_age);

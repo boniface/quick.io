@@ -72,14 +72,6 @@ guint64 cfg_clients_subs_min;
 guint64 cfg_periodic_threads;
 
 /**
- * How often periodic tasks should be polled (heartbeats, callback cleanup,
- * etc). This should be set low (~10 seconds) to spread out the network traffic
- * and system interrupts over 1 minute, the time each clfient expects to
- * see a heartbeat.
- */
-guint64 cfg_periodic_interval;
-
-/**
  * The hostname of this server on the internet
  */
 gchar *cfg_public_address;

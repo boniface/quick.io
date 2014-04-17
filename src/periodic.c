@@ -33,5 +33,5 @@ void periodic_run()
 
 void periodic_init()
 {
-	qev_timer(periodic_run, cfg_periodic_interval, 0);
+	qev_timer(periodic_run, 10, 0);
 }
