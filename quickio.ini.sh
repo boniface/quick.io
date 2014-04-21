@@ -368,7 +368,7 @@ support-flash = $SUPPORT_FLASH
 # clients-subs-min = 128
 
 #
-# Number of threads used to run periodic tasks.
+# Number of threads used to run periodic tasks on clients.
 #
 # periodic-threads = 8
 
