@@ -13,10 +13,6 @@ void qio_main(int argc, char **argv)
 	evs_pre_init();
 	qev_init("quickio", argv, argc);
 	config_init();
-
-	ASSERT(cfg_public_address != NULL,
-		"public-address must be set in the configuration. Refusing to run.");
-
 	evs_init();
 	sub_init();
 	protocols_init();

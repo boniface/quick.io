@@ -8,7 +8,7 @@
 *.so
 test_*
 bench_*
-src/protocols_http_iframe.c*
+src/protocols_http_html_*.c.html
 test/test_*.ini
 .build_*
 quickio

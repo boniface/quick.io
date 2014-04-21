@@ -478,6 +478,34 @@ START_TEST(test_http_iframe)
 }
 END_TEST
 
+START_TEST(test_http_disabled)
+{
+	const gchar *header = "GET /iframe HTTP/1.1\n\n";
+
+	ck_assert(g_file_set_contents("test_http_disabled.ini",
+		"[quick.io]\n"
+		"public-address =", -1, NULL));
+	test_setup_with_config("test_http_disabled.ini");
+	unlink("test_http_disabled.ini");
+
+	gint err;
+	gchar buff[0xffff];
+	qev_fd_t s = test_socket();
+
+	err = send(s, header, strlen(header), 0);
+	ck_assert_int_eq(strlen(header), err);
+
+	err = recv(s, buff, sizeof(buff), 0);
+	ck_assert_int_gt(err, 0);
+	buff[err] = '\0';
+
+	ck_assert(strstr(buff, "501 Not Implemented") != NULL);
+	ck_assert(strstr(buff, "window.parent.postMessage") != NULL);
+
+	close(s);
+}
+END_TEST
+
 static void _edge_send_opening_headers(qev_fd_t s)
 {
 	const gchar *header =
@@ -966,6 +994,11 @@ int main()
 	tcase_add_test(tcase, test_http_heartbeat);
 	tcase_add_test(tcase, test_http_surrogate);
 	tcase_add_test(tcase, test_http_iframe);
+
+	tcase = tcase_create("Disabled");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, NULL, test_teardown);
+	tcase_add_test(tcase, test_http_disabled);
 
 	tcase = tcase_create("Edges");
 	suite_add_tcase(s, tcase);

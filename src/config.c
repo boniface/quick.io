@@ -8,18 +8,6 @@
 
 #include "quickio.h"
 
-static void _validate_client_cb_max_age(
-	const gchar *name G_GNUC_UNUSED,
-	union qev_cfg_val *val,
-	GError **error)
-{
-	if (val->ui64 == 0) {
-		*error = g_error_new(G_OPTION_ERROR, 0,
-					"Setting callback max age to 0 will result in callbacks "
-					"being freed on every run. That's a bad idea.");
-	}
-}
-
 static void _update_client_subs_total(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
@@ -42,6 +30,14 @@ static void _update_client_subs_pressure(
 		cfg_clients_subs_min);
 }
 
+static void _update_public_address(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
+	union qev_cfg_val new_val)
+{
+	evs_qio_update_public_address(new_val.str);
+}
+
 static void _update_client_subs_min(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
@@ -53,6 +49,18 @@ static void _update_client_subs_min(
 		new_val.ui64);
 }
 
+static void _validate_client_cb_max_age(
+	const gchar *name G_GNUC_UNUSED,
+	union qev_cfg_val *val,
+	GError **error)
+{
+	if (val->ui64 == 0) {
+		*error = g_error_new(G_OPTION_ERROR, 0,
+					"Setting callback max age to 0 will result in callbacks "
+					"being freed on every run. That's a bad idea.");
+	}
+}
+
 static void _validate_public_address(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_val *val,
@@ -61,7 +69,9 @@ static void _validate_public_address(
 	gint err;
 	struct addrinfo *res = NULL;
 
-	if (val->str == NULL) {
+	if (val->str == NULL || strlen(val->str) == 0) {
+		g_free(val->str);
+		val->str = NULL;
 		return;
 	}
 
@@ -193,7 +203,7 @@ static struct qev_cfg _cfg[] = {
 		.val.str = &cfg_public_address,
 		.defval.str = NULL,
 		.validate = _validate_public_address,
-		.cb = NULL,
+		.cb = _update_public_address,
 		.read_only = TRUE,
 	},
 	{	.name = "run-app-tests",

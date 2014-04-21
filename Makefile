@@ -28,6 +28,10 @@ LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
 BINARY = quickio
 BINARY_HELPERS = quickio-clienttest quickio-fuzzer quickio-testapps
 
+HTML_SRCS = \
+	$(SRC_DIR)/protocols_http_html_iframe.c \
+	$(SRC_DIR)/protocols_http_html_error.c
+
 #
 # Base flags used everywhere
 #
@@ -232,6 +236,7 @@ clean:
 	rm -f $(BINARY)
 	rm -f $(BINARY_OBJECTS)
 	rm -f $(APPS) $(TEST_APPS)
+	rm -f $(patsubst %,%.html,$(HTML_SRCS))
 	rm -f $(SRC_DIR)/protocols_http_iframe.c*
 	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
 	rm -f test/*.sock
@@ -353,7 +358,7 @@ $(BINARY): $(BINARY_OBJECTS) $(LIBS_QEV)
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && G_SLICE=debug-blocks ./$@
 
-$(SRC_DIR)/protocols_http_iframe.c: $(SRC_DIR)/protocols_http_iframe.html
+$(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html
 	@echo '-------- Generating $@ --------'
 	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
 	@xxd -i $@.html > $@
@@ -364,7 +369,7 @@ $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBS_QEV_TEST)
 	@echo '-------- Compiling $@ --------'
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS_BIN) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS_BIN)
 
-$(SRC_DIR)/protocols_http.o: $(SRC_DIR)/protocols_http_iframe.c
+$(SRC_DIR)/protocols_http.o: $(HTML_SRCS)
 %.o: %.c
 	@echo '-------- Compiling $@ --------'
 	@$(CC) -c $(CFLAGS_BIN) $< -o $@

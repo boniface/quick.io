@@ -49,6 +49,7 @@ enum status {
 	STATUS_411,
 	STATUS_413,
 	STATUS_426,
+	STATUS_501,
 };
 
 struct client_table {
@@ -64,9 +65,11 @@ static gchar *_status_lines[] = {
 	"411 Length Required\r\n",
 	"413 Request Entity Too Large\r\n",
 	"426 Upgrade Required\r\n",
+	"501 Not Implemented\r\n",
 };
 
-#include "protocols_http_iframe.c"
+#include "protocols_http_html_iframe.c"
+#include "protocols_http_html_error.c"
 
 static qev_stats_counter_t *_stat_handshakes_http;
 static qev_stats_counter_t *_stat_handshakes_http_invalid;
@@ -401,7 +404,9 @@ static struct client* _get_surrogate(gchar *url)
 
 static void _do_body(struct client *client, gchar *start)
 {
-	if (client->http.flags.iframe_requested) {
+	if (cfg_public_address == NULL) {
+		_send_error(client, STATUS_501);
+	} else if (client->http.flags.iframe_requested) {
 		_send_response(client, _iframe_source);
 	} else if (!client->http.flags.is_post) {
 		_send_error(client, STATUS_405);
@@ -533,20 +538,34 @@ void protocol_http_init()
 		_clients[i].tbl = g_hash_table_new(_uint128_hash, _uint128_equal);
 	}
 
-	g_string_append(buff, PROTOCOLS_HEARTBEAT);
-	_status_responses[STATUS_200] = _build_response(STATUS_200, buff);
-	for (i = 1; i < G_N_ELEMENTS(_status_responses); i++) {
+	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
 		_status_responses[i] = _build_response(i, NULL);
 	}
-
-	qev_buffer_clear(buff);
-	g_string_append_len(buff,
-		(char*)src_protocols_http_iframe_c_html,
-		src_protocols_http_iframe_c_html_len);
-	qev_buffer_replace_str(buff, "{PUBLIC_ADDRESS}", cfg_public_address);
-	_iframe_source = _build_response(STATUS_200, buff);
-
 	qev_cleanup_fn_full(_cleanup, TRUE);
+
+	qev_buffer_put0(&_status_responses[STATUS_200]);
+	g_string_append(buff, PROTOCOLS_HEARTBEAT);
+	_status_responses[STATUS_200] = _build_response(STATUS_200, buff);
+	qev_buffer_clear(buff);
+
+	qev_buffer_put0(&_status_responses[STATUS_501]);
+	g_string_append_len(buff,
+		(char*)src_protocols_http_html_error_c_html,
+		src_protocols_http_html_error_c_html_len);
+	_status_responses[STATUS_501] = _build_response(STATUS_501, buff);
+	qev_buffer_clear(buff);
+
+	if (cfg_public_address == NULL) {
+		WARN("HTTP provider not running: `public-address` must be set "
+			"to be able to run.");
+	} else {
+		g_string_append_len(buff,
+			(char*)src_protocols_http_html_iframe_c_html,
+			src_protocols_http_html_iframe_c_html_len);
+		qev_buffer_replace_str(buff, "{PUBLIC_ADDRESS}", cfg_public_address);
+		_iframe_source = _build_response(STATUS_200, buff);
+		qev_buffer_clear(buff);
+	}
 
 	_stat_handshakes_http = qev_stats_counter("protocol.http",
 								"handshakes.http", TRUE);
