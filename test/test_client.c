@@ -170,6 +170,11 @@ START_TEST(test_client_callbacks_limits)
 		"/qio/callback/18446744073709551615:0={\"code\":404,\"data\":null,"
 			"\"err_msg\":\"callback doesn't exist\"}");
 
+	test_cb(tc,
+		"/qio/callback/18446744073709551615:18446744073709551615=null",
+		"/qio/callback/18446744073709551615:0={\"code\":404,\"data\":null,"
+			"\"err_msg\":\"callback doesn't exist\"}");
+
 	for (i = 0; i < G_N_ELEMENTS(((struct client*)NULL)->cbs) * 2; i++) {
 		g_string_printf(buff, "/qio/callback/%u:1=null", i << 16 | 1);
 		test_cb(tc,
@@ -177,6 +182,9 @@ START_TEST(test_client_callbacks_limits)
 			"/qio/callback/1:0={\"code\":404,\"data\":null,"
 				"\"err_msg\":\"callback doesn't exist\"}");
 	}
+
+	test_send(tc, "/qio/callback/184467440737095516100000:184467440737095516100000=null");
+	test_client_dead(tc);
 
 	qev_buffer_put(buff);
 	close(tc);

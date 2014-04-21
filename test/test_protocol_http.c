@@ -478,6 +478,24 @@ START_TEST(test_http_iframe)
 }
 END_TEST
 
+START_TEST(test_http_long_uuid)
+{
+	const gchar *headers =
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b91010101010101001&connect=true HTTP/1.1\n" \
+		"Content-Length: 16\n\n" \
+		"/qio/ping:1=null";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+	_assert_status_code(s, 200);
+
+	close(s);
+}
+END_TEST
+
 START_TEST(test_http_disabled)
 {
 	const gchar *header = "GET /iframe HTTP/1.1\n\n";
@@ -979,6 +997,40 @@ START_TEST(test_http_error_invalid_events)
 }
 END_TEST
 
+START_TEST(test_http_error_invalid_uuid)
+{
+	const gchar *headers =
+		"POST /?sid=0123&connect=true HTTP/1.1\n" \
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+	_assert_status_code(s, 403);
+
+	close(s);
+}
+END_TEST
+
+START_TEST(test_http_error_invalid_uuid_format)
+{
+	const gchar *headers =
+		"POST /?sid=550e8400-e29b-41d4-a716-446655440000&connect=true HTTP/1.1\n" \
+		"Content-Length: 0\n\n";
+
+	gint err;
+	qev_fd_t s = test_socket();
+
+	err = send(s, headers, strlen(headers), 0);
+	ck_assert_int_eq(err, strlen(headers));
+	_assert_status_code(s, 403);
+
+	close(s);
+}
+END_TEST
+
 int main()
 {
 	SRunner *sr;
@@ -994,6 +1046,7 @@ int main()
 	tcase_add_test(tcase, test_http_heartbeat);
 	tcase_add_test(tcase, test_http_surrogate);
 	tcase_add_test(tcase, test_http_iframe);
+	tcase_add_test(tcase, test_http_long_uuid);
 
 	tcase = tcase_create("Disabled");
 	suite_add_tcase(s, tcase);
@@ -1028,6 +1081,8 @@ int main()
 	tcase_add_test(tcase, test_http_error_no_content_length);
 	tcase_add_test(tcase, test_http_error_invalid_upgrade);
 	tcase_add_test(tcase, test_http_error_invalid_events);
+	tcase_add_test(tcase, test_http_error_invalid_uuid);
+	tcase_add_test(tcase, test_http_error_invalid_uuid_format);
 
 	return test_do(sr);
 }

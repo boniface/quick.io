@@ -187,7 +187,8 @@ enum protocol_status protocol_raw_handle(struct client *client, gchar *event)
 	curr++;
 
 	client_cb = g_ascii_strtoull(curr, &end, 10);
-	if (*end != '=' || curr == end) {
+	if (*end != '=' || curr == end ||
+		(client_cb == G_MAXUINT64 && errno == ERANGE)) {
 		goto error;
 	}
 
