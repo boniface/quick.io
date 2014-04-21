@@ -265,7 +265,6 @@ helper-fuzzer: _release
 install: release
 	mkdir -p \
 		$(DESTDIR)/etc/quickio \
-		$(DESTDIR)/etc/security/limits.d \
 		$(DESTDIR)/etc/sysctl.d \
 		$(DESTDIR)/usr/bin \
 		$(DESTDIR)/usr/include/quickio \
@@ -279,7 +278,6 @@ install: release
 	$(INSTALL) lib/quick-event/src/*.h $(DESTDIR)/usr/include/quickio/quick-event
 	$(INSTALL) quickio.pc $(DESTDIR)/usr/lib/pkgconfig
 	$(INSTALL) $(APPS) $(DESTDIR)/usr/lib/quickio
-	$(INSTALL) limits.conf $(DESTDIR)/etc/security/limits.d/quickio.conf
 	$(INSTALL) sysctl.conf $(DESTDIR)/etc/sysctl.d/quickio.conf
 
 release: _release
@@ -301,7 +299,6 @@ uninstall:
 	rm -rf $(DESTDIR)/etc/quickio
 	rm -rf $(DESTDIR)/usr/include/quickio
 	rm -rf $(DESTDIR)/usr/lib/pkgconfig/quickio.pc
-	rm -rf $(DESTDIR)/etc/security/limits.d/quickio.conf
 	rm -rf $(DESTDIR)/etc/sysctl.d/quickio.conf
 
 #

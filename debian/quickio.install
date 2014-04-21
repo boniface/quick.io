@@ -1,4 +1,3 @@
 etc/quickio/quickio.ini
-etc/security/limits.d/quickio.conf
 etc/sysctl.d/quickio.conf
 usr/bin/quickio
