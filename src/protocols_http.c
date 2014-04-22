@@ -250,6 +250,7 @@ static void _surr_replace(struct client *surrogate, struct client *new_poller)
 	 * is ever attempted. So no need to worry about that case here.
 	 */
 
+	gboolean closing;
 	struct client *old_poller;
 
 	qev_lock(surrogate);
@@ -258,15 +259,20 @@ static void _surr_replace(struct client *surrogate, struct client *new_poller)
 	old_poller = surrogate->http.client;
 	surrogate->http.client = NULL;
 
-	if (!qev_is_closing(surrogate) && !qev_is_closing(new_poller)) {
+	closing = qev_is_closing(surrogate) || qev_is_closing(new_poller);
+	if (!closing) {
 		surrogate->http.client = qev_ref(new_poller);
 	}
 
 	qev_unlock(new_poller);
 	qev_unlock(surrogate);
 
+	if (closing) {
+		_send_error(new_poller, STATUS_403);
+	}
+
 	if (old_poller != NULL) {
-		_send_error(old_poller, STATUS_200);
+		_send_error(old_poller, closing ? STATUS_403 : STATUS_200);
 		qev_unref(old_poller);
 	}
 }
@@ -489,7 +495,6 @@ static enum protocol_status _do_headers_http(
 	}
 
 	surrogate = _get_surrogate(url);
-
 	if (surrogate != NULL) {
 		qev_lock(surrogate);
 		qev_lock(client);

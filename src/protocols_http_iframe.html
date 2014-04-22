@@ -3,6 +3,7 @@
 	<meta charset="UTF-8">
 	<script>
 		var pendingPoll,
+			pendingRequest,
 			publicAddress = '{PUBLIC_ADDRESS}', // Added at runtime
 			requests = 0,
 			instanceId = -1,
@@ -22,12 +23,12 @@
 		}
 
 		function send(type, d) {
-			window.parent.postMessage({
+			window.parent.postMessage(JSON.stringify({
 				from: 'QuickIO',
 				type: type,
 				instanceId: instanceId,
 				data: d
-			}, '*');
+			}), '*');
 		}
 
 		function sendError() {
@@ -35,14 +36,31 @@
 		}
 
 		function poll(data, create) {
-			var request = new XMLHttpRequest(),
+			var timeoutTimer,
+				timedOut = false,
+				request = new XMLHttpRequest(),
 				url = '/?sid=' + uuid + (create ? '&connect=true' : '');
 
-			request.onerror = request.ontimeout = sendError;
-			request.onload = function() {
+			request.open('POST', url, true);
+			request.send(data || null);
+
+			timeoutTimer = setTimeout(function() {
+				timedOut = true;
+				request.abort();
+				sendError();
+			}, timeout);
+
+			request.onreadystatechange = function() {
 				var i,
 					events,
 					evs = [];
+
+				if (timedOut || request.readyState != 4) {
+					return;
+				}
+
+				clearTimeout(timeoutTimer);
+				timeoutTimer = null;
 
 				if (request.status != 200) {
 					sendError();
@@ -65,9 +83,7 @@
 				}
 			};
 
-			request.timeout = timeout;
-			request.open('POST', url, true);
-			request.send(data);
+			pendingRequest = request;
 
 			requests++;
 		}
@@ -86,10 +102,23 @@
 		}
 
 		function onPostMessage(e) {
-			var d = e.data;
-			if (d.from == 'QuickIO' && d.type == 'event') {
-				pendingEvents.push(d.data);
-				requestPoll();
+			var d = JSON.parse(e.data);
+
+			if (d.from == 'QuickIO') {
+				switch (d.type) {
+					case 'event':
+						pendingEvents.push(d.data);
+						requestPoll();
+						break;
+
+					// Because IE8 rocks: it keeps connections going long
+					// after the frame has been destroyed
+					case 'close':
+						if (pendingRequest && pendingRequest.readyState != 4) {
+							pendingRequest.abort();
+						}
+						break;
+				}
 			}
 		}
 
@@ -106,8 +135,13 @@
 		}
 
 		function run() {
-			document.removeEventListener('DOMContentLoaded', run, false);
-			window.removeEventListener('load', run, false);
+			if (document.addEventListener) {
+				document.removeEventListener('DOMContentLoaded', run, false);
+				window.removeEventListener('load', run, false);
+			} else {
+				document.detachEvent('onreadystatechange', run);
+				window.detachEvent('onload', run);
+			}
 
 			instanceId = parseInt(getParameterByName('instanceId'));
 			pollFrequency = parseInt(getParameterByName('pollFrequency')) || pollFrequency;
@@ -120,8 +154,13 @@
 			}
 		}
 
-		document.addEventListener('DOMContentLoaded', run, false);
-		window.addEventListener('load', run, false);
+		if (document.addEventListener) {
+			document.addEventListener('DOMContentLoaded', run, false);
+			window.addEventListener('load', run, false);
+		} else {
+			document.attachEvent('onreadystatechange', run);
+			window.attachEvent('onload', run);
+		}
 	</script>
 </head>
 

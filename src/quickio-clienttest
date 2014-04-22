@@ -4,6 +4,7 @@
 
 import exceptions
 import os
+import socket
 import subprocess
 import sys
 
@@ -13,7 +14,7 @@ threads = 2
 [quick.io]
 bind-address = 0.0.0.0
 bind-port = 55440
-public-address = localhost
+public-address = %s
 [quick.io-apps]
 app = %s
 '''
@@ -30,8 +31,17 @@ else:
 	qio_path = "quickio"
 	app_path = os.path.basename(__file__)
 
+try:
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.connect(('8.8.8.8', 53))
+	public_address = s.getsockname()[0]
+except:
+	public_address = 'localhost'
+finally:
+	s.close()
+
 with open(INI_FILE, 'w') as f:
-	f.write(INI % app_path)
+	f.write(INI % (public_address, app_path))
 
 try:
 	ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])

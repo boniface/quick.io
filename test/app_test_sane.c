@@ -87,6 +87,16 @@ static enum evs_status _stats_handler(
 	return EVS_STATUS_HANDLED;
 }
 
+static enum evs_status _close_handler(
+	struct client *client,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb G_GNUC_UNUSED,
+	gchar *json G_GNUC_UNUSED)
+{
+	qev_close(client, 0);
+	return EVS_STATUS_OK;
+}
+
 static enum evs_status _good_handler(
 	struct client *client,
 	const gchar *ev_extra G_GNUC_UNUSED,
@@ -216,6 +226,8 @@ static gboolean _app_init()
 
 	evs_add_handler(EV_PREFIX, "/stats",
 						_stats_handler, NULL, NULL, FALSE);
+	evs_add_handler(EV_PREFIX, "/close",
+						_close_handler, NULL, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/good",
 						_good_handler, _good_on, _good_off, FALSE);
 	evs_add_handler(EV_PREFIX, "/good-childs",

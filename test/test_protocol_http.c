@@ -736,6 +736,37 @@ START_TEST(test_http_close_with_surrogate)
 }
 END_TEST
 
+START_TEST(test_http_close_on_replace)
+{
+	const gchar *connect =
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1\n"
+		"Content-Length: 0\n\n";
+	const gchar *poll =
+		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9 HTTP/1.1\n"
+		"Content-Length: 18\n\n"
+		"/test/close:0=null";
+
+	gint err;
+	qev_fd_t s1 = test_socket();
+	struct client *client = test_get_client_raw();
+	qev_fd_t s2 = test_socket();
+
+	err = send(s1, connect, strlen(connect), 0);
+	ck_assert_int_eq(err, strlen(connect));
+
+	QEV_WAIT_FOR(client->http.client != NULL);
+
+	err = send(s2, poll, strlen(poll), 0);
+	ck_assert_int_eq(err, strlen(poll));
+
+	_assert_status_code(s1, 403);
+	_assert_status_code(s2, 403);
+
+	close(s1);
+	close(s2);
+}
+END_TEST
+
 START_TEST(test_http_incoming_wait)
 {
 	struct httpc *hc = _httpc_new();
@@ -1066,6 +1097,7 @@ int main()
 	tcase_add_test(tcase, test_http_tons_of_newlines);
 	tcase_add_test(tcase, test_http_oversized_request);
 	tcase_add_test(tcase, test_http_close_with_surrogate);
+	tcase_add_test(tcase, test_http_close_on_replace);
 	tcase_add_test(tcase, test_http_incoming_wait);
 	tcase_add_test(tcase, test_http_incoming_no_wait);
 	tcase_add_test(tcase, test_http_requests_on_same_socket);
