@@ -257,7 +257,7 @@ docs-watch:
 	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
 
 helper-clienttest: _debug
-	$(SRC_DIR)/quickio-clienttest
+	sudo $(SRC_DIR)/quickio-clienttest
 
 helper-fuzzer: _release
 	$(SRC_DIR)/quickio-fuzzer

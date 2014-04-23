@@ -15,6 +15,7 @@ threads = 2
 bind-address = 0.0.0.0
 bind-port = 55440
 public-address = %s
+support-flash = %s
 [quick.io-apps]
 app = %s
 '''
@@ -40,8 +41,12 @@ except:
 finally:
 	s.close()
 
+is_root = os.getuid() == 0
+if not is_root:
+	print >> sys.stderr, 'Warning: in order to support flash, you must run %s as root' % sys.argv[0]
+
 with open(INI_FILE, 'w') as f:
-	f.write(INI % (public_address, app_path))
+	f.write(INI % (public_address, 'true' if is_root else 'false', app_path))
 
 try:
 	ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])

@@ -2,11 +2,14 @@
 <head>
 	<meta charset="UTF-8">
 	<script>
-		var pendingPoll,
-			pendingRequest,
+	(function() {
+		var killed,
+			pendingPoll,
 			publicAddress = '{PUBLIC_ADDRESS}', // Added at runtime
 			requests = 0,
 			instanceId = -1,
+			requestId = 0,
+			callbacks = {},
 			pendingEvents = [],
 			pollFrequency = 2000,
 			timeout = 60 * 1000,
@@ -22,22 +25,42 @@
 			return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 		}
 
+		function on(event, cb) {
+			if (window.addEventListener) {
+				window.addEventListener(event, cb, false);
+			} else {
+				window.attachEvent('on' + event, cb);
+			}
+		}
+
+		function off(event, cb) {
+			if (window.removeEventListener) {
+				window.removeEventListener(event, cb, false);
+			} else {
+				window.detachEvent('on' + event, cb);
+			}
+		}
+
 		function send(type, d) {
-			window.parent.postMessage(JSON.stringify({
-				from: 'QuickIO',
-				type: type,
-				instanceId: instanceId,
-				data: d
-			}), '*');
+			if (!killed) {
+				window.parent.postMessage(JSON.stringify({
+					from: 'QuickIO',
+					type: type,
+					instanceId: instanceId,
+					data: d
+				}), '*');
+			}
 		}
 
 		function sendError() {
 			send('error', null);
+			onUnload();
 		}
 
 		function poll(data, create) {
-			var timeoutTimer,
-				timedOut = false,
+			var cb,
+				timeoutTimer,
+				rId = requestId++,
 				request = new XMLHttpRequest(),
 				url = '/?sid=' + uuid + (create ? '&connect=true' : '');
 
@@ -45,51 +68,54 @@
 			request.send(data || null);
 
 			timeoutTimer = setTimeout(function() {
-				timedOut = true;
-				request.abort();
 				sendError();
 			}, timeout);
 
-			request.onreadystatechange = function() {
+			cb = function(_, aborted) {
 				var i,
 					events,
 					evs = [];
 
-				if (timedOut || request.readyState != 4) {
-					return;
-				}
+				if (cb && (aborted || request.readyState == 4)) {
+					delete callbacks[rId];
+					cb = null;
+					request.onreadystatechange = null;
+					clearTimeout(timeoutTimer);
+					timeoutTimer = null;
 
-				clearTimeout(timeoutTimer);
-				timeoutTimer = null;
+					if (aborted) {
+						if (request.readyState != 4) {
+							request.abort();
+						}
+					} else {
+						if (request.status == 200) {
+							events = this.responseText.split('\n');
+							for (i = 0; i < events.length; i++) {
+								if (events[i]) {
+									evs.push(events[i]);
+								}
+							}
 
-				if (request.status != 200) {
-					sendError();
-					return;
-				}
-
-				events = this.responseText.split('\n');
-				for (i = 0; i < events.length; i++) {
-					if (events[i]) {
-						evs.push(events[i]);
+							if (evs.length > 0) {
+								send('events', evs);
+							}
+						} else {
+							sendError();
+						}
 					}
-				}
 
-				if (evs.length > 0) {
-					send('events', evs);
-				}
-
-				if ((--requests) == 0) {
-					requestPoll();
+					if ((--requests) == 0) {
+						requestPoll();
+					}
 				}
 			};
 
-			pendingRequest = request;
-
+			callbacks[rId] = request.onreadystatechange = cb;
 			requests++;
 		}
 
 		function requestPoll() {
-			if (!pendingPoll) {
+			if (!killed && !pendingPoll) {
 				pendingPoll = setTimeout(function() {
 					var evs = pendingEvents.join('\n');
 
@@ -111,31 +137,39 @@
 						requestPoll();
 						break;
 
-					// Because IE8 rocks: it keeps connections going long
-					// after the frame has been destroyed
+					// Because IE8 rocks: it doesn't fire onUnload in a reasonable
+					// amount of time, so it has to be told it's done.
 					case 'close':
-						if (pendingRequest && pendingRequest.readyState != 4) {
-							pendingRequest.abort();
-						}
+						onUnload();
 						break;
 				}
 			}
 		}
 
-		function startClient() {
-			if (window.addEventListener) {
-				window.addEventListener('message', onPostMessage, false);
-			} else if (window.attachEvent) {
-				window.attachEvent('onmessage', onPostMessage);
+		function onUnload() {
+			killed = true;
+
+			for (var reqId in callbacks) {
+				callbacks[reqId](undefined, true);
 			}
 
-			poll('', true);
+			// IE9 has interesting ideas about when events can be fired, such
+			// as after the document has been garbage collected. No joke, it
+			// runs it then throws exceptions about not being able to run
+			// anything. Pure genius.
+			off('message', onPostMessage);
+			off('unload', onUnload);
+		}
 
+		function startClient() {
+			on('message', onPostMessage);
+			on('unload', onUnload);
+			poll('', true);
 			send('ready', null);
 		}
 
 		function run() {
-			if (document.addEventListener) {
+			if (document.removeEventListener) {
 				document.removeEventListener('DOMContentLoaded', run, false);
 				window.removeEventListener('load', run, false);
 			} else {
@@ -161,6 +195,7 @@
 			document.attachEvent('onreadystatechange', run);
 			window.attachEvent('onload', run);
 		}
+	})();
 	</script>
 </head>
 
