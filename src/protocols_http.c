@@ -57,26 +57,53 @@ struct client_table {
 	qev_lock_t lock;
 };
 
-static gchar *_status_lines[] = {
-	"200 OK\r\n",
-	"400 Bad Request\r\n",
-	"403 Forbidden\r\n",
-	"405 Method Not Allowed\r\n",
-	"411 Length Required\r\n",
-	"413 Request Entity Too Large\r\n",
-	"426 Upgrade Required\r\n",
-	"501 Not Implemented\r\n",
+struct _http_status {
+	guint code;
+	gchar *line;
+};
+
+static struct _http_status _statuses[] = {
+	{	.code = 200,
+		.line = "200 OK\r\n",
+	},
+	{	.code = 400,
+		.line = "400 Bad Request\r\n",
+	},
+	{	.code = 403,
+		.line = "403 Forbidden\r\n",
+	},
+	{	.code = 405,
+		.line = "405 Method Not Allowed\r\n",
+	},
+	{	.code = 411,
+		.line = "411 Length Required\r\n",
+	},
+	{	.code = 413,
+		.line = "413 Request Entity Too Large\r\n",
+	},
+	{	.code = 426,
+		.line = "426 Upgrade Required\r\n",
+	},
+	{	.code = 501,
+		.line = "501 Not Implemented\r\n",
+	},
 };
 
 #include "protocols_http_html_iframe.c"
 #include "protocols_http_html_error.c"
 
-static qev_stats_counter_t *_stat_handshakes_http;
-static qev_stats_counter_t *_stat_handshakes_http_invalid;
-static qev_stats_counter_t *_stat_handshakes_http_missing_upgrade;
+static qev_stats_counter_t *_stat_requests_iframe;
+static qev_stats_counter_t *_stat_requests_invalid_method;
+static qev_stats_counter_t *_stat_requests_poll;
+static qev_stats_counter_t *_stat_responses[G_N_ELEMENTS(_statuses)];
+static qev_stats_counter_t *_stat_headers_upgrade_invalid;
+static qev_stats_counter_t *_stat_headers_upgrade_missing;
+static qev_stats_counter_t *_stat_surrogates_opened;
+static qev_stats_counter_t *_stat_surrogates_closed;
+static qev_stats_timer_t *_stat_route_time;
 
 static GString *_iframe_source;
-static GString *_status_responses[G_N_ELEMENTS(_status_lines)];
+static GString *_status_responses[G_N_ELEMENTS(_statuses)];
 
 static struct client_table _clients[64];
 
@@ -129,7 +156,7 @@ static GString* _build_response(enum status status, const GString *body)
 	GString *buff = qev_buffer_get();
 
 	g_string_append(buff, "HTTP/1.0 ");
-	g_string_append(buff, _status_lines[status]);
+	g_string_append(buff, _statuses[status].line);
 	g_string_append(buff,
 		HTTP_COMMON
 		"Content-Length: ");
@@ -189,6 +216,8 @@ static void _surr_release_client(
  *
  * @param client
  *     The client to get a message. Not a surrogate.
+ * @param status
+ *     The status sent, only used for stats
  * @param resp
  *     The full HTTP response to send
  *
@@ -196,7 +225,10 @@ static void _surr_release_client(
  *     If the response was successfully sent. Might fail if another thread
  *     already sent a response out on this client.
  */
-static gboolean _send_response(struct client *client, GString *resp)
+static gboolean _send_response(
+	struct client *client,
+	enum status status,
+	GString *resp)
 {
 	struct client *surrogate = NULL;
 	gboolean sent = FALSE;
@@ -231,6 +263,10 @@ static gboolean _send_response(struct client *client, GString *resp)
 	_surr_release_client(surrogate, client);
 	qev_unref(surrogate);
 
+	if (sent) {
+		qev_stats_counter_inc(_stat_responses[status]);
+	}
+
 out:
 	return sent;
 }
@@ -239,7 +275,7 @@ out:
  * Sends a pre-prepared HTTP response with length 0.
  */
 static gboolean _send_error(struct client *client, enum status status) {
-	return _send_response(client, _status_responses[status]);
+	return _send_response(client, status, _status_responses[status]);
 }
 
 static void _surr_replace(struct client *surrogate, struct client *new_poller)
@@ -287,7 +323,7 @@ static void _surr_send(
 	struct client *poller =  _steal_client(surrogate);
 
 	if (poller != NULL) {
-		sent = _send_response(poller, resp);
+		sent = _send_response(poller, STATUS_200, resp);
 		qev_unref(poller);
 	}
 
@@ -295,7 +331,7 @@ static void _surr_send(
 		_surr_replace(surrogate, new_poller);
 	} else {
 		// @todo remove ASSERT after all testing is complete -- maybe just turn it into a critical that closes surrogate and client and logs it?
-		ASSERT(_send_response(new_poller, resp),
+		ASSERT(_send_response(new_poller, STATUS_200, resp),
 			"Failed to send response on new_poller");
 	}
 
@@ -364,6 +400,7 @@ static struct client* _surr_find(
 				surrogate->http.sid = sid;
 				surrogate->http.tbl = which;
 				g_hash_table_insert(tbl->tbl, &surrogate->http.sid, surrogate);
+				qev_stats_counter_inc(_stat_surrogates_opened);
 			}
 		}
 
@@ -413,9 +450,11 @@ static void _do_body(struct client *client, gchar *start)
 	if (cfg_public_address == NULL) {
 		_send_error(client, STATUS_501);
 	} else if (client->http.flags.iframe_requested) {
-		_send_response(client, _iframe_source);
+		_send_response(client, STATUS_200, _iframe_source);
+		qev_stats_counter_inc(_stat_requests_iframe);
 	} else if (!client->http.flags.is_post) {
 		_send_error(client, STATUS_405);
+		qev_stats_counter_inc(_stat_requests_invalid_method);
 	} else {
 		/*
 		 * Safe to access without a lock: at this point, only this thread
@@ -434,6 +473,8 @@ static void _do_body(struct client *client, gchar *start)
 		} else {
 			_surr_route(surrogate, client, start);
 		}
+
+		qev_stats_counter_inc(_stat_requests_poll);
 	}
 }
 
@@ -451,13 +492,13 @@ static enum protocol_status _do_headers_websocket(
 		connection == NULL ||
 		strcasestr(connection, "Upgrade") == NULL) {
 
-		qev_stats_counter_inc(_stat_handshakes_http_missing_upgrade);
+		qev_stats_counter_inc(_stat_headers_upgrade_missing);
 		_send_error(client, STATUS_426);
 	} else if (key == NULL ||
 		g_strcmp0(protocol, "quickio") != 0 ||
 		g_strcmp0(version, "13") != 0) {
 
-		qev_stats_counter_inc(_stat_handshakes_http_invalid);
+		qev_stats_counter_inc(_stat_headers_upgrade_invalid);
 		_send_error(client, STATUS_400);
 	} else {
 		protocol_rfc6455_upgrade(client, key);
@@ -544,6 +585,10 @@ void protocol_http_init()
 	}
 
 	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
+		g_string_printf(buff, "responses.%u", _statuses[i].code);
+		_stat_responses[i] = qev_stats_counter("protocol.http", buff->str, TRUE);
+		qev_buffer_clear(buff);
+
 		_status_responses[i] = _build_response(i, NULL);
 	}
 	qev_cleanup_fn_full(_cleanup, TRUE);
@@ -572,12 +617,21 @@ void protocol_http_init()
 		qev_buffer_clear(buff);
 	}
 
-	_stat_handshakes_http = qev_stats_counter("protocol.http",
-								"handshakes.http", TRUE);
-	_stat_handshakes_http_invalid = qev_stats_counter("protocol.http",
-								"handshakes.http_invalid", TRUE);
-	_stat_handshakes_http_missing_upgrade = qev_stats_counter("protocol.http",
-								"handshakes.http_missing_upgrade", TRUE);
+	_stat_requests_iframe = qev_stats_counter("protocol.http",
+											"requests.iframe", TRUE);
+	_stat_requests_invalid_method = qev_stats_counter("protocol.http",
+											"requests.invalid_method", TRUE);
+	_stat_requests_poll = qev_stats_counter("protocol.http",
+											"requests.poll", TRUE);
+	_stat_headers_upgrade_invalid = qev_stats_counter("protocol.http",
+											"upgrade.invalid", TRUE);
+	_stat_headers_upgrade_missing = qev_stats_counter("protocol.http",
+											"upgrade.missing", TRUE);
+	_stat_surrogates_opened = qev_stats_counter("protocol.http",
+											"surrogates.opened", TRUE);
+	_stat_surrogates_closed = qev_stats_counter("protocol.http",
+											"surrogates.closed", TRUE);
+	_stat_route_time = qev_stats_timer("protocol.http", "route");
 
 	qev_buffer_put(buff);
 }
@@ -665,7 +719,9 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 			gchar replaced = start[client->http.body_len];
 
 			start[client->http.body_len] = '\0';
-			_do_body(client, start);
+			qev_stats_time(_stat_route_time, {
+				_do_body(client, start);
+			});
 			start[client->http.body_len] = replaced;
 
 			*used += client->http.body_len;
@@ -730,7 +786,7 @@ void protocol_http_send(
 
 	if (!surrogate->http.flags.incoming) {
 		struct client *client = _steal_client(surrogate);
-		sent = _send_response(client, pframes->def);
+		sent = _send_response(client, STATUS_200, pframes->def);
 		qev_unref(client);
 	}
 
@@ -756,6 +812,8 @@ void protocol_http_close(struct client *client, guint reason)
 		client = _steal_client(surrogate);
 		_send_error(client, STATUS_403);
 		qev_unref(client);
+
+		qev_stats_counter_inc(_stat_surrogates_closed);
 	} else {
 		struct client *surrogate = _steal_client(client);
 

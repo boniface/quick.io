@@ -46,8 +46,9 @@
 #define OPCODE_TEXT 0x01
 #define OPCODE_CLOSE 0x08
 
-static qev_stats_counter_t *_stat_handshakes_qio;
-static qev_stats_counter_t *_stat_handshakes_qio_invalid;
+static qev_stats_counter_t *_stat_upgrades;
+static qev_stats_counter_t *_stat_handshakes_good;
+static qev_stats_counter_t *_stat_handshakes_bad;
 static qev_stats_timer_t *_stat_route_time;
 
 static enum protocol_status _decode(
@@ -176,10 +177,12 @@ static enum protocol_status _decode(
 
 void protocol_rfc6455_init()
 {
-	_stat_handshakes_qio = qev_stats_counter("protocol.rfc6455",
-								"handshakes.qio", TRUE);
-	_stat_handshakes_qio_invalid = qev_stats_counter("protocol.rfc6455",
-								"handshakes.qio_invalid", TRUE);
+	_stat_upgrades = qev_stats_counter("protocol.rfc6455",
+								"upgrades", TRUE);
+	_stat_handshakes_good = qev_stats_counter("protocol.rfc6455",
+								"handshakes.good", TRUE);
+	_stat_handshakes_bad = qev_stats_counter("protocol.rfc6455",
+								"handshakes.bad", TRUE);
 	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
 }
 
@@ -199,11 +202,11 @@ enum protocol_status protocol_rfc6455_handshake(struct client *client)
 	if (status == PROT_OK) {
 		good = protocol_raw_check_handshake(client);
 		if (good) {
-			qev_stats_counter_inc(_stat_handshakes_qio);
+			qev_stats_counter_inc(_stat_handshakes_good);
 			qev_write(client, QIO_HANDSHAKE, sizeof(QIO_HANDSHAKE) - 1);
 			status = PROT_OK;
 		} else {
-			qev_stats_counter_inc(_stat_handshakes_qio_invalid);
+			qev_stats_counter_inc(_stat_handshakes_bad);
 			qev_close(client, QIO_CLOSE_INVALID_HANDSHAKE);
 			status = PROT_FATAL;
 		}
@@ -358,4 +361,6 @@ void protocol_rfc6455_upgrade(struct client *client, const gchar *key)
 	qev_buffer_put(b64);
 
 	protocols_switch(client, protocol_rfc6455);
+
+	qev_stats_counter_inc(_stat_upgrades);
 }
