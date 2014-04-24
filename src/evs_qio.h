@@ -13,11 +13,6 @@
 #include "quickio.h"
 
 /**
- * Update the public address used by /qio/hostname
- */
-void evs_qio_update_public_address(const gchar *addr);
-
-/**
  * Setup all default QIO events and their handlers
  */
 void evs_qio_init();

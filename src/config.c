@@ -30,14 +30,6 @@ static void _update_client_subs_pressure(
 		cfg_clients_subs_min);
 }
 
-static void _update_public_address(
-	const gchar *name G_GNUC_UNUSED,
-	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
-	union qev_cfg_val new_val)
-{
-	evs_qio_update_public_address(new_val.str);
-}
-
 static void _update_client_subs_min(
 	const gchar *name G_GNUC_UNUSED,
 	union qev_cfg_valptr curr_val G_GNUC_UNUSED,
@@ -212,7 +204,7 @@ static struct qev_cfg _cfg[] = {
 		.val.str = &cfg_public_address,
 		.defval.str = NULL,
 		.validate = _validate_public_address,
-		.cb = _update_public_address,
+		.cb = NULL,
 		.read_only = TRUE,
 	},
 	{	.name = "run-app-tests",
