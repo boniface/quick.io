@@ -38,48 +38,55 @@ HTML_SRCS = \
 # ==============================================================================
 #
 
-CFLAGS ?= \
-	-g \
-	-Wall \
-	-Wextra \
-	-Wshadow \
-	-Wformat=2 \
-	-Werror \
-	-fstack-protector \
-	--param=ssp-buffer-size=4 \
-	-D_FORTIFY_SOURCE=2 \
-	-std=gnu99 \
-	-DQIO_SERVER \
-	-DVERSION_NAME="$(VERSION_NAME)" \
-	-DVERSION_MAJOR=$(VERSION_MAJOR) \
-	-DVERSION_MINOR=$(VERSION_MINOR) \
-	-DVERSION_MICRO=$(VERSION_MICRO) \
-	-I$(CURDIR)/$(LIB_DIR) \
-	-I$(CURDIR)/$(SRC_DIR) \
-	-mfpmath=sse \
-	-msse \
-	-msse2 \
-	$(shell pkg-config --cflags $(LIBS))
+# When recursing on this Makefile, make sure the flags aren't overridden.
+# Using "?=" allows dh_* to override all the flags, so protect them with this
+# export.
+ifndef QUICKIO_MAKEFILE
+	export CFLAGS = \
+		-g \
+		-Wall \
+		-Wextra \
+		-Wshadow \
+		-Wformat=2 \
+		-Werror \
+		-fstack-protector \
+		--param=ssp-buffer-size=4 \
+		-D_FORTIFY_SOURCE=2 \
+		-std=gnu99 \
+		-DQIO_SERVER \
+		-DVERSION_NAME="$(VERSION_NAME)" \
+		-DVERSION_MAJOR=$(VERSION_MAJOR) \
+		-DVERSION_MINOR=$(VERSION_MINOR) \
+		-DVERSION_MICRO=$(VERSION_MICRO) \
+		-I$(CURDIR)/$(LIB_DIR) \
+		-I$(CURDIR)/$(SRC_DIR) \
+		-mfpmath=sse \
+		-msse \
+		-msse2 \
+		$(shell pkg-config --cflags $(LIBS))
 
-CFLAGS_BIN ?= $(CFLAGS)
+	export CFLAGS_BIN = $(CFLAGS)
 
-CFLAGS_SO ?= \
-	$(CFLAGS) \
-	-shared \
-	-fPIC
+	export CFLAGS_SO = \
+		$(CFLAGS) \
+		-shared \
+		-fPIC
 
-LDFLAGS ?= \
-	-rdynamic \
-	-Wl,-z,now \
-	-Wl,-z,relro \
-	-lm \
-	$(shell pkg-config --libs $(LIBS))
+	export LDFLAGS = \
+		-rdynamic \
+		-Wl,-z,now \
+		-Wl,-z,relro \
+		-lm \
+		$(shell pkg-config --libs $(LIBS))
 
-LDFLAGS_BIN ?= \
-	$(LDFLAGS)
+	export LDFLAGS_BIN = \
+		$(LDFLAGS)
 
-LDFLAGS_SO ?= \
-	$(LDFLAGS)
+	export LDFLAGS_SO = \
+		$(LDFLAGS)
+
+	export QUICKIO_MAKEFILE = 1
+endif
 
 #
 # Extra flags for debug
@@ -227,21 +234,21 @@ all:
 	@echo "    make uninstall          remove all installed files"
 
 clean:
-	find -name '*.gcno' -exec rm {} \;
-	find -name '*.gcda' -exec rm {} \;
-	find -name '*.xml' -exec rm {} \;
-	find test/ -name 'test_*.ini' -exec rm {} \;
-	rm -f .build_*
-	rm -f quickio.ini
-	rm -f $(BINARY)
-	rm -f $(BINARY_OBJECTS)
-	rm -f $(APPS) $(TEST_APPS)
-	rm -f $(patsubst %,%.html,$(HTML_SRCS))
-	rm -f $(SRC_DIR)/protocols_http_iframe.c*
-	rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
-	rm -f test/*.sock
-	rm -f tcmalloc.*
-	$(MAKE) -C $(QEV_DIR) clean
+	@find -name '*.gcno' -exec rm {} \;
+	@find -name '*.gcda' -exec rm {} \;
+	@find -name '*.xml' -exec rm {} \;
+	@find test/ -name 'test_*.ini' -exec rm {} \;
+	@rm -f .build_*
+	@rm -f quickio.ini
+	@rm -f $(BINARY)
+	@rm -f $(BINARY_OBJECTS)
+	@rm -f $(APPS) $(TEST_APPS)
+	@rm -f $(patsubst %,%.html,$(HTML_SRCS))
+	@rm -f $(SRC_DIR)/protocols_http_iframe.c*
+	@rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
+	@rm -f test/*.sock
+	@rm -f tcmalloc.*
+	@$(MAKE) -s -C $(QEV_DIR) clean
 
 deb:
 	debuild -tc -b
@@ -308,38 +315,40 @@ uninstall:
 #
 
 .build_%:
-	$(MAKE) clean
-	touch $@
+	@$(MAKE) clean
+	@touch $@
 
 _debug: export CFLAGS_BIN += $(CFLAGS_BIN_DEBUG)
 _debug: export LDFLAGS_BIN += $(LDFLAGS_BIN_DEBUG)
 _debug: .build_debug
-	BIND_PATH=/tmp/quickio.sock \
-	BIND_PORT=8080 \
-	BIND_PORT_SSL=4433 \
-	MAX_CLIENTS=65536 \
-	PUBLIC_ADDRESS=localhost \
-	SUPPORT_FLASH=false \
-		./quickio.ini.sh > quickio.ini
-	$(MAKE) $(BINARY) $(APPS)
+	@ \
+		BIND_PATH=/tmp/quickio.sock \
+		BIND_PORT=8080 \
+		BIND_PORT_SSL=4433 \
+		MAX_CLIENTS=65536 \
+		PUBLIC_ADDRESS=localhost \
+		SUPPORT_FLASH=false \
+			./quickio.ini.sh > quickio.ini
+	@$(MAKE) $(BINARY) $(APPS)
 
 _test: .build_test
-	$(MAKE) $(TESTS)
+	@$(MAKE) $(TESTS)
 
 _release: export CFLAGS_SO += $(CFLAGS_SO_RELEASE)
 _release: export CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
 _release: export LDFLAGS_SO := $(LDFLAGS_SO_RELEASE) $(LDFLAGS_SO)
 _release: export LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
 _release: .build_release
-	BIND_PORT=80 \
-	BIND_PORT_SSL=443 \
-	INCLUDE=/etc/quickio/apps/*.ini \
-	LOG_FILE=/var/log/quickio.log \
-	MAX_CLIENTS=4194304 \
-	SUPPORT_FLASH=true \
-	USER=quickio \
-		./quickio.ini.sh > quickio.ini
-	$(MAKE) $(BINARY) $(APPS)
+	@ \
+		BIND_PORT=80 \
+		BIND_PORT_SSL=443 \
+		INCLUDE=/etc/quickio/apps/*.ini \
+		LOG_FILE=/var/log/quickio.log \
+		MAX_CLIENTS=4194304 \
+		SUPPORT_FLASH=true \
+		USER=quickio \
+			./quickio.ini.sh > quickio.ini
+	@$(MAKE) $(BINARY) $(APPS)
 
 #
 # Rules to build all the files

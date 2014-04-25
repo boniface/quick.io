@@ -1,14 +1,15 @@
 #!/usr/bin/make -f
 
 export CC = gcc
-unexport CFLAGS
-unexport LDFLAGS
+CPUS := $(shell grep -c ^processor /proc/cpuinfo)
 
 %:
 	dh $@
 
+override_dh_auto_build:
+
 override_dh_auto_test:
-	dh_auto_test -- -j8
+	dh_auto_test -- -j$(CPUS)
 
 override_dh_auto_install:
-	dh_auto_install -- -j8
+	dh_auto_install -- -j$(CPUS)
