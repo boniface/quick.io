@@ -218,11 +218,14 @@ void test_send_len(
 {
 	gint err;
 	guint64 wlen = len;
-	gchar size[sizeof(guint64)];
+	union {
+		guint64 i;
+		gchar c[sizeof(guint64)];
+	} size;
 
-	*((guint64*)size) = GUINT64_TO_BE(wlen);
+	size.i = GUINT64_TO_BE(wlen);
 
-	err = send(tc, size, sizeof(size), MSG_NOSIGNAL);
+	err = send(tc, size.c, sizeof(size), MSG_NOSIGNAL);
 	ck_assert_int_eq(err, sizeof(size));
 	err = send(tc, data, wlen, MSG_NOSIGNAL);
 	ck_assert_int_eq(err, wlen);
@@ -235,26 +238,27 @@ guint64 test_recv(
 {
 	guint64 err;
 	guint64 r = 0;
-	guint64 rlen = 0;
-	gchar size[sizeof(guint64)];
+	union {
+		guint64 i;
+		gchar c[sizeof(guint64)];
+	} size;
 	data[0] = '\0';
 
-	err = recv(tc, size, sizeof(size), MSG_WAITALL);
-
+	err = recv(tc, size.c, sizeof(size), MSG_WAITALL);
 	ck_assert(err == sizeof(size));
-	rlen = GUINT64_FROM_BE(*((guint64*)size));
+	size.i = GUINT64_FROM_BE(size.i);
 
-	ck_assert_msg(rlen < len, "Buffer not large enough to read response");
+	ck_assert_msg(size.i < len, "Buffer not large enough to read response");
 
-	while (r < rlen) {
-		err = recv(tc, data + r, rlen - r, 0);
+	while (r < size.i) {
+		err = recv(tc, data + r, size.i - r, 0);
 		ck_assert(err > 0);
 		r += err;
 	}
 
-	data[rlen] = '\0';
+	data[size.i] = '\0';
 
-	return rlen;
+	return size.i;
 }
 void test_msg(qev_fd_t tc, const gchar *data)
 {

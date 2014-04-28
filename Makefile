@@ -12,6 +12,7 @@ ifeq ($(CC),cc)
 	export CC = clang
 endif
 
+BENCH_DIR = bench
 LIB_DIR = lib
 SRC_DIR = src
 TEST_DIR = test
@@ -193,6 +194,9 @@ BINARY_OBJECTS = \
 	$(OBJECTS) \
 	$(SRC_DIR)/main.o
 
+BENCHES = \
+	bench_routing
+
 TESTS = \
 	test_apps \
 	test_client \
@@ -220,6 +224,7 @@ TEST_APPS = \
 
 all:
 	@echo "Choose one of the following:"
+	@echo "    make bench              run all micro benchmarks"
 	@echo "    make clean              clean up everything"
 	@echo "    make deb                make QuickIO debs for the current release"
 	@echo "    make deb-stable         make QuickIO debs for stable"
@@ -233,6 +238,9 @@ all:
 	@echo "    make test               run the test suite"
 	@echo "    make uninstall          remove all installed files"
 
+bench: _release
+	@$(MAKE) $(BENCHES)
+
 clean:
 	@find -name '*.gcno' -exec rm {} \;
 	@find -name '*.gcda' -exec rm {} \;
@@ -245,6 +253,7 @@ clean:
 	@rm -f $(APPS) $(TEST_APPS)
 	@rm -f $(patsubst %,%.html,$(HTML_SRCS))
 	@rm -f $(SRC_DIR)/protocols_http_iframe.c*
+	@rm -f $(patsubst %,$(BENCH_DIR)/%,$(BENCHES))
 	@rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
 	@rm -f test/*.sock
 	@rm -f tcmalloc.*
@@ -288,7 +297,6 @@ install: release
 	$(INSTALL) sysctl.conf $(DESTDIR)/etc/sysctl.d/quickio.conf
 
 release: _release
-	@strip -s $(BINARY)
 
 run: _debug
 	./$(BINARY) -f quickio.ini
@@ -360,6 +368,10 @@ $(BINARY): $(BINARY_OBJECTS) $(LIBS_QEV)
 	@echo '-------- Linking quickio --------'
 	@$(CC) $^ -o $@ $(LDFLAGS_BIN)
 
+.PHONY: $(BENCHES)
+$(BENCHES): % : $(BENCH_DIR)/%
+	@cd $(BENCH_DIR) && ./$@
+
 .PHONY: $(TESTS)
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && G_SLICE=debug-blocks ./$@
@@ -368,6 +380,12 @@ $(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html
 	@echo '-------- Generating $@ --------'
 	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
 	@xxd -i $@.html > $@
+
+$(BENCH_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
+$(BENCH_DIR)/%: LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
+$(BENCH_DIR)/%: $(BENCH_DIR)/%.c $(OBJECTS) $(LIBS_QEV)
+	@echo '-------- Compiling $@ --------'
+	@$(CC) $(CFLAGS_BIN) $^ -o $@ $(LDFLAGS_BIN)
 
 $(TEST_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_TEST)
 $(TEST_DIR)/%: LDFLAGS_BIN += $(LDFLAGS_BIN_TEST)
