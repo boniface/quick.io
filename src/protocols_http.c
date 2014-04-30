@@ -593,11 +593,6 @@ void protocol_http_init()
 	}
 	qev_cleanup_fn_full(_cleanup, TRUE);
 
-	qev_buffer_put0(&_status_responses[STATUS_200]);
-	g_string_append(buff, PROTOCOLS_HEARTBEAT);
-	_status_responses[STATUS_200] = _build_response(STATUS_200, buff);
-	qev_buffer_clear(buff);
-
 	qev_buffer_put0(&_status_responses[STATUS_501]);
 	g_string_append_len(buff,
 		(char*)src_protocols_http_html_error_c_html,
