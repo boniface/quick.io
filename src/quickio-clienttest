@@ -4,61 +4,188 @@
 
 import exceptions
 import os
+import random
+import select
 import socket
+import SocketServer
 import subprocess
 import sys
+import threading
 
+QIO_PORT = 55440
+INTERCEPTOR_PORT = QIO_PORT + 1
 INI_FILE = '/tmp/quickio-clienttest.%d.ini' % os.getpid()
 INI = '''[quick-event]
 threads = 2
 [quick.io]
 bind-address = 0.0.0.0
-bind-port = 55440
+bind-port = %d
 public-address = %s
 support-flash = %s
 [quick.io-apps]
 app = %s
 '''
 
-# Try to locate quickio-clienttest.so: might be either in directory of
-# this script (if running from source), or in /usr/lib/quickio, if running
-# from /usr/bin.
-so = '%s.so' % os.path.abspath(__file__)
-if os.path.isfile(so):
-	qio_path = "./quickio"
-	app_path = so
-else:
-	# Just let QuickIO load the app from its default location
-	qio_path = "quickio"
-	app_path = os.path.basename(__file__)
+class Interceptor(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+	allow_reuse_address = True
 
-try:
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.connect(('8.8.8.8', 53))
-	public_address = s.getsockname()[0]
-except:
-	public_address = 'localhost'
-finally:
-	s.close()
+class InterceptorHandler(SocketServer.BaseRequestHandler):
+	_running = True
+	_rewrote_request = False
+	_handshake_sent = False
+	_response_received = False
 
-is_root = os.getuid() == 0
-if not is_root:
-	print >> sys.stderr, 'Warning: in order to support flash, you must run %s as root' % sys.argv[0]
+	def _change_response_code(self, h):
+		if '101 Switching Protocols' in h:
+			return h.replace('200 OK', '101 Switching Protocols')
+		return h
 
-with open(INI_FILE, 'w') as f:
-	f.write(INI % (public_address, 'true' if is_root else 'false', app_path))
+	def _change_header_connection(self, h):
+		if 'connection' in h.lower():
+			return 'Connection: keep-alive'
+		return h
 
-try:
-	ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])
-	if ret != 0:
-		raise Exception('QuickIO exited with status %d' % ret)
-except exceptions.KeyboardInterrupt:
-	pass
-except OSError as e:
-	print >> sys.stderr, 'Error executing quickio: %s' % e
-	sys.exit(1)
-except:
-	print >> sys.stderr, 'Error: %s' % sys.exc_info()[1]
-	sys.exit(1)
-finally:
-	os.remove(INI_FILE)
+	def _change_header_upgrade(self, h):
+		if 'upgrade' in h.lower():
+			return None
+		return h
+
+	def _change_header_ws_protocol(self, h):
+		if 'sec-websocket-protocol' in h.lower():
+			return 'Sec-WebSocket-Protocol: '
+		return h
+
+	def _change_header_ws_key(self, h):
+		if 'sec-websocket-key' in h.lower():
+			return 'Sec-WebSocket-Key: abcd'
+		return h
+
+	def _change_header_ws_verion(self, h):
+		if 'sec-websocket-version' in h.lower():
+			return 'Sec-WebSocket-Version: 9'
+		return h
+
+	def _rewrite_headers(self, msg, fns):
+		headers = msg.split('\r\n') if '\r\n' in msg else msg.split('\n')
+		change = random.choice(fns)
+
+		for i, h in enumerate(headers):
+			headers[i] = change(h)
+
+		return '\r\n'.join(headers)
+
+	def _rewrite_request(self, msg):
+		if self._handshake_sent:
+			return msg
+
+		self._handshake_sent = True
+		self._rewrote_request = random.choice((True, False))
+		if self._rewrote_request:
+			msg = self._rewrite_headers(msg, (
+				self._change_header_connection,
+				self._change_header_upgrade,
+				self._change_header_ws_protocol,
+				self._change_header_ws_key,
+				self._change_header_ws_verion,))
+
+		return msg
+
+	def _rewrite_response(self, msg):
+		if self._response_received or self._rewrote_request:
+			return msg
+
+		self._response_received = True
+		if not self._rewrote_request:
+			msg = self._rewrite_headers(msg, (
+				self._change_response_code,
+				self._change_header_connection,
+				self._change_header_upgrade,
+				self._change_header_ws_protocol,
+				self._change_header_ws_key,
+				self._change_header_ws_verion,))
+
+		return msg
+
+	def _pipe(self, sock_in, sock_out, rewrite):
+		try:
+			raw = sock_in.recv(4096)
+			if not raw:
+				raise Exception()
+			sock_out.send(rewrite(raw))
+		except:
+			self._running = False
+			sock_in.close()
+			sock_out.close()
+
+	def handle(self):
+		client = self.request
+		qio = socket.create_connection(('localhost', QIO_PORT))
+		clients = (client, qio)
+
+		while self._running:
+			p = select.select(clients, (), ())
+			for read in p[0]:
+				if read == qio:
+					self._pipe(qio, client, self._rewrite_response)
+				else:
+					self._pipe(client, qio, self._rewrite_request)
+
+def _run_interceptor():
+	s = Interceptor(('0.0.0.0', INTERCEPTOR_PORT), InterceptorHandler)
+	st = threading.Thread(target=s.serve_forever)
+	st.daemon = True
+	st.start()
+
+def main():
+	# Try to locate quickio-clienttest.so: might be either in directory of
+	# this script (if running from source), or in /usr/lib/quickio, if running
+	# from /usr/bin.
+	so = '%s.so' % os.path.abspath(__file__)
+	if os.path.isfile(so):
+		qio_path = "./quickio"
+		app_path = so
+	else:
+		# Just let QuickIO load the app from its default location
+		qio_path = "quickio"
+		app_path = os.path.basename(__file__)
+
+	try:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.connect(('8.8.8.8', 53))
+		public_address = s.getsockname()[0]
+	except:
+		public_address = 'localhost'
+	finally:
+		s.close()
+
+	is_root = os.getuid() == 0
+	if not is_root:
+		print >> sys.stderr, \
+			'Warning: in order to support flash, ' \
+			'you must run %s as root' % sys.argv[0]
+
+	with open(INI_FILE, 'w') as f:
+		f.write(INI % (
+			QIO_PORT,
+			public_address,
+			'true' if is_root else 'false', app_path))
+
+	_run_interceptor()
+
+	try:
+		ret = subprocess.call([qio_path, '--config-file=%s' % INI_FILE])
+		if ret != 0:
+			raise Exception('QuickIO exited with status %d' % ret)
+	except exceptions.KeyboardInterrupt:
+		pass
+	except OSError as e:
+		print >> sys.stderr, 'Error executing quickio: %s' % e
+		sys.exit(1)
+	except:
+		print >> sys.stderr, 'Error: %s' % sys.exc_info()[1]
+		sys.exit(1)
+	finally:
+		os.remove(INI_FILE)
+
+if __name__ == '__main__':
+	main()
