@@ -37,7 +37,7 @@ class InterceptorHandler(SocketServer.BaseRequestHandler):
 
 	def _change_response_code(self, h):
 		if '101 Switching Protocols' in h:
-			return h.replace('200 OK', '101 Switching Protocols')
+			return h.replace('101 Switching Protocols', '200 OK')
 		return h
 
 	def _change_header_connection(self, h):
@@ -60,7 +60,12 @@ class InterceptorHandler(SocketServer.BaseRequestHandler):
 			return 'Sec-WebSocket-Key: abcd'
 		return h
 
-	def _change_header_ws_verion(self, h):
+	def _change_header_ws_accept(self, h):
+		if 'sec-websocket-accept' in h.lower():
+			return 'Sec-WebSocket-Accept: abcd'
+		return h
+
+	def _change_header_ws_version(self, h):
 		if 'sec-websocket-version' in h.lower():
 			return 'Sec-WebSocket-Version: 9'
 		return h
@@ -86,7 +91,7 @@ class InterceptorHandler(SocketServer.BaseRequestHandler):
 				self._change_header_upgrade,
 				self._change_header_ws_protocol,
 				self._change_header_ws_key,
-				self._change_header_ws_verion,))
+				self._change_header_ws_version,))
 
 		return msg
 
@@ -101,8 +106,7 @@ class InterceptorHandler(SocketServer.BaseRequestHandler):
 				self._change_header_connection,
 				self._change_header_upgrade,
 				self._change_header_ws_protocol,
-				self._change_header_ws_key,
-				self._change_header_ws_verion,))
+				self._change_header_ws_accept,))
 
 		return msg
 
