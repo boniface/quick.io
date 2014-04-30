@@ -14,6 +14,10 @@ integration testing with clients a rather simple affair.
 By default, runs on port 55440. If running as root, also listens on port 843
 for flash connections.
 
+To test client that clients fallback to HTTP, use port 55441: it rewrites
+the HTTP headers to be invalid in much the same way proxies do. If your tests
+fail sporadically, then you are not handling all possible error cases.
+
 .SH BUGS
 Report bugs at: https://github.com/iheartradio/quick.io/issues
 
