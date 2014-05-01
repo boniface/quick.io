@@ -12,7 +12,7 @@
  * For protocols that poll, the maximum amount of time a socket may
  * be left idle
  */
-#define HEARTBEAT_POLL QEV_SEC_TO_USEC(56)
+#define HEARTBEAT_POLL QEV_SEC_TO_USEC(55)
 
 /**
  * Standard heartbeat interval for QIO + 1 seconds. There's a race condition

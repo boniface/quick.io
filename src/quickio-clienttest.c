@@ -7,7 +7,6 @@
 #include "quickio.h"
 
 G_DEFINE_QUARK(heartbeat-challenge-cb, heartbeat_challenge_cb);
-G_DEFINE_QUARK(heartbeat-disable, heartbeat_disable);
 G_DEFINE_QUARK(in-progress-callback, in_progress_callback);
 
 struct event *_ev_broadcast = NULL;
@@ -71,18 +70,6 @@ static enum evs_status _error_handler(
 	qev_buffer_put(msg);
 
 	return EVS_STATUS_HANDLED;
-}
-
-static enum evs_status _heartbeat_disable_handler(
-	struct client *client,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb G_GNUC_UNUSED,
-	gchar *json G_GNUC_UNUSED)
-{
-	client_set(client,
-		heartbeat_disable_quark(),
-		g_variant_new_boolean(TRUE));
-	return EVS_STATUS_OK;
 }
 
 static enum evs_status _heartbeat_challenge_cb(
@@ -162,19 +149,6 @@ static enum evs_status _move_handler(
 	return EVS_STATUS_OK;
 }
 
-static enum evs_status _ping_handler(
-	struct client *client,
-	const gchar *ev_extra G_GNUC_UNUSED,
-	const evs_cb_t client_cb G_GNUC_UNUSED,
-	gchar *json G_GNUC_UNUSED)
-{
-	if (!client_has(client, heartbeat_disable_quark())) {
-		return EVS_STATUS_OK;
-	}
-
-	return EVS_STATUS_HANDLED;
-}
-
 static enum evs_status _send_invalid_handler(
 	struct client *client,
 	const gchar *ev_extra G_GNUC_UNUSED,
@@ -212,16 +186,12 @@ static gboolean _app_init()
 					_echo_handler, evs_no_on, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/error",
 					_error_handler, evs_no_on, NULL, TRUE);
-	evs_add_handler(EV_PREFIX, "/heartbeat-disable",
-					_heartbeat_disable_handler, evs_no_on, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/heartbeat-challenge",
 					_heartbeat_challenge_handler, evs_no_on, NULL, FALSE);
 	_ev_in_progress = evs_add_handler(EV_PREFIX, "/in-progress",
 					_in_progress_handler, _in_progress_on, NULL, TRUE);
 	evs_add_handler(EV_PREFIX, "/move",
 					_move_handler, evs_no_on, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/ping",
-					_ping_handler, evs_no_on, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/send-invalid",
 					_send_invalid_handler, evs_no_on, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/send-unsubscribed",
