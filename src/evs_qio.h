@@ -3,10 +3,10 @@
  * @file evs_qio.h
  *
  * @author Andrew Stone <andrew@clovar.com>
- * @copyright 2012-2014 iHeartRadio
+ * @copyright 2012-2014 Clear Channel Inc.
  *
  * @internal This file is part of QuickIO and is released under
- * the MIT License: http://www.opensource.org/licenses/mit-license.php
+ * the MIT License: http://opensource.org/licenses/MIT
  */
 
 #pragma once

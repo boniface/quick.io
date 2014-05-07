@@ -2,6 +2,11 @@
 #
 # Run QuickIO so that the fuzzer can hit it.
 
+__author__ = 'Andrew Stone <andrew@clovar.com>'
+__copyright__ = '2012-2014 iHeartRadio'
+__license__ = 'MIT'
+
+
 import argparse
 import exceptions
 import os

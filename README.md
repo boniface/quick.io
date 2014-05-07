@@ -1,6 +1,6 @@
 # Quick.IO
 
-QIO is a very fast, very simple WebSocket server written entirely in C. Unlike other options, such as Socket.IO, that endeavor to be care-free, fun, and feature-rich, QIO care-expensive, difficult, and not-too-featureful. The one advantage QIO has over all the others, though, is that it is fast. It's so fast even its name is fast.
+QIO is a very fast, very simple WebSocket server written entirely in C. Unlike other options, such as Socket.IO, that endeavor to be care-free, fun, and feature-rich, QIO is care-expensive, difficult, and not-too-featureful. The one advantage QIO has over all the others, though, is that it is fast. It's so fast even its name is fast.
 
 ## How fast are we talking?
 
@@ -15,13 +15,14 @@ Originally, the project was called Q.IO, named after the omnipotent Q from Star 
 * linux >= 2.6.30
 * glib >= 2.32
 * openssl >= 1.0.0
+* tcmalloc >= 2.1
 * doxygen + sphinx (for generating docs)
 
 ### Debian-based systems
 
 ```bash
 # For compiling
-sudo aptitude install build-essential libglib2.0-dev libssl-dev
+sudo aptitude install build-essential libglib2.0-dev libssl-dev libgoogle-perftools-dev
 ```
 
 ## Testing
@@ -44,8 +45,6 @@ sudo sysctl -w net.core.somaxconn=1024
 sudo sysctl -w net.ipv4.tcp_mem="2820736 3031648 3533472"
 sudo sysctl -w net.netfilter.nf_conntrack_max=4194304
 ```
-
-Don't forget to update the number of files you're allowed to have open.
 
 ## Coding Style
 
