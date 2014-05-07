@@ -68,6 +68,11 @@ enum quickio_close_reasons {
 	QIO_CLOSE_INVALID_HANDSHAKE,
 
 	/**
+	 * The client was moved to another server
+	 */
+	QIO_CLOSE_MOVED,
+
+	/**
 	 * Our interactions with this client are complete. Nothing
 	 * remains to be said
 	 */

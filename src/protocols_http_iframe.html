@@ -64,6 +64,7 @@
 				request = new XMLHttpRequest(),
 				url = '/?sid=' + uuid + (create ? '&connect=true' : '');
 
+			request.setRequestHeader('Content-Type', 'text/plain');
 			request.open('POST', url, true);
 			request.send(data || null);
 

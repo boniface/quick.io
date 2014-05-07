@@ -159,6 +159,7 @@ static GString* _build_response(enum status status, const GString *body)
 	g_string_append(buff, _statuses[status].line);
 	g_string_append(buff,
 		HTTP_COMMON
+		"Content-Type: text/plain\r\n"
 		"Content-Length: ");
 
 	if (body == NULL || body->len == 0) {

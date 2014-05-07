@@ -152,6 +152,7 @@ static enum evs_status _move_handler(
 	gchar *json)
 {
 	evs_send_bruteforce(client, "/qio", "/move", NULL, json, NULL, NULL, NULL);
+	qev_close(client, QIO_CLOSE_MOVED);
 	return EVS_STATUS_OK;
 }
 
