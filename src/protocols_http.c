@@ -151,27 +151,38 @@ static gchar* _find_header_end(gchar *head)
 	return NULL;
 }
 
-static GString* _build_response(enum status status, const GString *body)
+static GString* _build_response_full(
+	const enum status status,
+	const GString *body,
+	const gboolean is_iframe)
 {
 	GString *buff = qev_buffer_get();
+	guint64 len = body != NULL ? body->len : 0;
 
 	g_string_append(buff, "HTTP/1.0 ");
 	g_string_append(buff, _statuses[status].line);
 	g_string_append(buff,
 		HTTP_COMMON
-		"Content-Type: text/plain\r\n"
 		"Content-Length: ");
 
-	if (body == NULL || body->len == 0) {
-		qev_buffer_append_uint(buff, 0);
-		g_string_append(buff, "\r\n\r\n");
+	qev_buffer_append_uint(buff, len);
+
+	if (is_iframe) {
+		g_string_append(buff, "\r\nContent-Type: text/html\r\n\r\n");
 	} else {
-		qev_buffer_append_uint(buff, body->len);
-		g_string_append(buff, "\r\n\r\n");
+		g_string_append(buff, "\r\nContent-Type: text/plain\r\n\r\n");
+	}
+
+	if (body != NULL) {
 		qev_buffer_append_buff(buff, body);
 	}
 
 	return buff;
+}
+
+static GString* _build_response(const enum status status, const GString *body)
+{
+	return _build_response_full(status, body, FALSE);
 }
 
 static struct client* _steal_client(struct client *c)
@@ -609,7 +620,7 @@ void protocol_http_init()
 			(char*)src_protocols_http_html_iframe_c_html,
 			src_protocols_http_html_iframe_c_html_len);
 		qev_buffer_replace_str(buff, "{PUBLIC_ADDRESS}", cfg_public_address);
-		_iframe_source = _build_response(STATUS_200, buff);
+		_iframe_source = _build_response_full(STATUS_200, buff, TRUE);
 		qev_buffer_clear(buff);
 	}
 
