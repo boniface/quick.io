@@ -1,4 +1,4 @@
-// This file includes everything you need to write an app for Quick.IO
+// This file includes everything you need to write an app for QuickIO
 #include "quickio.h"
 
 /**

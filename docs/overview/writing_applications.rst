@@ -1,5 +1,5 @@
-Applications
-************
+Writing Applications
+********************
 
 Applications are what *your* code runs in. An application should run in its own namespace and respect the internal namespace of the server. Applications may be written in any language that has C/C++ bindings.
 

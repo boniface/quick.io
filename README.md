@@ -1,6 +1,6 @@
-# Quick.IO
+# QuickIO
 
-QIO is a very fast, very simple WebSocket server written entirely in C. Unlike other options, such as Socket.IO, that endeavor to be care-free, fun, and feature-rich, QIO is care-expensive, difficult, and not-too-featureful. The one advantage QIO has over all the others, though, is that it is fast. It's so fast even its name is fast.
+QuickIO is a very fast, very simple WebSocket server written entirely in C. Unlike other options, such as Socket.IO, that endeavor to be care-free, fun, and feature-rich, QIO is care-expensive, difficult, and not-too-featureful. The one advantage QIO has over all the others, though, is that it is fast. It's so fast even its name is fast.
 
 ## How fast are we talking?
 

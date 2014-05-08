@@ -3,7 +3,7 @@
 # Run QuickIO to test client implementations against it.
 
 __author__ = 'Andrew Stone <andrew@clovar.com>'
-__copyright__ = '2012-2014 iHeartRadio'
+__copyright__ = '2012-2014 Clear Channel Inc.'
 __license__ = 'MIT'
 
 import exceptions

@@ -14,6 +14,7 @@ endif
 
 BENCH_DIR = bench
 LIB_DIR = lib
+DOCS_DIR = docs
 SRC_DIR = src
 TEST_DIR = test
 QEV_DIR = $(LIB_DIR)/quick-event
@@ -259,6 +260,7 @@ clean:
 	@rm -f test/*.sock
 	@rm -f tcmalloc.*
 	@$(MAKE) -s -C $(QEV_DIR) clean
+	@$(MAKE) -s -C $(DOCS_DIR) clean
 
 deb:
 	debuild -tc -b
@@ -268,11 +270,11 @@ deb-stable:
 
 .PHONY: docs
 docs:
-	$(MAKE) -C docs html
+	$(MAKE) -C $(DOCS_DIR)
 	doxygen
 
 docs-watch:
-	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep 2; done
+	while [ true ]; do inotifywait -r $(DOCS_DIR); $(MAKE) docs; sleep 2; done
 
 helper-clienttest: _debug
 	sudo $(SRC_DIR)/quickio-clienttest
@@ -298,7 +300,7 @@ install: release
 	$(INSTALL) $(APPS) $(DESTDIR)/usr/lib/quickio
 	$(INSTALL) sysctl.conf $(DESTDIR)/etc/sysctl.d/quickio.conf
 
-release: _release
+release: _release docs
 
 run: _debug
 	./$(BINARY) -f quickio.ini

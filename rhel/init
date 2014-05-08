@@ -1,13 +1,13 @@
 #!/bin/bash
-# Quick.IO daemon
+# QuickIO daemon
 # chkconfig: 345 20 80
-# description: Quick.IO daemon
+# description: QuickIO daemon
 # processname: qio
 
 DAEMON=/usr/bin/qio
 CONFIG_FILE=/etc/quickio/quickio.ini
 PIDFILE=/var/run/quickio.pid
-DESC=Quick.IO
+DESC=QuickIO
 USER=nobody
 
 . /etc/rc.d/init.d/functions
@@ -43,9 +43,9 @@ status() {
 	pgrep -F $PIDFILE > /dev/null
 	if [ $? -eq 0 ]; then
 		PID=`cat $PIDFILE`
-		echo "Quick.IO is running with pid $PID"
+		echo "QuickIO is running with pid $PID"
 	else
-		echo "Quick.IO is not running"
+		echo "QuickIO is not running"
 	fi
 }
 

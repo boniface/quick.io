@@ -1,0 +1,4 @@
+Synopsis
+========
+
+quickio-fuzzer [-p]

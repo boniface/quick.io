@@ -1,17 +1,17 @@
-Quick.IO's documentation
-========================
+QuickIO's documentation
+=======================
 
-Quick.IO, often abbreviated QIO, is a real-time application server that speaks WebSocket. Rather than being the most feature-rich, easiest-to-use, and "fun" server out there, Quick.IO endeavors to be the fastest and simplest.
-
-Contents:
+Below, you will find documentation relating to individual parts of QuickIO. Select which you need.
 
 .. toctree::
 	:maxdepth: 2
 
-	run_down
-	server_architecture
-	client_architecture
-	applications
+	overview/index
+	hacking/index
+	quickio/index
+	quickio-clienttest/index
+	quickio-fuzzer/index
+	quickio-testapps/index
 
 Indices and tables
 ==================

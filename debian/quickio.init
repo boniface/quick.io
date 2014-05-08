@@ -5,13 +5,13 @@
 # Required-Stop:     $all
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Description:       Starts Quick.IO
+# Description:       Starts QuickIO
 ### END INIT INFO
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 BINARY=/usr/bin/quickio
 NAME=quickio
-DESC=Quick.IO
+DESC=QuickIO
 PIDFILE=/var/run/quickio.pid
 CONFIG_FILE=/etc/quickio/quickio.ini
 CONFIG_DIR=/etc/quickio/apps

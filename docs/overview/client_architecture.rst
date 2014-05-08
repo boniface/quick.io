@@ -17,7 +17,7 @@ Clients are built around a few, simple principles:
 Implementing a Client
 =====================
 
-A client MUST implement the following in order to communicate with a Quick.IO server consistently and properly.
+A client MUST implement the following in order to communicate with a QuickIO server consistently and properly.
 
 Client Events
 -------------
@@ -42,7 +42,7 @@ A client should implement the following functions:
 ==================== =============================
 Function             Description
 ==================== =============================
-(constructor)        Creates an object (or control structure) for handling all Quick.IO requests.
+(constructor)        Creates an object (or control structure) for handling all QuickIO requests.
 on                   Subscribe to an event on the server. This MUST update all internal structures to reflect that the client is now subscribed to the event and will be until `off` is called.
 one                  Subscribe to the event, receive one event, and unsubscribe
 off                  Unsubscribe from an event on the server

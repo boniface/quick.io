@@ -1,7 +1,7 @@
 The Run Down
 ************
 
-This page contains the quick-and-dirty introduction to Quick.IO. This is a high-level overview, shedding the weight of code descriptions, algorithms, and other fun stuff, and instead using JavaScript examples to highlight points.
+This page contains the quick-and-dirty introduction to QuickIO. This is a high-level overview, shedding the weight of code descriptions, algorithms, and other fun stuff, and instead using JavaScript examples to highlight points.
 
 The Event Model
 ===============
@@ -60,7 +60,7 @@ Data sent to and from the server is composed of 4 different parts::
 
 1. event_path: just the path of the event, in its full glory
 2. callback_id: an integer, greater than 0 (0 indicating no callback)
-4. data: JSON data as a string
+3. data: JSON data as a string
 
 Server Events
 -------------
