@@ -1,6 +1,6 @@
 /**
  * Provides support for HTTP long polling.
- * @file http.h
+ * @file protocols_http.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.
@@ -19,6 +19,9 @@
 	"Cache-Control: private, max-age=0\r\n" \
 	"Expires: -1\r\n"
 
+/**
+ * Headers that are common to each response
+ */
 #define HTTP_COMMON \
 	HTTP_NOCACHE \
 	"Connection: Keep-Alive\r\n" \
@@ -80,7 +83,7 @@ void protocol_http_heartbeat(
  * Frames data to send out to a client.
  *
  * @return
- *     A buffer containing the frame. @args{transfer-full}
+ *     A buffer containing the frame. @arg{transfer-full}
  */
 struct protocol_frames protocol_http_frame(
 	const gchar *ev_path,

@@ -52,6 +52,25 @@ START_TEST(test_apps_sane)
 }
 END_TEST
 
+START_TEST(test_apps_config)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/test/config:1=null",
+		"/qio/callback/1:0={\"code\":200,\"data\":172346}");
+
+	union qev_cfg_val val = { .i64 = 81723 };
+	qev_cfg_set("test_app_sane", "sane-value", val, NULL);
+
+	test_cb(tc,
+		"/test/config:1=null",
+		"/qio/callback/1:0={\"code\":200,\"data\":81723}");
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_apps_apps_test)
 {
 	apps_test();
@@ -132,6 +151,7 @@ int main()
 	suite_add_tcase(s, tcase);
 	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
 	tcase_add_test(tcase, test_apps_sane);
+	tcase_add_test(tcase, test_apps_config);
 	tcase_add_test(tcase, test_apps_apps_test);
 
 	tcase = tcase_create("Errors");

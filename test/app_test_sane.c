@@ -42,7 +42,7 @@ static struct qev_cfg _cfg[] = {
 		.defval.i64 = 10,
 		.validate = NULL,
 		.cb = NULL,
-		.read_only = TRUE,
+		.read_only = FALSE,
 	},
 };
 
@@ -74,12 +74,27 @@ static enum evs_status _stats_handler(
 		g_usleep(10);
 	});
 
-	qev_json_pack(buff, "[%d,%d,%d,%d,%d]",
+	qev_json_pack(buff, "[%d,%d,%d,%d]",
 					qev_stats_counter_get(_ons),
 					qev_stats_counter_get(_offs),
 					qev_stats_gauge_get(_gauge),
-					qev_stats_gauge_get(_gauge_mon),
-					_sane_value);
+					qev_stats_gauge_get(_gauge_mon));
+	evs_cb(client, client_cb, buff->str);
+
+	qev_buffer_put(buff);
+
+	return EVS_STATUS_HANDLED;
+}
+
+static enum evs_status _config_handler(
+	struct client *client,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb,
+	gchar *json G_GNUC_UNUSED)
+{
+	GString *buff = qev_buffer_get();
+
+	qev_json_pack(buff, "%d", _sane_value);
 	evs_cb(client, client_cb, buff->str);
 
 	qev_buffer_put(buff);
@@ -226,6 +241,8 @@ static gboolean _app_init()
 
 	evs_add_handler(EV_PREFIX, "/stats",
 						_stats_handler, NULL, NULL, FALSE);
+	evs_add_handler(EV_PREFIX, "/config",
+						_config_handler, NULL, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/close",
 						_close_handler, NULL, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/good",

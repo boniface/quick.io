@@ -266,12 +266,13 @@ deb:
 deb-stable:
 	sbuild -d wheezy
 
+.PHONY: docs
 docs:
 	$(MAKE) -C docs html
 	doxygen
 
 docs-watch:
-	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep .5; done
+	while [ true ]; do inotifywait -r docs; $(MAKE) docs; sleep 2; done
 
 helper-clienttest: _debug
 	sudo $(SRC_DIR)/quickio-clienttest

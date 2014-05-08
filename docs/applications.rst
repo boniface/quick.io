@@ -1,83 +1,60 @@
 Applications
 ************
 
-Applications are what *your* code runs in. An application most likely runs in its own namespace, though this is transparent to it, and it has a set of events that is handles. They may be written in any language that has C/C++ bindings.
+Applications are what *your* code runs in. An application should run in its own namespace and respect the internal namespace of the server. Applications may be written in any language that has C/C++ bindings.
 
 Structure
 =========
 
-Applications are run in a separate thread from the main server, but where they end and the main thread begins can be fuzzy. Here are two rules to keep in mind:
-
-1. If it's an event handler, callback, subscription notification, or general app event, it's from the main thread.
-
-2. If it's anything else, it's in the app thread.
-
-The application thread goes through phases in its lifetime: initialization and running.
+Applications are responsible for running any internal threads they might need, maintaining any connections to external services, and not bringing the server down when they fail. Applications will receive only two general callbacks from the server during their typical lifetime, and a possible third callback when running unit tests.
 
 Initialization
 --------------
 
-The thread will first be spooled up during server initialization: during this time, the thread will receive a call to `app_init()`. This function should setup all the application's internal structures, request its configuration be loaded, validate any configuration, and, if anything fails, `return FALSE`, thus causing the server to fail loading. It might also be helpful (for debugging) to spit out a message with `CRITICAL()` before failing. If everything goes well, however, the application should `return TRUE`, indicating that it is ready to run.
+The first callback to the application will be right after it's loaded into memory: it will be told to initialize itself. During this time, the application should listen for all events it's interested in, setup any internal structures, and run any threads necessary to do its job. Should the application fail to initialize, it should inform the server by returning FALSE, indicating it failed.
 
-.. note:: `app_init()` is an optional function; if it's not implemented, it will be assumed that the application is set to run.
+.. note:: initialization is optional, but if you don't implement it, you can't really listen for events, and that's rather pointless.
 
-Running
+Exiting
 -------
 
-After all of the applications have been initialized, the server will begin running and accepting connections, and the applications will each receive a call to `app_run()`. This is where the application should run its main loop, do all its work, process events, and so forth. This function is called in a new thread, and it is where the application should perform all of its work. This is the ONLY function that will be called from its own thread; all other callbacks and functions will be called from a server thread, so they should do their best not to block anything.
-
-.. tip:: To synchronize events coming from the main thread to the application, `GLib Asynchronous Queues <http://developer.gnome.org/glib/2.32/glib-Asynchronous-Queues.html>`_ are awesome.
-
-The application thread is expected to run for the duration of server lifetime, so it should never exit. If it does, however, encounter a fatal error, it should `return FALSE`, and the server will be brought down with the thread. If the application chooses to run for a short time and exit, then it should `return TRUE`, indicating that it meant to leave the `app_run()` function, and that the server should keep running.
-
-.. note:: `app_run()` is an optional function; if it is not implemented, it will be assumed that the application just listens for events and runs in the main thread.
+The only other time the application will receive a general callback is when the server is exiting. At this point, the application MUST shut down its internal threads, close any external connections, and free any resources.
 
 Registering Events
 ==================
 
-Since the server is built entirely around events, it might be useful to know to register them. The call is incredibly simple (from the `app_init()` or `app_run()` functions):
+Since the server is built entirely around events, it might be useful to know to register them. The call is incredibly simple:
 
 .. code-block:: c
 
-	on("/path/to/event", handler_function, on_subscribe_callback, on_unsubscribe_callback, should_handle_children)
+	// EV_PREFIX is usually defined as some namespace for your application, like: #define EV_PREFIX "/my-app-prefix"
+	struct event *myev = evs_add_handler(EV_PREFIX, "/my-event", _myev_handler, _myev_on, _myev_off, FALSE);
 
-This function returns an `event_handler_t`, which is used to broadcast events to all clients subscribed to the event.
+This function returns an `struct event`, which is used to broadcast events to all clients subscribed to the event.
 
-.. important:: You will NEVER receive the event name again in the application; it will be referred to exclusively by the pointer to the handler. As applications can be namespaced without their knowledge, passing event paths back to the applications would create way too many problems.
-
-`handler_function`
+`_myev_handler`
 	a function that will be called when the event is triggered from a client; if this is `NULL`, then it is assumed that no handler is wanted.
 
-`on_subscribe_callback`
+`_myev_on`
 	called when a client subscribes to an event. If this is NULL, it is assumed that any client will be allowed to subscribe. If it is a function, it may do any of the following:
 
-1. Return CLIENT_GOOD, indicating that the client should be subscribed immediately.
-2. Return CLIENT_ERROR, indicating that an error should be sent back to the client. This is indistinguishable from the error sent back when the event does not exist.
-3. Return CLIENT_ASYNC, indicating that no response should be sent back because verification of the event will be processed asynchronously. When issuing this value, it becomes the responsibility of the application to issue the callback to the client. Remember: clients MUST always receive a callback if they ask for one.
-4. Return CLIENT_FATAL, indicating the the client should be terminated immediately.
+1. Return EVS_STATUS_OK, indicating that the client should be subscribed immediately.
+2. Return EVS_STATUS_HANDLED, indicating that no response should be sent back because verification of the event will be processed asynchronously, and a callback will be sent later.
+3. Return EVS_STATUS_ERR, indicating that the client is not allowed to subscribe.
 
-.. important:: This function MUST execute as fast as possible as it runs in one of the server's main threads. Any background operations, long processing, socket operations, or anything that could potentially block should be done in another thread. Return CLIENT_ASYNC for these operations, and schedule them to run in another thread. Failure to do so will result in performance degradation and possible server stops as this function runs during subscription checks which, by their nature, hold locks.
+.. important:: This function MUST execute as fast as possible as it runs in one of the server's main threads. Any background operations, long processing, socket operations, or anything that could potentially block should be done in another thread. Return EVS_STATUS_HANDLED for these operations, and schedule them to run in another thread.
 
-`on_unsubscribe_callback`
+`_myev_off`
 	called when a client unsubscribes from an event. This is just a notification that the client left, and it cannot be stopped.
 
-`should_handle_children`
-	a boolean value indicating if child events should also be handled by this event handler. For example:
+`handle_children`
+	a boolean value indicating if child events should also be handled by this event handler. If TRUE, the following events will all be handled by /my-app-prefix/my-event:
 
-.. code-block:: c
+* /my-app-prefix/my-event
+* /my-app-prefix/my-event/some/child
+* /my-app-prefix/my-event/another/child
 
-	on("/test/event", NULL, NULL, NULL, TRUE)
-	on("/test/alone", NULL, NULL, NULL, FALSE)
-
-The event handler at `/test/event` will handle children events, in the form of:
-
-* /test/event/1
-* /test/event/fun
-* /test/event/many/crazy/path/segments
-
-It is completely up to the event handler if it wants to handle events with these path segments, and it may reject any event with segments it does not like. Extra event segments go to the handler and callbacks in a variable called `extra`.
-
-The event handler at `/test/alone` will ONLY accept events to `/test/alone`; all others will be rejected.
+It is completely up to the event handler if it wants to handle events with these path segments, and it may reject any event with segments it does not like. Extra event segments go to the handler and callbacks in a variable called `ev_extra`, or located inside `struct evs_on_info` as ev_extra.
 
 Handling Events
 ---------------
@@ -86,18 +63,19 @@ When a client sends an event to the server, it is routed to the registered handl
 
 .. code-block:: c
 
-	typedef enum status (*handler_fn)(
-		client_t *client,
-		event_handler_t *handler,
-		struct event *event,
-		GString *response);
+	typedef enum evs_status (*evs_handler_fn)(
+		struct client *client,
+		const gchar *ev_extra,
+		const evs_cb_t client_cb,
+		gchar *json);
 
 This function is expected to return a status, as described above, and is given the following:
 
 1. client: The client that sent the event
-2. handler: A reference to the handler (the same handler returned from `on`)
-3. event: All of the event information: check out `the struct docs in doxygen <./doxygen/structevent__s.html>`_
-4. response: Data to be sent to the client's callback; use CLIENT_WRITE to make sure it's sent. The data type in `event->data_type` is used to determine what this data is.
+2. ev_extra: Any extra path segments sent from the client
+3. client_cb: Where any callback from the event should be sent
+4. json: A JSON string of data from the client. Check out `qev_json <./doxygen/json_8h.html>`_ for reading it.
+
 
 Sending Callbacks
 =================
@@ -106,11 +84,11 @@ So what if you have an event subscription callback that does asynchronous verifi
 
 .. code-block:: c
 
-	evs_client_app_sub_cb()
-	evs_client_send_callback()
-	evs_client_send_error_callback()
+	evs_on_cb()
+	evs_on_info_copy()
+	evs_on_info_free()
 
-Check out `the Application Functions in Doxygen <./doxygen/group__AppFunctions.html>`_ for more information.
+`Check them out <./doxygen/evs_8h.html>`_.
 
 Creating Server Callbacks
 =========================
@@ -126,7 +104,11 @@ Client callbacks are simple enough to understand, but what about when you want t
 		float percent;
 	};
 
-	enum status _callback(client_t *client, void *data, event_t *event)
+	enum status _callback(
+		struct client *client,
+		const void *data,
+		const evs_cb_t client_cb,
+		gchar *json)
 	{
 		return CLIENT_GOOD;
 	}
@@ -138,37 +120,33 @@ Client callbacks are simple enough to understand, but what about when you want t
 		g_slice_free1(sizeof(*d), d);
 	}
 
-	enum status handler(
-		client_t *client,
-		event_handler_t *handler,
-		struct event *event,
-		GString *response)
+	static enum evs_status _handler(
+		struct client *client,
+		const gchar *ev_extra G_GNUC_UNUSED,
+		const evs_cb_t client_cb,
+		gchar *json)
 	{
 		struct callback_data *d = g_slice_alloc0(sizeof(*d));
-		event->server_callback = evs_server_callback_new(client, _callback, d, _free);
+		d->name = g_strdup("test");
 
-		// Set some data to be sent to the client
-		event->data_type = d_json;
-		g_string_assign(response, "{\"key1\": \"value\", \"key2\": 2393}");
+		evs_cb_with_cb(client, client_cb, json, _callback, d, _free);
 
-		return CLIENT_GOOD;
+		return EVS_STATS_HANDLED;
 	}
 
 	... snip ...
 
-	on("/event", handler, NULL, NULL, FALSE);
+	evs_add_handler(EV_PREFIX, "/event", _hander, evs_no_on, _myev_off, FALSE);
 
 	... snip ...
 
 The event flow will be as follows:
 
-1. An event comes in and is sent to handler()
-2. Handler creates a new server callback, passing it the function to be called, the data to be given to the function, and a free function
-3. Handler assigns the returned id the the server_callback field of the event
-4. Handler sets some data to be sent
-5. The client receives the event and triggers the server callback
-6. The _callback() function is called, given the client, its data, and the *new* event object
-7. Once _callback() is done, the event is free'd
+1. An event comes in and is sent to _handler()
+2. Handler sends a callback to the client, passing it the function to be called, the data to be given to the function, and a free function. The ownership of the data passes to QuickIO, and it will free it as necessary.
+3. The client receives the event and triggers the server callback
+4. The _callback() function is called, and it responds exactly like _handler does
+5. Once _callback() is done, the event is free'd
 
 .. note:: A server callback might *never* be called: a client has a limited number of server callbacks it can have registered simultaneously, so if it exceeds the number its allowed, then old callbacks will be culled to make room for the new. Chances are this will never happen, but it is a possibility.
 

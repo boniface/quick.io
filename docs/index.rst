@@ -7,12 +7,12 @@ Contents:
 
 .. toctree::
 	:maxdepth: 2
-	
+
 	run_down
 	server_architecture
 	client_architecture
 	applications
-	
+
 Indices and tables
 ==================
 

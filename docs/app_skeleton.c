@@ -1,136 +1,172 @@
 // This file includes everything you need to write an app for Quick.IO
-#include "qio_app.h"
+#include "quickio.h"
+
+/**
+ * All events in this application are prefixed to /skeleton
+ */
+#define EV_PREFIX "/skeleton"
 
 /**
  * The structure representing the events in the queue.
  */
-struct pending_event {
+struct pending {
 	/**
 	 * The number of babies born in this event.
 	 */
-	guint64 babies_born;
+	gint64 babies_born;
 
 	/**
 	 * A reference to the client, for the callback
 	 */
-	client_t *client;
+	struct client *client;
 
 	/**
 	 * For if we want to send a callback
 	 */
-	callback_t client_callback;
+	evs_cb_t client_cb;
 };
 
 /**
- * The location where the configuration options are stored.
- *
- * Set these to their default values before running.
+ * The thread for running all async tasks; will be joined on exit.
  */
-static gint _age = 23;
-static guint64 _earth_population = 7000000000;
-static gchar *_planet_name = NULL;
-static gint _friends_count = 0;
-static gchar **_friends = NULL;
+static GThread *_thread;
 
 /**
- * All of the configuration options for this application.
- *
- * The following just demonstrates how to use the different option types.
- *
- * Valid types:
- *   - e_int
- *   - e_string
- *   - e_string_array
- *   - e_uint64
- *   - e_boolean
- */
-static config_file_entry_t _config_options[] = {
-	{"age", e_int, &_age},
-	{"earth-population", e_uint64, &_earth_population},
-	{"friends", e_string_array, &_friends, &_friends_count},
-	{"planet-name", e_str, &_planet_name},
-};
-
-/**
- * All of the events that we plan on registering.
- */
-static event_handler_t *_baby_born;
-static event_handler_t *_population;
-
-/**
- * Holds the pending events
+ * Where all events are sent for processing; in this application, it's not
+ * really necessary as we're just processing integer increments, but it's
+ * a good way to show how to do things asynchronously.
  */
 static GAsyncQueue *_events;
 
 /**
- * Handles babies being born.
+ * The handler for population events
  */
-static enum status _baby_born(
-	client_t *client,
-	event_handler_t *handler,
-	struct event *event,
-	GString *response)
-{
-	struct pending_event *e = g_slice_alloc0(sizeof(*e));
-
-	// You should probably do error checking here
-	e->babies_born = g_ascii_strtoull(event->data);
-
-	// Client is reference counted, so be sure to increment him
-	e->client = client;
-	client_ref(client);
-
-	// This is guaranteed to be right, no error checking needed
-	e->client_callback = event->client_callback;
-
-	// Put the birth into the async queue for processing in the app's thread
-	// This is just a good way to synchronize threads
-	g_async_queue_push(_events, e);
-
-	// Indicate that we are going async with this event
-	return CLIENT_ASYNC;
-}
+struct event *_ev_population;
 
 /**
- * The `on` parameter here is the equivalent of evs_server_on
+ * The population of the earth, as is known right now. This value is only
+ * ever updated inside the skeleton thread.
  */
-gboolean app_init(app_on on)
+static gint64 _population;
+
+static struct qev_cfg _cfg[] = {
+	{	.name = "population",
+		.description = "How many people there are on earth",
+		.type = QEV_CFG_INT64,
+		.val.i64 = &_population,
+		.defval.i64 = 7000000000,
+		.validate = NULL,
+		.cb = NULL,
+		.read_only = TRUE,
+	},
+};
+
+static enum evs_status _ev_baby_born_handler(
+	struct client *client,
+	const gchar *ev_extra G_GNUC_UNUSED,
+	const evs_cb_t client_cb,
+	gchar *json)
 {
-	APP_PARSE_CONFIG(_config_options);
+	struct pending *p;
+	gint64 babies_born;
+	enum qev_json_status status;
 
+	// This will modify the contents of `json`
+	status = qev_json_unpack(json, NULL, "%d", &babies_born);
+	if (status != QEV_JSON_OK) {
+		evs_err_cb(client, client_cb, CODE_BAD, "could not parse JSON", NULL);
+		goto out;
+	}
+
+	if (babies_born <= 0) {
+		// Should probably give a better error message here
+		evs_err_cb(client, client_cb, CODE_BAD, "invalid number of babies born", NULL);
+		goto out;
+	}
+
+	p = g_slice_alloc(sizeof(*p));
+	p->babies_born = babies_born;
+	p->client = qev_ref(client);
+	p->client_cb = client_cb;
+
+	g_async_queue_push(_events, p);
+
+out:
+	return EVS_STATUS_HANDLED;
+}
+
+static void* _run(void *nothing G_GNUC_UNUSED)
+{
+	GString *buff = qev_buffer_get();
+
+	while (TRUE) {
+		struct pending *p = g_async_queue_pop(_events);
+
+		// Once we get a NULL, assume we're exiting. The server finishes all
+		// events before calling exit, so no more events will ever be in the
+		// queue.
+		if (p == NULL) {
+			break;
+		}
+
+		_population += p->babies_born;
+
+		// Send the client a callback asynchronously.
+		evs_cb(p->client, p->client_cb, NULL);
+		qev_unref(p->client);
+		g_slice_free1(sizeof(*p), p);
+
+		// Broadcast the new world population to everyone
+		qev_buffer_clear(buff);
+		qev_json_pack(buff, "%d", _population);
+		evs_broadcast(_ev_population, NULL, buff->str);
+	}
+
+	qev_buffer_put(buff);
+
+	return NULL;
+}
+
+static gboolean _app_init()
+{
 	_events = g_async_queue_new();
+	_thread = g_thread_new("skeleton", _run, NULL);
 
-	// Don't let anyone subscribe to this event
-	_baby_born = on("/baby/born", _baby_born, evs_no_subscribe, NULL, FALSE);
+	// Will be automatically configured with the rest of quick-event's
+	// configuration loading
+	qev_cfg_add("skeleton", _cfg, G_N_ELEMENTS(_cfg));
 
-	// People subscribe to the updated population
-	_population = on("/population", NULL, NULL, NULL, FALSE);
+	// No one may subscribe to this event
+	evs_add_handler(EV_PREFIX, "/baby-born",
+						_ev_baby_born_handler, evs_no_on, NULL, FALSE);
+
+	// Anyone may subscribe to this event
+	_ev_population = evs_add_handler(EV_PREFIX, "/population",
+						NULL, NULL, NULL, FALSE);
 
 	return TRUE;
 }
 
-/**
- * Time to run the application loop, just waiting for events.
- */
-gboolean app_run(app_on on)
+static gboolean _app_exit()
 {
-	while (TRUE) {
-		struct pending_event *e = g_async_queue_pop(_events);
+	g_async_queue_push(_events, NULL);
+	g_thread_join(_thread);
+	_thread = NULL;
 
-		_earth_population += e->babies_born;
+	g_async_queue_unref(_events);
+	_events = NULL;
 
-		// Send a blank callback to the client, indicating the event is processed
-		evs_client_send_callback(e->client, e->client_callback, 0, d_plain, "");
-
-		// Send out a message to everyone subscribed to /population with the updated
-		// population of the earth
-		gchar buff[16];
-		snprintf(buff, sizeof(buff), "%" G_GUINT64_FORMAT, _earth_population);
-		evs_client_pub_event(_population, NULL, d_plain, _earth_population);
-
-		// Done with our reference to the client, if we don't do this, that's a memory leak
-		client_unref(e->client);
-
-		g_slice_free1(sizeof(*e), e);
-	}
+	return TRUE;
 }
+
+static gboolean _app_test()
+{
+	// Used to run test cases on the application
+	return TRUE;
+}
+
+QUICKIO_APP(
+	_app_init,
+	_app_exit);
+
+QUICKIO_APP_TEST(_app_test);

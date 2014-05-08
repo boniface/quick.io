@@ -165,7 +165,8 @@ START_TEST(test_rfc6455_handshake_http_no_upgrade_header)
 		"Expires: -1\r\n"
 		"Connection: Keep-Alive\r\n"
 		"Keep-Alive: timeout=60\r\n"
-		"Content-Length: 0\r\n\r\n");
+		"Content-Length: 0\r\n"
+		"Content-Type: text/plain\r\n\r\n");
 
 	close(ts);
 }
@@ -575,7 +576,7 @@ START_TEST(test_rfc6455_close_read_high)
 	qev_fd_t tc = _client();
 
 	val.ui64 = 100;
-	qev_cfg_set("quick-event", "userspace-buff-fairness", val, NULL);
+	qev_cfg_set("quick-event", "userspace-buff-total", val, NULL);
 
 	ck_assert_int_eq(send(tc, msg, strlen(msg), 0), strlen(msg));
 

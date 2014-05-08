@@ -1,6 +1,7 @@
 /**
  * Older versions of check don't support the new macros; this file just
  * monkeys them onto it.
+ * @file check_compat.h
  */
 
 #pragma once

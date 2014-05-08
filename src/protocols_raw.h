@@ -1,7 +1,7 @@
  /**
  * Allows communication with QIO without any framing. In other words,
  * plain text using the QIO protocol.
- * @file qio.h
+ * @file protocols_raw.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.
@@ -75,7 +75,7 @@ void protocol_raw_heartbeat(
  * Frames data to send out to a client.
  *
  * @return
- *     A buffer containing the frame. @args{transfer-full}
+ *     A buffer containing the frame. @arg{transfer-full}
  */
 struct protocol_frames protocol_raw_frame(
 	const gchar *ev_path,
@@ -96,7 +96,7 @@ struct protocol_frames protocol_raw_frame(
  *     Data to send
  *
  * @return
- *     A buffer containing the formatted event. @args{transfer-full}
+ *     A buffer containing the formatted event. @arg{transfer-full}
  */
 GString* protocol_raw_format(
 	const gchar *ev_path,

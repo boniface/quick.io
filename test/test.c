@@ -39,7 +39,9 @@
 	"support-flash = false\n" \
 	"user = %s\n" \
 	"[quick.io-apps]\n" \
-	"/test = ./app_test_sane\n"
+	"/test = ./app_test_sane\n" \
+	"[test_app_sane]\n" \
+	"sane-value = 172346\n"
 
 struct _wait_for_buff {
 	gboolean good;

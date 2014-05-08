@@ -211,7 +211,7 @@ void protocols_route(struct client *client);
  *     The callback expected on the server
  * @param json
  *     Data to send with the event. MUST be a properly-formatted JSON string.
- *     @args{not-null}
+ *     @arg{not-null}
  */
 void protocols_send(
 	struct client *client,

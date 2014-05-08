@@ -1,7 +1,7 @@
 /**
  * Handles sending the flash socket policy file back on flash connections.
  * You're welcome, Internet Explorer.
- * @file flash.h
+ * @file protocols_flash.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

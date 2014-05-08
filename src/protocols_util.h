@@ -1,6 +1,6 @@
 /**
  * Support functions for various protocol needs.
- * @file util.h
+ * @file protocols_util.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

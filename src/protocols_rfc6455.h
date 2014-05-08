@@ -1,6 +1,6 @@
 /**
  * The QuickIO protocol over websockets (rfc6455).
- * @file rfc6455.h
+ * @file protocols_rfc6455.h
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

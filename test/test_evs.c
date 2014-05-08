@@ -299,7 +299,7 @@ START_TEST(test_evs_on)
 
 	test_cb(tc,
 		"/test/stats:100=",
-		"/qio/callback/100:0={\"code\":200,\"data\":[2,1,10,20,10]}");
+		"/qio/callback/100:0={\"code\":200,\"data\":[2,1,10,20]}");
 
 	close(tc);
 }
