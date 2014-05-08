@@ -138,6 +138,8 @@ static enum protocol_status _decode(
 	 * The following mess warrants an explanation: it's quite a bit
 	 * faster than the naive decode.
 	 *
+	 * Take a look at bench/bench_ws_decode.c for how much faster it is.
+	 *
 	 * The following steps are taken:
 	 *   0) Create a 128 bit masking key from 4 32bit ones.
 	 *   1) Gob through 128 bits at a time, until the next XOR would go past

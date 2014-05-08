@@ -195,7 +195,8 @@ BINARY_OBJECTS = \
 	$(SRC_DIR)/main.o
 
 BENCHES = \
-	bench_routing
+	bench_routing \
+	bench_ws_decode
 
 TESTS = \
 	test_apps \
@@ -383,9 +384,9 @@ $(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html
 
 $(BENCH_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
 $(BENCH_DIR)/%: LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
-$(BENCH_DIR)/%: $(BENCH_DIR)/%.c $(OBJECTS) $(LIBS_QEV)
+$(BENCH_DIR)/%: $(BENCH_DIR)/%.c $(OBJECTS) _release
 	@echo '-------- Compiling $@ --------'
-	@$(CC) $(CFLAGS_BIN) $^ -o $@ $(LDFLAGS_BIN)
+	@$(CC) $(CFLAGS_BIN) $< $(OBJECTS) $(LIBS_QEV) -o $@ $(LDFLAGS_BIN)
 
 $(TEST_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_TEST)
 $(TEST_DIR)/%: LDFLAGS_BIN += $(LDFLAGS_BIN_TEST)
