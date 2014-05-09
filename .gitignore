@@ -13,6 +13,7 @@ test/test_*.ini
 .build_*
 quickio
 quickio.ini
+lib/*.jar
 
 tcmalloc.*
 

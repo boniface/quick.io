@@ -34,6 +34,11 @@ HTML_SRCS = \
 	$(SRC_DIR)/protocols_http_html_iframe.c \
 	$(SRC_DIR)/protocols_http_html_error.c
 
+HTML_COMPRESSOR = $(LIB_DIR)/htmlcompressor-1.5.3.jar
+COMPRESSOR_JARS = \
+	$(HTML_COMPRESSOR) \
+	$(LIB_DIR)/yuicompressor-2.4.8.jar
+
 #
 # Base flags used everywhere
 #
@@ -230,6 +235,7 @@ all:
 	@echo "    make clean              clean up everything"
 	@echo "    make deb                make QuickIO debs for the current release"
 	@echo "    make deb-stable         make QuickIO debs for stable"
+	@echo "    make debug              build QuickIO with all debugging information in place"
 	@echo "    make docs               build all documentation"
 	@echo "    make docs-watch         rebuild all documentation any time something changes"
 	@echo "    make helper-clienttest  run QuickIO for client testing"
@@ -267,6 +273,8 @@ deb:
 
 deb-stable:
 	sbuild -d wheezy
+
+debug: _debug
 
 .PHONY: docs
 docs:
@@ -380,9 +388,9 @@ $(BENCHES): % : $(BENCH_DIR)/%
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && G_SLICE=debug-blocks ./$@
 
-$(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html
+$(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html $(COMPRESSOR_JARS)
 	@echo '-------- Generating $@ --------'
-	@java -jar $(LIB_DIR)/htmlcompressor-1.5.3.jar --compress-js $< > $@.html
+	@java -jar $(HTML_COMPRESSOR) --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
 $(BENCH_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
@@ -409,3 +417,17 @@ $(SRC_DIR)/protocols_http.o: $(HTML_SRCS)
 $(LIBS_QEV) $(LIBS_QEV_TEST): export CFLAGS := $(CFLAGS_BIN)
 $(LIBS_QEV) $(LIBS_QEV_TEST): $(QEV_DIR)/% :
 	@cd $(QEV_DIR) && $(MAKE) $*
+
+#
+# Downloads external dependencies for builds
+#
+# ==============================================================================
+#
+
+.PRECIOUS: $(COMPRESSOR_JARS)
+
+$(LIB_DIR)/htmlcompressor-%.jar:
+	wget --quiet -O $@ https://htmlcompressor.googlecode.com/files/htmlcompressor-$*.jar
+
+$(LIB_DIR)/yuicompressor-%.jar:
+	wget --quiet -O $@ https://github.com/yui/yuicompressor/releases/download/v$*/yuicompressor-$*.jar
