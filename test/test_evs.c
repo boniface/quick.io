@@ -69,6 +69,67 @@ START_TEST(test_evs_make_path)
 }
 END_TEST
 
+START_TEST(test_evs_query_handles_children_lookups)
+{
+	gchar *ev_extra = NULL;
+	struct event *handles;
+	struct event *an;
+	struct event *another;
+	struct event *specific;
+	struct event *found;
+
+ 	handles = evs_add_handler("/query-test", NULL,
+					NULL, NULL, NULL, TRUE);
+ 	an = evs_add_handler("/query-test", "/an",
+					NULL, NULL, NULL, TRUE);
+	another = evs_add_handler("/query-test", "/another",
+					NULL, NULL, NULL, FALSE);
+	specific = evs_add_handler("/query-test", "/specific",
+					NULL, NULL, NULL, FALSE);
+
+	found = evs_query("/query-tes", &ev_extra);
+	ck_assert_ptr_eq(NULL, found);
+
+	found = evs_query("/query-test", &ev_extra);
+	ck_assert_ptr_eq(handles, found);
+	ck_assert_str_eq(ev_extra, "");
+
+	found = evs_query("/query-test/not/setup", &ev_extra);
+	ck_assert_ptr_eq(handles, found);
+	ck_assert_str_eq(ev_extra, "/not/setup");
+
+	found = evs_query("/query-test/specific/with/children", &ev_extra);
+	ck_assert_ptr_eq(handles, found);
+	ck_assert_str_eq(ev_extra, "/specific/with/children");
+
+	found = evs_query("/query-test/specific-event", &ev_extra);
+	ck_assert_ptr_eq(handles, found);
+	ck_assert_str_eq(ev_extra, "/specific-event");
+
+	found = evs_query("/query-test/specific", &ev_extra);
+	ck_assert_ptr_eq(specific, found);
+	ck_assert_str_eq(ev_extra, "");
+
+	found = evs_query("/query-test/another", &ev_extra);
+	ck_assert_ptr_eq(another, found);
+	ck_assert_str_eq(ev_extra, "");
+
+	found = evs_query("/query-test/another-test", &ev_extra);
+	ck_assert_ptr_eq(NULL, found);
+
+	found = evs_query("/query-test/an", &ev_extra);
+	ck_assert_ptr_eq(an, found);
+	ck_assert_str_eq(ev_extra, "");
+
+	found = evs_query("/query-test/an/t", &ev_extra);
+	ck_assert_ptr_eq(an, found);
+	ck_assert_str_eq(ev_extra, "/t");
+
+	found = evs_query("/query-test/a", &ev_extra);
+	ck_assert_ptr_eq(NULL, found);
+}
+END_TEST
+
 START_TEST(test_evs_404)
 {
 	qev_fd_t tc = test_client();
@@ -528,6 +589,11 @@ int main()
 	tcase_add_test(tcase, test_evs_multiple_add_handler);
 	tcase_add_test(tcase, test_evs_root_handler);
 	tcase_add_test(tcase, test_evs_make_path);
+
+	tcase = tcase_create("Query");
+	suite_add_tcase(s, tcase);
+	tcase_add_checked_fixture(tcase, test_setup, test_teardown);
+	tcase_add_test(tcase, test_evs_query_handles_children_lookups);
 
 	tcase = tcase_create("Events");
 	suite_add_tcase(s, tcase);

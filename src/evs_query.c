@@ -108,6 +108,8 @@ struct event* evs_query(
 {
 	const gchar *curr = ev_path;
 	struct _ptrie *parent = &_events;
+	const gchar *child_start = NULL;
+	struct _ptrie *child_handler = NULL;
 
 	if (*curr == '/') {
 		curr++;
@@ -117,25 +119,38 @@ struct event* evs_query(
 		guchar ch = *curr - '-';
 		struct _ptrie *child = parent->childs[ch];
 
-		if (child == NULL) {
-			if (parent->ev.handle_children) {
-				goto out;
-			}
+		if (parent->ev.handle_children) {
+			child_start = curr;
+			child_handler = parent;
+		}
 
-			return NULL;
+		if (child == NULL) {
+			parent = NULL;
+			break;
 		}
 
 		parent = child;
 		curr++;
 	}
 
-	if (parent->ev.ev_path == NULL) {
+	if (parent == NULL) {
+		/*
+		 * Should only match if it's a child path, for example:
+		 *   0) /ev2 should not match on /ev because '2' would be its `child_start`.
+		 *   1) /ev/another would match because '/' is its `child_start`.
+		 */
+		if (child_handler != NULL && *child_start == '/') {
+			*ev_extra = (gchar*)child_start;
+			return &child_handler->ev;
+		}
+
+		return NULL;
+	} else if (parent->ev.ev_path != NULL) {
+		*ev_extra = (gchar*)curr;
+		return &parent->ev;
+	} else {
 		return NULL;
 	}
-
-out:
-	*ev_extra = (gchar*)curr;
-	return &parent->ev;
 }
 
 void evs_query_init()
