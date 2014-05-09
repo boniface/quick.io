@@ -171,16 +171,16 @@ htmlhelp_basename = 'QuickIO'
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-	('quickio/index', 'quickio',
+	('binaries/quickio', 'quickio',
 		u'Run a QuickIO server',
 		[u'Andrew Stone <andrew@clovar.com>'], 8),
-	('quickio-clienttest/index', 'quickio-clienttest',
+	('binaries/quickio-clienttest', 'quickio-clienttest',
 		u'Runs QuickIO for client integration testing',
 		[u'Andrew Stone <andrew@clovar.com>'], 1),
-	('quickio-fuzzer/index', 'quickio-fuzzer',
+	('binaries/quickio-fuzzer', 'quickio-fuzzer',
 		u'Run the QuickIO server for fuzzing or profiling',
 		[u'Andrew Stone <andrew@clovar.com>'], 1),
-	('quickio-testapps/index', 'quickio-testapps',
+	('binaries/quickio-testapps', 'quickio-testapps',
 		u'Runs an app\'s test cases',
 		[u'Andrew Stone <andrew@clovar.com>'], 1),
 ]

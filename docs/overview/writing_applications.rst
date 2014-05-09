@@ -56,6 +56,10 @@ This function returns an `struct event`, which is used to broadcast events to al
 
 It is completely up to the event handler if it wants to handle events with these path segments, and it may reject any event with segments it does not like. Extra event segments go to the handler and callbacks in a variable called `ev_extra`, or located inside `struct evs_on_info` as ev_extra.
 
+.. note::
+
+	QuickIO reserves the `/qio` namespace for itself and its internal events. Applications MAY NEVER create events in this namespace.
+
 Handling Events
 ---------------
 
@@ -154,6 +158,8 @@ Example
 =======
 
 In this example, we (fakely) track the population of the world, sending out an updated population event every time a baby is born.
+
+You'll probably want to check out the `Doxygen API docs just to see what is possible <../doxygen>`_
 
 Code
 ----

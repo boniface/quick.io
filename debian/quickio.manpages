@@ -1,1 +1,4 @@
-docs/quickio.1
+docs/quickio-clienttest.1
+docs/quickio-fuzzer.1
+docs/quickio-testapps.1
+docs/quickio.8

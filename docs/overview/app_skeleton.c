@@ -49,6 +49,10 @@ struct event *_ev_population;
  */
 static gint64 _population;
 
+/**
+ * If you need external configuration for an app, it's already provided for you.
+ * Check out quick-event's config documentation for all options.
+ */
 static struct qev_cfg _cfg[] = {
 	{	.name = "population",
 		.description = "How many people there are on earth",
@@ -129,6 +133,9 @@ static void* _run(void *nothing G_GNUC_UNUSED)
 
 static gboolean _app_init()
 {
+	// Read any configuration values set straight into our variables
+	qev_cfg_add("skeleton", _cfg, G_N_ELEMENTS(_cfg));
+
 	_events = g_async_queue_new();
 	_thread = g_thread_new("skeleton", _run, NULL);
 
@@ -138,11 +145,11 @@ static gboolean _app_init()
 
 	// No one may subscribe to this event
 	evs_add_handler(EV_PREFIX, "/baby-born",
-						_ev_baby_born_handler, evs_no_on, NULL, FALSE);
+		_ev_baby_born_handler, evs_no_on, NULL, FALSE);
 
 	// Anyone may subscribe to this event
 	_ev_population = evs_add_handler(EV_PREFIX, "/population",
-						NULL, NULL, NULL, FALSE);
+		NULL, NULL, NULL, FALSE);
 
 	return TRUE;
 }
