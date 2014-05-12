@@ -172,8 +172,14 @@ static gboolean _app_test()
 	return TRUE;
 }
 
+/**
+ * Use this macro so that when the server loads the app, it knows what to call.
+ */
 QUICKIO_APP(
 	_app_init,
 	_app_exit);
 
+/**
+ * If you implement test cases, you're also going to need this macro.
+ */
 QUICKIO_APP_TEST(_app_test);

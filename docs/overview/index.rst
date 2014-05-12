@@ -6,8 +6,8 @@ QuickIO, often abbreviated QIO, is a real-time application server that serves ev
 .. toctree::
 	:maxdepth: 2
 
-	run_down
-	server_architecture
-	client_architecture
-	client_usage
-	writing_applications
+	run-down
+	client-usage
+	server-architecture
+	client-architecture
+	writing-applications

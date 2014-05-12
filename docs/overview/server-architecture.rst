@@ -13,7 +13,7 @@ All clients, as far as the server is concerned, are stateless connections that c
 quick-event
 -----------
 
-The server is built on top of a statically-routed, event-driven framework called "quick event". Originally, all of the socket code and everything was part of QIO, but it became too complicated to maintain in the same project, and it was broken into quick-event. Quick-event provides tons of useful data structures, high-optimized buffers, monitoring, benchmarking, resource polling, and a bunch of other really stuff. At its core, though, it's a thread-agnostic event loop on top of the network layer that uses minimal locking.
+The server is built on top of a statically-routed, event-driven framework called "quick event". Originally, all of the socket code and everything was part of QIO, but it became too complicated to maintain in the same project, and it was broken into quick-event. Quick-event provides tons of useful data structures, high-optimized buffers, monitoring, benchmarking, resource polling, and a bunch of other really awesome stuff. At its core, though, it's a thread-agnostic event loop on top of the network layer that uses minimal locking.
 
 Protocols
 =========
@@ -25,7 +25,9 @@ Since clients may communicate with the server over HTTP, WebSocket, or any other
 Applications
 ============
 
-Applications are the core of what runs on the server. Aside from the framework for supporting events, subscriptions, and clients, applications doing the heavy lifting with the clients. Applications may be written in C/C++, Python, Javascript, or any other language that has a C/C++ interface.
+Applications are the core of what runs on every server in a cluster. They are typically what developers will be implementing to get their own functionality into the server and work in the same way that any HTTP application would: when a client sends a "request" (in the QuickIO case, an event), a handler for the request will be invoked. Applications are just a way of compartmentalizing a bunch of similar events.
+
+Applications may be written in C/C++, Python, JavaScript, or any other language that has a C/C++ interface.
 
 Events
 ======

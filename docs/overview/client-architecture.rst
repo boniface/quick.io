@@ -78,7 +78,7 @@ Handling Sending Events
 
 While connected to a server, the client MUST send events as quickly as possible to the server. It should perform the following tasks:
 
-1. Clean the event path such that it only contains [A-Za-z0-9_-/], starts with a slash, and has no trailing slash.
+1. Clean the event path such that it only contains [\A-\Z\a-\z\0-\9_-/], starts with a slash, and has no trailing slash.
 2. Serialize any data to JSON immediately, or simply send a JSON `null` if there is no data.
 3. Assign the callback an ID from an unsigned 64bit integer that is atomically incremented such that the first ID issued is 1, second is 2, and so on, and store that ID and callback in some quick-lookup table for future reference.
 4. Format the event as follows: <event path>:<callback ID, or 0 if no callback>=<serialized JSON string>, for something like: /event/path:123={"json": "data"}
@@ -86,8 +86,8 @@ While connected to a server, the client MUST send events as quickly as possible 
 
 When not connected to the server, the client MUST queue up events until it reconnects. The following rules apply to queued events:
 
-1. Callbacks that are being sent to the server MAY NEVER be queued, and -1 "disconnected" MUST be fired on them immediately.
-2. Subscription events may never be queued (/qio/on may never be put into the queue)
+1. Callbacks that are being sent to the server MAY NEVER be queued, and -1 "disconnected" MUST be fired on them immediately since callbacks become invalid once the connection with the server has been lost.
+2. Subscription events may never be queued (/qio/on may never be put into the queue). The state of subscriptions is always known, and can be managed on reconnect, so queuing them up just results in extra memory usage.
 3. All other events MUST be persisted until connected
 4. Any data to be sent with the event MUST be serialized into a string before being put into the queue so that the object that represents it maybe mutated after the call.
 5. Callback IDs may only be issued when connected, so just save a reference to the callback until connected.
@@ -217,7 +217,7 @@ WebSocket Heartbeats
 
 By default, a client will receive at least one message every 60 seconds, be it in the form of a callback, broadcast event, or heartbeat.
 
-Heartbeats are implemented such that, if a client hasn't been sent a message in around 60 seconds (this is variable to within -10 seconds, but a client will never go more than 60 seconds without a message), it will receive a heartbeat.
+Heartbeats are implemented such that, if a client hasn't been sent a message in around 60 seconds (this is variable to within -10 seconds, but a client will never go more than 60 seconds without an event from the server), it will receive a heartbeat.
 
 The best method for implementing a heartbeat is:
 
