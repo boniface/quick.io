@@ -263,6 +263,11 @@ enum client_sub_state client_sub_add(
 
 	qev_lock(client);
 
+	if (qev_is_closing(client)) {
+		sstate = CLIENT_SUB_NULL;
+		goto out;
+	}
+
 	csub = _sub_get(client, sub);
 	if (csub != NULL) {
 		csub->tombstone = FALSE;
@@ -439,23 +444,13 @@ void client_del(struct client *client, const GQuark key)
 	}
 }
 
-void client_free_all(struct client *client)
+void client_closed(struct client *client)
 {
-	/**
-	 * At this point, the client is being freed, so no one can have a reference
-	 * to him and everything can be done without locks.
-	 */
-
-	guint i;
 	GHashTableIter iter;
 	struct subscription *sub;
 	struct client_sub *csub;
 
-	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
-		if (client->cbs[i] != NULL) {
-			_cb_free(client, i);
-		}
-	}
+	qev_lock(client);
 
 	if (client->subs != NULL) {
 		g_hash_table_iter_init(&iter, client->subs);
@@ -469,6 +464,24 @@ void client_free_all(struct client *client)
 
 		g_hash_table_unref(client->subs);
 		client->subs = NULL;
+	}
+
+	qev_unlock(client);
+}
+
+void client_free_all(struct client *client)
+{
+	/**
+	 * At this point, the client is being freed, so no one can have a reference
+	 * to him and everything can be done without locks.
+	 */
+
+	guint i;
+
+	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {
+		if (client->cbs[i] != NULL) {
+			_cb_free(client, i);
+		}
 	}
 
 	if (client->data != NULL) {

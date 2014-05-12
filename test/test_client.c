@@ -29,7 +29,7 @@ START_TEST(test_client_shutdown_while_subscribing)
 	test_send(tc, "/qio/on:1=\"/test/delayed\"");
 	QEV_WAIT_FOR(client->subs != NULL && g_hash_table_size(client->subs) > 0);
 
-	client_free_all(client);
+	client_closed(client);
 
 	test_msg(tc, "/qio/callback/1:0={\"code\":420,\"data\":null,\"err_msg\":null}");
 
@@ -350,6 +350,26 @@ START_TEST(test_client_subs_list_add_fail)
 }
 END_TEST
 
+START_TEST(test_client_subs_add_after_close)
+{
+	enum client_sub_state state;
+	gchar *ev_extra = NULL;
+	struct event *ev = evs_query("/test/good", &ev_extra);
+	struct subscription *sub = sub_get(ev, ev_extra);
+	struct client *surrogate = protocols_new_surrogate(protocol_rfc6455);
+
+	qev_close(surrogate, 0);
+
+	state = client_sub_add(surrogate, sub);
+	ck_assert(state == CLIENT_SUB_NULL);
+
+	state = client_sub_accept(surrogate, sub);
+	ck_assert(state == CLIENT_SUB_NULL);
+
+	ck_assert(!client_sub_remove(surrogate, sub));
+}
+END_TEST
+
 START_TEST(test_client_data_sane)
 {
 	GVariant *v;
@@ -406,6 +426,7 @@ int main()
 	tcase_add_test(tcase, test_client_subs_sane);
 	tcase_add_test(tcase, test_client_subs_unfair);
 	tcase_add_test(tcase, test_client_subs_list_add_fail);
+	tcase_add_test(tcase, test_client_subs_add_after_close);
 
 	tcase = tcase_create("Data");
 	suite_add_tcase(s, tcase);

@@ -241,7 +241,7 @@ void protocols_closed(struct client *client, guint reason)
 		client->protocol.prot->close(client, reason);
 	}
 
-	client->protocol_flags = 0;
+	memset(&client->protocol.flags, 0, sizeof(client->protocol.flags));
 }
 
 struct protocol_frames* protocols_bcast(const gchar *ev_path, const gchar *json)

@@ -80,6 +80,7 @@ ifndef QUICKIO_MAKEFILE
 		-fPIC
 
 	export LDFLAGS = \
+		-g \
 		-rdynamic \
 		-Wl,-z,now \
 		-Wl,-z,relro \
@@ -147,8 +148,16 @@ LDFLAGS_SO_RELEASE = \
 
 ifdef TCMALLOC_PROFILE
 	export HEAPPROFILE=tcmalloc
-	export HEAP_PROFILE_INUSE_INTERVAL=10485760
 	export TCMALLOC_RELEASE_RATE=10
+	export HEAP_PROFILE_INUSE_INTERVAL=10485760
+
+	LDFLAGS_BIN_RELEASE += \
+		-ltcmalloc
+else ifdef TCMALLOC_CHECK
+	export HEAPCHECK=strict
+	export TCMALLOC_RELEASE_RATE=10
+	export G_SLICE=always-malloc
+	export PPROF_PATH=$(shell which pprof || which google-pprof)
 
 	LDFLAGS_BIN_RELEASE += \
 		-ltcmalloc
@@ -237,6 +246,7 @@ all:
 	@echo "    make deb-stable         make QuickIO debs for stable"
 	@echo "    make debug              build QuickIO with all debugging information in place"
 	@echo "    make docs               build all documentation"
+	@echo "    make docs-man           build man pages"
 	@echo "    make docs-watch         rebuild all documentation any time something changes"
 	@echo "    make helper-clienttest  run QuickIO for client testing"
 	@echo "    make helper-fuzzer      run QuickIO for fuzzing"
@@ -281,6 +291,9 @@ docs:
 	$(MAKE) -C $(DOCS_DIR)
 	doxygen
 
+docs-man:
+	$(MAKE) -C $(DOCS_DIR) man
+
 docs-watch:
 	while [ true ]; do inotifywait -r $(DOCS_DIR); $(MAKE) docs; sleep 2; done
 
@@ -308,7 +321,7 @@ install: release
 	$(INSTALL) $(APPS) $(DESTDIR)/usr/lib/quickio
 	$(INSTALL) sysctl.conf $(DESTDIR)/etc/sysctl.d/quickio.conf
 
-release: _release docs
+release: _release docs-man
 
 run: _debug
 	./$(BINARY) -f quickio.ini

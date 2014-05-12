@@ -128,16 +128,6 @@ struct client {
 	} protocol;
 
 	/**
-	 * The state of the client at the protocol level. Protocols may only
-	 * touch this once they have signaled that they handle the client.
-	 *
-	 * @note
-	 *     Protocols may only use bits 0-14, bit 15 (identified by 0x8000) is
-	 *     reserved for the protocol router.
-	 */
-	guint16 protocol_flags;
-
-	/**
 	 * When anything was last sent to the client
 	 */
 	gint64 last_send;
@@ -316,7 +306,7 @@ gboolean client_sub_active(struct client *client, struct subscription *sub);
  * @param client
  *     The client in question
  * @param sub
- *     The subscription in question @arg{transfer-full}
+ *     The subscription in question
  *
  * @return CLIENT_SUB_PENDING
  *     When a previous subscription is still pending
@@ -444,6 +434,11 @@ gboolean client_has(struct client *client, const GQuark key);
  *     The key to remove
  */
 void client_del(struct client *client, const GQuark key);
+
+/**
+ * A client closed and it should start to be cleaned up.
+ */
+void client_closed(struct client *client);
 
 /**
  * A client is being freed and should be completely cleaned up
