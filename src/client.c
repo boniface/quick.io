@@ -62,16 +62,22 @@ static struct client_sub* _sub_get(
 static void _sub_cleanup(
 	struct client *client,
 	struct subscription *sub,
-	struct client_sub *csub)
+	struct client_sub *csub,
+	const gboolean cleanup_hashtable)
 {
-	g_hash_table_remove(client->subs, sub);
 	qev_list_remove(sub->subscribers, &csub->idx);
+
+	evs_client_offd(client, sub);
+
 	_sub_free(csub);
 	sub_unref(sub);
 
-	if (g_hash_table_size(client->subs) == 0) {
-		g_hash_table_unref(client->subs);
-		client->subs = NULL;
+	if (cleanup_hashtable) {
+		g_hash_table_remove(client->subs, sub);
+		if (g_hash_table_size(client->subs) == 0) {
+			g_hash_table_unref(client->subs);
+			client->subs = NULL;
+		}
 	}
 }
 
@@ -94,7 +100,7 @@ static gboolean _sub_remove(
 		csub->tombstone = TRUE;
 	} else {
 		removed = TRUE;
-		_sub_cleanup(client, sub, csub);
+		_sub_cleanup(client, sub, csub, TRUE);
 	}
 
 out:
@@ -336,7 +342,7 @@ out:
 	return sstate;
 
 cleanup:
-	_sub_cleanup(client, sub, csub);
+	_sub_cleanup(client, sub, csub, TRUE);
 	goto out;
 }
 
@@ -457,9 +463,7 @@ void client_closed(struct client *client)
 
 		while (g_hash_table_iter_next(&iter, (void**)&sub, (void**)&csub)) {
 			g_hash_table_iter_remove(&iter);
-			qev_list_remove(sub->subscribers, &csub->idx);
-			_sub_free(csub);
-			sub_unref(sub);
+			_sub_cleanup(client, sub, csub, FALSE);
 		}
 
 		g_hash_table_unref(client->subs);
@@ -471,11 +475,10 @@ void client_closed(struct client *client)
 
 void client_free_all(struct client *client)
 {
-	/**
+	/*
 	 * At this point, the client is being freed, so no one can have a reference
 	 * to him and everything can be done without locks.
 	 */
-
 	guint i;
 
 	for (i = 0; i < G_N_ELEMENTS(client->cbs); i++) {

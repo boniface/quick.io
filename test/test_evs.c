@@ -509,6 +509,33 @@ START_TEST(test_evs_on_off_on_before_first_on_cb)
 }
 END_TEST
 
+static gboolean _test_evs_off_after_close_off_called = FALSE;
+static void _test_evs_off_after_close_off(
+	struct client *client G_GNUC_UNUSED,
+	const gchar *ev_extra G_GNUC_UNUSED)
+{
+	_test_evs_off_after_close_off_called = TRUE;
+}
+
+START_TEST(test_evs_off_after_close)
+{
+	qev_fd_t tc;
+
+	evs_add_handler("/test-evs", "/off", NULL, NULL,
+		_test_evs_off_after_close_off, FALSE);
+
+ 	tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=\"/test-evs/off\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+
+	QEV_WAIT_FOR(_test_evs_off_after_close_off_called);
+}
+END_TEST
+
 START_TEST(test_evs_callback_invalid_id)
 {
 	qev_fd_t tc = test_client();
@@ -617,6 +644,7 @@ int main()
 	tcase_add_test(tcase, test_evs_on_with_evs_send);
 	tcase_add_test(tcase, test_evs_off_before_on_cb);
 	tcase_add_test(tcase, test_evs_on_off_on_before_first_on_cb);
+	tcase_add_test(tcase, test_evs_off_after_close);
 
 	tcase = tcase_create("QIO Builtins");
 	suite_add_tcase(s, tcase);

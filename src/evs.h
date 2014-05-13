@@ -548,6 +548,17 @@ void evs_off(
 	const gchar *ev_extra);
 
 /**
+ * The client was unsubscribed from an event, and any callbacks should be fired
+ * immediately.
+ *
+ * @param client
+ *     The client that was removed
+ * @param sub
+ *     The subscription that the client was removed from
+ */
+void evs_client_offd(struct client *client, struct subscription *sub);
+
+/**
  * Sends a CODE_OK callback to a client
  *
  * @param client

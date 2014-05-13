@@ -80,19 +80,6 @@ static void _broadcast_free(void *bc_)
 	g_slice_free1(sizeof(*bc), bc);
 }
 
-static void _off(
-	struct client *client,
-	struct subscription *sub)
-{
-	qev_lock(client);
-
-	if (sub->ev->off_fn != NULL) {
-		sub->ev->off_fn(client, sub->ev_extra);
-	}
-
-	qev_unlock(client);
-}
-
 void event_init(
 	struct event *ev,
 	const gchar *ev_path,
@@ -398,13 +385,8 @@ void evs_on_cb(
 		switch (client_sub_accept(info->client, info->sub)) {
 			case CLIENT_SUB_NULL:
 				code = CODE_ENHANCE_CALM;
-			case CLIENT_SUB_TOMBSTONED:
-				_off(info->client, info->sub);
-				break;
 
-			case CLIENT_SUB_PENDING: // can't happen: keep the compiler quiet
-			case CLIENT_SUB_CREATED: // can't happen: keep the compiler quiet
-			case CLIENT_SUB_ACTIVE:
+			default:
 				break;
 		}
 
@@ -458,19 +440,22 @@ void evs_off(
 	struct event *ev,
 	const gchar *ev_extra)
 {
-	gboolean removed;
 	struct subscription *sub = sub_get(ev, ev_extra);
 
+	client_sub_remove(client, sub);
+
+	sub_unref(sub);
+}
+
+void evs_client_offd(struct client *client, struct subscription *sub)
+{
 	qev_lock(client);
 
-	removed = client_sub_remove(client, sub);
-	if (removed) {
-		_off(client, sub);
+	if (sub->ev->off_fn != NULL) {
+		sub->ev->off_fn(client, sub->ev_extra);
 	}
 
 	qev_unlock(client);
-
-	sub_unref(sub);
 }
 
 void evs_cb(
