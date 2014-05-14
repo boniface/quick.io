@@ -49,17 +49,21 @@ with open(INI_FILE, 'w') as f:
 		multiprocessing.cpu_count(),
 	))
 
+exit_code = 0
 try:
-	ret = subprocess.call(cmd)
-	if ret != 0:
+	sp = subprocess.Popen(cmd)
+	sp.wait()
+	if sp.returncode != 0:
 		raise Exception('QuickIO exited with status %d' % ret)
 except exceptions.KeyboardInterrupt:
 	pass
 except OSError as e:
 	print >> sys.stderr, 'Error executing quickio: %s' % e
-	sys.exit(1)
+	exit_code = 1
 except:
 	print >> sys.stderr, 'Error: %s' % sys.exc_info()[1]
-	sys.exit(1)
+	exit_code = 2
 finally:
 	os.remove(INI_FILE)
+	sp.wait()
+	sys.exit(exit_code)

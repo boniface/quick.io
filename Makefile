@@ -148,14 +148,13 @@ LDFLAGS_SO_RELEASE = \
 
 ifdef TCMALLOC_PROFILE
 	export HEAPPROFILE=tcmalloc
-	export TCMALLOC_RELEASE_RATE=10
+	export G_SLICE=always-malloc
 	export HEAP_PROFILE_INUSE_INTERVAL=10485760
 
 	LDFLAGS_BIN_RELEASE += \
 		-ltcmalloc
 else ifdef TCMALLOC_CHECK
-	export HEAPCHECK=strict
-	export TCMALLOC_RELEASE_RATE=10
+	export HEAPCHECK=draconian
 	export G_SLICE=always-malloc
 	export PPROF_PATH=$(shell which pprof || which google-pprof)
 

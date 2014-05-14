@@ -549,7 +549,8 @@ void evs_off(
 
 /**
  * The client was unsubscribed from an event, and any callbacks should be fired
- * immediately.
+ * immediately. You should be holding a lock on the client while do unsubscribe
+ * operations.
  *
  * @param client
  *     The client that was removed

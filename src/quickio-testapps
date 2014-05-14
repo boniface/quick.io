@@ -59,15 +59,20 @@ for app in _apps:
 	print '*' * (len(status) + 4)
 	print
 
+	exit_code = 0
 	try:
-		ret = subprocess.call([_qio_path, '--config-file=%s' % INI_FILE])
-		if ret != 0:
+		sp = subprocess.Popen([_qio_path, '--config-file=%s' % INI_FILE])
+		sp.wait()
+		if sp.returncode != 0:
 			raise Exception('Test failed on "%s" (exit status %d)' % (app, ret))
 	except OSError as e:
 		print >> sys.stderr, 'Error executing quickio binary: %s' % e
-		sys.exit(1)
+		exit_code = 1
 	except:
 		print >> sys.stderr, 'Error: %s' % sys.exc_info()[1]
-		sys.exit(1)
+		exit_code = 2
 	finally:
 		os.remove(INI_FILE)
+		sp.wait()
+		if exit_code != 0:
+			sys.exit(exit_code)
