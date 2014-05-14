@@ -17,9 +17,9 @@ man:
 	@echo "Build finished."
 
 html:
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ../gh-pages
 	@echo
-	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+	@echo "Build finished. The HTML pages are in ../gh-pages."
 
 clean:
 	rm -f *.1 *.8

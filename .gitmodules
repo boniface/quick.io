@@ -1,3 +1,7 @@
 [submodule "lib/quick-event"]
 	path = lib/quick-event
 	url = git@github.ihrint.com:quickio/quick-event.git
+[submodule "gh-pages"]
+	path = gh-pages
+	url = git@github.com:iheartradio/quick.io.git
+	branch = gh-pages
