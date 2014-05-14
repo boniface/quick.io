@@ -12,7 +12,7 @@ Event paths take the form of `/some/path/to/an/event` such that the they are nam
 
 	-/0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz
 
-Any other character in the path will be summarily removed and ignored.  In other words, the following two paths will be identical once event path validation finishes::
+Any other character in the path will be summarily removed and ignored. In other words, the following two paths will be identical once event path validation and filtering finishes::
 
 	/app/user/new
 	/app/@user/(new)>>>>
@@ -20,7 +20,7 @@ Any other character in the path will be summarily removed and ignored.  In other
 Event Format
 ------------
 
-Data sent to and from the server is composed of 4 different parts::
+Data sent to and from the server is composed of 3 different parts::
 
 	event_path:callback_id=json_data
 
@@ -59,9 +59,9 @@ Line 1
 
 In this case, we're simply sending an event with some JSON data to /app/login; the actual data sent to the server will look like::
 
-	/app/login:1={session_id: "1234abcd"}
+	/app/login:1={"session_id": "1234abcd"}
 
-This is just a simple, quick method of conveying everything about the event. Notice, too, that a function was passed in to the event. This function will be held by the client until the server responds with a callback. Once a callback is recieved, such as this one::
+This is just a simple, quick method of conveying everything about the event. Notice, too, that a function was passed in to the event. This function will be held by the client until the server responds with a callback, and it corresponds to callback ID 1, as you can see in the event. Once a callback is recieved, such as this one::
 
 	/qio/callback/1:1={"code": 200, "data": null}
 
@@ -84,7 +84,7 @@ Based on code, we're going to decide where to jump next; since the code was 200,
 Line 7
 ------
 
-Since everything was good, we're going to ask the application to inform us every time it is updated. That is, we're subscribing to the event `/app/update`, and whenever that event fires, the function that is passed in will be called. The corresponding event that might be sent to the serer is::
+Since everything was good, we're going to ask the application to inform us every time it is updated. That is, we're subscribing to the event `/app/update`, and whenever that event fires, the function that is passed in will be called. The corresponding event that might be sent to the server is::
 
 	/qio/on:0="/app/update"
 
@@ -98,7 +98,7 @@ Remember that the server requested a callback? Well, we're going to respond to t
 Line 13
 -------
 
-After receiving our message and seeing that we're Superman, the server will respond with its name. Let's try not to be dissapointed::
+After receiving our message and seeing that we're Superman, the server will respond with its name. Let's try not to be disappointed::
 
 	/qio/callback/2:0={"code": 200, "data": {"iam": 'Howard'}}
 

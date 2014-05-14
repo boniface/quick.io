@@ -61,7 +61,7 @@ on                    Subscribe to an event on the server. This MUST update all 
 
 one                   Subscribe to the event, receive one event, and unsubscribe
 
-off(null)             Unsubscribe from an event on the server
+off(null)             Unsubscribe from an event on the server, removing all callbacks.
 
 off(cb)               Remove a single callback from a subscription, calling unsubscribe on the server if there are no more callbacks.
 
@@ -88,14 +88,14 @@ When not connected to the server, the client MUST queue up events until it recon
 
 1. Callbacks that are being sent to the server MAY NEVER be queued, and -1 "disconnected" MUST be fired on them immediately since callbacks become invalid once the connection with the server has been lost.
 2. Subscription events may never be queued (/qio/on may never be put into the queue). The state of subscriptions is always known, and can be managed on reconnect, so queuing them up just results in extra memory usage.
-3. All other events MUST be persisted until connected
+3. All other events MUST be persisted until connected.
 4. Any data to be sent with the event MUST be serialized into a string before being put into the queue so that the object that represents it maybe mutated after the call.
 5. Callback IDs may only be issued when connected, so just save a reference to the callback until connected.
 
 Connecting to the Cluster
 -------------------------
 
-Each QuickIO cluster lives behind a single public address, typically a single DNS A record that points to all the servers. Each server, in turn, has a public address that can be requested at the event path /qio/hostname. To connect to a cluster, a client should pick one of the A records at random and try connecting; on failure, it may issue another DNS request for updated hosts or try the next one in its list. Each language has its own ways of doing this, and it's usually best to let the socket library try to figure everything out. If you are, on the other hand, using bare sockets in C or the standard library in Java, you're going to have to do this part yourself. Other languages seem to do it right.
+Each QuickIO cluster lives behind a single public address, typically a single DNS A record that points to all the servers. Each server, in turn, has a public address that can be requested at the event path /qio/hostname. To connect to a cluster, a client should pick one of the A records at random and try connecting; on failure, it may issue another DNS request for updated hosts or try the next one in its list. Each language has its own ways of doing this, and it's usually best to let the socket library try to figure everything out. If you are, on the other hand, using bare sockets in C or the standard library in Java, you're going to have to do this part yourself. Other languages seem to handle this for you.
 
 Since many clients in the wild are behind proxies and "smart" HTTP firewalls that don't yet support WebSocket, it's necessary to support HTTP long polling in each client. The client must first attempt to establish a WebSocket connection with the cluster, and if that fails for any reason besides an unreachable network or similar condition, it must immediately fall back to HTTP long polling. If it can establish a connection with the server over HTTP, it must continue using HTTP long polling until either the client or server terminates the connection. Once terminated, if the client is going to attempt to reconnect, it must first attempt WebSocket again, just in case the client changes networks, and the new network supports WebSocket.
 
@@ -120,7 +120,7 @@ If any part of the WebSocket handshake fails, aside from network issues, as ment
 	* connect: this value MUST be the string "true" to indicate that the client is new. This parameter only ever appears in the initial request.
 2. If the server does not respond with a 200, the connection must be failed immediately, and the client must try reconnecting again.
 3. If the server responded with a 200, the body of the response will contain the server's public address, formatted as an event response. All further communication with the server must use this address.
-4. After receiving any response from the server, including after the handshake, the client must schedule another POST request to run after 0-2000 milliseconds, chose at random (typically Math.random() * 2000). This is necessary to make sure that there isn't a stampeding herd attacking the server after HTTP heartbeats.
+4. After receiving any response from the server, including after the handshake, the client must schedule another POST request to run after 0-2000 milliseconds, chosen at random (typically Math.random() * 2000). This is necessary to make sure that there isn't a stampeding herd attacking the server after HTTP heartbeats.
 5. A client may, at any time, issue a new POST request with newline-separated events, provided that the request is only sent after 0-2000 milliseconds, in the same way that requests are queued up after a poll finishes. Bodies of requests shall contain numerous newline-separated events, and they must be gathered into as few requests as possible (sending 2 requests at the same time is prohibited, the events must be gathered into a single request). Sending a request 0-2000 milliseconds after a previous request is acceptable as there is no way to preempt when events will be fired. The server will respond by completing any other requests from the client and holding onto the newest request until data is ready (the new request will become the long-polling request).
 6. If the client, at any point, sees a non 200 response, it must fail the connection immediately and fire any /close event, as appropriate.
 
@@ -131,7 +131,7 @@ Since this can be a bit complicated, let's look at a sample HTTP conversation be
 	POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1
 	Host: quickio.example.com
 	Content-Type: text/plain
-	Content-Length: 21
+	Content-Length: 20
 
 	/qio/hostname:1=null
 
@@ -167,7 +167,7 @@ Since this can be a bit complicated, let's look at a sample HTTP conversation be
 
 	/qio/callback/1:0={"code":200,"data":null}
 
-At this point, there is 1 HTTP request pending at the server, and that will be used to send any new events back to the client. Once this request finishes, the client will send a new request after (Math.random() * 2000) milliseconds.
+At this point, there is 1 HTTP request pending at the server, and that will be used to send any new events back to the client. Once this request finishes, the client must send a new request after (Math.random() * 2000) milliseconds.
 
 Connection Persistence
 ----------------------
@@ -185,7 +185,7 @@ The client MUST do its best to maintain a connection to the QuickIO cluster unti
 		backoff = 100;
 	});
 
-Once a connection with the server has been re-established, and once all handshakes have been completed the client must do the following, `in this order`:
+Once a connection with the server has been re-established, and once all handshakes have been completed, the client must do the following, `in this order`:
 
 1. Go through all callbacks that exist and fire a -1 "disconnected" error on them, being sure not to trample any new callbacks that come in as a result of triggering the old ones.
 2. Subscribe to all events that exist in the client by sending a new /qio/on event to the server for each event, listening for any errors while subscribing.
@@ -205,7 +205,7 @@ During the lifetime of the client, it will receive a ton of events from the serv
 Callback Association with Connections
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Since callbacks are very tightly linked to the server and session they have on the server, they must be explicitly tied to a given connection, typically by giving the connection and ID and associating the callback with that ID. If at any point the application attempts to trigger a callback that is not tied to the current connection, the client must respond to the callback immediately with -1 "disconnected".
+Since callbacks are very tightly linked to the server and session they have on the server, they must be explicitly tied to a given connection, typically by giving the connection an ID and associating the callback with that ID. If at any point the application attempts to trigger a callback that is not tied to the current connection, the client must respond to the callback immediately with -1 "disconnected".
 
 Client Heartbeats
 -----------------

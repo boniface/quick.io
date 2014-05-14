@@ -8,7 +8,7 @@ What is an event?
 
 Everything that the server sends and receives is treated as an event. An event can be something as simple as sending server time to a client to anything as complex as user authentication, handshakes, and callbacks. In reality, an event is just a single, complete message from the server that is addressed to a specific path, includes a callback ID, and contains some data to give to the path.
 
-If you've ever used a URL before, the event paths will look familiar to you: `/some/event/path`. Notice the following properties about the event path:
+If you've ever used a URL before, then event paths will look familiar to you: `/some/event/path`. Notice the following properties about the event path:
 
 1. Path elements are separated by slashes
 2. There is no trailing slash
@@ -30,9 +30,9 @@ The actual events sent between server and client would look like::
 	/server/where-are-you:1=null
 	/qio/callback/1:0={"code": 200, "data": "in the cloud"}
 
-Notice how, after the colon following the event, the client sent a 1: this is a 64bit unsigned integer that increments with each callback. So in this case, the client requested that the server send an event to callback ID 1 with the data it requested from /server/where-are-you. The server responded with the JSON-encoded string {"code": 200, "data": "in the cloud"}, meaning that everything went OK (code 200), and that it's "in the cloud", as indicated by "data". Also notice that the client sent back a 0 for its callback ID, meaning that it did not want a callback.
+Notice how, after the colon following the event, the client sent a 1: this is a 64bit unsigned integer that increments with each callback, and it is managed by the QuickIO client internally. So in this case, an event was sent to the server requesting a callback ID 1 with the data it requested from /server/where-are-you. The server responded with the JSON-encoded string {"code": 200, "data": "in the cloud"}, meaning that everything went OK (code 200), and that it's "in the cloud", as indicated by "data". Also notice that the client sent back a 0 for its callback ID, meaning that it did not want a callback.
 
-In the above example, we came to the final point about events: all data exchanged between client and server `must` be encoded as JSON. No exceptions. When the server sends a callback to a client, it will include a status code (typically taking after HTTP status codes, though custom applications may set their own codes), data, and en error message (in the field `err_msg`) if something went wrong. Clients may send arbitrary JSON-encoded data back to the server without error codes and messages; any error codes and messages must be implemented on an application level and are not part of the protocol.
+In the above example, we came to the final point about events: all data exchanged between client and server `must` be encoded as JSON. No exceptions. When the server sends a callback to a client, it will include a status code (typically taking after HTTP status codes, though custom applications may set their own codes), data, and an error message (in the field `err_msg`) if something went wrong. Clients may send arbitrary JSON-encoded data back to the server without error codes and messages; any error codes and messages must be implemented on an application level and are not part of the protocol.
 
 When using a client, you typically don't need to worry about event formatting and maintaining connections, subscriptions, or anything of the sort: the client will manage all of that for you transparently, and you may simply get your stuff done.
 
@@ -59,6 +59,7 @@ In some event systems, this is called "triggering an event", but the difference 
 Let's go through what is happening with these events:
 
 1. The first line is sending an event to the server at the path `/some/event`, including a large JSON payload, and not requesting a callback. This type of event might or might not be delivered to the server, and it's not a big deal if it isn't.
+
 2. This event requests a callback from the server, mainly because it's requesting the server's location. As you can see, it sends no data to the server, which is completely acceptable, but it counts on the server sending back data. In the callback, notice that it checks the error code for the callback, making sure that it's 200 before doing anything else. If it's not 200, it should make an attempt to handle any errors. Errors may be anything from "client disconnected" (code==-1), to "event path not found" (code==404), to any application-specific code.
 
 Event Delivering and Persistence

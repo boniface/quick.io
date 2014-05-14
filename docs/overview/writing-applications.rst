@@ -13,7 +13,7 @@ Initialization
 
 The first callback to the application will be right after it's loaded into memory: it will be told to initialize itself. During this time, the application should listen for all events it's interested in, setup any internal structures, and run any threads necessary to do its job. Should the application fail to initialize, it should inform the server by returning FALSE, indicating it failed.
 
-.. note:: initialization is optional, but if you don't implement it, you can't really listen for events, and that's rather pointless.
+.. note:: Initialization is optional, but if you don't implement it, you can't really listen for events, and that's rather pointless.
 
 Exiting
 -------
@@ -23,7 +23,7 @@ The only other time the application will receive a general callback is when the 
 Registering Events
 ==================
 
-Since the server is built entirely around events, it might be useful to know to register them. The call is incredibly simple:
+Since the server is built entirely around events, it might be useful to know to know how to register them. The call is incredibly simple:
 
 .. code-block:: c
 
@@ -78,7 +78,7 @@ This function is expected to return a status, as described above, and is given t
 1. client: The client that sent the event
 2. ev_extra: Any extra path segments sent from the client
 3. client_cb: Where any callback from the event should be sent
-4. json: A JSON string of data from the client. Check out `qev_json <./doxygen/json_8h.html>`_ for reading it.
+4. json: A JSON string of data from the client. Check out `qev_json <../doxygen/json_8h.html>`_ for reading it.
 
 
 Sending Callbacks
@@ -92,7 +92,7 @@ So what if you have an event subscription callback that does asynchronous verifi
 	evs_on_info_copy()
 	evs_on_info_free()
 
-`Check them out <./doxygen/evs_8h.html>`_.
+`Check them out <../doxygen/evs_8h.html>`_.
 
 Creating Server Callbacks
 =========================
@@ -140,7 +140,7 @@ Client callbacks are simple enough to understand, but what about when you want t
 
 	... snip ...
 
-	evs_add_handler(EV_PREFIX, "/event", _hander, evs_no_on, _myev_off, FALSE);
+	evs_add_handler(EV_PREFIX, "/event", _hander, evs_no_on, NULL, FALSE);
 
 	... snip ...
 
@@ -150,7 +150,7 @@ The event flow will be as follows:
 2. Handler sends a callback to the client, passing it the function to be called, the data to be given to the function, and a free function. The ownership of the data passes to QuickIO, and it will free it as necessary.
 3. The client receives the event and triggers the server callback
 4. The _callback() function is called, and it responds exactly like _handler does
-5. Once _callback() is done, the event is free'd
+5. Once _callback() is done, the data is free'd
 
 .. note:: A server callback might *never* be called: a client has a limited number of server callbacks it can have registered simultaneously, so if it exceeds the number its allowed, then old callbacks will be culled to make room for the new. Chances are this will never happen, but it is a possibility.
 
