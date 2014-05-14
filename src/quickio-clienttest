@@ -22,7 +22,6 @@ INI_FILE = '/tmp/quickio-clienttest.%d.ini' % os.getpid()
 INI = '''[quick-event]
 threads = 2
 [quick.io]
-bind-address = 0.0.0.0
 bind-port = %d
 public-address = %s
 support-flash = %s

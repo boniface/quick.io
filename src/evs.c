@@ -55,7 +55,7 @@ static qev_stats_counter_t *_stat_evs_sent;
 static qev_stats_counter_t *_stat_evs_callbacks_sent;
 static qev_stats_counter_t *_stat_evs_received;
 static qev_stats_counter_t *_stat_evs_broadcasts_unique;
-static qev_stats_counter_t *_stat_evs_broadcasts_messages;
+static qev_stats_counter_t *_stat_evs_broadcasts_events;
 
 /**
  * All pending broadcasts
@@ -68,7 +68,7 @@ static void _broadcast(void *client_, void *frames_)
 	struct protocol_frames *frames = frames_;
 
 	protocols_bcast_write(client, frames);
-	qev_stats_counter_inc(_stat_evs_broadcasts_messages);
+	qev_stats_counter_inc(_stat_evs_broadcasts_events);
 }
 
 static void _broadcast_free(void *bc_)
@@ -600,11 +600,19 @@ void evs_init()
 {
 	evs_qio_init();
 
-	_stat_evs_sent = qev_stats_counter("evs", "sent", TRUE);
-	_stat_evs_callbacks_sent = qev_stats_counter("evs", "callbacks_sent", TRUE);
-	_stat_evs_received = qev_stats_counter("evs", "received", TRUE);
-	_stat_evs_broadcasts_unique = qev_stats_counter("evs.broadcasts",
-										"unique", TRUE);
-	_stat_evs_broadcasts_messages = qev_stats_counter("evs.broadcasts",
-										"messages", TRUE);
+	_stat_evs_sent = qev_stats_counter(
+		"evs", "sent", TRUE,
+		"How many events were sent");
+	_stat_evs_callbacks_sent = qev_stats_counter(
+		"evs", "callbacks_sent", TRUE,
+		"How many callbacks were sent");
+	_stat_evs_received = qev_stats_counter(
+		"evs", "received", TRUE,
+		"How many events were received from all protocols");
+	_stat_evs_broadcasts_unique = qev_stats_counter(
+		"evs.broadcasts", "unique", TRUE,
+		"How many unique broadcasts were sent out");
+	_stat_evs_broadcasts_events = qev_stats_counter(
+		"evs.broadcasts", "events", TRUE,
+		"How many events were broadcasted to clients in total");
 }

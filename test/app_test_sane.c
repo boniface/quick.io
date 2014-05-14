@@ -224,16 +224,27 @@ static void* _run(void *nothing G_GNUC_UNUSED)
 
 static gboolean _app_init()
 {
-	_gauge = qev_stats_gauge(STATS_PREFIX, "gauge");
-	_gauge_mon = qev_stats_gauge_monitor(STATS_PREFIX, "gauge_mon", NULL);
+	_gauge = qev_stats_gauge(
+		STATS_PREFIX, "gauge",
+		"Testing gauge");
+	_gauge_mon = qev_stats_gauge_monitor(
+		STATS_PREFIX, "gauge_mon", NULL,
+		"Testing gauge with monitor");
 
-	_ons = qev_stats_counter(STATS_PREFIX, "ons", FALSE);
-	_offs = qev_stats_counter_monitor(STATS_PREFIX, "offs", FALSE, NULL);
+	_ons = qev_stats_counter(
+		STATS_PREFIX, "ons", FALSE,
+		"Number of subscribes since last request");
+	_offs = qev_stats_counter_monitor(
+		STATS_PREFIX, "offs", FALSE, NULL,
+		"Number of unsubscribes since last request");
 
-	_timer = qev_stats_timer(STATS_PREFIX, "timer");
-	_timer_mon = qev_stats_timer_monitor(STATS_PREFIX, "timer_mon",
-									NULL, NULL, NULL,
-									NULL, NULL, NULL);
+	_timer = qev_stats_timer(
+		STATS_PREFIX, "timer",
+		"Just a timer test");
+	_timer_mon = qev_stats_timer_monitor(
+		STATS_PREFIX, "timer_mon",
+		NULL, NULL, NULL, NULL, NULL, NULL,
+		"Another timer test");
 
 	_is_running = TRUE;
 	_aq = g_async_queue_new();

@@ -28,8 +28,12 @@ static enum evs_status _heartbeat_cb(
 
 void protocol_raw_init()
 {
-	_stat_handshakes = qev_stats_counter("protocol.raw", "handshakes", TRUE);
-	_stat_route_time = qev_stats_timer("protocol.raw", "route");
+	_stat_handshakes = qev_stats_counter(
+		"protocol.raw", "handshakes", TRUE,
+		"How many /qio/ohai handshakes were sent");
+	_stat_route_time = qev_stats_timer(
+		"protocol.raw", "route",
+		"How long it took to route an event");
 }
 
 enum protocol_handles protocol_raw_handles(struct client *client)

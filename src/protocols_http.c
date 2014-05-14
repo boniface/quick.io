@@ -95,6 +95,7 @@ static struct _http_status _statuses[] = {
 static qev_stats_counter_t *_stat_requests_iframe;
 static qev_stats_counter_t *_stat_requests_invalid_method;
 static qev_stats_counter_t *_stat_requests_poll;
+static qev_stats_counter_t *_stat_requests_immediate_response;
 static qev_stats_counter_t *_stat_responses[G_N_ELEMENTS(_statuses)];
 static qev_stats_counter_t *_stat_headers_upgrade_invalid;
 static qev_stats_counter_t *_stat_headers_upgrade_missing;
@@ -380,8 +381,10 @@ static void _surr_route(
 	msgs = qev_surrogate_flush(surrogate);
 	if (msgs == NULL) {
 		_surr_replace(surrogate, from);
+		qev_stats_counter_inc(_stat_requests_poll);
 	} else {
 		_surr_send(surrogate, from, msgs);
+		qev_stats_counter_inc(_stat_requests_immediate_response);
 	}
 
 	qev_unlock(surrogate);
@@ -485,8 +488,6 @@ static void _do_body(struct client *client, gchar *start)
 		} else {
 			_surr_route(surrogate, client, start);
 		}
-
-		qev_stats_counter_inc(_stat_requests_poll);
 	}
 }
 
@@ -597,8 +598,14 @@ void protocol_http_init()
 	}
 
 	for (i = 0; i < G_N_ELEMENTS(_status_responses); i++) {
+		gchar desc[256];
+
 		g_string_printf(buff, "responses.%u", _statuses[i].code);
-		_stat_responses[i] = qev_stats_counter("protocol.http", buff->str, TRUE);
+		snprintf(desc, sizeof(desc), "The number of HTTP %us sent", _statuses[i].code);
+
+		_stat_responses[i] = qev_stats_counter(
+			"protocol.http", buff->str, TRUE,
+			desc);
 		qev_buffer_clear(buff);
 
 		_status_responses[i] = _build_response(i, NULL);
@@ -624,21 +631,34 @@ void protocol_http_init()
 		qev_buffer_clear(buff);
 	}
 
-	_stat_requests_iframe = qev_stats_counter("protocol.http",
-											"requests.iframe", TRUE);
-	_stat_requests_invalid_method = qev_stats_counter("protocol.http",
-											"requests.invalid_method", TRUE);
-	_stat_requests_poll = qev_stats_counter("protocol.http",
-											"requests.poll", TRUE);
-	_stat_headers_upgrade_invalid = qev_stats_counter("protocol.http",
-											"upgrade.invalid", TRUE);
-	_stat_headers_upgrade_missing = qev_stats_counter("protocol.http",
-											"upgrade.missing", TRUE);
-	_stat_surrogates_opened = qev_stats_counter("protocol.http",
-											"surrogates.opened", TRUE);
-	_stat_surrogates_closed = qev_stats_counter("protocol.http",
-											"surrogates.closed", TRUE);
-	_stat_route_time = qev_stats_timer("protocol.http", "route");
+	_stat_requests_iframe = qev_stats_counter(
+		"protocol.http","requests.iframe", TRUE,
+		"Number of GET requests for /iframe");
+	_stat_requests_invalid_method = qev_stats_counter(
+		"protocol.http","requests.invalid_method", TRUE,
+		"Number of requests sent with an invalid method");
+	_stat_requests_poll = qev_stats_counter(
+		"protocol.http","requests.poll", TRUE,
+		"Number of polling requests that were received and put into a polling state");
+	_stat_requests_immediate_response = qev_stats_counter(
+		"protocol.http","requests.immediate_response", TRUE,
+		"Number of polling requests that were received and responded to immediately");
+	_stat_headers_upgrade_invalid = qev_stats_counter(
+		"protocol.http","upgrade.invalid", TRUE,
+		"HTTP upgrade requests with an inappropriate version or protocol");
+	_stat_headers_upgrade_missing = qev_stats_counter(
+		"protocol.http","upgrade.missing", TRUE,
+		"Requests that look like a WebSocket upgrade but that were missing the"
+		" Upgrade header");
+	_stat_surrogates_opened = qev_stats_counter(
+		"protocol.http","surrogates.opened", TRUE,
+		"How many surrogates were created in response to requests");
+	_stat_surrogates_closed = qev_stats_counter(
+		"protocol.http","surrogates.closed", TRUE,
+		"How many surrogates were closed");
+	_stat_route_time = qev_stats_timer(
+		"protocol.http", "route",
+		"How long it took to route a single event, after parsing HTTP headers");
 
 	qev_buffer_put(buff);
 }

@@ -103,7 +103,13 @@ void sub_unref(struct subscription *sub)
 
 void sub_init()
 {
-	_stat_total = qev_stats_counter("subs", "total", FALSE);
-	_stat_added = qev_stats_counter("subs", "added", TRUE);
-	_stat_removed = qev_stats_counter("subs", "removed", TRUE);
+	_stat_total = qev_stats_counter(
+		"subs", "total", FALSE,
+		"How many active subscriptions exist on the server");
+	_stat_added = qev_stats_counter(
+		"subs", "added", TRUE,
+		"How many new subscriptions were created in response to /qio/on");
+	_stat_removed = qev_stats_counter(
+		"subs", "removed", TRUE,
+		"How many new subscriptions were removed in response to /qio/off");
 }

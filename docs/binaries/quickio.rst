@@ -20,6 +20,10 @@ Options
 
 	Configuration file to load. This option may be given multiple times to load multiple files; it understands most common globbing patterns.
 
+.. option:: --generate-config
+
+	Generate a configuration file containing all default values and print it to stdout.
+
 .. option:: -v, --version
 
 	Print the server version and exit.

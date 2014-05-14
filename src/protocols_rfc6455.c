@@ -179,13 +179,18 @@ static enum protocol_status _decode(
 
 void protocol_rfc6455_init()
 {
-	_stat_upgrades = qev_stats_counter("protocol.rfc6455",
-								"upgrades", TRUE);
-	_stat_handshakes_good = qev_stats_counter("protocol.rfc6455",
-								"handshakes.good", TRUE);
-	_stat_handshakes_bad = qev_stats_counter("protocol.rfc6455",
-								"handshakes.bad", TRUE);
-	_stat_route_time = qev_stats_timer("protocol.rfc6455", "route");
+	_stat_upgrades = qev_stats_counter(
+		"protocol.rfc6455", "upgrades", TRUE,
+		"How many clients successfully upgraded from HTTP to WebSocket");
+	_stat_handshakes_good = qev_stats_counter(
+		"protocol.rfc6455", "handshakes.good", TRUE,
+		"How many clients sent through /qio/ohai handshakes after upgrading");
+	_stat_handshakes_bad = qev_stats_counter(
+		"protocol.rfc6455", "handshakes.bad", TRUE,
+		"How many clients sent something other than /qio/ohai after upgrading");
+	_stat_route_time = qev_stats_timer(
+		"protocol.rfc6455", "route",
+		"How long it took to decode the frame and route the event");
 }
 
 enum protocol_handles protocol_rfc6455_handles(struct client *client G_GNUC_UNUSED)

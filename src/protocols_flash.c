@@ -25,7 +25,9 @@ static qev_stats_counter_t *_stat_handshakes;
 
 void protocol_flash_init()
 {
-	_stat_handshakes = qev_stats_counter("protocol.flash", "handshakes", TRUE);
+	_stat_handshakes = qev_stats_counter(
+		"protocol.flash", "handshakes", TRUE,
+		"How many flash policy requests came through");
 }
 
 enum protocol_handles protocol_flash_handles(struct client *client)

@@ -10,7 +10,6 @@
 
 static qev_fair_t *_fair_subs;
 
-static qev_stats_counter_t *_stat_subs_total;
 static qev_stats_counter_t *_stat_subs_added;
 static qev_stats_counter_t *_stat_subs_removed;
 
@@ -28,7 +27,6 @@ static struct client_sub* _sub_alloc(struct client *client)
 	guint client_used = client->subs == NULL ? 0 : g_hash_table_size(client->subs);
 
 	if (qev_fair_use(_fair_subs, client_used, 1)) {
-		qev_stats_counter_inc(_stat_subs_total);
 		qev_stats_counter_inc(_stat_subs_added);
 
 		csub = g_slice_alloc0(sizeof(*csub));
@@ -40,7 +38,6 @@ static struct client_sub* _sub_alloc(struct client *client)
 static void _sub_free(struct client_sub *csub)
 {
 	qev_fair_return(_fair_subs, 1);
-	qev_stats_counter_dec(_stat_subs_total);
 	qev_stats_counter_inc(_stat_subs_removed);
 	g_slice_free1(sizeof(*csub), csub);
 }
@@ -500,18 +497,25 @@ void client_init()
 		cfg_clients_subs_pressure,
 		cfg_clients_subs_min);
 
-	_stat_subs_total = qev_stats_counter("clients.subs", "total", FALSE);
-	_stat_subs_added = qev_stats_counter("clients.subs", "added", TRUE);
-	_stat_subs_removed = qev_stats_counter("clients.subs", "removed", TRUE);
+	_stat_subs_added = qev_stats_counter(
+		"clients.subs", "added", TRUE,
+		"How many subscriptions were added to clients");
+	_stat_subs_removed = qev_stats_counter(
+		"clients.subs", "removed", TRUE,
+		"How many subscriptions were removed from clients");
 
-	_stat_callbacks_total = qev_stats_counter("clients.callbacks",
-									"total", FALSE);
-	_stat_callbacks_created = qev_stats_counter("clients.callbacks",
-									"created", TRUE);
-	_stat_callbacks_fired = qev_stats_counter("clients.callbacks",
-									"fired", TRUE);
-	_stat_callbacks_evicted = qev_stats_counter("clients.callbacks",
-									"evicted", TRUE);
+	_stat_callbacks_total = qev_stats_counter(
+		"clients.callbacks", "total", FALSE,
+		"How many callbacks exist on the server, awaiting a response");
+	_stat_callbacks_created = qev_stats_counter(
+		"clients.callbacks", "created", TRUE,
+		"How many new callbacks were created");
+	_stat_callbacks_fired = qev_stats_counter(
+		"clients.callbacks", "fired", TRUE,
+		"How many callbacks were triggered by clients");
+	_stat_callbacks_evicted = qev_stats_counter(
+		"clients.callbacks", "evicted", TRUE,
+		"How many callbacks were evicted");
 
 	qev_cleanup_and_null_full((void**)&_fair_subs,
 					(qev_free_fn)qev_fair_free, TRUE);

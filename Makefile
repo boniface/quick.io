@@ -353,15 +353,11 @@ uninstall:
 _debug: export CFLAGS_BIN += $(CFLAGS_BIN_DEBUG)
 _debug: export LDFLAGS_BIN += $(LDFLAGS_BIN_DEBUG)
 _debug: .build_debug
-	@ \
-		BIND_PATH=/tmp/quickio.sock \
-		BIND_PORT=8080 \
-		BIND_PORT_SSL=4433 \
-		MAX_CLIENTS=65536 \
-		PUBLIC_ADDRESS=localhost \
-		SUPPORT_FLASH=false \
-			./quickio.ini.sh > quickio.ini
 	@$(MAKE) $(BINARY) $(APPS)
+	@./$(BINARY) --generate-config 2>/dev/null | sed \
+		-e 's|#bind-path =|bind-path = /tmp/quickio.sock|' \
+		-e 's|#public-address =|public-address = localhost|' \
+		> quickio.ini
 
 _test: .build_test
 	@$(MAKE) $(TESTS)
@@ -371,16 +367,17 @@ _release: export CFLAGS_BIN += $(CFLAGS_BIN_RELEASE)
 _release: export LDFLAGS_SO := $(LDFLAGS_SO_RELEASE) $(LDFLAGS_SO)
 _release: export LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
 _release: .build_release
-	@ \
-		BIND_PORT=80 \
-		BIND_PORT_SSL=443 \
-		INCLUDE=/etc/quickio/apps/*.ini \
-		LOG_FILE=/var/log/quickio.log \
-		MAX_CLIENTS=4194304 \
-		SUPPORT_FLASH=true \
-		USER=quickio \
-			./quickio.ini.sh > quickio.ini
 	@$(MAKE) $(BINARY) $(APPS)
+	@./$(BINARY) --generate-config 2>/dev/null | sed \
+		-e 's|#bind-port = 8080|bind-port = 80|' \
+		-e 's|#bind-port-ssl = 4433|bind-port-ssl = 443|' \
+		-e 's|#public-address =|public-address = |' \
+		-e 's|#include =|include = /etc/quickio/apps/*.ini|' \
+		-e 's|#log-file =|log-file = /var/log/quickio.log|' \
+		-e 's|#max-clients = 65536|max-clients = 4194304|' \
+		-e 's|#support-flash = false|support-flash = true|' \
+		-e 's|#user =|user = quickio|' \
+		> quickio.ini
 
 #
 # Rules to build all the files

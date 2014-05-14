@@ -21,7 +21,7 @@ max-clients = %d
 threads = %d
 [quick.io]
 bind-address = 0.0.0.0
-bind-port = 8080
+bind-port = 55455
 bind-path = /tmp/quickio.sock
 public-address = localhost
 [quick.io-apps]
