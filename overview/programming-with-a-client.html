@@ -1,0 +1,267 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Programming with a QuickIO Client &mdash; QuickIO 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QuickIO 0.2 documentation" href="../index.html" />
+    <link rel="up" title="Overview of QuickIO" href="index.html" />
+    <link rel="next" title="Server Architecture" href="server-architecture.html" />
+    <link rel="prev" title="The Run Down" href="run-down.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="server-architecture.html" title="Server Architecture"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="run-down.html" title="The Run Down"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Overview of QuickIO</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="programming-with-a-quickio-client">
+<h1>Programming with a QuickIO Client<a class="headerlink" href="#programming-with-a-quickio-client" title="Permalink to this headline">¶</a></h1>
+<p>When first getting started with a QuickIO client, it&#8217;s necessary to understand QuickIO&#8217;s event model. If you&#8217;ve ever programmed with jQuery (or the DOM in a browser), worked with a UI, or used any publish-subscribe system, you will feel right at home with QuickIO. Originally based on the WebSocket standard, QuickIO provides a server-to-client, and vice versa, event framework for subscribing to events on the server, triggering events on a server, and responding to all events a server might trigger. The simplest way to learn to use the client is to jump in, so let&#8217;s get started.</p>
+<div class="section" id="what-is-an-event">
+<h2>What is an event?<a class="headerlink" href="#what-is-an-event" title="Permalink to this headline">¶</a></h2>
+<p>Everything that the server sends and receives is treated as an event. An event can be something as simple as sending server time to a client to anything as complex as user authentication, handshakes, and callbacks. In reality, an event is just a single, complete message from the server that is addressed to a specific path, includes a callback ID, and contains some data to give to the path.</p>
+<p>If you&#8217;ve ever used a URL before, then event paths will look familiar to you: <cite>/some/event/path</cite>. Notice the following properties about the event path:</p>
+<ol class="arabic simple">
+<li>Path elements are separated by slashes</li>
+<li>There is no trailing slash</li>
+<li>There is a slash at the beginning</li>
+</ol>
+<p>Every single event path follows this pattern. In order to keep things simple, events are limited to the following ASCII characters: A-Z, a-z, 0-9, -, _, /. All other characters will be forcibly removed by the server and ignored, such that the following two event paths are identical:</p>
+<div class="highlight-python"><div class="highlight"><pre>/app/user/new
+/app/@user/(new)&gt;&gt;&gt;&gt;
+</pre></div>
+</div>
+<p>But that is only the first part of an event; the second part of an event is the callback ID. When sending an event to the server or client, either may request a callback be sent with some additional data. For example, say the client client wants to ask the server where in the world it is: rather than subscribing to an event and then asking the server to send data to that event, which would be incredibly complicated and prone to errors, the client may send an event to the server, request a callback on that event, and while maintaining its scope, get that data. For example, if you want the server&#8217;s location, you might do the following:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">send</span><span class="p">(</span><span class="s1">&#39;/server/where-are-you&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(...)</span> <span class="p">{})</span>
+</pre></div>
+</div>
+<p>The actual events sent between server and client would look like:</p>
+<div class="highlight-python"><div class="highlight"><pre>/server/where-are-you:1=null
+/qio/callback/1:0={&quot;code&quot;: 200, &quot;data&quot;: &quot;in the cloud&quot;}
+</pre></div>
+</div>
+<p>Notice how, after the colon following the event, the client sent a 1: this is a 64bit unsigned integer that increments with each callback, and it is managed by the QuickIO client internally. So in this case, an event was sent to the server requesting a callback ID 1 with the data it requested from /server/where-are-you. The server responded with the JSON-encoded string {&#8220;code&#8221;: 200, &#8220;data&#8221;: &#8220;in the cloud&#8221;}, meaning that everything went OK (code 200), and that it&#8217;s &#8220;in the cloud&#8221;, as indicated by &#8220;data&#8221;. Also notice that the client sent back a 0 for its callback ID, meaning that it did not want a callback.</p>
+<p>In the above example, we came to the final point about events: all data exchanged between client and server <cite>must</cite> be encoded as JSON. No exceptions. When the server sends a callback to a client, it will include a status code (typically taking after HTTP status codes, though custom applications may set their own codes), data, and an error message (in the field <cite>err_msg</cite>) if something went wrong. Clients may send arbitrary JSON-encoded data back to the server without error codes and messages; any error codes and messages must be implemented on an application level and are not part of the protocol.</p>
+<p>When using a client, you typically don&#8217;t need to worry about event formatting and maintaining connections, subscriptions, or anything of the sort: the client will manage all of that for you transparently, and you may simply get your stuff done.</p>
+</div>
+<div class="section" id="sending-events">
+<h2>Sending Events<a class="headerlink" href="#sending-events" title="Permalink to this headline">¶</a></h2>
+<p>In some event systems, this is called &#8220;triggering an event&#8221;, but the difference with QuickIO is that the event will be triggered <cite>on the server</cite>, not on the client. You cannot actually trigger events on the client; only events from the server are triggered on the client. Above was hinted as how to send events, now let&#8217;s take a look at how to do this from a client perspective.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="c1">// Don&#39;t request a callback</span>
+<span class="nx">send</span><span class="p">(</span><span class="s1">&#39;/some/event&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;tons&quot;</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;of json&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">],</span> <span class="s2">&quot;with numbers&quot;</span><span class="o">:</span> <span class="mi">123123</span><span class="p">});</span>
+
+<span class="c1">// Request a callback, but send no data</span>
+<span class="nx">send</span><span class="p">(</span><span class="s1">&#39;/server/where-are-you&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">cb</span><span class="p">,</span> <span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// `data` contains the server&#39;s location</span>
+                <span class="nx">cb</span><span class="p">(</span><span class="s2">&quot;im not in the cloud&quot;</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                <span class="c1">// Something went wrong with the event, handle it</span>
+        <span class="p">}</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>Let&#8217;s go through what is happening with these events:</p>
+<ol class="arabic simple">
+<li>The first line is sending an event to the server at the path <cite>/some/event</cite>, including a large JSON payload, and not requesting a callback. This type of event might or might not be delivered to the server, and it&#8217;s not a big deal if it isn&#8217;t.</li>
+<li>This event requests a callback from the server, mainly because it&#8217;s requesting the server&#8217;s location. As you can see, it sends no data to the server, which is completely acceptable, but it counts on the server sending back data. In the callback, notice that it checks the error code for the callback, making sure that it&#8217;s 200 before doing anything else. If it&#8217;s not 200, it should make an attempt to handle any errors. Errors may be anything from &#8220;client disconnected&#8221; (code==-1), to &#8220;event path not found&#8221; (code==404), to any application-specific code.</li>
+</ol>
+<div class="section" id="event-delivering-and-persistence">
+<h3>Event Delivering and Persistence<a class="headerlink" href="#event-delivering-and-persistence" title="Permalink to this headline">¶</a></h3>
+<p>When network conditions become rough, an event might or might not be delivered, and it&#8217;s really important to understand how events are persisted and delivered. If a client is connected, chances are the events will be delivered to the server without any problems. If an event is sent to the server without a callback, then there is no way for the client to know if the server received the event. In some cases this is acceptable, but in some cases, you need to know that the server got the event. In these cases, you should ask the server for a callback, and you will know either that it got the event (it responds with some code), or that the connection to the server was lost, and you should try sending the event again. If the client is disconnected when you send an event, the event will be queued up until a connection has been re-established, and then it will be sent. This queuing only works for top-level events, meaning that any attempt to send a callback when disconnected will result in an immediate error callback.</p>
+<p>Sending a callback after losing a connection and reconnecting will also result in an immediate error callback: callbacks <cite>cannot</cite> be persisted across connections. But why? Well, there are a few reasons: when the client reconnects, it might connect to a different server in the cluster, so it can&#8217;t assume that the new server knows anything about it. It&#8217;s also impossible to manage callback state without explicit knowledge of what&#8217;s being implemented. For example, consider the following:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">send</span><span class="p">(</span><span class="s2">&quot;/i-need-help&quot;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">code</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">code</span> <span class="o">!=</span> <span class="mi">200</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// What should be done here?</span>
+                <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="nx">data</span> <span class="o">==</span> <span class="s2">&quot;what can I do for you?&quot;</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">cb</span><span class="p">(</span><span class="s2">&quot;where can I get something to eat?&quot;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+                        <span class="c1">// Data contains where to go eat, or maybe there&#39;s an error code!</span>
+                <span class="p">});</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">data</span> <span class="o">==</span> <span class="s2">&quot;i don&#39;t care&quot;</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">cb</span><span class="p">(</span><span class="s2">&quot;that makes me sad&quot;</span><span class="p">);</span>
+        <span class="p">}</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+<p>In this example, it&#8217;s not plausible for the server and client to maintain the state of the callbacks, especially cross-server, possibly even cross-datacenter, especially since a client might vanish at any point in this conversation. So it&#8217;s up to the client to ensure that anything it needs is delivered, or respond appropriately to the error codes. The server will do its best to fulfill all client requests, but it can only go so far.</p>
+</div>
+</div>
+<div class="section" id="receiving-events">
+<h2>Receiving Events<a class="headerlink" href="#receiving-events" title="Permalink to this headline">¶</a></h2>
+<p>The other part of handling events is being able to receive and route them properly. In order to receive events in the client, you&#8217;ll be subscribing to events and reacting to them. To do this, you very simply do the following:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;/event/i/care/about&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Handle the event in whatever way the application needs to</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>That&#8217;s right: you just subscribe to the event using an on() function, and whenever the server triggers the event, your function will be called. This should feel very similar to every other event system out there.</p>
+<p>When you no longer care about an event, you have a few options for telling the server:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="c1">// Remove all listeners</span>
+<span class="nx">off</span><span class="p">(</span><span class="s1">&#39;/event/i/care/about&#39;</span><span class="p">);</span>
+
+<span class="c1">// Remove only 1 listener</span>
+<span class="nx">off</span><span class="p">(</span><span class="s1">&#39;/event/i/care/about&#39;</span><span class="p">,</span> <span class="nx">cb</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The first line removes all callbacks from the event and informs the server it no longer cares about the event. The second line removes only a single callback from the event, identified by the variable <cite>cb</cite>, and will only unsubscribe on the server if there are no other listeners for that event.</p>
+<p>If you only want to hear about the event once, there is also a useful function for that:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">one</span><span class="p">(</span><span class="s1">&#39;/single/event&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Handle the event</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>When using one(), the event will be immediately unsubscribed from after the first event.</p>
+<p>In these examples, we&#8217;ve just ignored error handling. For the most part, once you&#8217;re subscribed to an event, you won&#8217;t get any errors. During subscription, however, it&#8217;s possible, so let&#8217;s check out how to handle it.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;/possible/subscription/error&#39;</span>
+        <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// When everything goes well</span>
+        <span class="p">},</span>
+        <span class="kd">function</span><span class="p">(</span><span class="nx">code</span><span class="p">,</span> <span class="nx">errMsg</span><span class="p">)</span> <span class="p">{</span>
+                <span class="c1">// When there&#39;s a subscription error</span>
+        <span class="p">});</span>
+</pre></div>
+</div>
+<p>In this case, when there is a subscription error, your error callback will be called immediately, and the subscription will be purged from the client. As usual, the application may choose how to respond to any subscription errors.</p>
+</div>
+<div class="section" id="special-events">
+<h2>Special Events<a class="headerlink" href="#special-events" title="Permalink to this headline">¶</a></h2>
+<p>Clients provide a few useful events for responding to connection and state changes. They follow, with their descriptions:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="4%" />
+<col width="96%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Event Path</th>
+<th class="head">When it&#8217;s fired</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>/open</td>
+<td>When a connection has been established to a QuickIO server, and the client is ready to send events to the server.</td>
+</tr>
+<tr class="row-odd"><td>/close</td>
+<td>Whenever a connection has closed after being opened.</td>
+</tr>
+<tr class="row-even"><td>/error</td>
+<td>Whenever there is some sort of error in the client that the client wants to report. This event is typically only informative and is used for debugging and logging and is heavily platform-dependent. This event may also fire numerous times while the client attempts to establish a connection to the server.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">QuickIO reserves the <cite>/qio</cite> namespace for itself and its internal events. You&#8217;ll never need to interact with anything in that namespace, so it&#8217;s pretty safe to ignore.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Programming with a QuickIO Client</a><ul>
+<li><a class="reference internal" href="#what-is-an-event">What is an event?</a></li>
+<li><a class="reference internal" href="#sending-events">Sending Events</a><ul>
+<li><a class="reference internal" href="#event-delivering-and-persistence">Event Delivering and Persistence</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#receiving-events">Receiving Events</a></li>
+<li><a class="reference internal" href="#special-events">Special Events</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="run-down.html"
+                        title="previous chapter">The Run Down</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="server-architecture.html"
+                        title="next chapter">Server Architecture</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/overview/programming-with-a-client.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="server-architecture.html" title="Server Architecture"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="run-down.html" title="The Run Down"
+             >previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Overview of QuickIO</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012-2014 Clear Channel Inc. Released under the MIT License..
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

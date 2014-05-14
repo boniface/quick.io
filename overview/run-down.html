@@ -1,0 +1,297 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The Run Down &mdash; QuickIO 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QuickIO 0.2 documentation" href="../index.html" />
+    <link rel="up" title="Overview of QuickIO" href="index.html" />
+    <link rel="next" title="Programming with a QuickIO Client" href="programming-with-a-client.html" />
+    <link rel="prev" title="Overview of QuickIO" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="programming-with-a-client.html" title="Programming with a QuickIO Client"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Overview of QuickIO"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Overview of QuickIO</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="the-run-down">
+<h1>The Run Down<a class="headerlink" href="#the-run-down" title="Permalink to this headline">¶</a></h1>
+<p>This page contains the quick-and-dirty introduction to QuickIO. This is a high-level overview, shedding the weight of code descriptions, algorithms, and other fun stuff, and instead using JavaScript examples to highlight points.</p>
+<div class="section" id="the-event-model">
+<h2>The Event Model<a class="headerlink" href="#the-event-model" title="Permalink to this headline">¶</a></h2>
+<p>Everything that the server sends and receives is treated as an event. An event can be something as simple as sending server time to a client to anything as complex as user authentication, handshakes, and callbacks.</p>
+<p>Event paths take the form of <cite>/some/path/to/an/event</cite> such that the they are namespaced, allowing multiple different applications to work independently of each other on the same server. Event paths may only consist of the following characters:</p>
+<div class="highlight-python"><div class="highlight"><pre>-/0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz
+</pre></div>
+</div>
+<p>Any other character in the path will be summarily removed and ignored. In other words, the following two paths will be identical once event path validation and filtering finishes:</p>
+<div class="highlight-python"><div class="highlight"><pre>/app/user/new
+/app/@user/(new)&gt;&gt;&gt;&gt;
+</pre></div>
+</div>
+<div class="section" id="event-format">
+<h3>Event Format<a class="headerlink" href="#event-format" title="Permalink to this headline">¶</a></h3>
+<p>Data sent to and from the server is composed of 3 different parts:</p>
+<div class="highlight-python"><div class="highlight"><pre>event_path:callback_id=json_data
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li>event_path: just the path of the event, in its full glory</li>
+<li>callback_id: an integer, greater than 0 (0 indicating no callback)</li>
+<li>data: JSON data as a string</li>
+</ol>
+</div>
+</div>
+<div class="section" id="event-example">
+<h2>Event Example<a class="headerlink" href="#event-example" title="Permalink to this headline">¶</a></h2>
+<p>With all of this in mind, let&#8217;s go through a deep example that demonstrates the power of this simple event format:</p>
+<div class="highlight-javascript"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17</pre></div></td><td class="code"><div class="highlight"><pre><span class="nx">qio</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="s1">&#39;/app/login&#39;</span><span class="p">,</span> <span class="p">{</span><span class="nx">session_id</span><span class="o">:</span> <span class="s1">&#39;1234abcd&#39;</span><span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">cb</span><span class="p">,</span> <span class="nx">code</span><span class="p">,</span> <span class="nx">errMsg</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">switch</span> <span class="p">(</span><span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">case</span> <span class="mi">400</span><span class="o">:</span>
+                        <span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Login failed :(&#39;</span><span class="p">);</span>
+                        <span class="k">break</span><span class="p">;</span>
+
+                <span class="k">case</span> <span class="mi">200</span><span class="o">:</span>
+                        <span class="nx">qio</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;/app/update&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+                                <span class="nx">log</span><span class="p">(</span><span class="s1">&#39;The app was updated on: &#39;</span> <span class="o">+</span> <span class="nx">data</span><span class="p">.</span><span class="nx">date</span><span class="p">);</span>
+                        <span class="p">});</span>
+
+                        <span class="nx">cb</span><span class="p">({</span><span class="nx">iam</span><span class="o">:</span> <span class="s1">&#39;Superman&#39;</span><span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+                                <span class="nx">log</span><span class="p">(</span><span class="s1">&#39;The server says his name is: &#39;</span> <span class="o">+</span> <span class="nx">data</span><span class="p">.</span><span class="nx">iam</span><span class="p">);</span>
+                        <span class="p">});</span>
+                        <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+<span class="p">});</span>
+</pre></div>
+</td></tr></table></div>
+<div class="section" id="line-1">
+<h3>Line 1<a class="headerlink" href="#line-1" title="Permalink to this headline">¶</a></h3>
+<p>In this case, we&#8217;re simply sending an event with some JSON data to /app/login; the actual data sent to the server will look like:</p>
+<div class="highlight-python"><div class="highlight"><pre>/app/login:1={&quot;session_id&quot;: &quot;1234abcd&quot;}
+</pre></div>
+</div>
+<p>This is just a simple, quick method of conveying everything about the event. Notice, too, that a function was passed in to the event. This function will be held by the client until the server responds with a callback, and it corresponds to callback ID 1, as you can see in the event. Once a callback is recieved, such as this one:</p>
+<div class="highlight-python"><div class="highlight"><pre>/qio/callback/1:1={&quot;code&quot;: 200, &quot;data&quot;: null}
+</pre></div>
+</div>
+<p>The function will be triggered on the client side. The function will be called with the following parameters:</p>
+<ul class="simple">
+<li>data = null (see the key in the JSON payload)</li>
+<li>cb = some function (since the server also requested a callback with ID 1)</li>
+<li>code = 200 (see the key in the JSON payload)</li>
+<li>errMsg = null as there was no error given</li>
+</ul>
+<p>Also, as we&#8217;ll see later on at Line 12, the server requested a callback from us (the 1 before the <cite>=</cite>), so we should be polite and honor that.</p>
+<p>At this point, we&#8217;re at Line 2.</p>
+</div>
+<div class="section" id="line-2">
+<h3>Line 2<a class="headerlink" href="#line-2" title="Permalink to this headline">¶</a></h3>
+<p>Based on code, we&#8217;re going to decide where to jump next; since the code was 200, we&#8217;re jumping to line 7.</p>
+</div>
+<div class="section" id="line-7">
+<h3>Line 7<a class="headerlink" href="#line-7" title="Permalink to this headline">¶</a></h3>
+<p>Since everything was good, we&#8217;re going to ask the application to inform us every time it is updated. That is, we&#8217;re subscribing to the event <cite>/app/update</cite>, and whenever that event fires, the function that is passed in will be called. The corresponding event that might be sent to the server is:</p>
+<div class="highlight-python"><div class="highlight"><pre>/qio/on:0=&quot;/app/update&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="line-12">
+<h3>Line 12<a class="headerlink" href="#line-12" title="Permalink to this headline">¶</a></h3>
+<p>Remember that the server requested a callback? Well, we&#8217;re going to respond to that callback by sending it our name. But wait, we&#8217;re also passing a callback to the callback! Don&#8217;t fret, think of it like this: the server sent us an <cite>event</cite> that requested a callback, so now we&#8217;re just sending an event that happens to be a callback to the server, and with that event, we&#8217;re requesting a callback:</p>
+<div class="highlight-python"><div class="highlight"><pre>/qio/callback/1:2={&quot;iam&quot;: &quot;Superman&quot;}
+</pre></div>
+</div>
+</div>
+<div class="section" id="line-13">
+<h3>Line 13<a class="headerlink" href="#line-13" title="Permalink to this headline">¶</a></h3>
+<p>After receiving our message and seeing that we&#8217;re Superman, the server will respond with its name. Let&#8217;s try not to be disappointed:</p>
+<div class="highlight-python"><div class="highlight"><pre>/qio/callback/2:0={&quot;code&quot;: 200, &quot;data&quot;: {&quot;iam&quot;: &#39;Howard&#39;}}
+</pre></div>
+</div>
+<p>Apparently, the server&#8217;s name is Howard, and it&#8217;s so ashamed of itself that it didn&#8217;t even request a callback, so that conversation is over.</p>
+</div>
+<div class="section" id="line-9">
+<h3>Line 9<a class="headerlink" href="#line-9" title="Permalink to this headline">¶</a></h3>
+<p>Wait a second, at one point, we subscribed to app updates. And it looks like the server just had an update; this is what that event looks like:</p>
+<div class="highlight-python"><div class="highlight"><pre>/app/update:0={&quot;date&quot;: &quot;Jan 1, 1970&quot;}
+</pre></div>
+</div>
+<p>Notice how this event doesn&#8217;t include a code or any other fields: those are specific to callbacks. All of the JSON data in this example is passed directly into the callback.</p>
+</div>
+<div class="section" id="output">
+<h3>Output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h3>
+<p>So after all that, what will actually be logged? Well, very simply, not much:</p>
+<div class="highlight-python"><div class="highlight"><pre>The server says his name is: Howard
+The app was updated on: Jan 1, 1970
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="event-subscriptions">
+<h2>Event Subscriptions<a class="headerlink" href="#event-subscriptions" title="Permalink to this headline">¶</a></h2>
+<p>Events can be sent back and forth between client and server on a one-to-one basis, but the real fun comes in broadcasting. When you have hundreds of thousands of clients that need to get the exact same message, you want to use subscriptions and broadcasting. In the example earlier, the client did:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="p">...</span><span class="nx">snip</span><span class="p">...</span>
+<span class="nx">qio</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;/app/update&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">alert</span><span class="p">(</span><span class="s1">&#39;The app was updated on: &#39;</span> <span class="o">+</span> <span class="nx">data</span><span class="p">.</span><span class="nx">date</span><span class="p">);</span>
+<span class="p">});</span>
+<span class="p">...</span><span class="nx">snip</span><span class="p">...</span>
+</pre></div>
+</div>
+<p>This registered an event listener on the server, waiting for the event <cite>/app/update</cite>. On the server, a list of clients subscriptions is maintained, so when you want to send an event to tons of waiting clients, send away!</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">Client subscriptions can be validated, so it&#8217;s possible to create authenticated, private subscriptions.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Broadcast events are the only event type that cannot have callbacks. Think of it: thousands of clients sending callbacks to every server message. Yikes.</p>
+</div>
+</div>
+<div class="section" id="event-unsubscriptions">
+<h2>Event Unsubscriptions<a class="headerlink" href="#event-unsubscriptions" title="Permalink to this headline">¶</a></h2>
+<p>Of course, not everyone wants to listen for an event forever, so clients are allowed to stop listening for events:</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">qio</span><span class="p">.</span><span class="nx">off</span><span class="p">(</span><span class="s1">&#39;/app/update&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Once all clients have unsubscribed from an event, it will be cleaned up on the server, and life there will continue as normal.</p>
+</div>
+<div class="section" id="event-callbacks">
+<h2>Event Callbacks<a class="headerlink" href="#event-callbacks" title="Permalink to this headline">¶</a></h2>
+<p>Callbacks are probably the trickiest event type. Whereas broadcast events go to everyone, and a general event goes to a single client, a callback is an event that is sent in <em>response</em> to another event. That is, the client sent the server an event, and the server is responding with data <em>to that event</em>, such that the two events are linked together. It is possible to have chains of events going back and forth between server and client where each is required to maintain enough state to be able to carry the conversation to an end.</p>
+<p>Callbacks are a bit tricky in their implementation details, but rest assured: whenever there is a callback, the server <em>WILL</em> issue a callback, and the client should do the same.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The Run Down</a><ul>
+<li><a class="reference internal" href="#the-event-model">The Event Model</a><ul>
+<li><a class="reference internal" href="#event-format">Event Format</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#event-example">Event Example</a><ul>
+<li><a class="reference internal" href="#line-1">Line 1</a></li>
+<li><a class="reference internal" href="#line-2">Line 2</a></li>
+<li><a class="reference internal" href="#line-7">Line 7</a></li>
+<li><a class="reference internal" href="#line-12">Line 12</a></li>
+<li><a class="reference internal" href="#line-13">Line 13</a></li>
+<li><a class="reference internal" href="#line-9">Line 9</a></li>
+<li><a class="reference internal" href="#output">Output</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#event-subscriptions">Event Subscriptions</a></li>
+<li><a class="reference internal" href="#event-unsubscriptions">Event Unsubscriptions</a></li>
+<li><a class="reference internal" href="#event-callbacks">Event Callbacks</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Overview of QuickIO</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="programming-with-a-client.html"
+                        title="next chapter">Programming with a QuickIO Client</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/overview/run-down.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="programming-with-a-client.html" title="Programming with a QuickIO Client"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Overview of QuickIO"
+             >previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Overview of QuickIO</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012-2014 Clear Channel Inc. Released under the MIT License..
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Client Architecture &mdash; QuickIO 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QuickIO 0.2 documentation" href="../index.html" />
+    <link rel="up" title="Overview of QuickIO" href="index.html" />
+    <link rel="next" title="Writing Applications" href="writing-applications.html" />
+    <link rel="prev" title="Server Architecture" href="server-architecture.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="writing-applications.html" title="Writing Applications"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="server-architecture.html" title="Server Architecture"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Overview of QuickIO</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="client-architecture">
+<h1>Client Architecture<a class="headerlink" href="#client-architecture" title="Permalink to this headline">¶</a></h1>
+<p>Clients are typically very simple and provide a few simple functions for larger applications to communicate with the server.</p>
+<div class="section" id="principles-of-clients">
+<h2>Principles of Clients<a class="headerlink" href="#principles-of-clients" title="Permalink to this headline">¶</a></h2>
+<p>Clients are built around a few, simple principles:</p>
+<ul class="simple">
+<li>If a client requests a callback, it will ALWAYS receive one.</li>
+<li>If the server requests a callback, it is polite to send one.</li>
+<li>Clients can be killed at any moment by the server, but they are allowed to reconnect and reestablish themselves.</li>
+<li>Clients can be told to move to a different server; they must follow this instruction.</li>
+<li>Clients are responsible for maintaining their own connection to the server.</li>
+</ul>
+</div>
+<div class="section" id="implementing-a-client">
+<h2>Implementing a Client<a class="headerlink" href="#implementing-a-client" title="Permalink to this headline">¶</a></h2>
+<p>The best way to get started implementing a client is to get familiar with an existing client. Either way, we&#8217;re going to run through everything that a client needs to implement to be up-to-par with all the other clients.</p>
+<div class="section" id="client-events">
+<h3>Client Events<a class="headerlink" href="#client-events" title="Permalink to this headline">¶</a></h3>
+<p>A client must handle the following events from the server:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="7%" />
+<col width="93%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Event</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>/qio/heartbeat</td>
+<td>Fired from the server every 60 seconds for some protocols (WebSocket, Raw). Typically, the client should just ignore the message, reset its last receive time, and move on. If the server requests a callback, however, the client MUST fire it as soon as possible.</td>
+</tr>
+<tr class="row-odd"><td>/qio/callback/{id}</td>
+<td>Fired when the server is sending a callback to the client; the id parameter is the callback id. This should call the registered callback function registered at this id.</td>
+</tr>
+<tr class="row-even"><td>/qio/move</td>
+<td>Fired when the server is forcing the client to balance to another QuickIO server. The data in the event is the server to move to. This should be as transparent as a reconnect.</td>
+</tr>
+</tbody>
+</table>
+<p>The following events are special events that are fired to alert the client of changes in connection state. These events MUST NEVER be sent to the server in a /qio/on event.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="6%" />
+<col width="94%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Event</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>/open</td>
+<td>Fire when a new connection to the server is established and the handshake has been completed.</td>
+</tr>
+<tr class="row-odd"><td>/close</td>
+<td>Fire whenever a connection to the server is lost or closed (even by a client), but only if /open has been fired.</td>
+</tr>
+<tr class="row-even"><td>/error</td>
+<td>Fire when there is an error connecting to the server, when the connection is lost, or any other error you see fit. The client will only treat this as informational and use it for logging and debugging. Any data included in this event is platform-dependent, but do you best to be thorough.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="client-functions">
+<h3>Client Functions<a class="headerlink" href="#client-functions" title="Permalink to this headline">¶</a></h3>
+<p>A client should implement the following functions:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="8%" />
+<col width="92%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Function</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>(constructor)</td>
+<td>Creates an object (or control structure) for handling all QuickIO requests.</td>
+</tr>
+<tr class="row-odd"><td>on</td>
+<td>Subscribe to an event on the server. This MUST update all internal structures to reflect that the client is now subscribed to the event and will be until <cite>off</cite> is called.</td>
+</tr>
+<tr class="row-even"><td>one</td>
+<td>Subscribe to the event, receive one event, and unsubscribe</td>
+</tr>
+<tr class="row-odd"><td>off(null)</td>
+<td>Unsubscribe from an event on the server, removing all callbacks.</td>
+</tr>
+<tr class="row-even"><td>off(cb)</td>
+<td>Remove a single callback from a subscription, calling unsubscribe on the server if there are no more callbacks.</td>
+</tr>
+<tr class="row-odd"><td>send</td>
+<td>Send an event to the server.</td>
+</tr>
+<tr class="row-even"><td>close</td>
+<td>Immediately close the connection to the server. This may be called in an /open callback, in a /close callback, or at any time by the client.</td>
+</tr>
+<tr class="row-odd"><td>reconnect</td>
+<td>For clients that exist in multi-threaded environments, this is used to trigger a connection after /open and /close have been subscribed to. It also drops any active connection and reconnects to the cluster immediately.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="handling-sending-events">
+<h3>Handling Sending Events<a class="headerlink" href="#handling-sending-events" title="Permalink to this headline">¶</a></h3>
+<p>While connected to a server, the client MUST send events as quickly as possible to the server. It should perform the following tasks:</p>
+<ol class="arabic simple">
+<li>Clean the event path such that it only contains [A-Za-z0-9_-/], starts with a slash, and has no trailing slash.</li>
+<li>Serialize any data to JSON immediately, or simply send a JSON <cite>null</cite> if there is no data.</li>
+<li>Assign the callback an ID from an unsigned 64bit integer that is atomically incremented such that the first ID issued is 1, second is 2, and so on, and store that ID and callback in some quick-lookup table for future reference.</li>
+<li>Format the event as follows: &lt;event path&gt;:&lt;callback ID, or 0 if no callback&gt;=&lt;serialized JSON string&gt;, for something like: /event/path:123={&#8220;json&#8221;: &#8220;data&#8221;}</li>
+<li>Write the event to the underlying protocol and flush it out to the server</li>
+</ol>
+<p>When not connected to the server, the client MUST queue up events until it reconnects. The following rules apply to queued events:</p>
+<ol class="arabic simple">
+<li>Callbacks that are being sent to the server MAY NEVER be queued, and -1 &#8220;disconnected&#8221; MUST be fired on them immediately since callbacks become invalid once the connection with the server has been lost.</li>
+<li>Subscription events may never be queued (/qio/on may never be put into the queue). The state of subscriptions is always known, and can be managed on reconnect, so queuing them up just results in extra memory usage.</li>
+<li>All other events MUST be persisted until connected.</li>
+<li>Any data to be sent with the event MUST be serialized into a string before being put into the queue so that the object that represents it maybe mutated after the call.</li>
+<li>Callback IDs may only be issued when connected, so just save a reference to the callback until connected.</li>
+</ol>
+</div>
+<div class="section" id="connecting-to-the-cluster">
+<h3>Connecting to the Cluster<a class="headerlink" href="#connecting-to-the-cluster" title="Permalink to this headline">¶</a></h3>
+<p>Each QuickIO cluster lives behind a single public address, typically a single DNS A record that points to all the servers. Each server, in turn, has a public address that can be requested at the event path /qio/hostname. To connect to a cluster, a client should pick one of the A records at random and try connecting; on failure, it may issue another DNS request for updated hosts or try the next one in its list. Each language has its own ways of doing this, and it&#8217;s usually best to let the socket library try to figure everything out. If you are, on the other hand, using bare sockets in C or the standard library in Java, you&#8217;re going to have to do this part yourself. Other languages seem to handle this for you.</p>
+<p>Since many clients in the wild are behind proxies and &#8220;smart&#8221; HTTP firewalls that don&#8217;t yet support WebSocket, it&#8217;s necessary to support HTTP long polling in each client. The client must first attempt to establish a WebSocket connection with the cluster, and if that fails for any reason besides an unreachable network or similar condition, it must immediately fall back to HTTP long polling. If it can establish a connection with the server over HTTP, it must continue using HTTP long polling until either the client or server terminates the connection. Once terminated, if the client is going to attempt to reconnect, it must first attempt WebSocket again, just in case the client changes networks, and the new network supports WebSocket.</p>
+<div class="section" id="websocket-handshakes">
+<h4>WebSocket Handshakes<a class="headerlink" href="#websocket-handshakes" title="Permalink to this headline">¶</a></h4>
+<p>QuickIO speaks WebSocket as described in <a class="reference external" href="http://tools.ietf.org/html/rfc6455">RFC6455</a>. Your client MUST implement the handshake and framing parts of the spec in order to communicate properly with a QuickIO server. QuickIO does NOT implement binary, continuation, ping, or pong frames, so feel free to ignore those (though bear in mind that ping and pong might be implemented in the future if web browsers ever build a standard API for using them).</p>
+<p>After going through the standard RFC6455 handshake and upgrade, it is necessary to send the QuickIO handshake as many proxies let all the proper headers through, so it appears that the upgrade succeeds. Without this handshake, it&#8217;s impossible to determine if the client <cite>can really</cite> speak WebSocket. The handshake is very simple: using all RFC6455 framing conventions, simply send the following message:</p>
+<div class="highlight-python"><div class="highlight"><pre>/qio/ohai
+</pre></div>
+</div>
+<p>The server will immediately respond with &#8220;/qio/ohai&#8221;, too, and at this point, all handshakes have finished, and the connection is considered opened. At this point, the client MUST fire an /open event.</p>
+</div>
+<div class="section" id="http-long-polling">
+<h4>HTTP Long Polling<a class="headerlink" href="#http-long-polling" title="Permalink to this headline">¶</a></h4>
+<p>If any part of the WebSocket handshake fails, aside from network issues, as mentioned, the client MUST try connection via HTTP. Since many HTTP clients and proxies will attempt to balance HTTP requests over many sockets, it&#8217;s possible that they will attempt to send long polling requests to different QuickIO servers in the cluster as they are round-robined behind a single DNS record. In order to ensure that the client is speaking to the same server throughout the lifetime of its HTTP session, it must conduct the opening handshake as follows:</p>
+<ol class="arabic">
+<li><dl class="first docutils">
+<dt>Issue an HTTP POST to the cluster address, for example quickio.example.com, with the body &#8220;/qio/hostname:1=null&#8221; and the following URL parameters:</dt>
+<dd><ul class="first last simple">
+<li>sid: the session ID used to identify the client. This MUST be a 128 bit number represented as 32 hexadecimal characters. It can be easily generated with any UUID library that supports UUID type 4 by taking the UUID string and replacing all &#8220;-&#8221; with &#8220;&#8221;.</li>
+<li>connect: this value MUST be the string &#8220;true&#8221; to indicate that the client is new. This parameter only ever appears in the initial request.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">If the server does not respond with a 200, the connection must be failed immediately, and the client must try reconnecting again.</p>
+</li>
+<li><p class="first">If the server responded with a 200, the body of the response will contain the server&#8217;s public address, formatted as an event response. All further communication with the server must use this address.</p>
+</li>
+<li><p class="first">After receiving any response from the server, including after the handshake, the client must schedule another POST request to run after 0-2000 milliseconds, chosen at random (typically Math.random() * 2000). This is necessary to make sure that there isn&#8217;t a stampeding herd attacking the server after HTTP heartbeats.</p>
+</li>
+<li><p class="first">A client may, at any time, issue a new POST request with newline-separated events, provided that the request is only sent after 0-2000 milliseconds, in the same way that requests are queued up after a poll finishes. Bodies of requests shall contain numerous newline-separated events, and they must be gathered into as few requests as possible (sending 2 requests at the same time is prohibited, the events must be gathered into a single request). Sending a request 0-2000 milliseconds after a previous request is acceptable as there is no way to preempt when events will be fired. The server will respond by completing any other requests from the client and holding onto the newest request until data is ready (the new request will become the long-polling request).</p>
+</li>
+<li><p class="first">If the client, at any point, sees a non 200 response, it must fail the connection immediately and fire any /close event, as appropriate.</p>
+</li>
+</ol>
+<p>Since this can be a bit complicated, let&#8217;s look at a sample HTTP conversation between the client and the server, unnecessary headers omitted:</p>
+<div class="highlight-http"><div class="highlight"><pre><span class="nf">POST</span> <span class="nn">/?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&amp;connect=true</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">quickio.example.com</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/plain</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">20</span>
+
+/qio/hostname:1=null
+</pre></div>
+</div>
+<div class="highlight-http"><div class="highlight"><pre><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/plain</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">62</span>
+
+/qio/callback/1:0={&quot;code&quot;:200,&quot;data&quot;:&quot;quickio129.example.com&quot;}
+</pre></div>
+</div>
+<div class="highlight-http"><div class="highlight"><pre><span class="nf">POST</span> <span class="nn">/?sid=16a0dd9a4e554a9f94520c8bfa59e1b9</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">quickio129.example.com</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/plain</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">0</span>
+</pre></div>
+</div>
+<div class="highlight-http"><div class="highlight"><pre><span class="nf">POST</span> <span class="nn">/?sid=16a0dd9a4e554a9f94520c8bfa59e1b9</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">quickio129.example.com</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/plain</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">16</span>
+
+/qio/ping:1=null
+</pre></div>
+</div>
+<div class="highlight-http"><div class="highlight"><pre><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">text/plain</span>
+<span class="na">Content-Length</span><span class="o">:</span> <span class="l">42</span>
+
+/qio/callback/1:0={&quot;code&quot;:200,&quot;data&quot;:null}
+</pre></div>
+</div>
+<p>At this point, there is 1 HTTP request pending at the server, and that will be used to send any new events back to the client. Once this request finishes, the client must send a new request after (Math.random() * 2000) milliseconds.</p>
+</div>
+</div>
+<div class="section" id="connection-persistence">
+<h3>Connection Persistence<a class="headerlink" href="#connection-persistence" title="Permalink to this headline">¶</a></h3>
+<p>The client MUST do its best to maintain a connection to the QuickIO cluster until it is told to stop. Between connection failures, it must backoff using the following algorithm, such that backoff increases between successive failures.</p>
+<div class="highlight-javascript"><div class="highlight"><pre><span class="nx">onDisconnect</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">backoff</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="mi">25600</span><span class="p">,</span> <span class="nx">backoff</span> <span class="o">*</span> <span class="mi">2</span><span class="p">);</span>
+        <span class="nx">reconnectAfter</span><span class="p">(</span><span class="nx">backoff</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="nx">onConnectAndSuccessfulHandshake</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">backoff</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>Once a connection with the server has been re-established, and once all handshakes have been completed, the client must do the following, <cite>in this order</cite>:</p>
+<ol class="arabic simple">
+<li>Go through all callbacks that exist and fire a -1 &#8220;disconnected&#8221; error on them, being sure not to trample any new callbacks that come in as a result of triggering the old ones.</li>
+<li>Subscribe to all events that exist in the client by sending a new /qio/on event to the server for each event, listening for any errors while subscribing.</li>
+<li>Go through any events that were accumulated while not connected and send them to the server.</li>
+<li>Fire /open and reset the backoff timer</li>
+</ol>
+</div>
+<div class="section" id="handling-events-from-the-server">
+<h3>Handling Events from the Server<a class="headerlink" href="#handling-events-from-the-server" title="Permalink to this headline">¶</a></h3>
+<p>During the lifetime of the client, it will receive a ton of events from the server. Handling them is really rather simple.</p>
+<ol class="arabic simple">
+<li>When an event comes through, break it into its parts (event path, cb id, and JSON data), and parse any JSON into an object.</li>
+<li>If the server requested a callback, create a callback that can be passed to the event handler and called from there.</li>
+<li>If the event path is a QuickIO event from the server (/qio/heartbeat, /qio/move, /qio/callback, etc), handle them as needed.</li>
+<li>Otherwise, lookup the event in the subscriptions table and call each callback with the JSON data.</li>
+</ol>
+<div class="section" id="callback-association-with-connections">
+<h4>Callback Association with Connections<a class="headerlink" href="#callback-association-with-connections" title="Permalink to this headline">¶</a></h4>
+<p>Since callbacks are very tightly linked to the server and session they have on the server, they must be explicitly tied to a given connection, typically by giving the connection an ID and associating the callback with that ID. If at any point the application attempts to trigger a callback that is not tied to the current connection, the client must respond to the callback immediately with -1 &#8220;disconnected&#8221;.</p>
+</div>
+</div>
+<div class="section" id="client-heartbeats">
+<h3>Client Heartbeats<a class="headerlink" href="#client-heartbeats" title="Permalink to this headline">¶</a></h3>
+<p>Your average user will most likely be someone connecting to your service from behind some NAT gateway: this presents some interesting problems. In order to make sure the client maintains a connection to the server at all times, even when there is no activity, application-level heartbeats are employed. Each protocol has a different way of handling heartbeats.</p>
+<div class="section" id="websocket-heartbeats">
+<h4>WebSocket Heartbeats<a class="headerlink" href="#websocket-heartbeats" title="Permalink to this headline">¶</a></h4>
+<p>By default, a client will receive at least one message every 60 seconds, be it in the form of a callback, broadcast event, or heartbeat.</p>
+<p>Heartbeats are implemented such that, if a client hasn&#8217;t been sent a message in around 60 seconds (this is variable to within -10 seconds, but a client will never go more than 60 seconds without an event from the server), it will receive a heartbeat.</p>
+<p>The best method for implementing a heartbeat is:</p>
+<ol class="arabic simple">
+<li>The client should listen for a <cite>/qio/heartbeat</cite> event (but not subscribe).</li>
+<li>Once the connection is open, the client should set a timer for 65 seconds, listening for messages from the server.</li>
+<li>Every time the client receives a message from the server, it should reset its timer.</li>
+<li>If there has been no activity within 65 seconds, assume the server is dead and reconnect.</li>
+</ol>
+</div>
+<div class="section" id="http-heartbeats">
+<h4>HTTP Heartbeats<a class="headerlink" href="#http-heartbeats" title="Permalink to this headline">¶</a></h4>
+<p>HTTP requests will be responded to once every 50 seconds in order to ensure that nasty proxies don&#8217;t just time them out. The client must, however, set a timeout of 60 seconds on each request, just to give any response time to traverse the network, and some time to be slow. If the request ever times out, the client must assume the connection has been lost and reconnect.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Client Architecture</a><ul>
+<li><a class="reference internal" href="#principles-of-clients">Principles of Clients</a></li>
+<li><a class="reference internal" href="#implementing-a-client">Implementing a Client</a><ul>
+<li><a class="reference internal" href="#client-events">Client Events</a></li>
+<li><a class="reference internal" href="#client-functions">Client Functions</a></li>
+<li><a class="reference internal" href="#handling-sending-events">Handling Sending Events</a></li>
+<li><a class="reference internal" href="#connecting-to-the-cluster">Connecting to the Cluster</a><ul>
+<li><a class="reference internal" href="#websocket-handshakes">WebSocket Handshakes</a></li>
+<li><a class="reference internal" href="#http-long-polling">HTTP Long Polling</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#connection-persistence">Connection Persistence</a></li>
+<li><a class="reference internal" href="#handling-events-from-the-server">Handling Events from the Server</a><ul>
+<li><a class="reference internal" href="#callback-association-with-connections">Callback Association with Connections</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#client-heartbeats">Client Heartbeats</a><ul>
+<li><a class="reference internal" href="#websocket-heartbeats">WebSocket Heartbeats</a></li>
+<li><a class="reference internal" href="#http-heartbeats">HTTP Heartbeats</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="server-architecture.html"
+                        title="previous chapter">Server Architecture</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="writing-applications.html"
+                        title="next chapter">Writing Applications</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/overview/client-architecture.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="writing-applications.html" title="Writing Applications"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="server-architecture.html" title="Server Architecture"
+             >previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Overview of QuickIO</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012-2014 Clear Channel Inc. Released under the MIT License..
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>quickio-clienttest &mdash; QuickIO 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QuickIO 0.2 documentation" href="../index.html" />
+    <link rel="up" title="QuickIO Binaries" href="index.html" />
+    <link rel="next" title="quickio-fuzzer" href="quickio-fuzzer.html" />
+    <link rel="prev" title="quickio" href="quickio.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="quickio-fuzzer.html" title="quickio-fuzzer"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="quickio.html" title="quickio"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">QuickIO Binaries</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="quickio-clienttest">
+<h1>quickio-clienttest<a class="headerlink" href="#quickio-clienttest" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<p>quickio-clienttest</p>
+</div>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>Run QuickIO to test client implementations against it.</p>
+<p>When run, this helper will instruct QuickIO to load up an application that is equipped to handle everything a client will need to run tests. The following events are created, and their functions follow.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="5%" />
+<col width="95%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Event</th>
+<th class="head">How to Use</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>/clienttest/broadcast</td>
+<td>Receive a broadcast every 10 milliseconds. Used primarily for testing on() and off() methods.</td>
+</tr>
+<tr class="row-odd"><td>/clienttest/close</td>
+<td>Initiate a close on the server side to ensure that the client reconnects when the server terminates the connection.</td>
+</tr>
+<tr class="row-even"><td>/clienttest/drop-callback</td>
+<td>Send an event to the server, requesting a callback, but never get one. Typically, after calling this, you should send <cite>/clienttest/close</cite>, wait for a reconnect, and ensure that the callback receives a -1 code (disconnected).</td>
+</tr>
+<tr class="row-odd"><td>/clienttest/echo</td>
+<td>Responds to any callback with the data it was sent. Use this for testing callback chains.</td>
+</tr>
+<tr class="row-even"><td>/clienttest/error</td>
+<td>Sending an event of the form <cite>/clienttest/error/500</cite> will send a callback with error code 500. You may replace the 500 with any integer to test any error code.</td>
+</tr>
+<tr class="row-odd"><td>/clienttest/heartbeat-challenge</td>
+<td>Have the server send a message of the form /qio/heartbeat:1=null. Just make sure that when it sends this you send back a callback.</td>
+</tr>
+<tr class="row-even"><td>/clienttest/in-progress</td>
+<td>Test that the client handles a code 202 correctly when subscribing to events. This events works as follows: (1) send a /qio/on:1=&#8221;/clienttest/in-progress&#8221; to the server (2) send a /qio/off to the server for the same event (3) send a /qio/on for the same event, again (4) send an event to /clienttest/in-progress, requesting a callback. The subscription will be processed and approved, and the callback with get a code 200 if everything went right. Otherwise, an error will be sent. The client should also check to make sure that, at this point, it has an active subscription to the event in its internal event storage.</td>
+</tr>
+<tr class="row-odd"><td>/clienttest/move</td>
+<td>Force the server to send the client a move message immediately. The data sent to this event will be echoed back to the client, so it should be the address that the client should move to.</td>
+</tr>
+<tr class="row-even"><td>/clienttest/send-invalid</td>
+<td>Force the server to send an event that does not follow QuickIO&#8217;s event format. The client should immediately close the connection when seeing the event.</td>
+</tr>
+<tr class="row-odd"><td>/clienttest/send-unsubscribed</td>
+<td>Force the server to send an event to the client that it&#8217;s not subscribed to. The client should only drop the message and nothing else.</td>
+</tr>
+</tbody>
+</table>
+<p>This helper creates two versions of QuickIO: a bare version and a proxified version. Both are necessary for thoroughly testing a client implementation.</p>
+<div class="section" id="bare-quickio">
+<h3>Bare QuickIO<a class="headerlink" href="#bare-quickio" title="Permalink to this headline">¶</a></h3>
+<p>This is just the bare QuickIO binary listening on port 55440. When testing with this port, the server will respond without any interference. This is best for testing basic client functions.</p>
+</div>
+<div class="section" id="proxified-quickio">
+<h3>Proxified QuickIO<a class="headerlink" href="#proxified-quickio" title="Permalink to this headline">¶</a></h3>
+<p>Since QuickIO clients have to run behind proxies, it&#8217;s necessary to test that the clients can fallback to HTTP long polling as necessary. On port 55441, you&#8217;ll find a mini server that sits between the client and the server running on port 55440 and that rewrites WebSocket&#8217;s initial HTTP upgrade headers in much the same way that proxies do. When connected to 55441, your client MUST ALWAYS fallback to HTTP long polling. If the client doesn&#8217;t, then that is a bug in your client.</p>
+</div>
+</div>
+<div class="section" id="options">
+<h2>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<p>There are no options specific to quickio-clienttest. It just runs.</p>
+</div>
+<div class="section" id="reporting-bugs">
+<h2>Reporting Bugs<a class="headerlink" href="#reporting-bugs" title="Permalink to this headline">¶</a></h2>
+<p>Bug reports are always welcome. Feel free to file any at: <a class="reference external" href="https://github.com/iheartradio/quick.io/issues">https://github.com/iheartradio/quick.io/issues</a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">quickio-clienttest</a><ul>
+<li><a class="reference internal" href="#synopsis">Synopsis</a></li>
+<li><a class="reference internal" href="#description">Description</a><ul>
+<li><a class="reference internal" href="#bare-quickio">Bare QuickIO</a></li>
+<li><a class="reference internal" href="#proxified-quickio">Proxified QuickIO</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#options">Options</a></li>
+<li><a class="reference internal" href="#reporting-bugs">Reporting Bugs</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="quickio.html"
+                        title="previous chapter">quickio</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="quickio-fuzzer.html"
+                        title="next chapter">quickio-fuzzer</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/binaries/quickio-clienttest.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="quickio-fuzzer.html" title="quickio-fuzzer"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="quickio.html" title="quickio"
+             >previous</a> |</li>
+        <li><a href="../index.html">QuickIO 0.2 documentation</a> &raquo;</li>
+          <li><a href="index.html" >QuickIO Binaries</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012-2014 Clear Channel Inc. Released under the MIT License..
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
