@@ -11,7 +11,7 @@ Build-Depends:
 	libgoogle-perftools-dev,
 	libssl-dev (>= 1.0.0),
 	python,
-	vim-common
+	python-sphinx
 
 Package: quickio
 Architecture: i386 amd64
