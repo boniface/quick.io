@@ -1,11 +1,12 @@
 quickio (0.2.0) stable; urgency=low
 
-  * Drasticall cleaned up QuickIO base.
+  * Drastically cleaned up QuickIO base.
   * Simplified application interface.
   * Simpler protocol.
+  * Support for HTTP long polling for clients behind proxies.
   * Better SSL support.
 
- -- Andrew Stone <andrew@clovar.com>  Tue, 21 Jan 2014 15:46:56 -0500
+ -- Andrew Stone <andrew@clovar.com>  Thu, 15 May 2014 15:09:31 -0500
 
 quickio (0.1.0) stable; urgency=low
 
