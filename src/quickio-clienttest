@@ -184,7 +184,7 @@ def main():
 		sp = subprocess.Popen([qio_path, '--config-file=%s' % INI_FILE])
 		sp.wait()
 		if sp.returncode != 0:
-			raise Exception('QuickIO exited with status %d' % ret)
+			raise Exception('QuickIO exited with status %d' % sp.returncode)
 	except exceptions.KeyboardInterrupt:
 		pass
 	except OSError as e:

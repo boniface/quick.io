@@ -64,7 +64,7 @@ for app in _apps:
 		sp = subprocess.Popen([_qio_path, '--config-file=%s' % INI_FILE])
 		sp.wait()
 		if sp.returncode != 0:
-			raise Exception('Test failed on "%s" (exit status %d)' % (app, ret))
+			raise Exception('Test failed on "%s" (exit status %d)' % (app, sp.returncode))
 	except OSError as e:
 		print >> sys.stderr, 'Error executing quickio binary: %s' % e
 		exit_code = 1

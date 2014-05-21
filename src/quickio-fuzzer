@@ -54,7 +54,7 @@ try:
 	sp = subprocess.Popen(cmd)
 	sp.wait()
 	if sp.returncode != 0:
-		raise Exception('QuickIO exited with status %d' % ret)
+		raise Exception('QuickIO exited with status %d' % sp.returncode)
 except exceptions.KeyboardInterrupt:
 	pass
 except OSError as e:
