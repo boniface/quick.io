@@ -321,7 +321,6 @@ void evs_send_full(
 		evs_send_sub_full(client, sub, json, cb_fn, cb_data, free_fn);
 	}
 
-	// @todo from that former memory leak: test multiple clients hitting things at random and really hard
 	sub_unref(sub);
 }
 
