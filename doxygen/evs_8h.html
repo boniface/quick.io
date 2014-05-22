@@ -785,6 +785,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="evs_
 </div><div class="memdoc">
 
 <p>The client was unsubscribed from an event, and any callbacks should be fired immediately. </p>
+<p>You should be holding a lock on the client while do unsubscribe operations.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">client</td><td>The client that was removed </td></tr>
@@ -1562,7 +1563,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="evs_
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed May 14 2014 13:53:13 for QuickIO by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu May 22 2014 11:23:00 for QuickIO by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

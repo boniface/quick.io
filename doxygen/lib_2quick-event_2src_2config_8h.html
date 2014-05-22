@@ -124,6 +124,14 @@ Macros</h2></td></tr>
 #define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lib_2quick-event_2src_2config_8h.html#a7feb67af4f9fa115076162132733c43e">QEV_CFG_INCLUDE</a>&#160;&#160;&#160;&quot;include&quot;</td></tr>
 <tr class="memdesc:a7feb67af4f9fa115076162132733c43e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The magic name that causes other config files to be loaded. <br/></td></tr>
 <tr class="separator:a7feb67af4f9fa115076162132733c43e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a547a86e274bd413c3faadde1064b9c47"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a547a86e274bd413c3faadde1064b9c47"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lib_2quick-event_2src_2config_8h.html#a547a86e274bd413c3faadde1064b9c47">QEV_CFG_LIST_SEPARATOR</a>&#160;&#160;&#160;','</td></tr>
+<tr class="memdesc:a547a86e274bd413c3faadde1064b9c47"><td class="mdescLeft">&#160;</td><td class="mdescRight">The value used to separate lists in the config file. <br/></td></tr>
+<tr class="separator:a547a86e274bd413c3faadde1064b9c47"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aefd325924b21d51b4aa91b8ae38a6285"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aefd325924b21d51b4aa91b8ae38a6285"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lib_2quick-event_2src_2config_8h.html#aefd325924b21d51b4aa91b8ae38a6285">QEV_CFG_WRAP_AT</a>&#160;&#160;&#160;75</td></tr>
+<tr class="memdesc:aefd325924b21d51b4aa91b8ae38a6285"><td class="mdescLeft">&#160;</td><td class="mdescRight">When generating a config file, wrap long lines at this length. <br/></td></tr>
+<tr class="separator:aefd325924b21d51b4aa91b8ae38a6285"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
@@ -182,7 +190,7 @@ guint64&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="l
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Handles configuration for the entire server and exposes a remote-management/monitoring interface. </p>
 <p>Command line arguments only allow setting configuration file locations.</p>
-<dl class="section note"><dt>Note</dt><dd>All config options are expected to be registered at start up from the same thread, so none of these functions are thread safe, and once the server is up, you probably shouldn't alter anything.</dd></dl>
+<dl class="section note"><dt>Note</dt><dd>All config options are expected to be registered at start up, from the same thread, before <a class="el" href="qev_8h.html#aecf8815c02f0bbb4472ca3797eab3efd" title="Spawns all worker threads and starts QEV running. ">qev_run()</a> is called, so none of these functions are thread safe, and once the server is up, you probably shouldn't alter anything.</dd></dl>
 <dl class="section author"><dt>Author</dt><dd>Andrew Stone <a href="#" onclick="location.href='mai'+'lto:'+'and'+'re'+'w@c'+'lo'+'var'+'.c'+'om'; return false;">andre<span style="display: none;">.nosp@m.</span>w@cl<span style="display: none;">.nosp@m.</span>ovar.<span style="display: none;">.nosp@m.</span>com</a> </dd></dl>
 <dl class="section copyright"><dt>Copyright</dt><dd>2012-2014 Clear Channel Inc. </dd></dl>
 </div><h2 class="groupheader">Typedef Documentation</h2>
@@ -448,7 +456,7 @@ Only a single listener per group may exist</dd></dl>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed May 14 2014 13:53:13 for QuickIO by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu May 22 2014 11:23:00 for QuickIO by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

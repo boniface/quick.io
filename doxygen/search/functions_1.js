@@ -16,5 +16,6 @@ var searchData=
   ['client_5fsub_5fadd',['client_sub_add',['../client_8h.html#abee91894c5168dc248c20d129d353099',1,'client.h']]],
   ['client_5fsub_5freject',['client_sub_reject',['../client_8h.html#a0712ff65111331a2a52e5ffa0f930a74',1,'client.h']]],
   ['client_5fsub_5fremove',['client_sub_remove',['../client_8h.html#a6b9ddb7b1a6c4b2387ef9d168979e3b5',1,'client.h']]],
-  ['client_5fupdate_5fsubs_5fconfig',['client_update_subs_config',['../client_8h.html#a6b98db5bdef0709b0efa3fc3ce3ab8ca',1,'client.h']]]
+  ['client_5fupdate_5fsubs_5fconfig',['client_update_subs_config',['../client_8h.html#a6b98db5bdef0709b0efa3fc3ce3ab8ca',1,'client.h']]],
+  ['config_5finit',['config_init',['../src_2config_8h.html#aa1d3b38b1da7f1a7f57c4a583ad1fdb1',1,'config.h']]]
 ];

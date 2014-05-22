@@ -266,54 +266,54 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00547"></a><span class="lineno">  547</span>&#160;        <span class="keyword">struct</span> <a class="code" href="structevent.html">event</a> *ev,</div>
 <div class="line"><a name="l00548"></a><span class="lineno">  548</span>&#160;        <span class="keyword">const</span> gchar *<a class="code" href="structevs__on__info.html#ae3a630440ac8ae6864688e610a626c1a">ev_extra</a>);</div>
 <div class="line"><a name="l00549"></a><span class="lineno">  549</span>&#160;</div>
-<div class="line"><a name="l00559"></a><span class="lineno">  559</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#ab387beb17d71f34ae8d71586012101b8">evs_client_offd</a>(<span class="keyword">struct</span> client *client, <span class="keyword">struct</span> <a class="code" href="structsubscription.html">subscription</a> *<a class="code" href="structevs__on__info.html#a2ba233704e85af12a51b7d63410594f6">sub</a>);</div>
-<div class="line"><a name="l00560"></a><span class="lineno">  560</span>&#160;</div>
-<div class="line"><a name="l00571"></a><span class="lineno">  571</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a4167aac4c9696d40d6cb6dfd3bc0dd4e">evs_cb</a>(</div>
-<div class="line"><a name="l00572"></a><span class="lineno">  572</span>&#160;        <span class="keyword">struct</span> client *client,</div>
-<div class="line"><a name="l00573"></a><span class="lineno">  573</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
-<div class="line"><a name="l00574"></a><span class="lineno">  574</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
-<div class="line"><a name="l00575"></a><span class="lineno">  575</span>&#160;</div>
-<div class="line"><a name="l00595"></a><span class="lineno">  595</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a8bcb6d5406787c6dd8c184aad0a03739">evs_cb_with_cb</a>(</div>
-<div class="line"><a name="l00596"></a><span class="lineno">  596</span>&#160;        <span class="keyword">struct</span> client *client,</div>
-<div class="line"><a name="l00597"></a><span class="lineno">  597</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
-<div class="line"><a name="l00598"></a><span class="lineno">  598</span>&#160;        <span class="keyword">const</span> gchar *json,</div>
-<div class="line"><a name="l00599"></a><span class="lineno">  599</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a2c358dfcbc0002a87fe8dd9264171715">evs_cb_fn</a> cb_fn,</div>
-<div class="line"><a name="l00600"></a><span class="lineno">  600</span>&#160;        <span class="keywordtype">void</span> *cb_data,</div>
-<div class="line"><a name="l00601"></a><span class="lineno">  601</span>&#160;        <span class="keyword">const</span> <a class="code" href="qev_8h.html#ab0e29aa904c50e484402e27c833f28b6">qev_free_fn</a> free_fn);</div>
-<div class="line"><a name="l00602"></a><span class="lineno">  602</span>&#160;</div>
-<div class="line"><a name="l00619"></a><span class="lineno">  619</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#ab42dc728d73e43731f13603808ee5412">evs_err_cb</a>(</div>
-<div class="line"><a name="l00620"></a><span class="lineno">  620</span>&#160;        <span class="keyword">struct</span> client *client,</div>
-<div class="line"><a name="l00621"></a><span class="lineno">  621</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
-<div class="line"><a name="l00622"></a><span class="lineno">  622</span>&#160;        <span class="keyword">const</span> <span class="keyword">enum</span> <a class="code" href="evs_8h.html#a767efe293644378381dc60038111de2c">evs_code</a> code,</div>
-<div class="line"><a name="l00623"></a><span class="lineno">  623</span>&#160;        <span class="keyword">const</span> gchar *err_msg,</div>
-<div class="line"><a name="l00624"></a><span class="lineno">  624</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
-<div class="line"><a name="l00625"></a><span class="lineno">  625</span>&#160;</div>
-<div class="line"><a name="l00655"></a><span class="lineno">  655</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a4c53d4b39b1047612f2533fcb6cc65da">evs_cb_full</a>(</div>
-<div class="line"><a name="l00656"></a><span class="lineno">  656</span>&#160;        <span class="keyword">struct</span> client *client,</div>
-<div class="line"><a name="l00657"></a><span class="lineno">  657</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
-<div class="line"><a name="l00658"></a><span class="lineno">  658</span>&#160;        <span class="keyword">const</span> <span class="keyword">enum</span> <a class="code" href="evs_8h.html#a767efe293644378381dc60038111de2c">evs_code</a> code,</div>
-<div class="line"><a name="l00659"></a><span class="lineno">  659</span>&#160;        <span class="keyword">const</span> gchar *err_msg,</div>
-<div class="line"><a name="l00660"></a><span class="lineno">  660</span>&#160;        <span class="keyword">const</span> gchar *json,</div>
-<div class="line"><a name="l00661"></a><span class="lineno">  661</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a2c358dfcbc0002a87fe8dd9264171715">evs_cb_fn</a> cb_fn,</div>
-<div class="line"><a name="l00662"></a><span class="lineno">  662</span>&#160;        <span class="keywordtype">void</span> *cb_data,</div>
-<div class="line"><a name="l00663"></a><span class="lineno">  663</span>&#160;        <span class="keyword">const</span> <a class="code" href="qev_8h.html#ab0e29aa904c50e484402e27c833f28b6">qev_free_fn</a> free_fn);</div>
-<div class="line"><a name="l00664"></a><span class="lineno">  664</span>&#160;</div>
-<div class="line"><a name="l00675"></a><span class="lineno">  675</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a31c38a3e7ea1a1bd0eda275f87de2c4b">evs_broadcast</a>(</div>
-<div class="line"><a name="l00676"></a><span class="lineno">  676</span>&#160;        <span class="keyword">struct</span> <a class="code" href="structevent.html">event</a> *ev,</div>
-<div class="line"><a name="l00677"></a><span class="lineno">  677</span>&#160;        <span class="keyword">const</span> gchar *<a class="code" href="structevs__on__info.html#ae3a630440ac8ae6864688e610a626c1a">ev_extra</a>,</div>
-<div class="line"><a name="l00678"></a><span class="lineno">  678</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
-<div class="line"><a name="l00679"></a><span class="lineno">  679</span>&#160;</div>
-<div class="line"><a name="l00683"></a><span class="lineno">  683</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#ac7ea6c42c11275f46c33da4443334d2b">evs_client_close</a>(<span class="keyword">struct</span> client *client);</div>
-<div class="line"><a name="l00684"></a><span class="lineno">  684</span>&#160;</div>
-<div class="line"><a name="l00693"></a><span class="lineno">  693</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a82b8d4a5658173e87aeffe9e732568ed">evs_broadcast_path</a>(</div>
-<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160;        <span class="keyword">const</span> gchar *ev_path,</div>
-<div class="line"><a name="l00695"></a><span class="lineno">  695</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
-<div class="line"><a name="l00696"></a><span class="lineno">  696</span>&#160;</div>
-<div class="line"><a name="l00703"></a><span class="lineno">  703</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a039a31a4b63349f65a3fb5534e87be82">evs_broadcast_tick</a>();</div>
-<div class="line"><a name="l00704"></a><span class="lineno">  704</span>&#160;</div>
-<div class="line"><a name="l00711"></a><span class="lineno">  711</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a80aaae82af03e819d23ae71fafe6f7f4">evs_pre_init</a>();</div>
-<div class="line"><a name="l00712"></a><span class="lineno">  712</span>&#160;</div>
-<div class="line"><a name="l00716"></a><span class="lineno">  716</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a8823e1187b1efd68a258d58f29acd1b3">evs_init</a>();</div>
+<div class="line"><a name="l00560"></a><span class="lineno">  560</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#ab387beb17d71f34ae8d71586012101b8">evs_client_offd</a>(<span class="keyword">struct</span> client *client, <span class="keyword">struct</span> <a class="code" href="structsubscription.html">subscription</a> *<a class="code" href="structevs__on__info.html#a2ba233704e85af12a51b7d63410594f6">sub</a>);</div>
+<div class="line"><a name="l00561"></a><span class="lineno">  561</span>&#160;</div>
+<div class="line"><a name="l00572"></a><span class="lineno">  572</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a4167aac4c9696d40d6cb6dfd3bc0dd4e">evs_cb</a>(</div>
+<div class="line"><a name="l00573"></a><span class="lineno">  573</span>&#160;        <span class="keyword">struct</span> client *client,</div>
+<div class="line"><a name="l00574"></a><span class="lineno">  574</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
+<div class="line"><a name="l00575"></a><span class="lineno">  575</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
+<div class="line"><a name="l00576"></a><span class="lineno">  576</span>&#160;</div>
+<div class="line"><a name="l00596"></a><span class="lineno">  596</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a8bcb6d5406787c6dd8c184aad0a03739">evs_cb_with_cb</a>(</div>
+<div class="line"><a name="l00597"></a><span class="lineno">  597</span>&#160;        <span class="keyword">struct</span> client *client,</div>
+<div class="line"><a name="l00598"></a><span class="lineno">  598</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
+<div class="line"><a name="l00599"></a><span class="lineno">  599</span>&#160;        <span class="keyword">const</span> gchar *json,</div>
+<div class="line"><a name="l00600"></a><span class="lineno">  600</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a2c358dfcbc0002a87fe8dd9264171715">evs_cb_fn</a> cb_fn,</div>
+<div class="line"><a name="l00601"></a><span class="lineno">  601</span>&#160;        <span class="keywordtype">void</span> *cb_data,</div>
+<div class="line"><a name="l00602"></a><span class="lineno">  602</span>&#160;        <span class="keyword">const</span> <a class="code" href="qev_8h.html#ab0e29aa904c50e484402e27c833f28b6">qev_free_fn</a> free_fn);</div>
+<div class="line"><a name="l00603"></a><span class="lineno">  603</span>&#160;</div>
+<div class="line"><a name="l00620"></a><span class="lineno">  620</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#ab42dc728d73e43731f13603808ee5412">evs_err_cb</a>(</div>
+<div class="line"><a name="l00621"></a><span class="lineno">  621</span>&#160;        <span class="keyword">struct</span> client *client,</div>
+<div class="line"><a name="l00622"></a><span class="lineno">  622</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
+<div class="line"><a name="l00623"></a><span class="lineno">  623</span>&#160;        <span class="keyword">const</span> <span class="keyword">enum</span> <a class="code" href="evs_8h.html#a767efe293644378381dc60038111de2c">evs_code</a> code,</div>
+<div class="line"><a name="l00624"></a><span class="lineno">  624</span>&#160;        <span class="keyword">const</span> gchar *err_msg,</div>
+<div class="line"><a name="l00625"></a><span class="lineno">  625</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
+<div class="line"><a name="l00626"></a><span class="lineno">  626</span>&#160;</div>
+<div class="line"><a name="l00656"></a><span class="lineno">  656</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a4c53d4b39b1047612f2533fcb6cc65da">evs_cb_full</a>(</div>
+<div class="line"><a name="l00657"></a><span class="lineno">  657</span>&#160;        <span class="keyword">struct</span> client *client,</div>
+<div class="line"><a name="l00658"></a><span class="lineno">  658</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a0ab577086de758f99a3e7c051dd0d431">evs_cb_t</a> <a class="code" href="structclient__cb.html">client_cb</a>,</div>
+<div class="line"><a name="l00659"></a><span class="lineno">  659</span>&#160;        <span class="keyword">const</span> <span class="keyword">enum</span> <a class="code" href="evs_8h.html#a767efe293644378381dc60038111de2c">evs_code</a> code,</div>
+<div class="line"><a name="l00660"></a><span class="lineno">  660</span>&#160;        <span class="keyword">const</span> gchar *err_msg,</div>
+<div class="line"><a name="l00661"></a><span class="lineno">  661</span>&#160;        <span class="keyword">const</span> gchar *json,</div>
+<div class="line"><a name="l00662"></a><span class="lineno">  662</span>&#160;        <span class="keyword">const</span> <a class="code" href="evs_8h.html#a2c358dfcbc0002a87fe8dd9264171715">evs_cb_fn</a> cb_fn,</div>
+<div class="line"><a name="l00663"></a><span class="lineno">  663</span>&#160;        <span class="keywordtype">void</span> *cb_data,</div>
+<div class="line"><a name="l00664"></a><span class="lineno">  664</span>&#160;        <span class="keyword">const</span> <a class="code" href="qev_8h.html#ab0e29aa904c50e484402e27c833f28b6">qev_free_fn</a> free_fn);</div>
+<div class="line"><a name="l00665"></a><span class="lineno">  665</span>&#160;</div>
+<div class="line"><a name="l00676"></a><span class="lineno">  676</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a31c38a3e7ea1a1bd0eda275f87de2c4b">evs_broadcast</a>(</div>
+<div class="line"><a name="l00677"></a><span class="lineno">  677</span>&#160;        <span class="keyword">struct</span> <a class="code" href="structevent.html">event</a> *ev,</div>
+<div class="line"><a name="l00678"></a><span class="lineno">  678</span>&#160;        <span class="keyword">const</span> gchar *<a class="code" href="structevs__on__info.html#ae3a630440ac8ae6864688e610a626c1a">ev_extra</a>,</div>
+<div class="line"><a name="l00679"></a><span class="lineno">  679</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
+<div class="line"><a name="l00680"></a><span class="lineno">  680</span>&#160;</div>
+<div class="line"><a name="l00684"></a><span class="lineno">  684</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#ac7ea6c42c11275f46c33da4443334d2b">evs_client_close</a>(<span class="keyword">struct</span> client *client);</div>
+<div class="line"><a name="l00685"></a><span class="lineno">  685</span>&#160;</div>
+<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a82b8d4a5658173e87aeffe9e732568ed">evs_broadcast_path</a>(</div>
+<div class="line"><a name="l00695"></a><span class="lineno">  695</span>&#160;        <span class="keyword">const</span> gchar *ev_path,</div>
+<div class="line"><a name="l00696"></a><span class="lineno">  696</span>&#160;        <span class="keyword">const</span> gchar *json);</div>
+<div class="line"><a name="l00697"></a><span class="lineno">  697</span>&#160;</div>
+<div class="line"><a name="l00704"></a><span class="lineno">  704</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a039a31a4b63349f65a3fb5534e87be82">evs_broadcast_tick</a>();</div>
+<div class="line"><a name="l00705"></a><span class="lineno">  705</span>&#160;</div>
+<div class="line"><a name="l00712"></a><span class="lineno">  712</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a80aaae82af03e819d23ae71fafe6f7f4">evs_pre_init</a>();</div>
+<div class="line"><a name="l00713"></a><span class="lineno">  713</span>&#160;</div>
+<div class="line"><a name="l00717"></a><span class="lineno">  717</span>&#160;<span class="keywordtype">void</span> <a class="code" href="evs_8h.html#a8823e1187b1efd68a258d58f29acd1b3">evs_init</a>();</div>
 <div class="ttc" id="evs_8h_html_a8bcb6d5406787c6dd8c184aad0a03739"><div class="ttname"><a href="evs_8h.html#a8bcb6d5406787c6dd8c184aad0a03739">evs_cb_with_cb</a></div><div class="ttdeci">void evs_cb_with_cb(struct client *client, const evs_cb_t client_cb, const gchar *json, const evs_cb_fn cb_fn, void *cb_data, const qev_free_fn free_fn)</div><div class="ttdoc">Sends a CODE_OK callback to a client while requesting a callback from the client. ...</div></div>
 <div class="ttc" id="evs_8h_html_a8823e1187b1efd68a258d58f29acd1b3"><div class="ttname"><a href="evs_8h.html#a8823e1187b1efd68a258d58f29acd1b3">evs_init</a></div><div class="ttdeci">void evs_init()</div><div class="ttdoc">Initialize the stats in events. </div></div>
 <div class="ttc" id="evs_8h_html_a27f682caba6253ee6458e027ab703b4c"><div class="ttname"><a href="evs_8h.html#a27f682caba6253ee6458e027ab703b4c">evs_on_info_free</a></div><div class="ttdeci">void evs_on_info_free(struct evs_on_info *info)</div><div class="ttdoc">Clean up the copy of struct evs_on_info, releasing any references made. </div></div>
@@ -384,7 +384,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed May 14 2014 13:53:13 for QuickIO by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu May 22 2014 11:22:59 for QuickIO by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

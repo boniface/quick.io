@@ -4,5 +4,6 @@ var searchData=
   ['cleanup_2eh',['cleanup.h',['../cleanup_8h.html',1,'']]],
   ['client_2eh',['client.h',['../client_8h.html',1,'']]],
   ['compat_2eh',['compat.h',['../compat_8h.html',1,'']]],
+  ['config_2eh',['config.h',['../src_2config_8h.html',1,'']]],
   ['config_2eh',['config.h',['../lib_2quick-event_2src_2config_8h.html',1,'']]]
 ];

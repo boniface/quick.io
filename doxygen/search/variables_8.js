@@ -7,7 +7,7 @@ var searchData=
   ['handshaked',['handshaked',['../structclient.html#a27d98b45bdb86c12150a41ecb359ec1b',1,'client']]],
   ['has_5fcrit',['has_crit',['../structqev__stats__threshold.html#a875e9a06be3f30894b844803370b96fe',1,'qev_stats_threshold']]],
   ['has_5fwarn',['has_warn',['../structqev__stats__threshold.html#a2d811fed9f9c981f6a942d59210ed2fb',1,'qev_stats_threshold']]],
-  ['header',['header',['../structprotocol__headers.html#a2ed62c6b2010567a6633a0fc11a1be43',1,'protocol_headers']]],
+  ['header',['header',['../structprotocol__headers.html#a2ed62c6b2010567a6633a0fc11a1be43',1,'protocol_headers::header()'],['../structqev__http__request.html#a77c840f44682f32bc032925fa619f2c6',1,'qev_http_request::header()']]],
   ['heartbeat',['heartbeat',['../structprotocol__heartbeat.html#a19d98ca82fad6c5448ef6c982f193876',1,'protocol_heartbeat::heartbeat()'],['../structprotocol.html#a0d8ab2df4eb057c2d042f68d85f76765',1,'protocol::heartbeat()']]],
   ['http',['http',['../structclient.html#a4c1b3daa07c7ca7fc498b8b901209688',1,'client']]]
 ];
