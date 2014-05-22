@@ -1,6 +1,6 @@
 /**
  * Provides support for HTTP long polling.
- * @file protocols_http.h
+ * @file
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

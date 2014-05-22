@@ -1,6 +1,6 @@
 /**
  * Handles applications running inside the server.
- * @file apps.h
+ * @file
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

@@ -1,6 +1,6 @@
 /**
  * Manages all of the protocols that clients may speak.
- * @file protocols.h
+ * @file
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

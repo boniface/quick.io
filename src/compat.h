@@ -1,6 +1,6 @@
 /**
  * For older versions of libraries, adds helpers for things that don't exist
- * @file compat.h
+ * @file
  */
 
 #pragma once

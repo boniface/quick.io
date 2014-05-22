@@ -1,6 +1,6 @@
 /**
  * For doing fast lookups of ev_path -> handler.
- * @file evs_query.h
+ * @file
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.

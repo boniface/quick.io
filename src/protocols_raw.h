@@ -1,7 +1,7 @@
  /**
  * Allows communication with QIO without any framing. In other words,
  * plain text using the QIO protocol.
- * @file protocols_raw.h
+ * @file
  *
  * @author Andrew Stone <andrew@clovar.com>
  * @copyright 2012-2014 Clear Channel Inc.
