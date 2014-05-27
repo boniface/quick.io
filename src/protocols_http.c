@@ -511,9 +511,7 @@ static enum protocol_status _do_headers_http(
 
 	content_len = qev_http_request_header(headers, HTTP_CONTENT_LENGTH);
 	if (content_len != NULL) {
-		gchar *len_end;
-		body_len = g_ascii_strtoull(content_len, &len_end, 10);
-		if (body_len == 0 && len_end == content_len) {
+		if (!qev_safe_strtoull(content_len, &body_len)) {
 			return PROT_FATAL;
 		}
 	} else if (is_post) {
