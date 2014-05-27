@@ -61,18 +61,20 @@ struct httpc {
 static void* _httpc_thread(void *hc);
 static void _next(struct httpc *hc, const gchar *msg);
 
-static void _uuid(gchar sid[32])
+static void _uuid(gchar sid[33])
 {
 	guint i;
 	for (i = 0; i < 32; i++) {
 		sid[i] = uuid_chars[g_random_int_range(0, strlen(uuid_chars))];
 	}
+
+	sid[32] = '\0';
 }
 
 static struct httpc* _httpc_new()
 {
 	gint err;
-	gchar sid[32];
+	gchar sid[33];
 	GString *buff = qev_buffer_get();
 	struct httpc *hc = g_slice_alloc0(sizeof(*hc));
 
@@ -160,34 +162,27 @@ static void _drain(struct httpc *hc, qev_fd_t sock)
 
 	while (buff->len > 0) {
 		gchar *cl;
-		gchar *body;
 		guint64 head_len;
 		guint64 body_len;
-		struct protocol_headers headers;
+		struct qev_http_response headers;
 
-		body = strstr(buff->str, "\r\n\r\n");
-		ASSERT(body != NULL, "No body found in response: %s", buff->str);
-		body[3] = '\0';
-		body += 4;
-
-		head_len = strlen(buff->str) + 1;
-
-		protocol_util_headers(buff->str, &headers);
-		cl = protocol_util_headers_get(&headers, "Content-Length");
+		ck_assert(qev_http_response_parse(buff->str, &headers));
+		cl = qev_http_response_header(&headers, "Content-Length");
 		body_len = g_ascii_strtoull(cl, NULL, 10);
+		head_len = headers.body - buff->str;
 
 		ASSERT(buff->len >= (head_len + body_len),
 			"Incomplete read from server: exepected at least %lu, got %lu",
 			head_len + body_len, buff->len);
 
-		ASSERT(strstr(buff->str, "200 OK") != NULL,
-			"Didn't get 200, got: %s", buff->str);
+		ASSERT(headers.status == 200,
+			"Didn't get 200, got: %lu", headers.status);
 
 		if (body_len > 0) {
-			gchar replacement = body[body_len];
-			body[body_len] = '\0';
+			gchar replacement = headers.body[body_len];
+			headers.body[body_len] = '\0';
 
-			gchar **msgs = g_strsplit(body, "\n", -1);
+			gchar **msgs = g_strsplit(headers.body, "\n", -1);
 			gchar **tmp = msgs;
 
 			while (*tmp != NULL) {
@@ -201,7 +196,7 @@ static void _drain(struct httpc *hc, qev_fd_t sock)
 
 			g_free(msgs);
 
-			body[body_len] = replacement;
+			headers.body[body_len] = replacement;
 		}
 
 		g_string_erase(buff, 0, head_len + body_len);
@@ -274,7 +269,7 @@ static void _assert_status_code(qev_fd_t s, const guint status)
 	g_string_printf(resp, "HTTP/1.0 %u", status);
 
 	err = recv(s, buff, sizeof(buff), 0);
-	err[buff] = '\0';
+	buff[err] = '\0';
 
 	ck_assert(g_str_has_prefix(buff, resp->str));
 
@@ -904,7 +899,7 @@ END_TEST
 
 START_TEST(test_http_error_not_http)
 {
-	const gchar *headers = "I'm too drunk to HTTP. Just figure it out.\n\n";
+	const gchar *headers = "GET\n\n";
 
 	gint err;
 	qev_fd_t s = test_socket();

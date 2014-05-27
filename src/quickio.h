@@ -45,7 +45,6 @@
 #include "protocols_http.h"
 #include "protocols_raw.h"
 #include "protocols_rfc6455.h"
-#include "protocols_util.h"
 
 /**
  * Extends the reasons for closing a client

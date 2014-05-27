@@ -20,13 +20,11 @@ void qio_main(int argc, char **argv)
 	periodic_init();
 
 	if (cfg_bind_address != NULL) {
-		guint16 port = cfg_bind_port;
-		qev_listen(cfg_bind_address, port);
+		qev_listen(cfg_bind_address, cfg_bind_port);
 	}
 
 	if (cfg_bind_address_ssl != NULL) {
-		guint16 port = cfg_bind_port_ssl;
-		qev_listen_ssl(cfg_bind_address_ssl, port,
+		qev_listen_ssl(cfg_bind_address_ssl, cfg_bind_port_ssl,
 					cfg_ssl_cert_path_0, cfg_ssl_key_path_0,
 					cfg_ssl_cert_path_1, cfg_ssl_key_path_1);
 	}

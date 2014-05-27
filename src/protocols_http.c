@@ -131,27 +131,6 @@ static gboolean _has_complete_header(struct client *client)
 		strstr(rbuff->str, HTTP_HEADER_TERMINATOR2) != NULL;
 }
 
-static gchar* _find_header_end(gchar *head)
-{
-	gchar *end;
-
-	end = strstr(head, HTTP_HEADER_TERMINATOR);
-	if (end != NULL) {
-		end += strlen(HTTP_HEADER_TERMINATOR);
-		*(end - 1) = '\0';
-		return end;
-	}
-
-	end = strstr(head, HTTP_HEADER_TERMINATOR2);
-	if (end != NULL) {
-		end += strlen(HTTP_HEADER_TERMINATOR2);
-		*(end - 1) = '\0';
-		return end;
-	}
-
-	return NULL;
-}
-
 static GString* _build_response_full(
 	const enum status status,
 	const GString *body,
@@ -493,13 +472,13 @@ static void _do_body(struct client *client, gchar *start)
 
 static enum protocol_status _do_headers_websocket(
 	struct client *client,
-	const struct protocol_headers *headers,
+	const struct qev_http_request *headers,
 	const gchar *connection,
 	const gchar *key)
 {
-	gchar *protocol = protocol_util_headers_get(headers, HTTP_PROTOCOL_KEY);
-	gchar *upgrade = protocol_util_headers_get(headers, HTTP_UPGRADE);
-	gchar *version = protocol_util_headers_get(headers, HTTP_VERSION_KEY);
+	gchar *protocol = qev_http_request_header(headers, HTTP_PROTOCOL_KEY);
+	gchar *upgrade = qev_http_request_header(headers, HTTP_UPGRADE);
+	gchar *version = qev_http_request_header(headers, HTTP_VERSION_KEY);
 
 	if (upgrade == NULL ||
 		connection == NULL ||
@@ -523,32 +502,26 @@ static enum protocol_status _do_headers_websocket(
 
 static enum protocol_status _do_headers_http(
 	struct client *client,
-	const struct protocol_headers *headers,
-	gchar *head_start)
+	const struct qev_http_request *headers)
 {
 	gchar *content_len;
 	struct client *surrogate;
 	guint64 body_len = 0;
-	gboolean is_post = g_str_has_prefix(head_start, "POST");
-	gchar *url = strstr(head_start, "/");
+	gboolean is_post = g_strcmp0(headers->method, "POST") == 0;
 
-	if (url == NULL) {
-		goto fatal;
-	}
-
-	content_len = protocol_util_headers_get(headers, HTTP_CONTENT_LENGTH);
+	content_len = qev_http_request_header(headers, HTTP_CONTENT_LENGTH);
 	if (content_len != NULL) {
 		gchar *len_end;
 		body_len = g_ascii_strtoull(content_len, &len_end, 10);
 		if (body_len == 0 && len_end == content_len) {
-			goto fatal;
+			return PROT_FATAL;
 		}
 	} else if (is_post) {
 		qev_close(client, HTTP_LENGTH_REQUIRED);
 		return PROT_FATAL;
 	}
 
-	surrogate = _get_surrogate(url);
+	surrogate = _get_surrogate(headers->url);
 	if (surrogate != NULL) {
 		qev_lock(surrogate);
 		qev_lock(client);
@@ -563,13 +536,9 @@ static enum protocol_status _do_headers_http(
 
 	client->http.body_len = body_len;
 	client->http.flags.is_post = is_post;
-	client->http.flags.iframe_requested = g_str_has_prefix(url, "/iframe");
+	client->http.flags.iframe_requested = g_strcmp0(headers->url, "/iframe") == 0;
 
 	return PROT_OK;
-
-fatal:
-	qev_close(client, HTTP_BAD_REQUEST);
-	return PROT_FATAL;
 }
 
 static void _cleanup()
@@ -694,28 +663,27 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 	if (client->http.body_len == 0) {
 		gchar *key;
 		gchar *connection;
-		gboolean is_http_11;
 		gboolean keep_alive;
-		struct protocol_headers headers;
+		struct qev_http_request headers;
 		gchar *head_start = rbuff->str + *used;
-		gchar *body_start = NULL;
 
-		body_start = _find_header_end(head_start);
-		if (body_start == NULL) {
-			return PROT_AGAIN;
+		if (!qev_http_request_parse(head_start, &headers)) {
+			if (headers.errors.headers_incomplete) {
+				return PROT_AGAIN;
+			} else {
+				status = PROT_FATAL;
+			}
 		}
 
 		_send_error(client, STATUS_200);
 
-		protocol_util_headers(head_start, &headers);
-		key = protocol_util_headers_get(&headers, HTTP_CHALLENGE_KEY);
-		connection = protocol_util_headers_get(&headers, HTTP_CONNECTION);
+		key = qev_http_request_header(&headers, HTTP_CHALLENGE_KEY);
+		connection = qev_http_request_header(&headers, HTTP_CONNECTION);
 
-		is_http_11 = strstr(head_start, "HTTP/1.1") != NULL;
-		keep_alive = is_http_11;
+		keep_alive = headers.version == 1;
 
 		if (connection != NULL) {
-			if (is_http_11) {
+			if (keep_alive) {
 				keep_alive = strcasestr(connection, "close") == NULL;
 			} else {
 				keep_alive = strcasestr(connection, "keep-alive") != NULL;
@@ -725,12 +693,18 @@ enum protocol_status protocol_http_route(struct client *client, gsize *used)
 		client->http.flags.in_request = TRUE;
 		client->http.flags.keep_alive = keep_alive;
 
-		if (key != NULL) {
-			status = _do_headers_websocket(client, &headers, connection, key);
-			*used = rbuff->len;
-		} else {
-			status = _do_headers_http(client, &headers, head_start);
-			*used += body_start - (rbuff->str + *used);
+		if (status != PROT_FATAL) {
+			if (key != NULL) {
+				status = _do_headers_websocket(client, &headers, connection, key);
+				*used = rbuff->len;
+			} else {
+				status = _do_headers_http(client, &headers);
+				*used += headers.body - (rbuff->str + *used);
+			}
+		}
+
+		if (status == PROT_FATAL) {
+			qev_close(client, HTTP_BAD_REQUEST);
 		}
 	}
 

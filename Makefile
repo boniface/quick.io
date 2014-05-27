@@ -45,134 +45,19 @@ COMPRESSOR_JARS = \
 # ==============================================================================
 #
 
-# When recursing on this Makefile, make sure the flags aren't overridden.
-# Using "?=" allows dh_* to override all the flags, so protect them with this
-# export.
-ifndef QUICKIO_MAKEFILE
-	export CFLAGS = \
-		-g \
-		-Wall \
-		-Wextra \
-		-Wshadow \
-		-Wformat=2 \
-		-Werror \
-		-fstack-protector \
-		--param=ssp-buffer-size=4 \
-		-D_FORTIFY_SOURCE=2 \
-		-std=gnu99 \
-		-DQIO_SERVER \
-		-DVERSION_NAME="$(VERSION_NAME)" \
-		-DVERSION_MAJOR=$(VERSION_MAJOR) \
-		-DVERSION_MINOR=$(VERSION_MINOR) \
-		-DVERSION_MICRO=$(VERSION_MICRO) \
-		-I$(CURDIR)/$(LIB_DIR) \
-		-I$(CURDIR)/$(SRC_DIR) \
-		-mfpmath=sse \
-		-msse \
-		-msse2 \
-		$(shell pkg-config --cflags $(LIBS))
+include lib/quick-event/Makefile.flags
 
-	export CFLAGS_BIN = $(CFLAGS)
+CFLAGS += \
+	-I$(CURDIR)/$(LIB_DIR) \
+	-I$(CURDIR)/$(SRC_DIR) \
+	-DQIO_SERVER
 
-	export CFLAGS_SO = \
-		$(CFLAGS) \
-		-shared \
-		-fPIC
+CFLAGS_BIN_DEBUG += \
+	-DQIO_DEBUG
 
-	export LDFLAGS = \
-		-g \
-		-rdynamic \
-		-Wl,-z,now \
-		-Wl,-z,relro \
-		-lm \
-		$(shell pkg-config --libs $(LIBS))
-
-	export LDFLAGS_BIN = \
-		$(LDFLAGS)
-
-	export LDFLAGS_SO = \
-		$(LDFLAGS)
-
-	export QUICKIO_MAKEFILE = 1
-endif
-
-#
-# Extra flags for debug
-#
-# ==============================================================================
-#
-
-CFLAGS_BIN_DEBUG = \
-	-fno-inline \
-	-DQIO_DEBUG \
-	-DQEV_LOG_DEBUG
-
-LDFLAGS_BIN_DEBUG =
-
-#
-# Extra flags for testing
-#
-# ==============================================================================
-#
-
-CFLAGS_BIN_TEST = \
-	--coverage \
-	-fno-inline \
+CFLAGS_BIN_TEST += \
 	-I../$(SRC_DIR) \
-	-DQEV_ENABLE_MOCK \
-	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2))) \
-	$(shell pkg-config --cflags $(LIBS_TEST))
-
-LDFLAGS_BIN_TEST = \
-	--coverage \
-	$(shell pkg-config --libs $(LIBS_TEST))
-
-#
-# Extra flags for release
-#
-# ==============================================================================
-#
-
-CFLAGS_BIN_RELEASE = \
-	-O3
-
-CFLAGS_SO_RELEASE = \
-	-O3
-
-LDFLAGS_BIN_RELEASE =
-
-# In order to ensure that as-needed is used, it has to come BEFORE all the
-# libraries, so the define for this one is a bit different (see _release)
-LDFLAGS_SO_RELEASE = \
-	-Wl,--as-needed
-
-ifdef TCMALLOC_PROFILE
-	export HEAPPROFILE=tcmalloc
-	export G_SLICE=always-malloc
-	export HEAP_PROFILE_INUSE_INTERVAL=10485760
-
-	LDFLAGS_BIN_RELEASE += \
-		-ltcmalloc
-else ifdef TCMALLOC_CHECK
-	export HEAPCHECK=draconian
-	export G_SLICE=always-malloc
-	export PPROF_PATH=$(shell which pprof || which google-pprof)
-
-	LDFLAGS_BIN_RELEASE += \
-		-ltcmalloc
-else
-	CFLAGS_BIN_RELEASE += \
-		-fPIE
-
-	LDFLAGS_BIN_RELEASE += \
-		-pie \
-		-ltcmalloc_minimal
-endif
-
-ifeq ($(CC),gcc)
-	CFLAGS_BIN_RELEASE += -flto -fPIC
-	LDFLAGS_BIN_RELEASE += -flto
-endif
+	-DPORT=$(shell echo $$(((($$$$ % (32766 - 1024)) + 1024) * 2)))
 
 #
 # What actually gets built
@@ -193,7 +78,6 @@ OBJECTS = \
 	$(SRC_DIR)/protocols_http.o \
 	$(SRC_DIR)/protocols_raw.o \
 	$(SRC_DIR)/protocols_rfc6455.o \
-	$(SRC_DIR)/protocols_util.o \
 	$(SRC_DIR)/qev.o \
 	$(SRC_DIR)/quickio.o \
 	$(SRC_DIR)/sub.o
@@ -222,7 +106,6 @@ TESTS = \
 	test_protocol_http \
 	test_protocol_raw \
 	test_protocol_rfc6455 \
-	test_protocol_util \
 	test_sub
 
 TEST_APPS = \
@@ -251,7 +134,7 @@ all:
 	@echo "    make helper-fuzzer      run QuickIO for fuzzing"
 	@echo "    make install            install the binaries locally"
 	@echo "    make release            build a release-ready version of QuickIO"
-	@echo "    make run                run quickio in debug mode"
+	@echo "    make run                run QuickIO in debug mode"
 	@echo "    make test               run the test suite"
 	@echo "    make uninstall          remove all installed files"
 
