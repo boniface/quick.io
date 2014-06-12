@@ -160,14 +160,13 @@ qev_fd_t test_socket()
 	qev_fd_t sock;
 	gchar port[6];
 	gint on = 1;
-	struct addrinfo hints;
 	struct addrinfo *res = NULL;
+	struct addrinfo hints = {
+		.ai_family = AF_UNSPEC,
+		.ai_socktype = SOCK_STREAM,
+	};
 
 	snprintf(port, sizeof(port), "%u", PORT);
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
 
 	ck_assert(getaddrinfo("localhost", port, &hints, &res) == 0);
 
