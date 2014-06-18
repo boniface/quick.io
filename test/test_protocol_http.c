@@ -454,7 +454,7 @@ END_TEST
 
 START_TEST(test_http_iframe)
 {
-	const gchar *header = "GET /iframe HTTP/1.1\n\n";
+	const gchar *header = "GET /iframe?instanceid=123 HTTP/1.1\n\n";
 
 	gint err;
 	gchar buff[0xffff];

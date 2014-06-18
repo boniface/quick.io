@@ -534,7 +534,7 @@ static enum protocol_status _do_headers_http(
 
 	client->http.body_len = body_len;
 	client->http.flags.is_post = is_post;
-	client->http.flags.iframe_requested = g_strcmp0(headers->url, "/iframe") == 0;
+	client->http.flags.iframe_requested = g_str_has_prefix(headers->url, "/iframe");
 
 	return PROT_OK;
 }
