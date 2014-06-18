@@ -44,8 +44,8 @@ struct event* evs_query_insert(
  * @param ev_extra
  *     Where to place any extra path segments that were found. For example,
  *     if ev_path="/event/path/with/some/extras", and the registered
- *     event was "/event/path", this will contains "/with/some/extras". If
- *     there are no extra paths, this will point to a string of len==0.
+ *     event was "/event/path", this will contain "/with/some/extras". If
+ *     there are no extra segments, this will point to a string of len==0.
  */
 struct event* evs_query(
 	const gchar *ev_path,
