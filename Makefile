@@ -86,7 +86,7 @@ APPS = \
 	$(SRC_DIR)/quickio-clienttest.so
 
 OBJECTS_TEST = \
-	$(patsubst %,../%,$(OBJECTS))
+	$(OBJECTS:%=../%)
 
 BINARY_OBJECTS = \
 	$(OBJECTS) \
@@ -151,10 +151,10 @@ clean:
 	@rm -f $(BINARY)
 	@rm -f $(BINARY_OBJECTS)
 	@rm -f $(APPS) $(TEST_APPS)
-	@rm -f $(patsubst %,%.html,$(HTML_SRCS))
+	@rm -f $(HTML_SRCS:%=%.html)
 	@rm -f $(SRC_DIR)/protocols_http_iframe.c*
-	@rm -f $(patsubst %,$(BENCH_DIR)/%,$(BENCHES))
-	@rm -f $(patsubst %,$(TEST_DIR)/%,$(TESTS))
+	@rm -f $(BENCHES:%=$(BENCH_DIR)/%)
+	@rm -f $(TESTS:%=$(TEST_DIR)/%)
 	@rm -f test/*.sock
 	@rm -f tcmalloc.*
 	@$(MAKE) -s -C $(QEV_DIR) clean
@@ -194,7 +194,7 @@ install: release
 		$(DESTDIR)/usr/include/quickio/quick-event \
 		$(DESTDIR)/usr/lib/pkgconfig \
 		$(DESTDIR)/usr/lib/quickio
-	$(INSTALL_BIN) $(BINARY) $(patsubst %,$(SRC_DIR)/%,$(BINARY_HELPERS)) \
+	$(INSTALL_BIN) $(BINARY) $(BINARY_HELPERS:%=$(SRC_DIR)/% \
 		$(DESTDIR)/usr/bin/
 	$(INSTALL) quickio.ini $(DESTDIR)/etc/quickio
 	$(INSTALL) src/*.h $(DESTDIR)/usr/include/quickio
