@@ -179,6 +179,8 @@ def main():
 
 	_run_interceptor()
 
+	print 'Waiting for client connections...'
+
 	exit_code = 0
 	try:
 		sp = subprocess.Popen([qio_path, '--config-file=%s' % INI_FILE])
