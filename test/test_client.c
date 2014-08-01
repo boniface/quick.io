@@ -310,7 +310,7 @@ END_TEST
 START_TEST(test_client_subs_unfair)
 {
 	union qev_cfg_val val = { .ui64 = 0 };
-	qev_cfg_set("quick.io", "clients-subs-fairness", val, NULL);
+	qev_cfg_set("quick.io", "clients-subs-pressure", val, NULL);
 
 	guint i;
 	qev_fd_t tc = test_client();
