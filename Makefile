@@ -195,7 +195,7 @@ install: release
 		$(DESTDIR)/usr/include/quickio/quick-event \
 		$(DESTDIR)/usr/lib/pkgconfig \
 		$(DESTDIR)/usr/lib/quickio
-	$(INSTALL_BIN) $(BINARY) $(BINARY_HELPERS:%=$(SRC_DIR)/% \
+	$(INSTALL_BIN) $(BINARY) $(BINARY_HELPERS:%=$(SRC_DIR)/%) \
 		$(DESTDIR)/usr/bin/
 	$(INSTALL) quickio.ini $(DESTDIR)/etc/quickio
 	$(INSTALL) src/*.h $(DESTDIR)/usr/include/quickio
