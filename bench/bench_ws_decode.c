@@ -14,7 +14,6 @@
 static GString *_buff = NULL;
 static GString *_buff_out = NULL;
 
-
 static gchar _mask[4] = "abcd";
 
 static union {

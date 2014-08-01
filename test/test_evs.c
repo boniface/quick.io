@@ -273,25 +273,36 @@ END_TEST
 
 START_TEST(test_evs_malformed_path)
 {
-	qev_fd_t tc = test_client();
+	guint i;
+	GString *buff = qev_buffer_get();
+	struct {
+		gchar *str;
+		gchar *expected;
+	} tests[] = {
+		{	.str = "/\334\uffff/qio/ping",
+			.expected = "/qio/ping",
+		},
+		{	.str = "///////???qio//////**ping///////",
+			.expected = "/qio/ping",
+		},
+		{	.str = "qio/ping***&^^$#@:1=null",
+			.expected = "qio/ping1null",
+		},
+		{	.str = "///////???qio//////**ping***&^^$#@///////test",
+			.expected = "/qio/ping/test",
+		},
+		{	.str = "///////???qio///****///ping//",
+			.expected = "/qio/ping",
+		},
+	};
 
-	test_cb(tc,
-		"/qio/on:1=\"\334ufff",
-		"/qio/callback/1:0={\"code\":404,\"data\":null,\"err_msg\":null}");
+	for (i = 0; i < G_N_ELEMENTS(tests); i++) {
+		g_string_assign(buff, tests[i].str);
+		evs_clean_path(buff->str);
+		ck_assert_str_eq(buff->str, tests[i].expected);
+	}
 
-	test_cb(tc,
-		"///////???qio//////**ping///////:1=null",
-		"/qio/callback/1:0={\"code\":200,\"data\":null}");
-
-	test_cb(tc,
-		"qio/ping***&^^$#@:1=null",
-		"/qio/callback/1:0={\"code\":200,\"data\":null}");
-
-	test_cb(tc,
-		"///////???qio//////**ping***&^^$#@///////:1=null",
-		"/qio/callback/1:0={\"code\":200,\"data\":null}");
-
-	close(tc);
+	qev_buffer_put(buff);
 }
 END_TEST
 

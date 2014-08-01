@@ -93,6 +93,7 @@ BINARY_OBJECTS = \
 	$(SRC_DIR)/main.o
 
 BENCHES = \
+	bench_evs \
 	bench_routing \
 	bench_ws_decode
 

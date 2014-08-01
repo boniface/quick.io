@@ -143,7 +143,7 @@ guint evs_clean_path(gchar *ev_path)
 		if (*curr == '/') {
 			do {
 				curr++;
-			} while (*curr == '/');
+			} while (*curr == '/' || (!_allowed_chars[(guchar)*curr] && *curr != '\0'));
 		} else {
 			curr++;
 		}
