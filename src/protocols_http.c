@@ -143,7 +143,7 @@ static GString* _build_response_full(
 	g_string_append(buff, _statuses[status].line);
 	g_string_append(buff,
 		HTTP_COMMON
-		"Content-Length: ");
+		HTTP_CONTENT_LENGTH ": ");
 
 	qev_buffer_append_uint(buff, len);
 
