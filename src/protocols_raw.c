@@ -181,7 +181,7 @@ enum protocol_status protocol_raw_handle(struct client *client, gchar *event)
 	gchar *curr;
 	gchar *end;
 
-	curr = strstr(event, ":");
+	curr = strchr(event, ':');
 	if (curr == NULL) {
 		goto error;
 	}
