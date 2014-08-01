@@ -29,7 +29,10 @@ static gboolean _get_if_exists(
 	return sub != NULL;
 }
 
-struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
+struct subscription* sub_get(
+	struct event *ev,
+	const gchar *ev_extra,
+	const gboolean or_create)
 {
 	struct subscription *sub;
 
@@ -44,15 +47,17 @@ struct subscription* sub_get(struct event *ev, const gchar *ev_extra)
 
 	g_rw_lock_reader_unlock(&ev->subs_lock);
 
-	if (sub == NULL) {
+	if (sub == NULL && or_create) {
 		g_rw_lock_writer_lock(&ev->subs_lock);
 
 		if (!_get_if_exists(ev, ev_extra, &sub)) {
 			sub = g_slice_alloc0(sizeof(*sub));
 			sub->ev = ev;
 			sub->ev_extra = g_strdup(ev_extra);
-			sub->subscribers = qev_list_new_resizable(cfg_sub_min_size,
-											qev_cfg_get_max_clients(), NULL);
+			sub->subscribers = qev_list_new_resizable(
+				cfg_sub_min_size,
+				qev_cfg_get_max_clients(),
+				NULL);
 			sub->refs = 1;
 
 			g_hash_table_replace(ev->subs, sub->ev_extra, sub);

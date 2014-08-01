@@ -26,6 +26,9 @@ bind-path = /tmp/quickio.sock
 public-address = localhost
 [quick.io-apps]
 quick-fuzz = quick-fuzz
+ihr-now-playing = /home/andi/Dev/IHR/quick.io/app-ihr/ihr-now-playing
+[ihr-now-playing]
+parent-server = ws://iad-quickio-master101.ihr
 '''
 
 if "/usr/bin" in os.path.abspath(__file__):

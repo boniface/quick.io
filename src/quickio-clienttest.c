@@ -119,7 +119,7 @@ static enum evs_status _in_progress_handler(
 	GVariant *cb = client_get(client, in_progress_callback_quark());
 
 	if (cb != NULL) {
-		struct subscription *sub = sub_get(_ev_in_progress, NULL);
+		struct subscription *sub = sub_get(_ev_in_progress, NULL, TRUE);
 		struct evs_on_info sub_info = {
 			.client = client,
 			.sub = sub,

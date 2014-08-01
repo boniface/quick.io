@@ -355,7 +355,7 @@ START_TEST(test_client_subs_add_after_close)
 	enum client_sub_state state;
 	gchar *ev_extra = NULL;
 	struct event *ev = evs_query("/test/good", &ev_extra);
-	struct subscription *sub = sub_get(ev, ev_extra);
+	struct subscription *sub = sub_get(ev, ev_extra, TRUE);
 	struct client *surrogate = protocols_new_surrogate(protocol_rfc6455);
 
 	qev_close(surrogate, 0);

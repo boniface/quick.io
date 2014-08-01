@@ -13,14 +13,14 @@ START_TEST(test_sub_get_race)
 	struct subscription *sub2;
 	gchar *ev_extra = NULL;
 	struct event *ev = evs_query("/test/good", &ev_extra);
-	struct subscription *sub = sub_get(ev, NULL);
+	struct subscription *sub = sub_get(ev, NULL, TRUE);
 
 	/*
 	 * Just ensure that, when ref count reaches 0, the subscription
 	 * is replaced
 	 */
 	sub->refs = 0;
-	sub2 = sub_get(ev, NULL);
+	sub2 = sub_get(ev, NULL, TRUE);
 
 	ck_assert(sub != sub2);
 	ck_assert(g_hash_table_lookup(ev->subs, "") == sub2);

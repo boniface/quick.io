@@ -235,7 +235,7 @@ void evs_on(
 	gchar *ev_extra,
 	const evs_cb_t client_cb)
 {
-	struct subscription *sub = sub_get(ev, ev_extra);
+	struct subscription *sub = sub_get(ev, ev_extra, TRUE);
 	struct evs_on_info info = {
 		.ev_extra = ev_extra,
 		.sub = sub,
@@ -311,17 +311,20 @@ void evs_send_full(
 	void *cb_data,
 	const qev_free_fn free_fn)
 {
-	struct subscription *sub = sub_get(ev, ev_extra);
+	struct subscription *sub;
 
 	if (!ev->handle_children && ev_extra != NULL && *ev_extra != '\0') {
 		WARN("Sending event %s%s to client, but %s doesn't handle_children, "
-				"so no subscription was possible. Refusing to send event.",
-				ev->ev_path, sub->ev_extra, ev->ev_path);
-	} else {
-		evs_send_sub_full(client, sub, json, cb_fn, cb_data, free_fn);
+			"so no subscription was possible. Refusing to send event.",
+			ev->ev_path, ev_extra, ev->ev_path);
+		return;
 	}
 
-	sub_unref(sub);
+	sub = sub_get(ev, ev_extra, FALSE);
+	if (sub != NULL) {
+		evs_send_sub_full(client, sub, json, cb_fn, cb_data, free_fn);
+		sub_unref(sub);
+	}
 }
 
 void evs_send_info_full(
@@ -439,11 +442,11 @@ void evs_off(
 	struct event *ev,
 	const gchar *ev_extra)
 {
-	struct subscription *sub = sub_get(ev, ev_extra);
-
-	client_sub_remove(client, sub);
-
-	sub_unref(sub);
+	struct subscription *sub = sub_get(ev, ev_extra, FALSE);
+	if (sub != NULL) {
+		client_sub_remove(client, sub);
+		sub_unref(sub);
+	}
 }
 
 void evs_client_offd(struct client *client, struct subscription *sub)
@@ -544,14 +547,17 @@ void evs_broadcast(
 	const gchar *ev_extra,
 	const gchar *json)
 {
+	struct subscription *sub = sub_get(ev, ev_extra, FALSE);
 	JSON_OR_NULL(json);
 
-	struct _broadcast bc = {
-		.sub = sub_get(ev, ev_extra),
-		.json = g_strdup(json),
-	};
+	if (sub != NULL) {
+		struct _broadcast bc = {
+			.sub = sub,
+			.json = g_strdup(json),
+		};
 
-	g_async_queue_push(_broadcasts, g_slice_copy(sizeof(bc), &bc));
+		g_async_queue_push(_broadcasts, g_slice_copy(sizeof(bc), &bc));
+	}
 }
 
 void evs_broadcast_path(const gchar *ev_path, const gchar *json)

@@ -243,6 +243,25 @@ START_TEST(test_evs_off_not_subscribed)
 }
 END_TEST
 
+START_TEST(test_evs_send)
+{
+	gchar *extra = NULL;
+	qev_fd_t tc = test_client();
+	struct client *client = test_get_client();
+	struct event *ev = evs_query("/test/good-childs/extra", &extra);
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good-childs/extra\"",
+		"/qio/callback/1:0={\"code\":200,\"data\":null}");
+
+	evs_send(client, ev, extra, "\"hooray!\"");
+
+	test_msg(tc, "/test/good-childs/extra:0=\"hooray!\"");
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_unsubscribed_send)
 {
 	gchar *extra = NULL;
@@ -312,7 +331,7 @@ START_TEST(test_evs_send_sub)
 	qev_fd_t tc = test_client();
 	struct client *client = test_get_client();
 	struct event *ev = evs_query("/test/good", &extra);
-	struct subscription *sub = sub_get(ev, extra);
+	struct subscription *sub = sub_get(ev, extra, TRUE);
 
 	test_cb(tc,
 		"/qio/on:1=\"/test/good\"",
@@ -642,6 +661,7 @@ int main()
 	tcase_add_test(tcase, test_evs_on_already_subscribed);
 	tcase_add_test(tcase, test_evs_on_invalid);
 	tcase_add_test(tcase, test_evs_off_not_subscribed);
+	tcase_add_test(tcase, test_evs_send);
 	tcase_add_test(tcase, test_evs_unsubscribed_send);
 	tcase_add_test(tcase, test_evs_send_doesnt_handle_children);
 	tcase_add_test(tcase, test_evs_malformed_path);

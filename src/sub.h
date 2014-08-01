@@ -50,11 +50,16 @@ struct subscription {
  *     The event to get the subscription from
  * @param ev_extra
  *     Any extra path segments for the subscription
+ * @param or_create
+ *     Create the sub if it doesn't already exist
  *
  * @return
  *     A reference to the subscription. When done, call sub_unref().
  */
-struct subscription* sub_get(struct event *ev, const gchar *ev_extra);
+struct subscription* sub_get(
+	struct event *ev,
+	const gchar *ev_extra,
+	const gboolean or_create);
 
 /**
  * Increase the reference count on the subscription.
