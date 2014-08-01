@@ -107,7 +107,7 @@ static enum evs_status _heartbeat_challenge_handler(
 	evs_send_bruteforce(client, "/qio", "/heartbeat", NULL, NULL,
 						_heartbeat_challenge_cb, NULL, NULL);
 
-	return EVS_STATUS_ERR;
+	return EVS_STATUS_HANDLED;
 }
 
 static enum evs_status _in_progress_handler(
