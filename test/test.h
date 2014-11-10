@@ -142,15 +142,19 @@ void test_ping(qev_fd_t tc);
 void test_wait_for_buff(const guint len);
 
 /**
- * Get the last client in the clients list
+ * Get the first client seen
  */
 struct client* test_get_client();
 
 /**
- * Get the last client in the clients list, not waiting for it to be handshaked
- * or anything.
+ * Get the first client seen, not waiting for it to be handshaked or anything.
  */
 struct client* test_get_client_raw();
+
+/**
+ * Get the first surrogate seen
+ */
+struct client* test_get_surrogate();
 
 /**
  * Force send out heartbeats

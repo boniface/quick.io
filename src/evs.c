@@ -580,8 +580,9 @@ void evs_broadcast_tick()
 		g_string_printf(path, "%s%s", bc->sub->ev->ev_path, bc->sub->ev_extra);
 		frames = protocols_bcast(path->str, bc->json);
 
-		qev_list_foreach(bc->sub->subscribers, _broadcast,
-						cfg_broadcast_threads, TRUE, frames);
+		qev_list_foreach(
+			bc->sub->subscribers, _broadcast,
+			cfg_broadcast_threads, frames);
 
 		protocols_bcast_free(frames);
 		_broadcast_free(bc);

@@ -261,9 +261,7 @@ END_TEST
 static void _setup_subs()
 {
 	test_setup();
-
-	union qev_cfg_val val = { .ui64 = 100 };
-	qev_cfg_set("quick.io", "clients-subs-total", val, NULL);
+	qev_cfg_set("quick.io", "clients-subs-total", "100", NULL);
 }
 
 START_TEST(test_client_subs_sane)
@@ -309,8 +307,7 @@ END_TEST
 
 START_TEST(test_client_subs_unfair)
 {
-	union qev_cfg_val val = { .ui64 = 0 };
-	qev_cfg_set("quick.io", "clients-subs-pressure", val, NULL);
+	qev_cfg_set("quick.io", "clients-subs-pressure", "0", NULL);
 
 	guint i;
 	qev_fd_t tc = test_client();
@@ -336,7 +333,7 @@ END_TEST
 
 START_TEST(test_client_subs_list_add_fail)
 {
-	qev_mock_add("client_sub_accept", "qev_list_try_add", FALSE, NULL, 0);
+	qev_mock_add("client_sub_accept", "qev_list_add", FALSE, NULL, 0);
 
 	qev_fd_t tc = test_client();
 	GString *buff = qev_buffer_get();

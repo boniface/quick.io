@@ -60,8 +60,7 @@ START_TEST(test_apps_config)
 		"/test/config:1=null",
 		"/qio/callback/1:0={\"code\":200,\"data\":172346}");
 
-	union qev_cfg_val val = { .i64 = 81723 };
-	qev_cfg_set("test_app_sane", "sane-value", val, NULL);
+	qev_cfg_set("test_app_sane", "sane-value", "81723", NULL);
 
 	test_cb(tc,
 		"/test/config:1=null",

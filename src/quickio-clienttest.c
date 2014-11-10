@@ -176,7 +176,7 @@ static enum evs_status _send_unsubscribed_handler(
 	return EVS_STATUS_HANDLED;
 }
 
-static void _broadcast()
+static void _broadcast(void *nothing G_GNUC_UNUSED)
 {
 	evs_broadcast(_ev_broadcast, NULL, "\"broadcast event\"");
 }
@@ -204,7 +204,7 @@ static gboolean _app_init()
 	evs_add_handler(EV_PREFIX, "/send-unsubscribed",
 					_send_unsubscribed_handler, evs_no_on, NULL, FALSE);
 
-	qev_timer(_broadcast, 0, 10);
+	qev_timer(10, _broadcast, NULL);
 
 	return TRUE;
 }

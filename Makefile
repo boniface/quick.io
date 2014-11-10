@@ -10,6 +10,7 @@ VERSION_MICRO = 0
 
 ifeq ($(CC),cc)
 	export CC = clang
+	export GCOV = llvm-cov
 endif
 
 BENCH_DIR = bench
@@ -22,7 +23,7 @@ QEV_DIR = $(LIB_DIR)/quick-event
 INSTALL_BIN = install
 INSTALL = $(INSTALL_BIN) -m 644
 
-LIBS = glib-2.0 gmodule-2.0 openssl
+LIBS = glib-2.0 gmodule-2.0 libcurl openssl
 LIBS_TEST = check
 LIBS_QEV = $(QEV_DIR)/libqev.a
 LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
@@ -165,7 +166,7 @@ deb:
 	debuild -tc -b
 
 deb-stable:
-	sbuild -d wheezy
+	sbuild -d stable
 
 debug: _debug
 
@@ -200,6 +201,7 @@ install: release
 	$(INSTALL) quickio.ini $(DESTDIR)/etc/quickio
 	$(INSTALL) src/*.h $(DESTDIR)/usr/include/quickio
 	$(INSTALL) lib/quick-event/src/*.h $(DESTDIR)/usr/include/quickio/quick-event
+	rm $(DESTDIR)/usr/include/quickio/quick-event/*_priv.h
 	$(INSTALL) quickio.pc $(DESTDIR)/usr/lib/pkgconfig
 	$(INSTALL) $(APPS) $(DESTDIR)/usr/lib/quickio
 	$(INSTALL) sysctl.conf $(DESTDIR)/etc/sysctl.d/quickio.conf
@@ -207,13 +209,11 @@ install: release
 release: _release docs-man
 
 run: _debug
-	./$(BINARY) -f quickio.ini
+	./$(BINARY) -f config/local.ini
 
 test: _test
 	./lib/quick-event/ext/gcovr \
-		--root=. \
-		--exclude=test \
-		--exclude=lib \
+		--root=src/ \
 		--exclude='.*\.h'
 
 uninstall:
@@ -238,10 +238,6 @@ _debug: export CFLAGS_BIN += $(CFLAGS_BIN_DEBUG)
 _debug: export LDFLAGS_BIN += $(LDFLAGS_BIN_DEBUG)
 _debug: .build_debug
 	@$(MAKE) $(BINARY) $(APPS)
-	@./$(BINARY) --generate-config 2>/dev/null | sed \
-		-e 's|#bind-path =|bind-path = /tmp/quickio.sock|' \
-		-e 's|#public-address =|public-address = localhost|' \
-		> quickio.ini
 
 _test: .build_test
 	@$(MAKE) $(TESTS)
@@ -252,16 +248,12 @@ _release: export LDFLAGS_SO := $(LDFLAGS_SO_RELEASE) $(LDFLAGS_SO)
 _release: export LDFLAGS_BIN += $(LDFLAGS_BIN_RELEASE)
 _release: .build_release
 	@$(MAKE) $(BINARY) $(APPS)
-	@./$(BINARY) --generate-config 2>/dev/null | sed \
-		-e 's|#bind-port = 8080|bind-port = 80|' \
-		-e 's|#bind-port-ssl = 4433|bind-port-ssl = 443|' \
-		-e 's|#public-address =|public-address = |' \
-		-e 's|#include =|include = /etc/quickio/apps/*.ini|' \
-		-e 's|#log-file =|log-file = /var/log/quickio.log|' \
-		-e 's|#max-clients = 65536|max-clients = 4194304|' \
-		-e 's|#support-flash = false|support-flash = true|' \
-		-e 's|#user =|user = quickio|' \
-		> quickio.ini
+	./$(BINARY) \
+		--generate-config \
+		--config-file=config/release.ini 2>/dev/null | sed \
+			-e 's|#include =|include = /etc/quickio/apps/*.ini|' \
+			-e 's|#log-file =|log-file = /var/log/quickio.log|' \
+				> quickio.ini
 
 #
 # Rules to build all the files
@@ -296,11 +288,13 @@ $(TEST_DIR)/%: CFLAGS_BIN += $(CFLAGS_BIN_TEST)
 $(TEST_DIR)/%: LDFLAGS_BIN += $(LDFLAGS_BIN_TEST)
 $(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_DIR)/test.c $(OBJECTS) $(LIBS_QEV_TEST)
 	@echo '-------- Compiling $@ --------'
+	@rm -f $@.gcda
 	@cd $(TEST_DIR) && $(CC) $(CFLAGS_BIN) $*.c test.c $(OBJECTS_TEST) -o $* ../$(LIBS_QEV_TEST) $(LDFLAGS_BIN)
 
 $(SRC_DIR)/protocols_http.o: $(HTML_SRCS)
 %.o: %.c
 	@echo '-------- Compiling $@ --------'
+	@rm -f $*.gcda
 	@$(CC) -c $(CFLAGS_BIN) $< -o $@
 
 %.so: %.c

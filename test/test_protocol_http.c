@@ -334,8 +334,11 @@ static struct client* _http_heartbeat_get_poller(struct client *clients[3])
 START_TEST(test_http_heartbeat)
 {
 	guint i;
+	guint clientsi;
 	struct client *poller;
-	struct client *clients[3];
+	struct client *all_clients[3];
+	struct client *clients[2];
+	struct client *surrogate = NULL;
 	struct httpc *hc = _httpc_new();
 
 	// Flush out all the connections so they're active and associated with HTTP
@@ -343,21 +346,28 @@ START_TEST(test_http_heartbeat)
 		_send(hc, "/qio/ping:0=null");
 	}
 
-	// Clients iterated in reverse: surrogate is always first
-	qev_foreach(_http_heartbeat_foreach, 1, clients);
-	ck_assert(qev_is_surrogate(clients[0]));
-	ck_assert(!qev_is_surrogate(clients[1]));
-	ck_assert(!qev_is_surrogate(clients[2]));
+	qev_foreach(_http_heartbeat_foreach, 1, all_clients);
 
-	for (i = 1; i < G_N_ELEMENTS(clients); i++) {
+	for (clientsi = i = 0; i < G_N_ELEMENTS(all_clients); i++) {
+		if (qev_is_surrogate(all_clients[i])) {
+			ck_assert(surrogate == NULL);
+			surrogate = all_clients[i];
+		} else {
+			clients[clientsi++] = all_clients[i];
+		}
+	}
+
+	ck_assert(clientsi == G_N_ELEMENTS(clients));
+
+	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
 		QEV_WAIT_FOR(clients[i]->protocol.prot == protocol_http);
 		QEV_WAIT_FOR(clients[i]->qev_client.rbuff == NULL);
 	}
 
 	test_heartbeat();
 
-	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
-		ck_assert(!clients[i]->qev_client._flags.closed);
+	for (i = 0; i < G_N_ELEMENTS(all_clients); i++) {
+		ck_assert(!all_clients[i]->qev_client._flags.closed);
 	}
 
 	poller = _http_heartbeat_get_poller(clients);
@@ -365,12 +375,12 @@ START_TEST(test_http_heartbeat)
 	/*
 	 * Surrogates should be left alone whenever they have a client attached
 	 */
-	clients[0]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
+	surrogate->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
 	test_heartbeat();
-	ck_assert_ptr_eq(clients[0]->http.client, poller);
+	ck_assert_ptr_eq(surrogate->http.client, poller);
 
-	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
-		ck_assert(!clients[i]->qev_client._flags.closed);
+	for (i = 0; i < G_N_ELEMENTS(all_clients); i++) {
+		ck_assert(!all_clients[i]->qev_client._flags.closed);
 	}
 
 	/*
@@ -379,32 +389,32 @@ START_TEST(test_http_heartbeat)
 	poller->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
 	test_heartbeat();
 	ck_assert_ptr_eq(poller->http.client, NULL);
-	ck_assert_ptr_eq(clients[0]->http.client, NULL);
+	ck_assert_ptr_eq(surrogate->http.client, NULL);
 
 	/*
 	 * Surrogates should be closed after not having a client attached for
 	 * too long
 	 */
-	clients[0]->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
+	surrogate->last_send = qev_monotonic - QEV_SEC_TO_USEC(120);
 	test_heartbeat();
-	ck_assert(clients[0]->qev_client._flags.closed);
+	ck_assert(surrogate->qev_client._flags.closed);
 
 	/*
 	 * Pollers should be closed after no clients and no sending for too long
 	 */
-	for (i = 1; i < G_N_ELEMENTS(clients); i++) {
+	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
 		ck_assert(!clients[i]->qev_client._flags.closed);
 		ck_assert_ptr_eq(clients[i]->http.client, NULL);
 		clients[i]->last_send = qev_monotonic - QEV_SEC_TO_USEC(240);
 		test_heartbeat();
 	}
 
-	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
-		ck_assert(clients[i]->qev_client._flags.closed);
+	for (i = 0; i < G_N_ELEMENTS(all_clients); i++) {
+		ck_assert(all_clients[i]->qev_client._flags.closed);
 	}
 
-	for (i = 0; i < G_N_ELEMENTS(clients); i++) {
-		qev_unref0(&clients[i]);
+	for (i = 0; i < G_N_ELEMENTS(all_clients); i++) {
+		qev_unref0(&all_clients[i]);
 	}
 
 	_httpc_free(hc);
@@ -432,8 +442,7 @@ START_TEST(test_http_surrogate)
 	ck_assert_int_eq(err, strlen(headers));
 
 	QEV_WAIT_FOR(client->http.client != NULL);
-	surrogate = test_get_client_raw();
-	ck_assert(qev_is_surrogate(surrogate));
+	surrogate = test_get_surrogate();
 
 	client->last_send = qev_monotonic - QEV_SEC_TO_USEC(60);
 
@@ -765,10 +774,8 @@ END_TEST
 START_TEST(test_http_incoming_wait)
 {
 	struct httpc *hc = _httpc_new();
-	struct client *surrogate = test_get_client();
+	struct client *surrogate = test_get_surrogate();
 	struct protocol_frames pframes = protocol_http_frame("/test", "", 0, "null");
-
-	ck_assert(qev_is_surrogate(surrogate));
 
 	_send(hc, "/qio/ping:0=null");
 	QEV_WAIT_FOR(surrogate->http.client != NULL);
@@ -790,10 +797,8 @@ END_TEST
 START_TEST(test_http_incoming_no_wait)
 {
 	struct httpc *hc = _httpc_new();
-	struct client *surrogate = test_get_client();
+	struct client *surrogate = test_get_surrogate();
 	struct protocol_frames pframes = protocol_http_frame("/test", "", 0, "null");
-
-	ck_assert(qev_is_surrogate(surrogate));
 
 	_send(hc, "/qio/ping:0=null");
 	QEV_WAIT_FOR(surrogate->http.client != NULL);

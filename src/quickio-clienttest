@@ -20,12 +20,11 @@ QIO_PORT = 55440
 INTERCEPTOR_PORT = QIO_PORT + 1
 INI_FILE = '/tmp/quickio-clienttest.%d.ini' % os.getpid()
 INI = '''[quick-event]
+listen = [::]:%d %s
 threads = 2
 tcp-nodelay = true
 [quick.io]
-bind-port = %d
 public-address = %s
-support-flash = %s
 [quick.io-apps]
 app = %s
 '''
@@ -175,8 +174,8 @@ def main():
 	with open(INI_FILE, 'w') as f:
 		f.write(INI % (
 			QIO_PORT,
+			', [::]:843' if is_root else '',
 			public_address,
-			'true' if is_root else 'false',
 			app_path))
 
 	_run_interceptor()

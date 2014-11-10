@@ -21,7 +21,7 @@ static void _foreach_cb(struct client *client, void *is_)
 	client_cb_prune(client, is->cb);
 }
 
-void periodic_run()
+void periodic_run(void *nothing G_GNUC_UNUSED)
 {
 	struct _intervals is = {
 		.hb = protocols_heartbeat_get_intervals(),
@@ -33,5 +33,5 @@ void periodic_run()
 
 void periodic_init()
 {
-	qev_timer(periodic_run, 10, 0);
+	qev_timer(10 * 1000, periodic_run, NULL);
 }

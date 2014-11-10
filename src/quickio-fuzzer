@@ -17,18 +17,14 @@ import sys
 
 INI_FILE = '/tmp/quickio-fuzzer.%d.ini' % os.getpid()
 INI = '''[quick-event]
+listen = [::]:55455, /tmp/quickio.sock
 max-clients = %d
+nofile-extra = 0
 threads = %d
 [quick.io]
-bind-address = 0.0.0.0
-bind-port = 55455
-bind-path = /tmp/quickio.sock
 public-address = localhost
 [quick.io-apps]
 quick-fuzz = quick-fuzz
-ihr-now-playing = /home/andi/Dev/IHR/quick.io/app-ihr/ihr-now-playing
-[ihr-now-playing]
-parent-server = ws://iad-quickio-master101.ihr
 '''
 
 if "/usr/bin" in os.path.abspath(__file__):

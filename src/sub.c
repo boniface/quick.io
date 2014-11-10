@@ -54,9 +54,9 @@ struct subscription* sub_get(
 			sub = g_slice_alloc0(sizeof(*sub));
 			sub->ev = ev;
 			sub->ev_extra = g_strdup(ev_extra);
-			sub->subscribers = qev_list_new_resizable(
-				cfg_sub_min_size,
+			sub->subscribers = qev_list_new(
 				qev_cfg_get_max_clients(),
+				cfg_broadcast_threads,
 				NULL);
 			sub->refs = 1;
 

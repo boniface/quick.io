@@ -51,7 +51,7 @@ struct client_sub {
 	/**
 	 * Where the client lives in the sub list
 	 */
-	gint32 idx;
+	qev_list_item_t idx;
 
 	/**
 	 * If the subscription is pending: the on() callback went async

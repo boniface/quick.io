@@ -22,22 +22,18 @@
  */
 #define CONFIG \
 	"[quick-event]\n" \
+	"listen = localhost:%d, %s/quickio.%d.sock\n" \
+	"listen-ssl = localhost:%d\n" \
 	"poll-wait = 1\n" \
+	"ssl-cert = ../lib/quick-event/certs/rsa/test.crt\n" \
+	"ssl-cert-alt = ../lib/quick-event/certs/ecdsa/test.crt\n" \
+	"ssl-key = ../lib/quick-event/certs/rsa/test.key\n" \
+	"ssl-key-alt = ../lib/quick-event/certs/ecdsa/test.key\n" \
 	"tcp-nodelay = true\n" \
 	"timeout = %d\n" \
+	"user = %s\n" \
 	"[quick.io]\n" \
 	"public-address = localhost\n" \
-	"bind-address = localhost\n" \
-	"bind-port = %d\n" \
-	"bind-address-ssl = localhost\n" \
-	"bind-port-ssl = %d\n" \
-	"bind-path = quickio.%d.sock\n" \
-	"ssl-key-path-0 = ../lib/quick-event/certs/rsa/test.key\n" \
-	"ssl-cert-path-0 = ../lib/quick-event/certs/rsa/test.crt\n" \
-	"ssl-key-path-1 = ../lib/quick-event/certs/ecdsa/test.key\n" \
-	"ssl-cert-path-1 = ../lib/quick-event/certs/ecdsa/test.crt\n" \
-	"support-flash = false\n" \
-	"user = %s\n" \
 	"[quick.io-apps]\n" \
 	"/test = ./app_test_sane\n" \
 	"[test_app_sane]\n" \
@@ -74,12 +70,20 @@ static void _get_client_cb(struct client *client, void *ptr_)
 	}
 }
 
+static void _get_surrogate_cb(struct client *client, void *ptr_)
+{
+	struct client **ptr = ptr_;
+	if (*ptr == NULL && qev_is_surrogate(client)) {
+		*ptr = client;
+	}
+}
+
 /**
  * Heartbeats need to run from the QEV event loop: qev_foreach() only runs
  * unlocked from QEV threads, and since we need to test removal of clients from
  * heartbeats, we have to run there.
  */
-static void _heartbeat_timer()
+static void _heartbeat_timer(void *nothing G_GNUC_UNUSED)
 {
 	if (_do_heartbeat) {
 		periodic_run();
@@ -103,13 +107,14 @@ void test_config()
 {
 	gboolean configed;
 	GString *c = qev_buffer_get();
+	gchar *cwd = g_get_current_dir();
 
 	g_string_printf(c, CONFIG,
-			100,
-			PORT, PORT + 1, PORT, getlogin());
+		PORT, cwd, PORT, PORT + 1, 100, getlogin());
 	configed = g_file_set_contents(CONFIG_FILE, c->str, -1, NULL);
 	ASSERT(configed, "Could not create test config file");
 
+	g_free(cwd);
 	qev_buffer_put(c);
 }
 
@@ -138,14 +143,14 @@ void test_setup()
 {
 	gchar *args[] = {"test", "--config-file=" CONFIG_FILE};
 	qio_main(2, args);
-	qev_timer(_heartbeat_timer, 0, 1);
+	qev_timer(1, _heartbeat_timer, NULL);
 }
 
 void test_setup_with_config(gchar *config)
 {
 	gchar *args[] = {"test", "--config-file=" CONFIG_FILE, "-f", config};
 	qio_main(4, args);
-	qev_timer(_heartbeat_timer, 0, 1);
+	qev_timer(1, _heartbeat_timer, NULL);
 }
 
 void test_teardown()
@@ -312,6 +317,20 @@ struct client* test_get_client_raw()
 	}
 
 	return client;
+}
+
+struct client* test_get_surrogate()
+{
+	struct client *surrogate = NULL;
+
+	while (surrogate == NULL) {
+		g_usleep(100);
+		qev_foreach(_get_surrogate_cb, 1, &surrogate);
+	}
+
+	QEV_WAIT_FOR(surrogate->protocol.handshaked);
+
+	return surrogate;
 }
 
 void test_heartbeat()

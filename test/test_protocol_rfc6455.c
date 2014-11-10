@@ -572,11 +572,9 @@ START_TEST(test_rfc6455_close_read_high)
 
 	gint err;
 	gchar buff[2048];
-	union qev_cfg_val val;
 	qev_fd_t tc = _client();
 
-	val.ui64 = 100;
-	qev_cfg_set("quick-event", "userspace-buff-total", val, NULL);
+	qev_cfg_set("quick-event", "userspace-buff-total", "100", NULL);
 
 	ck_assert_int_eq(send(tc, msg, strlen(msg), 0), strlen(msg));
 

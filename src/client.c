@@ -319,8 +319,8 @@ enum client_sub_state client_sub_accept(
 		goto out;
 	}
 
-	ok = QEV_MOCK(gboolean, qev_list_try_add, sub->subscribers,
-							client, &csub->idx);
+	ok = QEV_MOCK(gboolean, qev_list_add,
+		sub->subscribers, client, &csub->idx);
 	if (!ok) {
 		goto cleanup;
 	} else {

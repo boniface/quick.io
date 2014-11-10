@@ -90,54 +90,16 @@ static void _validate_sub_min_size(
 	}
 }
 
+static struct qev_cfg _overrides[] = {
+	{	.name = "listen",
+		.type = QEV_CFG_STRV,
+		.defval.strv = (gchar*[]){
+			"[::]:8080",
+		},
+	},
+};
+
 static struct qev_cfg _cfg[] = {
-	{	.name = "bind-address",
-		.description = "Address to bind to for plaintext connections. "
-						"NULL to disable plaintext",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_bind_address,
-		.defval.str = "0.0.0.0",
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "bind-port",
-		.description = "Port to bind to for plaintext connections.",
-		.type = QEV_CFG_UINT64,
-		.val.ui64 = &cfg_bind_port,
-		.defval.ui64 = 8080,
-		.validate = qev_cfg_validate_port,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "bind-address-ssl",
-		.description = "Address to bind to for SSL connections. "
-						"NULL to disable SSL.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_bind_address_ssl,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "bind-port-ssl",
-		.description = "Port to bind to for SSL connections.",
-		.type = QEV_CFG_UINT64,
-		.val.ui64 = &cfg_bind_port_ssl,
-		.defval.ui64 = 4433,
-		.validate = qev_cfg_validate_port,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "bind-path",
-		.description = "Path to create a Unix domain socket at.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_bind_path,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
 	{	.name = "broadcast-threads",
 		.description = "Number of threads used to pump out each broadcasted message.",
 		.type = QEV_CFG_UINT64,
@@ -217,50 +179,6 @@ static struct qev_cfg _cfg[] = {
 		.cb = NULL,
 		.read_only = TRUE,
 	},
-	{	.name = "ssl-cert-path-0",
-		.description = "The first certificate to use for the SSL connection. "
-						"This MUST be a full certificate chain in PEM format, "
-						"starting from _your_ certificate on top, all "
-						"intermediaries, then the root CA. Typically, this is "
-						"an RSA certificate.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_ssl_cert_path_0,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "ssl-key-path-0",
-		.description = "The key that corresponds to certificate 0.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_ssl_key_path_0,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "ssl-cert-path-1",
-		.description = "The second certificate to use for the SSL connection. "
-						"This MUST be a full certificate chain in PEM format, "
-						"starting from _your_ certificate on top, all "
-						"intermediaries, then the root CA. Typically, this is "
-						"an ECDSA certificate.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_ssl_cert_path_1,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "ssl-key-path-1",
-		.description = "The key that corresponds to certificate 1.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_ssl_key_path_1,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
 	{	.name = "sub-min-size",
 		.description = "The minimum size for subscription arrays. Should be "
 						"a power of 2. Any changes at runtime are only applied "
@@ -272,28 +190,10 @@ static struct qev_cfg _cfg[] = {
 		.cb = NULL,
 		.read_only = FALSE,
 	},
-	{	.name = "support-flash",
-		.description = "If flash cross domain requests should be serviced "
-						"(port 843).",
-		.type = QEV_CFG_BOOL,
-		.val.bool = &cfg_support_flash,
-		.defval.bool = FALSE,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
-	{	.name = "user",
-		.description = "Drop all permissions and run as this user.",
-		.type = QEV_CFG_STR,
-		.val.str = &cfg_user,
-		.defval.str = NULL,
-		.validate = NULL,
-		.cb = NULL,
-		.read_only = TRUE,
-	},
 };
 
 void config_init()
 {
+	qev_cfg_override_defaults(_overrides, G_N_ELEMENTS(_overrides));
 	qev_cfg_add("quick.io", _cfg, G_N_ELEMENTS(_cfg));
 }
