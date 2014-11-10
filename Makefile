@@ -6,7 +6,7 @@ MAKEFLAGS += --no-print-directory
 VERSION_NAME = banished bongo
 VERSION_MAJOR = 0
 VERSION_MINOR = 2
-VERSION_MICRO = 0
+VERSION_MICRO = 1
 
 ifeq ($(CC),cc)
 	export CC = clang

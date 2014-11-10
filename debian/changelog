@@ -1,3 +1,9 @@
+quickio (0.2.1) UNRELEASED; urgency=low
+
+  * Update to latest quick-event
+
+ -- Andrew Stone <andrew@clovar.com>  Mon, 10 Nov 2014 17:51:44 -0500
+
 quickio (0.2.0) stable; urgency=low
 
   * Drastically cleaned up QuickIO base.
