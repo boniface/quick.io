@@ -30,6 +30,8 @@ _qio_path = 'quickio'
 parser = argparse.ArgumentParser(description='run each app\'s test suite')
 parser.add_argument('-a', '--app', nargs='*', type=file,
 	help='which app to run the tests on')
+parser.add_argument('-d', '--debug', action='store_true',
+	help='run each test in gdb')
 parser.add_argument('-p', '--quickio-path', type=file,
 	help='absolute path to the quickio binary, if not found on the path')
 args = parser.parse_args()
@@ -63,7 +65,12 @@ for app in _apps:
 
 	exit_code = 0
 	try:
-		sp = subprocess.Popen([_qio_path, '--config-file=%s' % INI_FILE])
+		cmd = [_qio_path, '--config-file=%s' % INI_FILE]
+
+		if args.debug:
+			cmd = ['gdb', '--args'] + cmd
+
+		sp = subprocess.Popen(cmd)
 		sp.wait()
 		if sp.returncode != 0:
 			raise Exception('Test failed on "%s" (exit status %d)' % (app, sp.returncode))
