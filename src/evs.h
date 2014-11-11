@@ -145,6 +145,11 @@ struct evs_on_info {
 	gchar *ev_extra;
 
 	/**
+	 * JSON payload included with the subscription event
+	 */
+	gchar *json;
+
+	/**
 	 * Reference to the susbcription.
 	 */
 	struct subscription *sub;
@@ -337,12 +342,15 @@ void evs_route(
  *     Any extra path segments
  * @param client_cb
  *     The id of the callback to send to the client
+ * @param json
+ *     Any extra json that came with the subscription
  */
 void evs_on(
 	struct client *client,
 	struct event *ev,
 	gchar *ev_extra,
-	const evs_cb_t client_cb);
+	const evs_cb_t client_cb,
+	gchar *json);
 
 /**
  * Sends an event to a specific client.
@@ -517,11 +525,15 @@ void evs_on_cb(
  *     are made before returning.
  * @param with_ev_extra
  *     If you want ev_extra in the copy. By default, info->ev_extra is left
- *     NULL;
+ *     NULL.
+ * @param with_json
+ *     If you want json in the copy. By default, info->json is left
+ *     NULL.
  */
 struct evs_on_info* evs_on_info_copy(
 	const struct evs_on_info *info,
-	const gboolean with_ev_extra);
+	const gboolean with_ev_extra,
+	const gboolean with_json);
 
 /**
  * Clean up the copy of struct evs_on_info, releasing any references made.

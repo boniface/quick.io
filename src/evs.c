@@ -233,11 +233,13 @@ void evs_on(
 	struct client *client,
 	struct event *ev,
 	gchar *ev_extra,
-	const evs_cb_t client_cb)
+	const evs_cb_t client_cb,
+	gchar *json)
 {
 	struct subscription *sub = sub_get(ev, ev_extra, TRUE);
 	struct evs_on_info info = {
 		.ev_extra = ev_extra,
+		.json = json,
 		.sub = sub,
 		.client = client,
 		.client_cb = client_cb,
@@ -409,7 +411,8 @@ void evs_on_cb(
 
 struct evs_on_info* evs_on_info_copy(
 	const struct evs_on_info *info,
-	const gboolean with_ev_extra)
+	const gboolean with_ev_extra,
+	const gboolean with_json)
 {
 	struct evs_on_info *ret = g_slice_copy(sizeof(*info), info);
 
@@ -422,6 +425,12 @@ struct evs_on_info* evs_on_info_copy(
 		ret->ev_extra = NULL;
 	}
 
+	if (with_json) {
+		ret->json = g_strdup(info->json);
+	} else {
+		ret->json = NULL;
+	}
+
 	return ret;
 }
 
@@ -429,11 +438,8 @@ void evs_on_info_free(struct evs_on_info *info)
 {
 	qev_unref(info->client);
 	sub_unref(info->sub);
-
-	if (info->ev_extra) {
-		g_free(info->ev_extra);
-	}
-
+	g_free(info->ev_extra);
+	g_free(info->json);
 	g_slice_free1(sizeof(*info), info);
 }
 

@@ -69,6 +69,33 @@ START_TEST(test_evs_make_path)
 }
 END_TEST
 
+START_TEST(test_evs_on_info_copy)
+{
+	gchar *ev_extra;
+	struct evs_on_info *out;
+	qev_fd_t tc = test_client();
+	struct evs_on_info in = {
+		.client = test_get_client(),
+		.sub = sub_get(evs_query("/test/good", &ev_extra), NULL, TRUE),
+	};
+
+	out = evs_on_info_copy(&in, TRUE, TRUE);
+	ck_assert_ptr_eq(out->ev_extra, NULL);
+	ck_assert_ptr_eq(out->json, NULL);
+	evs_on_info_free(out);
+
+	in.json = "test";
+	in.ev_extra = "ev_test";
+	out = evs_on_info_copy(&in, TRUE, TRUE);
+	ck_assert_str_eq(out->ev_extra, "ev_test");
+	ck_assert_str_eq(out->json, "test");
+	evs_on_info_free(out);
+
+	sub_unref(in.sub);
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_query_handles_children_lookups)
 {
 	gchar *ev_extra = NULL;
@@ -207,8 +234,9 @@ START_TEST(test_evs_on_already_subscribed)
 		"\x00\x00\x00\x00\x00\x00\x00\x19/qio/on:4=\"/test/delayed\"", 66, MSG_NOSIGNAL);
 	ck_assert_int_eq(err, 66);
 
-	test_msg(tc, "/qio/callback/4:0={\"code\":202,\"data\":null,"
-					"\"err_msg\":\"subscription pending\"}");
+	test_msg(tc,
+		"/qio/callback/4:0={\"code\":202,\"data\":null,"
+			"\"err_msg\":\"subscription pending\"}");
 	test_msg(tc, "/qio/callback/3:0={\"code\":200,\"data\":null}");
 
 	test_cb(tc,
@@ -489,6 +517,27 @@ START_TEST(test_evs_on_with_evs_send)
 }
 END_TEST
 
+START_TEST(test_evs_on_with_json)
+{
+	qev_fd_t tc = test_client();
+
+	test_cb(tc,
+		"/qio/on:1=\"/test/good-data\"",
+		"/qio/callback/1:0={\"code\":401,\"data\":null,\"err_msg\":null}");
+
+	test_cb(tc,
+		"/qio/on:1=[\"/test/good-data\"]",
+		"/qio/callback/1:0={\"code\":400,\"data\":null,"
+			"\"err_msg\":\"invalid json ev_path\"}");
+
+	test_cb(tc,
+		"/qio/on:2=[\"/test/good-data\", 123987]",
+		"/qio/callback/2:0={\"code\":200,\"data\":null}");
+
+	close(tc);
+}
+END_TEST
+
 START_TEST(test_evs_off_before_on_cb)
 {
 	gint err;
@@ -646,6 +695,7 @@ int main()
 	tcase_add_test(tcase, test_evs_multiple_add_handler);
 	tcase_add_test(tcase, test_evs_root_handler);
 	tcase_add_test(tcase, test_evs_make_path);
+	tcase_add_test(tcase, test_evs_on_info_copy);
 
 	tcase = tcase_create("Query");
 	suite_add_tcase(s, tcase);
@@ -673,6 +723,7 @@ int main()
 	tcase_add_test(tcase, test_evs_on_reject);
 	tcase_add_test(tcase, test_evs_on_delayed_reject);
 	tcase_add_test(tcase, test_evs_on_with_evs_send);
+	tcase_add_test(tcase, test_evs_on_with_json);
 	tcase_add_test(tcase, test_evs_off_before_on_cb);
 	tcase_add_test(tcase, test_evs_on_off_on_before_first_on_cb);
 	tcase_add_test(tcase, test_evs_off_after_close);

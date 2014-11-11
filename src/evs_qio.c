@@ -50,13 +50,27 @@ static enum evs_status _on(
 	gchar *ev_path;
 	gchar *ev_extra;
 	struct event *ev;
+	enum qev_json_status status;
+	gchar *data = NULL;
 
-	if (*json != '"') {
-		evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
-		return EVS_STATUS_HANDLED;
+	switch (*json) {
+		case '"':
+			ev_path = json + 1;
+			data = NULL;
+			break;
+
+		case '[': {
+			status = qev_json_unpack(json, NULL, "[%s,%a]", &ev_path, &data);
+			if (status == QEV_JSON_OK) {
+				break;
+			}
+		}
+
+		default:
+			evs_err_cb(client, client_cb, CODE_BAD, "invalid json ev_path", NULL);
+			return EVS_STATUS_HANDLED;
 	}
 
-	ev_path = json + 1;
 	evs_clean_path(ev_path);
 
 	ev = evs_query(ev_path, &ev_extra);
@@ -65,7 +79,7 @@ static enum evs_status _on(
 		goto out;
 	}
 
-	evs_on(client, ev, ev_extra, client_cb);
+	evs_on(client, ev, ev_extra, client_cb, data);
 
 out:
 	return EVS_STATUS_HANDLED;

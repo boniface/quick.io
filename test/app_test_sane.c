@@ -138,6 +138,19 @@ static enum evs_status _good_on(const struct evs_on_info *info G_GNUC_UNUSED)
 	return EVS_STATUS_OK;
 }
 
+static enum evs_status _good_data_on(const struct evs_on_info *info)
+{
+	guint64 i;
+	enum qev_json_status status;
+
+	status = qev_json_unpack(info->json, NULL, "%d", &i);
+	if (status == QEV_JSON_OK && i == 123987) {
+		return EVS_STATUS_OK;
+	} else {
+		return EVS_STATUS_ERR;
+	}
+}
+
 static void _good_off(
 	struct client *client G_GNUC_UNUSED,
 	const gchar *ev_extra G_GNUC_UNUSED)
@@ -161,13 +174,13 @@ static gboolean _delayed_on_cb(void *info_)
 
 static enum evs_status _delayed_on(const struct evs_on_info *info)
 {
-	_do_work(_delayed_on_cb, evs_on_info_copy(info, FALSE));
+	_do_work(_delayed_on_cb, evs_on_info_copy(info, FALSE, FALSE));
 	return EVS_STATUS_HANDLED;
 }
 
 static enum evs_status _delayed_childs_on(const struct evs_on_info *info)
 {
-	_do_work(_delayed_on_cb, evs_on_info_copy(info, TRUE));
+	_do_work(_delayed_on_cb, evs_on_info_copy(info, TRUE, FALSE));
 	return EVS_STATUS_HANDLED;
 }
 
@@ -181,7 +194,7 @@ static gboolean _delayed_reject_on_cb(void *info_)
 
 static enum evs_status _delayed_reject_on(const struct evs_on_info *info)
 {
-	_do_work(_delayed_reject_on_cb, evs_on_info_copy(info, TRUE));
+	_do_work(_delayed_reject_on_cb, evs_on_info_copy(info, TRUE, FALSE));
 	return EVS_STATUS_HANDLED;
 }
 
@@ -196,7 +209,7 @@ static gboolean _with_send_on_cb(void *info_)
 
 static enum evs_status _with_send_on(const struct evs_on_info *info)
 {
-	_do_work(_with_send_on_cb, evs_on_info_copy(info, FALSE));
+	_do_work(_with_send_on_cb, evs_on_info_copy(info, FALSE, FALSE));
 	return EVS_STATUS_HANDLED;
 }
 
@@ -262,6 +275,8 @@ static gboolean _app_init()
 						_good_handler, _good_on, _good_off, TRUE);
 	evs_add_handler(EV_PREFIX, "/good2",
 						_good_handler, _good_on, _good_off, FALSE);
+	evs_add_handler(EV_PREFIX, "/good-data",
+						NULL, _good_data_on, _good_off, FALSE);
 	evs_add_handler(EV_PREFIX, "/delayed",
 						NULL, _delayed_on, NULL, FALSE);
 	evs_add_handler(EV_PREFIX, "/delayed-childs",
