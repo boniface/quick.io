@@ -455,7 +455,7 @@ void evs_off(
 	}
 }
 
-void evs_client_offd(struct client *client, struct subscription *sub)
+void evs_client_off(struct client *client, struct subscription *sub)
 {
 	qev_lock(client);
 

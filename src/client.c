@@ -64,7 +64,7 @@ static void _sub_cleanup(
 {
 	qev_list_remove(sub->subscribers, &csub->idx);
 
-	evs_client_offd(client, sub);
+	evs_client_off(client, sub);
 
 	_sub_free(csub);
 	sub_unref(sub);

@@ -569,7 +569,7 @@ void evs_off(
  * @param sub
  *     The subscription that the client was removed from
  */
-void evs_client_offd(struct client *client, struct subscription *sub);
+void evs_client_off(struct client *client, struct subscription *sub);
 
 /**
  * Sends a CODE_OK callback to a client
