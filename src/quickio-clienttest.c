@@ -145,6 +145,19 @@ static enum evs_status _in_progress_on(const struct evs_on_info *info)
 	return EVS_STATUS_HANDLED;
 }
 
+static enum evs_status _on_data_on(const struct evs_on_info *info)
+{
+	guint64 i;
+	enum qev_json_status status;
+
+	status = qev_json_unpack(info->json, NULL, "%d", &i);
+	if (status == QEV_JSON_OK && i == 123987) {
+		return EVS_STATUS_OK;
+	} else {
+		return EVS_STATUS_ERR;
+	}
+}
+
 static enum evs_status _move_handler(
 	struct client *client,
 	const gchar *ev_extra G_GNUC_UNUSED,
@@ -183,26 +196,39 @@ static void _broadcast(void *nothing G_GNUC_UNUSED)
 
 static gboolean _app_init()
 {
-	_ev_broadcast = evs_add_handler(EV_PREFIX, "/broadcast",
-					NULL, NULL, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/close",
-					_close_handler, evs_no_on, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/drop-callback",
-					_drop_callback_handler, evs_no_on, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/echo",
-					_echo_handler, evs_no_on, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/error",
-					_error_handler, evs_no_on, NULL, TRUE);
-	evs_add_handler(EV_PREFIX, "/heartbeat-challenge",
-					_heartbeat_challenge_handler, evs_no_on, NULL, FALSE);
-	_ev_in_progress = evs_add_handler(EV_PREFIX, "/in-progress",
-					_in_progress_handler, _in_progress_on, NULL, TRUE);
-	evs_add_handler(EV_PREFIX, "/move",
-					_move_handler, evs_no_on, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/send-invalid",
-					_send_invalid_handler, evs_no_on, NULL, FALSE);
-	evs_add_handler(EV_PREFIX, "/send-unsubscribed",
-					_send_unsubscribed_handler, evs_no_on, NULL, FALSE);
+	_ev_broadcast = evs_add_handler(
+		EV_PREFIX, "/broadcast",
+		NULL, NULL, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/close",
+		_close_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/drop-callback",
+		_drop_callback_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/echo",
+		_echo_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/error",
+		_error_handler, evs_no_on, NULL, TRUE);
+	evs_add_handler(
+		EV_PREFIX, "/heartbeat-challenge",
+		_heartbeat_challenge_handler, evs_no_on, NULL, FALSE);
+	_ev_in_progress = evs_add_handler(
+		EV_PREFIX, "/in-progress",
+		_in_progress_handler, _in_progress_on, NULL, TRUE);
+	evs_add_handler(
+		EV_PREFIX, "/move",
+		_move_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/send-invalid",
+		_send_invalid_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/send-unsubscribed",
+		_send_unsubscribed_handler, evs_no_on, NULL, FALSE);
+	evs_add_handler(
+		EV_PREFIX, "/on-data",
+		NULL, _on_data_on, NULL, FALSE);
 
 	qev_timer(10, _broadcast, NULL);
 
