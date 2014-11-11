@@ -152,7 +152,9 @@ static enum evs_status _on_data_on(const struct evs_on_info *info)
 
 	status = qev_json_unpack(info->json, NULL, "%d", &i);
 	if (status == QEV_JSON_OK && i == 123987) {
-		return EVS_STATUS_OK;
+		evs_on_cb(TRUE, info);
+		evs_send_info(info, "true");
+		return EVS_STATUS_HANDLED;
 	} else {
 		return EVS_STATUS_ERR;
 	}
