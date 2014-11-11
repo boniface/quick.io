@@ -25,6 +25,17 @@ Depends:
 Description: Quick WebSocket server
 	QuickIO is an incredibly fast, incredibly lightweight WebSocket server.
 
+Package: quickio-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends:
+	${misc:Depends},
+	quickio (= ${binary:Version}),
+Description: Debug files for building QuickIO apps
+	Provides debug files for insight into the server while building
+	QuickIO apps.
+
 Package: quickio-dev
 Architecture: i386 amd64
 Multi-Arch: foreign
