@@ -273,8 +273,9 @@ $(BENCHES): % : $(BENCH_DIR)/%
 $(TESTS): % : $(TEST_APPS) $(TEST_DIR)/%
 	@cd $(TEST_DIR) && G_SLICE=debug-blocks ./$@
 
-$(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html $(COMPRESSOR_JARS)
+$(SRC_DIR)/protocols_http_html_%.c: $(SRC_DIR)/protocols_http_%.html
 	@echo '-------- Generating $@ --------'
+	@$(MAKE) -s $(COMPRESSOR_JARS)
 	@java -jar $(HTML_COMPRESSOR) --compress-js $< > $@.html
 	@xxd -i $@.html > $@
 
