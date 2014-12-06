@@ -1,0 +1,4 @@
+tar-ignore = *.git*
+tar-ignore = gh-pages
+tar-ignore = lib/*.jar
+compression = xz
