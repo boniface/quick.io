@@ -29,7 +29,10 @@ LIBS_QEV = $(QEV_DIR)/libqev.a
 LIBS_QEV_TEST = $(QEV_DIR)/libqev_test.a
 
 BINARY = quickio
-BINARY_HELPERS = quickio-clienttest quickio-fuzzer quickio-testapps
+BINARY_HELPERS = \
+	quickio-clienttest \
+	quickio-fuzzer \
+	quickio-testapps
 
 HTML_SRCS = \
 	$(SRC_DIR)/protocols_http_html_iframe.c \
@@ -161,12 +164,6 @@ clean:
 	@rm -f tcmalloc.*
 	@$(MAKE) -s -C $(QEV_DIR) clean
 	@$(MAKE) -s -C $(DOCS_DIR) clean
-
-deb:
-	debuild -tc -b
-
-deb-stable:
-	sbuild -d stable
 
 debug: _debug
 
