@@ -21,7 +21,10 @@ case "$1" in
 
 		touch /var/log/quickio.log
 		chown quickio:quickio /var/log/quickio.log
-		sysctl -e -p /etc/sysctl.d/quickio.conf
+
+		if [ "$CI" != "true" ]; then
+			sysctl -e -p /etc/sysctl.d/quickio.conf
+		fi
 	;;
 
 	abort-upgrade|abort-remove|abort-deconfigure|upgrade)
