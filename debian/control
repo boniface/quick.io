@@ -7,7 +7,7 @@ Build-Depends:
 	check (>= 0.9.8),
 	debhelper (>= 9),
 	libc6-dev (>= 2.13),
-	libcurl4-openssl-dev (>= 7.26.0),
+	libcurl4-openssl-dev (>= 7.22.0),
 	libglib2.0-dev (>= 2.32),
 	libgoogle-perftools-dev,
 	libssl-dev (>= 1.0.0),
@@ -42,7 +42,7 @@ Multi-Arch: foreign
 Depends:
 	${misc:Depends},
 	${shlibs:Depends},
-	libcurl4-openssl-dev (>= 7.26.0),
+	libcurl4-openssl-dev (>= 7.22.0),
 	libglib2.0-dev (>= 2.32),
 	libssl-dev (>= 1.0.0),
 	pkg-config (>= 0.16.0),
