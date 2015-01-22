@@ -742,10 +742,10 @@ END_TEST
 
 START_TEST(test_http_close_on_replace)
 {
-	const gchar *connect =
+	const gchar *conn =
 		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9&connect=true HTTP/1.1\n"
 		"Content-Length: 0\n\n";
-	const gchar *poll =
+	const gchar *p =
 		"POST /?sid=16a0dd9a4e554a9f94520c8bfa59e1b9 HTTP/1.1\n"
 		"Content-Length: 18\n\n"
 		"/test/close:0=null";
@@ -755,13 +755,13 @@ START_TEST(test_http_close_on_replace)
 	struct client *client = test_get_client_raw();
 	qev_fd_t s2 = test_socket();
 
-	err = send(s1, connect, strlen(connect), 0);
-	ck_assert_int_eq(err, strlen(connect));
+	err = send(s1, conn, strlen(conn), 0);
+	ck_assert_int_eq(err, strlen(conn));
 
 	QEV_WAIT_FOR(client->http.client != NULL);
 
-	err = send(s2, poll, strlen(poll), 0);
-	ck_assert_int_eq(err, strlen(poll));
+	err = send(s2, p, strlen(p), 0);
+	ck_assert_int_eq(err, strlen(p));
 
 	_assert_status_code(s1, 403);
 	_assert_status_code(s2, 403);
